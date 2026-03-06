@@ -1,0 +1,58 @@
+name: catering_receipt_recorder
+description: "A Catering Receipt Recorder App"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Icons
+  cupertino_icons: ^1.0.6
+
+  # State Management
+  flutter_riverpod: ^3.2.1
+
+  # Database
+  sqflite: ^2.3.0
+  path: ^1.8.3
+  sqflite_common_ffi: ^2.3.0
+
+  # Image Picker
+  image_picker: ^1.0.5
+
+  # PDF Processing
+  syncfusion_flutter_pdf: ^32.2.8
+  syncfusion_flutter_pdfviewer: ^32.2.8
+
+  # Routing
+  go_router: ^17.1.0
+
+  # Utils
+  freezed_annotation: ^3.1.0
+  json_annotation: ^4.9.0
+  intl: ^0.20.2
+  uuid: ^4.2.1
+  path_provider: ^2.1.1
+  share_plus: ^12.0.1
+  excel: ^4.0.1
+  image: ^4.1.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  freezed: ^3.2.5
+  json_serializable: ^6.9.0
+  build_runner: ^2.12.2
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/models/
+    - assets/models/qwen3.5-0.8b.mnn/
