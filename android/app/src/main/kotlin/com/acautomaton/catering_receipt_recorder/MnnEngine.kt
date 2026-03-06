@@ -140,7 +140,7 @@ class MnnEngine private constructor() {
         Log.i(TAG, "[DIAG] Full prompt length: ${prompt.length} chars")
         Log.i(TAG, "[DIAG] Full prompt: $prompt")
 
-        return generateAsync(prompt, maxTokens = 128, callback = callback)
+        return generateAsync(prompt, maxTokens = 256, callback = callback)
     }
 
     /**
@@ -158,31 +158,40 @@ class MnnEngine private constructor() {
         Log.i(TAG, "[DIAG] Full prompt length: ${prompt.length} chars")
         Log.i(TAG, "[DIAG] Full prompt: $prompt")
 
-        return generateAsync(prompt, maxTokens = 128, callback = callback)
+        return generateAsync(prompt, maxTokens = 256, callback = callback)
     }
 
     /**
      * 构建订单信息提取提示词
      */
     private fun buildOrderExtractionPrompt(ocrText: String): String {
-        // 精简prompt以减少token数量
-        return """提取订单信息，返回JSON：{"shopName":"","amount":0.0,"orderTime":"","orderNumber":""}
+        return """从外卖订单OCR文本中提取以下字段：
 
-OCR:
-$ocrText
-JSON:"""
+- shopName: 外卖店铺名称，寻找最像店铺的名称，若找不到填写“其它”
+- amount: 实付金额，找"实付"或相似含义后面的数字，如"实付￥29.8"中的29.8，若找不到填写0
+- orderTime: 下单时间，格式如"yyyy-MM-dd HH:mm:ss"
+- orderNumber: 订单号，不要包含"|复制"等无关后缀，若找不到填写""
+
+只返回JSON，不要其他内容。示例：{"shopName":"xxxxx","amount":11.4,"orderTime":"yyyy-MM-dd HH:mm:ss","orderNumber":"xxxxx"}
+
+OCR文本：
+$ocrText"""
     }
 
     /**
      * 构建发票信息提取提示词
      */
     private fun buildInvoiceExtractionPrompt(ocrText: String): String {
-        // 精简prompt以减少token数量
-        return """提取发票信息，返回JSON：{"invoiceNumber":"","invoiceDate":"","totalAmount":0.0}
+        return """从发票OCR文本中提取以下字段：
 
-OCR:
-$ocrText
-JSON:"""
+- invoiceNumber: 发票号码，纯数字
+- invoiceDate: 开票日期
+- totalAmount: 价税合计金额
+
+只返回JSON，不要其他内容。示例：{"invoiceNumber":"xxxxxx","invoiceDate":"2026-03-03","totalAmount":100.0}
+
+OCR文本：
+$ocrText"""
     }
 
     /**

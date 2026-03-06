@@ -18,7 +18,9 @@
       "Bash(flutter clean:*)",
       "Bash(flutter run:*)",
       "Bash(./gradlew:*)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:mnn-docs.readthedocs.io)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   }
 }

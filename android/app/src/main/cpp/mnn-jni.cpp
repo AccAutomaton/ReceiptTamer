@@ -9,6 +9,8 @@
 #include <sstream>
 #include <cstdlib>
 #include <cctype>
+#include <regex>
+#include "mnn_llm.hpp"
 
 #define LOG_TAG "MnnJNI"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -16,13 +18,13 @@
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 
 /**
- * MnnLlmContext - 简化的 LLM 上下文
+ * MnnLlmContext - MNN LLM 推理上下文
  *
- * 目前使用启发式规则提取 JSON，后续可以集成真正的 MNN LLM 推理
+ * 使用真正的 MNN LLM 进行推理
  */
 class MnnLlmContext {
 public:
-    MnnLlmContext() : initialized_(false), nThreads_(4) {}
+    MnnLlmContext() : llm_(nullptr), initialized_(false), nThreads_(4) {}
 
     ~MnnLlmContext() {
         dispose();
@@ -69,6 +71,23 @@ public:
         }
         weightFile.close();
 
+        // Create LLM instance
+        LOGI("Creating MNN LLM instance...");
+        llm_ = MNN::Transformer::Llm::createLLM(configPath);
+        if (!llm_) {
+            LOGE("Failed to create MNN LLM instance");
+            return false;
+        }
+
+        // Load model weights
+        LOGI("Loading model weights...");
+        if (!llm_->load()) {
+            LOGE("Failed to load model weights");
+            MNN::Transformer::Llm::destroy(llm_);
+            llm_ = nullptr;
+            return false;
+        }
+
         // Store paths
         modelDir_ = modelDir;
         nThreads_ = nThreads;
@@ -86,7 +105,7 @@ public:
     std::string generate(const std::string& prompt, int maxTokens, float temperature, float topP) {
         std::lock_guard<std::mutex> lock(mutex_);
 
-        if (!initialized_) {
+        if (!initialized_ || !llm_) {
             LOGE("Model not initialized");
             return "";
         }
@@ -96,205 +115,145 @@ public:
 
         auto genStart = std::chrono::high_resolution_clock::now();
 
-        // Extract JSON using heuristics
-        std::string result = extractJsonFromText(prompt);
+        // Format prompt in Qwen chat format
+        std::string formattedPrompt = "<|im_start|>user\n" + prompt + "<|im_end|>\n<|im_start|>assistant\n";
+        LOGI("[DIAG] Formatted prompt length: %zu", formattedPrompt.length());
+
+        // Use string stream to capture output
+        std::stringstream ss;
+
+        // Call MNN LLM for inference
+        std::string retVal = llm_->response(formattedPrompt, &ss, nullptr, maxTokens);
 
         auto genEnd = std::chrono::high_resolution_clock::now();
         auto genMs = std::chrono::duration_cast<std::chrono::milliseconds>(genEnd - genStart).count();
 
         LOGI("========== MNN LLM Generation Complete ==========");
         LOGI("[DIAG] Generation time: %lldms", (long long)genMs);
-        LOGI("[DIAG] Result: %s", result.c_str());
 
-        return result;
+        // Get the response from stream (this has the actual content)
+        std::string rawResponse = ss.str();
+        LOGI("[DIAG] Response length: %zu", rawResponse.length());
+        LOGI("[DIAG] Response preview: %s", rawResponse.substr(0, 200).c_str());
+
+        // Reset LLM context to clear KV cache
+        llm_->reset();
+
+        // Extract JSON from LLM response
+        std::string jsonResult = extractJsonFromResponse(rawResponse);
+        LOGI("[DIAG] Extracted JSON length: %zu", jsonResult.length());
+
+        return jsonResult;
     }
 
     void dispose() {
         std::lock_guard<std::mutex> lock(mutex_);
+        if (llm_) {
+            LOGI("Destroying MNN LLM instance...");
+            MNN::Transformer::Llm::destroy(llm_);
+            llm_ = nullptr;
+        }
         initialized_ = false;
         LOGI("MnnLlmContext disposed");
     }
 
     bool isInitialized() const {
-        return initialized_;
+        return initialized_ && llm_ != nullptr;
     }
 
 private:
-    std::string extractJsonFromText(const std::string& prompt) {
-        // Check if this is an order or invoice extraction
-        bool isOrder = prompt.find("shopName") != std::string::npos ||
-                       prompt.find("amount") != std::string::npos ||
-                       prompt.find("orderTime") != std::string::npos;
-        bool isInvoice = prompt.find("invoiceNumber") != std::string::npos ||
-                         prompt.find("totalAmount") != std::string::npos ||
-                         prompt.find("invoiceDate") != std::string::npos;
-
-        // Extract OCR text from prompt (after "OCR:" marker)
-        std::string ocrText = prompt;
-        size_t ocrPos = prompt.find("OCR:\n");
-        if (ocrPos != std::string::npos) {
-            ocrText = prompt.substr(ocrPos + 5);
+    /**
+     * Extract JSON from LLM response
+     * LLM may return:
+     * 1. Direct JSON: {"shopName":"xxx",...}
+     * 2. Markdown code block: ```json\n{...}\n```
+     * 3. Mixed text with JSON embedded
+     */
+    std::string extractJsonFromResponse(const std::string& response) {
+        if (response.empty()) {
+            return R"({"error": "Empty response from LLM"})";
         }
 
-        if (isOrder) {
-            return extractOrderJson(ocrText);
-        } else if (isInvoice) {
-            return extractInvoiceJson(ocrText);
-        }
-
-        return R"({"error": "Unknown extraction type"})";
-    }
-
-    std::string extractOrderJson(const std::string& text) {
-        std::string shopName;
-        std::string amount;
-        std::string orderTime;
-        std::string orderNumber;
-
-        // Look for amount patterns
-        size_t amountPos = text.find("实付");
-        if (amountPos == std::string::npos) amountPos = text.find("总计");
-        if (amountPos == std::string::npos) amountPos = text.find("合计");
-        if (amountPos == std::string::npos) amountPos = text.find("¥");
-        if (amountPos == std::string::npos) amountPos = text.find("￥");
-
-        if (amountPos != std::string::npos) {
-            size_t start = text.find_first_of("0123456789", amountPos);
-            if (start != std::string::npos) {
-                size_t end = start;
-                while (end < text.length() && (text[end] == '.' || isdigit(text[end]))) {
-                    end++;
-                }
-                amount = text.substr(start, end - start);
+        // Method 1: Try to find JSON in markdown code block
+        std::regex codeBlockRegex("```(?:json)?\\s*\\n?([\\s\\S]*?)\\n?```");
+        std::smatch match;
+        if (std::regex_search(response, match, codeBlockRegex)) {
+            std::string jsonStr = match[1].str();
+            // Trim whitespace
+            size_t start = jsonStr.find_first_not_of(" \t\n\r");
+            size_t end = jsonStr.find_last_not_of(" \t\n\r");
+            if (start != std::string::npos && end != std::string::npos) {
+                jsonStr = jsonStr.substr(start, end - start + 1);
+            }
+            if (isValidJson(jsonStr)) {
+                return jsonStr;
             }
         }
 
-        // Look for order number
-        size_t orderPos = text.find("订单号");
-        if (orderPos == std::string::npos) orderPos = text.find("订单编号");
-        if (orderPos == std::string::npos) orderPos = text.find("订单");
+        // Method 2: Find JSON object pattern {...}
+        size_t startPos = response.find('{');
+        if (startPos != std::string::npos) {
+            int braceCount = 0;
+            size_t endPos = std::string::npos;
 
-        if (orderPos != std::string::npos) {
-            size_t start = text.find_first_of("0123456789", orderPos);
-            if (start != std::string::npos) {
-                size_t end = start;
-                while (end < text.length() && isdigit(text[end])) {
-                    end++;
-                }
-                if (end - start >= 8) {
-                    orderNumber = text.substr(start, end - start);
-                }
-            }
-        }
-
-        // Look for time patterns
-        size_t timePos = text.find("下单时间");
-        if (timePos == std::string::npos) timePos = text.find("时间");
-
-        if (timePos != std::string::npos) {
-            size_t start = text.find_first_of("0123456789", timePos);
-            if (start != std::string::npos) {
-                size_t end = start;
-                while (end < text.length() && (isdigit(text[end]) || text[end] == '-' ||
-                       text[end] == ':' || text[end] == ' ' || text[end] == '/')) {
-                    end++;
-                }
-                orderTime = text.substr(start, end - start);
-                // Trim trailing spaces and dashes
-                while (!orderTime.empty() && (orderTime.back() == ' ' || orderTime.back() == '-')) {
-                    orderTime.pop_back();
-                }
-            }
-        }
-
-        // Build JSON
-        std::ostringstream json;
-        json << "{\"shopName\":\"" << escapeJson(shopName) << "\","
-             << "\"amount\":" << (amount.empty() ? "0.0" : amount) << ","
-             << "\"orderTime\":\"" << escapeJson(orderTime) << "\","
-             << "\"orderNumber\":\"" << escapeJson(orderNumber) << "\"}";
-
-        return json.str();
-    }
-
-    std::string extractInvoiceJson(const std::string& text) {
-        std::string invoiceNumber;
-        std::string invoiceDate;
-        std::string totalAmount;
-
-        // Look for invoice number
-        size_t numPos = text.find("发票号码");
-        if (numPos == std::string::npos) numPos = text.find("号码");
-
-        if (numPos != std::string::npos) {
-            size_t start = text.find_first_of("0123456789", numPos);
-            if (start != std::string::npos) {
-                size_t end = start;
-                while (end < text.length() && isdigit(text[end])) {
-                    end++;
-                }
-                invoiceNumber = text.substr(start, end - start);
-            }
-        }
-
-        // Look for date
-        size_t datePos = text.find("开票日期");
-        if (datePos == std::string::npos) datePos = text.find("日期");
-
-        if (datePos != std::string::npos) {
-            size_t start = text.find_first_of("0123456789", datePos);
-            if (start != std::string::npos) {
-                size_t end = start;
-                // Check for Chinese date characters (年/月/日) - UTF-8 encoded
-                while (end < text.length()) {
-                    unsigned char c = text[end];
-                    if (isdigit(c) || c == '-' || c == '/') {
-                        end++;
-                    } else if (end + 2 < text.length()) {
-                        // Check for UTF-8 Chinese characters
-                        unsigned char c1 = text[end];
-                        unsigned char c2 = text[end + 1];
-                        unsigned char c3 = text[end + 2];
-                        bool isChineseDateChar = (c1 == 0xE5 && c2 == 0xB9 && c3 == 0xB4) ||  // 年
-                                                  (c1 == 0xE6 && c2 == 0x9C && c3 == 0x88) ||  // 月
-                                                  (c1 == 0xE6 && c2 == 0x97 && c3 == 0xA5);    // 日
-                        if (isChineseDateChar) {
-                            end += 3;
-                        } else {
-                            break;
-                        }
-                    } else {
+            for (size_t i = startPos; i < response.length(); i++) {
+                if (response[i] == '{') {
+                    braceCount++;
+                } else if (response[i] == '}') {
+                    braceCount--;
+                    if (braceCount == 0) {
+                        endPos = i;
                         break;
                     }
                 }
-                invoiceDate = text.substr(start, end - start);
             }
-        }
 
-        // Look for total amount
-        size_t amountPos = text.find("价税合计");
-        if (amountPos == std::string::npos) amountPos = text.find("合计金额");
-        if (amountPos == std::string::npos) amountPos = text.find("金额");
-        if (amountPos == std::string::npos) amountPos = text.find("¥");
-
-        if (amountPos != std::string::npos) {
-            size_t start = text.find_first_of("0123456789", amountPos);
-            if (start != std::string::npos) {
-                size_t end = start;
-                while (end < text.length() && (text[end] == '.' || isdigit(text[end]))) {
-                    end++;
+            if (endPos != std::string::npos) {
+                std::string jsonStr = response.substr(startPos, endPos - startPos + 1);
+                if (isValidJson(jsonStr)) {
+                    return jsonStr;
                 }
-                totalAmount = text.substr(start, end - start);
             }
         }
 
-        // Build JSON
-        std::ostringstream json;
-        json << "{\"invoiceNumber\":\"" << escapeJson(invoiceNumber) << "\","
-             << "\"invoiceDate\":\"" << escapeJson(invoiceDate) << "\","
-             << "\"totalAmount\":" << (totalAmount.empty() ? "0.0" : totalAmount) << "}";
+        // Method 3: Return raw response if it looks like JSON
+        std::string trimmed = trim(response);
+        if (trimmed.front() == '{' && trimmed.back() == '}') {
+            return trimmed;
+        }
 
-        return json.str();
+        // Fallback: return simple error JSON (don't include raw to avoid UTF-8 issues)
+        return R"({"error": "Failed to extract JSON from LLM response"})";
+    }
+
+    bool isValidJson(const std::string& str) {
+        // Simple validation: check if it starts with { and ends with }
+        std::string trimmed = trim(str);
+        if (trimmed.empty() || trimmed.front() != '{' || trimmed.back() != '}') {
+            return false;
+        }
+
+        // Check balanced braces
+        int braceCount = 0;
+        bool inString = false;
+        for (size_t i = 0; i < trimmed.length(); i++) {
+            char c = trimmed[i];
+            if (c == '"' && (i == 0 || trimmed[i-1] != '\\')) {
+                inString = !inString;
+            }
+            if (!inString) {
+                if (c == '{') braceCount++;
+                else if (c == '}') braceCount--;
+            }
+        }
+        return braceCount == 0;
+    }
+
+    std::string trim(const std::string& str) {
+        size_t start = str.find_first_not_of(" \t\n\r");
+        if (start == std::string::npos) return "";
+        size_t end = str.find_last_not_of(" \t\n\r");
+        return str.substr(start, end - start + 1);
     }
 
     std::string escapeJson(const std::string& str) {
@@ -312,6 +271,65 @@ private:
         return result;
     }
 
+    /**
+     * Sanitize string to valid UTF-8 for JNI
+     * Replaces invalid UTF-8 bytes with replacement character
+     */
+    std::string sanitizeUtf8(const std::string& str) {
+        std::string result;
+        size_t i = 0;
+        while (i < str.length()) {
+            unsigned char c = str[i];
+
+            // Check for valid UTF-8 sequences
+            int charLen = 0;
+            if ((c & 0x80) == 0) {
+                // ASCII (0xxxxxxx)
+                charLen = 1;
+            } else if ((c & 0xE0) == 0xC0) {
+                // 2-byte sequence (110xxxxx)
+                charLen = 2;
+            } else if ((c & 0xF0) == 0xE0) {
+                // 3-byte sequence (1110xxxx)
+                charLen = 3;
+            } else if ((c & 0xF8) == 0xF0) {
+                // 4-byte sequence (11110xxx)
+                charLen = 4;
+            } else {
+                // Invalid UTF-8 start byte - replace with space
+                result += ' ';
+                i++;
+                continue;
+            }
+
+            // Check if we have enough bytes
+            if (i + charLen > str.length()) {
+                result += ' ';
+                i++;
+                continue;
+            }
+
+            // Validate continuation bytes
+            bool valid = true;
+            for (int j = 1; j < charLen; j++) {
+                if ((str[i + j] & 0xC0) != 0x80) {
+                    valid = false;
+                    break;
+                }
+            }
+
+            if (valid) {
+                result += str.substr(i, charLen);
+                i += charLen;
+            } else {
+                result += ' ';
+                i++;
+            }
+        }
+        return result;
+    }
+
+    MNN::Transformer::Llm* llm_;
     std::string modelDir_;
     int nThreads_;
     bool initialized_;
