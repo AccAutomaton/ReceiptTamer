@@ -271,9 +271,10 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
 
   Widget _buildOrderCard(
       BuildContext context, Order order, ColorScheme colorScheme) {
-    final orderTime = order.orderTime != null && order.orderTime!.isNotEmpty
-        ? DateTime.tryParse(order.orderTime!)
+    final orderDate = order.orderDate != null && order.orderDate!.isNotEmpty
+        ? DateTime.tryParse(order.orderDate!)
         : null;
+    final mealTime = DateFormatter.mealTimeFromString(order.mealTime);
 
     return Card(
       child: InkWell(
@@ -308,10 +309,10 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
                             fontWeight: FontWeight.w500,
                           ),
                     ),
-                    if (orderTime != null) ...[
+                    if (orderDate != null) ...[
                       const SizedBox(height: 2),
                       Text(
-                        DateFormatter.formatDisplayWithTime(orderTime),
+                        '${DateFormatter.formatDisplay(orderDate)} ${DateFormatter.mealTimeToDisplayName(mealTime)}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: colorScheme.onSurfaceVariant,
                             ),

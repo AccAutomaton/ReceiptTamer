@@ -119,9 +119,10 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       invoicesByOrderIdProvider(order.id!),
     );
 
-    final orderTime = order.orderTime != null && order.orderTime!.isNotEmpty
-        ? DateTime.tryParse(order.orderTime!)
+    final orderDate = order.orderDate != null && order.orderDate!.isNotEmpty
+        ? DateTime.tryParse(order.orderDate!)
         : null;
+    final mealTime = DateFormatter.mealTimeFromString(order.mealTime);
 
     return Scaffold(
       appBar: AppBar(
@@ -163,7 +164,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                   const SizedBox(height: 16),
 
                   // Details card
-                  _buildDetailsCard(context, order, orderTime, colorScheme),
+                  _buildDetailsCard(context, order, orderDate, mealTime, colorScheme),
 
                   const SizedBox(height: 16),
 
@@ -218,7 +219,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   Widget _buildDetailsCard(
     BuildContext context,
     Order order,
-    DateTime? orderTime,
+    DateTime? orderDate,
+    MealTime? mealTime,
     ColorScheme colorScheme,
   ) {
     return Card(
@@ -249,10 +251,17 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             ),
             const Divider(),
             _buildDetailRow(
-              '下单时间',
-              orderTime != null
-                  ? DateFormatter.formatDisplayWithTime(orderTime)
+              '日期',
+              orderDate != null
+                  ? DateFormatter.formatDisplay(orderDate)
                   : '-',
+              Icons.calendar_today,
+              colorScheme,
+            ),
+            const Divider(),
+            _buildDetailRow(
+              '时段',
+              DateFormatter.mealTimeToDisplayName(mealTime),
               Icons.access_time,
               colorScheme,
             ),

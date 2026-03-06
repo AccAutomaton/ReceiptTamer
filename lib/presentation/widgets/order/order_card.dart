@@ -25,12 +25,14 @@ class OrderCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    final orderTime = order.orderTime != null && order.orderTime!.isNotEmpty
-        ? DateTime.tryParse(order.orderTime!)
+    final orderDate = order.orderDate != null && order.orderDate!.isNotEmpty
+        ? DateTime.tryParse(order.orderDate!)
         : null;
-    final formattedTime = orderTime != null
-        ? DateFormatter.formatDisplayWithTime(orderTime)
-        : order.orderTime ?? '-';
+    final mealTime = DateFormatter.mealTimeFromString(order.mealTime);
+    final formattedDate = orderDate != null
+        ? DateFormatter.formatDisplay(orderDate)
+        : order.orderDate ?? '-';
+    final formattedMealTime = DateFormatter.mealTimeToDisplayName(mealTime);
 
     return AppCard(
       onTap: onTap,
@@ -84,18 +86,18 @@ class OrderCard extends StatelessWidget {
                   const SizedBox(height: 4),
                 ],
 
-                // Order time
+                // Order date and meal time
                 Row(
                   children: [
                     Icon(
-                      Icons.access_time,
+                      Icons.calendar_today,
                       size: 14,
                       color: colorScheme.onSurfaceVariant,
                     ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        formattedTime,
+                        '$formattedDate $formattedMealTime',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
@@ -174,11 +176,11 @@ class OrderCardCompact extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    final orderTime = order.orderTime != null && order.orderTime!.isNotEmpty
-        ? DateTime.tryParse(order.orderTime!)
+    final orderDate = order.orderDate != null && order.orderDate!.isNotEmpty
+        ? DateTime.tryParse(order.orderDate!)
         : null;
-    final formattedTime = orderTime != null
-        ? '${orderTime.month}/${orderTime.day}'
+    final formattedDate = orderDate != null
+        ? '${orderDate.month}/${orderDate.day}'
         : '';
 
     return InkWell(
@@ -208,10 +210,10 @@ class OrderCardCompact extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  if (formattedTime.isNotEmpty) ...[
+                  if (formattedDate.isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text(
-                      formattedTime,
+                      formattedDate,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),

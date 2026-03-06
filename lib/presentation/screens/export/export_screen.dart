@@ -333,7 +333,8 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       orderSheet.appendRow([
         TextCellValue('店铺名称'),
         TextCellValue('实付款'),
-        TextCellValue('下单时间'),
+        TextCellValue('日期'),
+        TextCellValue('时段'),
         TextCellValue('订单号'),
         TextCellValue('录入时间'),
       ]);
@@ -342,7 +343,8 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         orderSheet.appendRow([
           TextCellValue(order.shopName),
           DoubleCellValue(order.amount),
-          TextCellValue(order.orderTime ?? ''),
+          TextCellValue(order.orderDate ?? ''),
+          TextCellValue(DateFormatter.mealTimeToDisplayName(DateFormatter.mealTimeFromString(order.mealTime))),
           TextCellValue(order.orderNumber),
           TextCellValue(order.createdAt),
         ]);
@@ -436,13 +438,14 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
 
   String _generateOrdersCsv(List<Order> orders) {
     final buffer = StringBuffer();
-    buffer.writeln('店铺名称,实付款,下单时间,订单号,录入时间');
+    buffer.writeln('店铺名称,实付款,日期,时段,订单号,录入时间');
 
     for (final order in orders) {
       buffer.writeln(
         '${_escapeCsv(order.shopName)},'
         '${order.amount},'
-        '${order.orderTime ?? ''},'
+        '${order.orderDate ?? ''},'
+        '${DateFormatter.mealTimeToDisplayName(DateFormatter.mealTimeFromString(order.mealTime))},'
         '${_escapeCsv(order.orderNumber)},'
         '${order.createdAt}',
       );

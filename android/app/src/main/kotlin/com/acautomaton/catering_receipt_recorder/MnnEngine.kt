@@ -26,8 +26,8 @@ class MnnEngine private constructor() {
         // 默认参数
         private const val DEFAULT_N_THREADS = 4
         private const val DEFAULT_MAX_TOKENS = 256
-        private const val DEFAULT_TEMPERATURE = 0.7f
-        private const val DEFAULT_TOP_P = 0.9f
+        private const val DEFAULT_TEMPERATURE = 0.0f
+        private const val DEFAULT_TOP_P = 1.0f
 
         @Volatile
         private var instance: MnnEngine? = null
@@ -167,12 +167,12 @@ class MnnEngine private constructor() {
     private fun buildOrderExtractionPrompt(ocrText: String): String {
         return """从外卖订单OCR文本中提取以下字段：
 
-- shopName: 外卖店铺名称，寻找最像店铺的名称，若找不到填写“其它”
-- amount: 实付金额，找"实付"或相似含义后面的数字，如"实付￥29.8"中的29.8，若找不到填写0
+- shopName: 外卖店铺名称，寻找最像店铺的名称，若找不到填写"其它"
+- amount: 实付金额，找"实付"或相似含义后面的数字，如"实付￥29.8"中的29.8
 - orderTime: 下单时间，格式如"yyyy-MM-dd HH:mm:ss"
-- orderNumber: 订单号，不要包含"|复制"等无关后缀，若找不到填写""
+- orderNumber: 订单号，不要包含中文或特殊字符等无关信息，若找不到填写""
 
-只返回JSON，不要其他内容。示例：{"shopName":"xxxxx","amount":11.4,"orderTime":"yyyy-MM-dd HH:mm:ss","orderNumber":"xxxxx"}
+只返回JSON，不要其他内容。
 
 OCR文本：
 $ocrText"""
@@ -188,7 +188,7 @@ $ocrText"""
 - invoiceDate: 开票日期
 - totalAmount: 价税合计金额
 
-只返回JSON，不要其他内容。示例：{"invoiceNumber":"xxxxxx","invoiceDate":"2026-03-03","totalAmount":100.0}
+只返回JSON，不要其他内容。
 
 OCR文本：
 $ocrText"""

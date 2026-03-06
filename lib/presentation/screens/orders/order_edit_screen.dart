@@ -36,7 +36,8 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
   final _amountController = TextEditingController();
   final _orderNumberController = TextEditingController();
 
-  DateTime? _orderTime;
+  DateTime? _orderDate;
+  MealTime? _mealTime;
   String? _imagePath;
   final ImageService _imageService = ImageService();
 
@@ -67,9 +68,10 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
         _amountController.text = order.amount.toStringAsFixed(2);
         _orderNumberController.text = order.orderNumber;
         _imagePath = order.imagePath;
-        if (order.orderTime != null && order.orderTime!.isNotEmpty) {
-          _orderTime = DateTime.tryParse(order.orderTime!);
+        if (order.orderDate != null && order.orderDate!.isNotEmpty) {
+          _orderDate = DateTime.tryParse(order.orderDate!);
         }
+        _mealTime = DateFormatter.mealTimeFromString(order.mealTime);
       });
     }
   }
@@ -136,8 +138,13 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
           if (ocrResult?.orderNumber != null && ocrResult!.orderNumber!.isNotEmpty) {
             _orderNumberController.text = ocrResult!.orderNumber!;
           }
+          // Parse orderTime from OCR result into orderDate and mealTime
           if (ocrResult?.orderTime != null && ocrResult!.orderTime!.isNotEmpty) {
-            _orderTime = DateTime.tryParse(ocrResult!.orderTime!);
+            final (dateStr, mealTime) = DateFormatter.parseDateTimeToOrderDateAndMealTime(ocrResult!.orderTime);
+            if (dateStr != null) {
+              _orderDate = DateTime.tryParse(dateStr);
+            }
+            _mealTime = mealTime;
           }
         });
         if (mounted) {
@@ -181,13 +188,19 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
 
       final amount = double.tryParse(_amountController.text) ?? 0.0;
 
+      final orderDateStr = _orderDate != null
+          ? DateFormatter.formatStorage(_orderDate!)
+          : null;
+      final mealTimeStr = _mealTime?.name;
+
       final order = widget.orderId != null
           ? Order(
               id: widget.orderId,
               imagePath: savedImagePath,
               shopName: _shopNameController.text.trim(),
               amount: amount,
-              orderTime: _orderTime?.toIso8601String(),
+              orderDate: orderDateStr,
+              mealTime: mealTimeStr,
               orderNumber: _orderNumberController.text.trim(),
               createdAt: '', // Will be preserved by repository
               updatedAt: DateTime.now().toIso8601String(),
@@ -196,7 +209,8 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
               imagePath: savedImagePath,
               shopName: _shopNameController.text.trim(),
               amount: amount,
-              orderTime: _orderTime?.toIso8601String(),
+              orderDate: orderDateStr,
+              mealTime: mealTimeStr,
               orderNumber: _orderNumberController.text.trim(),
             );
 
@@ -373,11 +387,26 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
             const SizedBox(height: 16),
 
             AppDateField(
-              label: AppConstants.labelOrderTime,
-              initialValue: _orderTime,
+              label: AppConstants.labelOrderDate,
+              initialValue: _orderDate,
               onChanged: (date) {
                 setState(() {
-                  _orderTime = date;
+                  _orderDate = date;
+                });
+              },
+              required: false,
+            ),
+
+            const SizedBox(height: 16),
+
+            AppSelectField<MealTime>(
+              label: AppConstants.labelMealTime,
+              value: _mealTime,
+              options: MealTime.values,
+              displayValue: (mealTime) => DateFormatter.mealTimeToDisplayName(mealTime),
+              onChanged: (value) {
+                setState(() {
+                  _mealTime = value;
                 });
               },
               required: false,

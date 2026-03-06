@@ -191,7 +191,7 @@ class LlmService {
       if (type == OcrType.order) {
         return OcrResult.orderSuccess(
           shopName: json['shopName'] as String? ?? '',
-          amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+          amount: _parseAmount(json['amount']),
           orderTime: json['orderTime'] as String?,
           orderNumber: json['orderNumber'] as String? ?? '',
         );
@@ -199,7 +199,7 @@ class LlmService {
         return OcrResult.invoiceSuccess(
           invoiceNumber: json['invoiceNumber'] as String? ?? '',
           invoiceDate: json['invoiceDate'] as String? ?? '',
-          totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0.0,
+          totalAmount: _parseAmount(json['totalAmount']),
         );
       }
     } catch (e) {
@@ -209,6 +209,18 @@ class LlmService {
         type: type,
       );
     }
+  }
+
+  /// Parse amount value from LLM result (handles both String and num)
+  double _parseAmount(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is num) return value.toDouble();
+    if (value is String) {
+      // Remove any non-numeric characters except decimal point and minus
+      final cleaned = value.replaceAll(RegExp(r'[^\d.\-]'), '');
+      return double.tryParse(cleaned) ?? 0.0;
+    }
+    return 0.0;
   }
 
   /// Release resources

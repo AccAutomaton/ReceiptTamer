@@ -371,19 +371,10 @@ class AppSelectField<T> extends StatelessWidget {
               items: options.map((option) {
                 return DropdownMenuItem<T>(
                   value: option,
-                  child: Row(
-                    children: [
-                      if (leadingBuilder != null) ...[
-                        leadingBuilder!(option),
-                        const SizedBox(width: 12),
-                      ],
-                      Expanded(
-                        child: Text(
-                          displayValue(option),
-                          style: theme.textTheme.bodyLarge,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    displayValue(option),
+                    style: theme.textTheme.bodyLarge,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 );
               }).toList(),

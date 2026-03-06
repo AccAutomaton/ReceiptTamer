@@ -282,7 +282,7 @@ class InvoiceTable {
     final List<Map<String, dynamic>> maps = await database.rawQuery(
       '''
       SELECT i.*, o.${AppConstants.colShopName}, o.${AppConstants.colAmount} as order_amount,
-             o.${AppConstants.colOrderTime}, o.${AppConstants.colOrderNumber}
+             o.${AppConstants.colOrderDate}, o.${AppConstants.colMealTime}, o.${AppConstants.colOrderNumber}
       FROM ${AppConstants.invoicesTable} i
       LEFT JOIN ${AppConstants.ordersTable} o ON i.${AppConstants.colOrderId} = o.${AppConstants.colId}
       ORDER BY i.${AppConstants.colCreatedAt} DESC

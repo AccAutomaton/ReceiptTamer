@@ -6,7 +6,7 @@ class AppConstants {
 
   // Database
   static const String databaseName = 'catering_receipts.db';
-  static const int databaseVersion = 1;
+  static const int databaseVersion = 2;
 
   // Table names
   static const String ordersTable = 'orders';
@@ -17,7 +17,8 @@ class AppConstants {
   static const String colImagePath = 'image_path';
   static const String colShopName = 'shop_name';
   static const String colAmount = 'amount';
-  static const String colOrderTime = 'order_time';
+  static const String colOrderDate = 'order_date';
+  static const String colMealTime = 'meal_time';
   static const String colOrderNumber = 'order_number';
   static const String colOrderId = 'order_id';
   static const String colCreatedAt = 'created_at';
@@ -97,7 +98,8 @@ class AppConstants {
   // Field labels
   static const String labelShopName = '店铺名称';
   static const String labelAmount = '金额';
-  static const String labelOrderTime = '下单时间';
+  static const String labelOrderDate = '日期';
+  static const String labelMealTime = '时段';
   static const String labelOrderNumber = '订单号';
   static const String labelInvoiceNumber = '发票号码';
   static const String labelInvoiceDate = '开票日期';

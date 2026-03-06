@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Order {
 
-@JsonKey(includeIfNull: false) int? get id; String get imagePath; String get shopName; double get amount;@JsonKey(includeIfNull: false) String? get orderTime; String get orderNumber; String get createdAt; String get updatedAt;
+@JsonKey(includeIfNull: false) int? get id; String get imagePath; String get shopName; double get amount;@JsonKey(includeIfNull: false) String? get orderDate;@JsonKey(includeIfNull: false) String? get mealTime; String get orderNumber; String get createdAt; String get updatedAt;
 /// Create a copy of Order
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $OrderCopyWith<Order> get copyWith => _$OrderCopyWithImpl<Order>(this as Order, 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Order&&(identical(other.id, id) || other.id == id)&&(identical(other.imagePath, imagePath) || other.imagePath == imagePath)&&(identical(other.shopName, shopName) || other.shopName == shopName)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.orderTime, orderTime) || other.orderTime == orderTime)&&(identical(other.orderNumber, orderNumber) || other.orderNumber == orderNumber)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Order&&(identical(other.id, id) || other.id == id)&&(identical(other.imagePath, imagePath) || other.imagePath == imagePath)&&(identical(other.shopName, shopName) || other.shopName == shopName)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.orderDate, orderDate) || other.orderDate == orderDate)&&(identical(other.mealTime, mealTime) || other.mealTime == mealTime)&&(identical(other.orderNumber, orderNumber) || other.orderNumber == orderNumber)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,imagePath,shopName,amount,orderTime,orderNumber,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,imagePath,shopName,amount,orderDate,mealTime,orderNumber,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'Order(id: $id, imagePath: $imagePath, shopName: $shopName, amount: $amount, orderTime: $orderTime, orderNumber: $orderNumber, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'Order(id: $id, imagePath: $imagePath, shopName: $shopName, amount: $amount, orderDate: $orderDate, mealTime: $mealTime, orderNumber: $orderNumber, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $OrderCopyWith<$Res>  {
   factory $OrderCopyWith(Order value, $Res Function(Order) _then) = _$OrderCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(includeIfNull: false) int? id, String imagePath, String shopName, double amount,@JsonKey(includeIfNull: false) String? orderTime, String orderNumber, String createdAt, String updatedAt
+@JsonKey(includeIfNull: false) int? id, String imagePath, String shopName, double amount,@JsonKey(includeIfNull: false) String? orderDate,@JsonKey(includeIfNull: false) String? mealTime, String orderNumber, String createdAt, String updatedAt
 });
 
 
@@ -65,13 +65,14 @@ class _$OrderCopyWithImpl<$Res>
 
 /// Create a copy of Order
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? imagePath = null,Object? shopName = null,Object? amount = null,Object? orderTime = freezed,Object? orderNumber = null,Object? createdAt = null,Object? updatedAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? imagePath = null,Object? shopName = null,Object? amount = null,Object? orderDate = freezed,Object? mealTime = freezed,Object? orderNumber = null,Object? createdAt = null,Object? updatedAt = null,}) {
   return _then(_self.copyWith(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int?,imagePath: null == imagePath ? _self.imagePath : imagePath // ignore: cast_nullable_to_non_nullable
 as String,shopName: null == shopName ? _self.shopName : shopName // ignore: cast_nullable_to_non_nullable
 as String,amount: null == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
-as double,orderTime: freezed == orderTime ? _self.orderTime : orderTime // ignore: cast_nullable_to_non_nullable
+as double,orderDate: freezed == orderDate ? _self.orderDate : orderDate // ignore: cast_nullable_to_non_nullable
+as String?,mealTime: freezed == mealTime ? _self.mealTime : mealTime // ignore: cast_nullable_to_non_nullable
 as String?,orderNumber: null == orderNumber ? _self.orderNumber : orderNumber // ignore: cast_nullable_to_non_nullable
 as String,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
@@ -160,10 +161,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(includeIfNull: false)  int? id,  String imagePath,  String shopName,  double amount, @JsonKey(includeIfNull: false)  String? orderTime,  String orderNumber,  String createdAt,  String updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(includeIfNull: false)  int? id,  String imagePath,  String shopName,  double amount, @JsonKey(includeIfNull: false)  String? orderDate, @JsonKey(includeIfNull: false)  String? mealTime,  String orderNumber,  String createdAt,  String updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Order() when $default != null:
-return $default(_that.id,_that.imagePath,_that.shopName,_that.amount,_that.orderTime,_that.orderNumber,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.imagePath,_that.shopName,_that.amount,_that.orderDate,_that.mealTime,_that.orderNumber,_that.createdAt,_that.updatedAt);case _:
   return orElse();
 
 }
@@ -181,10 +182,10 @@ return $default(_that.id,_that.imagePath,_that.shopName,_that.amount,_that.order
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(includeIfNull: false)  int? id,  String imagePath,  String shopName,  double amount, @JsonKey(includeIfNull: false)  String? orderTime,  String orderNumber,  String createdAt,  String updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(includeIfNull: false)  int? id,  String imagePath,  String shopName,  double amount, @JsonKey(includeIfNull: false)  String? orderDate, @JsonKey(includeIfNull: false)  String? mealTime,  String orderNumber,  String createdAt,  String updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _Order():
-return $default(_that.id,_that.imagePath,_that.shopName,_that.amount,_that.orderTime,_that.orderNumber,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.imagePath,_that.shopName,_that.amount,_that.orderDate,_that.mealTime,_that.orderNumber,_that.createdAt,_that.updatedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -201,10 +202,10 @@ return $default(_that.id,_that.imagePath,_that.shopName,_that.amount,_that.order
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(includeIfNull: false)  int? id,  String imagePath,  String shopName,  double amount, @JsonKey(includeIfNull: false)  String? orderTime,  String orderNumber,  String createdAt,  String updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(includeIfNull: false)  int? id,  String imagePath,  String shopName,  double amount, @JsonKey(includeIfNull: false)  String? orderDate, @JsonKey(includeIfNull: false)  String? mealTime,  String orderNumber,  String createdAt,  String updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _Order() when $default != null:
-return $default(_that.id,_that.imagePath,_that.shopName,_that.amount,_that.orderTime,_that.orderNumber,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.imagePath,_that.shopName,_that.amount,_that.orderDate,_that.mealTime,_that.orderNumber,_that.createdAt,_that.updatedAt);case _:
   return null;
 
 }
@@ -216,14 +217,15 @@ return $default(_that.id,_that.imagePath,_that.shopName,_that.amount,_that.order
 @JsonSerializable()
 
 class _Order implements Order {
-  const _Order({@JsonKey(includeIfNull: false) this.id, this.imagePath = '', this.shopName = '', this.amount = 0.0, @JsonKey(includeIfNull: false) this.orderTime, this.orderNumber = '', this.createdAt = '', this.updatedAt = ''});
+  const _Order({@JsonKey(includeIfNull: false) this.id, this.imagePath = '', this.shopName = '', this.amount = 0.0, @JsonKey(includeIfNull: false) this.orderDate, @JsonKey(includeIfNull: false) this.mealTime, this.orderNumber = '', this.createdAt = '', this.updatedAt = ''});
   factory _Order.fromJson(Map<String, dynamic> json) => _$OrderFromJson(json);
 
 @override@JsonKey(includeIfNull: false) final  int? id;
 @override@JsonKey() final  String imagePath;
 @override@JsonKey() final  String shopName;
 @override@JsonKey() final  double amount;
-@override@JsonKey(includeIfNull: false) final  String? orderTime;
+@override@JsonKey(includeIfNull: false) final  String? orderDate;
+@override@JsonKey(includeIfNull: false) final  String? mealTime;
 @override@JsonKey() final  String orderNumber;
 @override@JsonKey() final  String createdAt;
 @override@JsonKey() final  String updatedAt;
@@ -241,16 +243,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Order&&(identical(other.id, id) || other.id == id)&&(identical(other.imagePath, imagePath) || other.imagePath == imagePath)&&(identical(other.shopName, shopName) || other.shopName == shopName)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.orderTime, orderTime) || other.orderTime == orderTime)&&(identical(other.orderNumber, orderNumber) || other.orderNumber == orderNumber)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Order&&(identical(other.id, id) || other.id == id)&&(identical(other.imagePath, imagePath) || other.imagePath == imagePath)&&(identical(other.shopName, shopName) || other.shopName == shopName)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.orderDate, orderDate) || other.orderDate == orderDate)&&(identical(other.mealTime, mealTime) || other.mealTime == mealTime)&&(identical(other.orderNumber, orderNumber) || other.orderNumber == orderNumber)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,imagePath,shopName,amount,orderTime,orderNumber,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,imagePath,shopName,amount,orderDate,mealTime,orderNumber,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'Order(id: $id, imagePath: $imagePath, shopName: $shopName, amount: $amount, orderTime: $orderTime, orderNumber: $orderNumber, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'Order(id: $id, imagePath: $imagePath, shopName: $shopName, amount: $amount, orderDate: $orderDate, mealTime: $mealTime, orderNumber: $orderNumber, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -261,7 +263,7 @@ abstract mixin class _$OrderCopyWith<$Res> implements $OrderCopyWith<$Res> {
   factory _$OrderCopyWith(_Order value, $Res Function(_Order) _then) = __$OrderCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(includeIfNull: false) int? id, String imagePath, String shopName, double amount,@JsonKey(includeIfNull: false) String? orderTime, String orderNumber, String createdAt, String updatedAt
+@JsonKey(includeIfNull: false) int? id, String imagePath, String shopName, double amount,@JsonKey(includeIfNull: false) String? orderDate,@JsonKey(includeIfNull: false) String? mealTime, String orderNumber, String createdAt, String updatedAt
 });
 
 
@@ -278,13 +280,14 @@ class __$OrderCopyWithImpl<$Res>
 
 /// Create a copy of Order
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? imagePath = null,Object? shopName = null,Object? amount = null,Object? orderTime = freezed,Object? orderNumber = null,Object? createdAt = null,Object? updatedAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? imagePath = null,Object? shopName = null,Object? amount = null,Object? orderDate = freezed,Object? mealTime = freezed,Object? orderNumber = null,Object? createdAt = null,Object? updatedAt = null,}) {
   return _then(_Order(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int?,imagePath: null == imagePath ? _self.imagePath : imagePath // ignore: cast_nullable_to_non_nullable
 as String,shopName: null == shopName ? _self.shopName : shopName // ignore: cast_nullable_to_non_nullable
 as String,amount: null == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
-as double,orderTime: freezed == orderTime ? _self.orderTime : orderTime // ignore: cast_nullable_to_non_nullable
+as double,orderDate: freezed == orderDate ? _self.orderDate : orderDate // ignore: cast_nullable_to_non_nullable
+as String?,mealTime: freezed == mealTime ? _self.mealTime : mealTime // ignore: cast_nullable_to_non_nullable
 as String?,orderNumber: null == orderNumber ? _self.orderNumber : orderNumber // ignore: cast_nullable_to_non_nullable
 as String,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable

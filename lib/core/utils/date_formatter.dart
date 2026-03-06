@@ -1,6 +1,13 @@
 import 'package:intl/intl.dart';
 import '../constants/app_constants.dart';
 
+/// Meal time enum for categorizing orders by time of day
+enum MealTime {
+  breakfast, // 早餐: 0:00-10:00
+  lunch, // 午餐: 10:00-16:00
+  dinner, // 晚餐: 16:00-24:00
+}
+
 /// Date formatting utility class
 class DateFormatter {
   /// Format date for display (e.g., 2024年01月15日)
@@ -130,5 +137,55 @@ class DateFormatter {
     final start = DateTime(now.year, 1, 1);
     final end = DateTime(now.year, 12, 31, 23, 59, 59);
     return (start, end);
+  }
+
+  // ==================== MealTime helpers ====================
+
+  /// Convert string to MealTime enum
+  static MealTime? mealTimeFromString(String? value) {
+    if (value == null || value.isEmpty) return null;
+    for (final e in MealTime.values) {
+      if (e.name == value) return e;
+    }
+    return null;
+  }
+
+  /// Convert MealTime enum to display name in Chinese
+  static String mealTimeToDisplayName(MealTime? mealTime) {
+    switch (mealTime) {
+      case MealTime.breakfast:
+        return '早餐';
+      case MealTime.lunch:
+        return '午餐';
+      case MealTime.dinner:
+        return '晚餐';
+      case null:
+        return '-';
+    }
+  }
+
+  /// Convert hour (0-23) to MealTime
+  static MealTime fromHourToMealTime(int hour) {
+    if (hour >= 0 && hour < 10) {
+      return MealTime.breakfast;
+    } else if (hour >= 10 && hour < 16) {
+      return MealTime.lunch;
+    } else {
+      return MealTime.dinner;
+    }
+  }
+
+  /// Parse datetime string and extract date and meal time
+  /// Returns (date string in yyyy-MM-dd format, MealTime)
+  static (String?, MealTime?) parseDateTimeToOrderDateAndMealTime(String? dateTimeStr) {
+    if (dateTimeStr == null || dateTimeStr.isEmpty) return (null, null);
+
+    final dateTime = parseStorage(dateTimeStr);
+    if (dateTime == null) return (null, null);
+
+    final dateString = formatStorage(dateTime);
+    final mealTime = fromHourToMealTime(dateTime.hour);
+
+    return (dateString, mealTime);
   }
 }
