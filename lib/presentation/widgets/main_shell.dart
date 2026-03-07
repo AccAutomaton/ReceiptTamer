@@ -44,8 +44,12 @@ class _MainShellState extends ConsumerState<MainShell> {
   ];
 
   void _onDestinationSelected(int index) {
+    // _currentIndex stores UI index directly (for NavigationBar.selectedIndex)
+    // UI: [0:首页, 1:订单, 2:占位符, 3:发票, 4:设置]
+    // _destinations: [0:首页, 1:订单, 2:发票, 3:设置]
+    final destIndex = index < 2 ? index : index - 1;
     setState(() => _currentIndex = index);
-    context.go(_destinations[index].path);
+    context.go(_destinations[destIndex].path);
   }
 
   void _onAddPressed() {
@@ -60,9 +64,13 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   void _updateCurrentIndex() {
     final location = GoRouterState.of(context).matchedLocation;
-    final index = _destinations.indexWhere((d) => d.path == location);
-    if (index != -1 && index != _currentIndex) {
-      setState(() => _currentIndex = index);
+    final destIndex = _destinations.indexWhere((d) => d.path == location);
+    if (destIndex != -1 && destIndex != _currentIndex) {
+      // Map destination index back to UI index (add 1 for items after placeholder)
+      // _destinations: [0:首页, 1:订单, 2:发票, 3:设置]
+      // UI: [0:首页, 1:订单, 2:占位符, 3:发票, 4:设置]
+      final uiIndex = destIndex < 2 ? destIndex : destIndex + 1;
+      setState(() => _currentIndex = uiIndex);
     }
   }
 
@@ -71,54 +79,67 @@ class _MainShellState extends ConsumerState<MainShell> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Scaffold(
-      body: widget.child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: _onDestinationSelected,
-        destinations: [
-          // 首页
-          NavigationDestination(
-            icon: Icon(_destinations[0].icon),
-            selectedIcon: Icon(_destinations[0].selectedIcon),
-            label: _destinations[0].label,
+    return Stack(
+      children: [
+        Scaffold(
+          body: widget.child,
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: _currentIndex,
+            onDestinationSelected: _onDestinationSelected,
+            destinations: [
+              // 首页
+              NavigationDestination(
+                icon: Icon(_destinations[0].icon),
+                selectedIcon: Icon(_destinations[0].selectedIcon),
+                label: _destinations[0].label,
+              ),
+              // 订单
+              NavigationDestination(
+                icon: Icon(_destinations[1].icon),
+                selectedIcon: Icon(_destinations[1].selectedIcon),
+                label: _destinations[1].label,
+              ),
+              // 中间的加号占位
+              NavigationDestination(
+                icon: const SizedBox.shrink(),
+                label: '',
+                enabled: false,
+              ),
+              // 发票
+              NavigationDestination(
+                icon: Icon(_destinations[2].icon),
+                selectedIcon: Icon(_destinations[2].selectedIcon),
+                label: _destinations[2].label,
+              ),
+              // 设置
+              NavigationDestination(
+                icon: Icon(_destinations[3].icon),
+                selectedIcon: Icon(_destinations[3].selectedIcon),
+                label: _destinations[3].label,
+              ),
+            ],
           ),
-          // 订单
-          NavigationDestination(
-            icon: Icon(_destinations[1].icon),
-            selectedIcon: Icon(_destinations[1].selectedIcon),
-            label: _destinations[1].label,
+        ),
+        // FAB positioned outside Scaffold to prevent animation on rebuild
+        Positioned(
+          bottom: 40,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: FloatingActionButton(
+              key: const ValueKey('main_fab'),
+              heroTag: null,
+              onPressed: _onAddPressed,
+              elevation: 8,
+              highlightElevation: 12,
+              backgroundColor: colorScheme.primary,
+              foregroundColor: colorScheme.onPrimary,
+              shape: const CircleBorder(),
+              child: const Icon(Icons.add, size: 32),
+            ),
           ),
-          // 中间的加号占位
-          NavigationDestination(
-            icon: const SizedBox.shrink(),
-            label: '',
-            enabled: false,
-          ),
-          // 发票
-          NavigationDestination(
-            icon: Icon(_destinations[2].icon),
-            selectedIcon: Icon(_destinations[2].selectedIcon),
-            label: _destinations[2].label,
-          ),
-          // 设置
-          NavigationDestination(
-            icon: Icon(_destinations[3].icon),
-            selectedIcon: Icon(_destinations[3].selectedIcon),
-            label: _destinations[3].label,
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _onAddPressed,
-        elevation: 8,
-        highlightElevation: 12,
-        backgroundColor: colorScheme.primary,
-        foregroundColor: colorScheme.onPrimary,
-        shape: const CircleBorder(),
-        child: const Icon(Icons.add, size: 32),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+        ),
+      ],
     );
   }
 }
