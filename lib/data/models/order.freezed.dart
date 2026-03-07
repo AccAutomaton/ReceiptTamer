@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Order {
 
-@JsonKey(includeIfNull: false) int? get id; String get imagePath; String get shopName; double get amount;@JsonKey(includeIfNull: false) String? get orderDate;@JsonKey(includeIfNull: false) String? get mealTime; String get orderNumber; String get createdAt; String get updatedAt;
+@JsonKey(includeIfNull: false) int? get id;@JsonKey(name: 'image_path') String get imagePath;@JsonKey(name: 'shop_name') String get shopName; double get amount;@JsonKey(name: 'order_date', includeIfNull: false) String? get orderDate;@JsonKey(name: 'meal_time', includeIfNull: false) String? get mealTime;@JsonKey(name: 'order_number') String get orderNumber;@JsonKey(name: 'created_at') String get createdAt;@JsonKey(name: 'updated_at') String get updatedAt;
 /// Create a copy of Order
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,7 +48,7 @@ abstract mixin class $OrderCopyWith<$Res>  {
   factory $OrderCopyWith(Order value, $Res Function(Order) _then) = _$OrderCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(includeIfNull: false) int? id, String imagePath, String shopName, double amount,@JsonKey(includeIfNull: false) String? orderDate,@JsonKey(includeIfNull: false) String? mealTime, String orderNumber, String createdAt, String updatedAt
+@JsonKey(includeIfNull: false) int? id,@JsonKey(name: 'image_path') String imagePath,@JsonKey(name: 'shop_name') String shopName, double amount,@JsonKey(name: 'order_date', includeIfNull: false) String? orderDate,@JsonKey(name: 'meal_time', includeIfNull: false) String? mealTime,@JsonKey(name: 'order_number') String orderNumber,@JsonKey(name: 'created_at') String createdAt,@JsonKey(name: 'updated_at') String updatedAt
 });
 
 
@@ -161,7 +161,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(includeIfNull: false)  int? id,  String imagePath,  String shopName,  double amount, @JsonKey(includeIfNull: false)  String? orderDate, @JsonKey(includeIfNull: false)  String? mealTime,  String orderNumber,  String createdAt,  String updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(includeIfNull: false)  int? id, @JsonKey(name: 'image_path')  String imagePath, @JsonKey(name: 'shop_name')  String shopName,  double amount, @JsonKey(name: 'order_date', includeIfNull: false)  String? orderDate, @JsonKey(name: 'meal_time', includeIfNull: false)  String? mealTime, @JsonKey(name: 'order_number')  String orderNumber, @JsonKey(name: 'created_at')  String createdAt, @JsonKey(name: 'updated_at')  String updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Order() when $default != null:
 return $default(_that.id,_that.imagePath,_that.shopName,_that.amount,_that.orderDate,_that.mealTime,_that.orderNumber,_that.createdAt,_that.updatedAt);case _:
@@ -182,7 +182,7 @@ return $default(_that.id,_that.imagePath,_that.shopName,_that.amount,_that.order
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(includeIfNull: false)  int? id,  String imagePath,  String shopName,  double amount, @JsonKey(includeIfNull: false)  String? orderDate, @JsonKey(includeIfNull: false)  String? mealTime,  String orderNumber,  String createdAt,  String updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(includeIfNull: false)  int? id, @JsonKey(name: 'image_path')  String imagePath, @JsonKey(name: 'shop_name')  String shopName,  double amount, @JsonKey(name: 'order_date', includeIfNull: false)  String? orderDate, @JsonKey(name: 'meal_time', includeIfNull: false)  String? mealTime, @JsonKey(name: 'order_number')  String orderNumber, @JsonKey(name: 'created_at')  String createdAt, @JsonKey(name: 'updated_at')  String updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _Order():
 return $default(_that.id,_that.imagePath,_that.shopName,_that.amount,_that.orderDate,_that.mealTime,_that.orderNumber,_that.createdAt,_that.updatedAt);case _:
@@ -202,7 +202,7 @@ return $default(_that.id,_that.imagePath,_that.shopName,_that.amount,_that.order
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(includeIfNull: false)  int? id,  String imagePath,  String shopName,  double amount, @JsonKey(includeIfNull: false)  String? orderDate, @JsonKey(includeIfNull: false)  String? mealTime,  String orderNumber,  String createdAt,  String updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(includeIfNull: false)  int? id, @JsonKey(name: 'image_path')  String imagePath, @JsonKey(name: 'shop_name')  String shopName,  double amount, @JsonKey(name: 'order_date', includeIfNull: false)  String? orderDate, @JsonKey(name: 'meal_time', includeIfNull: false)  String? mealTime, @JsonKey(name: 'order_number')  String orderNumber, @JsonKey(name: 'created_at')  String createdAt, @JsonKey(name: 'updated_at')  String updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _Order() when $default != null:
 return $default(_that.id,_that.imagePath,_that.shopName,_that.amount,_that.orderDate,_that.mealTime,_that.orderNumber,_that.createdAt,_that.updatedAt);case _:
@@ -217,18 +217,18 @@ return $default(_that.id,_that.imagePath,_that.shopName,_that.amount,_that.order
 @JsonSerializable()
 
 class _Order implements Order {
-  const _Order({@JsonKey(includeIfNull: false) this.id, this.imagePath = '', this.shopName = '', this.amount = 0.0, @JsonKey(includeIfNull: false) this.orderDate, @JsonKey(includeIfNull: false) this.mealTime, this.orderNumber = '', this.createdAt = '', this.updatedAt = ''});
+  const _Order({@JsonKey(includeIfNull: false) this.id, @JsonKey(name: 'image_path') this.imagePath = '', @JsonKey(name: 'shop_name') this.shopName = '', this.amount = 0.0, @JsonKey(name: 'order_date', includeIfNull: false) this.orderDate, @JsonKey(name: 'meal_time', includeIfNull: false) this.mealTime, @JsonKey(name: 'order_number') this.orderNumber = '', @JsonKey(name: 'created_at') this.createdAt = '', @JsonKey(name: 'updated_at') this.updatedAt = ''});
   factory _Order.fromJson(Map<String, dynamic> json) => _$OrderFromJson(json);
 
 @override@JsonKey(includeIfNull: false) final  int? id;
-@override@JsonKey() final  String imagePath;
-@override@JsonKey() final  String shopName;
+@override@JsonKey(name: 'image_path') final  String imagePath;
+@override@JsonKey(name: 'shop_name') final  String shopName;
 @override@JsonKey() final  double amount;
-@override@JsonKey(includeIfNull: false) final  String? orderDate;
-@override@JsonKey(includeIfNull: false) final  String? mealTime;
-@override@JsonKey() final  String orderNumber;
-@override@JsonKey() final  String createdAt;
-@override@JsonKey() final  String updatedAt;
+@override@JsonKey(name: 'order_date', includeIfNull: false) final  String? orderDate;
+@override@JsonKey(name: 'meal_time', includeIfNull: false) final  String? mealTime;
+@override@JsonKey(name: 'order_number') final  String orderNumber;
+@override@JsonKey(name: 'created_at') final  String createdAt;
+@override@JsonKey(name: 'updated_at') final  String updatedAt;
 
 /// Create a copy of Order
 /// with the given fields replaced by the non-null parameter values.
@@ -263,7 +263,7 @@ abstract mixin class _$OrderCopyWith<$Res> implements $OrderCopyWith<$Res> {
   factory _$OrderCopyWith(_Order value, $Res Function(_Order) _then) = __$OrderCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(includeIfNull: false) int? id, String imagePath, String shopName, double amount,@JsonKey(includeIfNull: false) String? orderDate,@JsonKey(includeIfNull: false) String? mealTime, String orderNumber, String createdAt, String updatedAt
+@JsonKey(includeIfNull: false) int? id,@JsonKey(name: 'image_path') String imagePath,@JsonKey(name: 'shop_name') String shopName, double amount,@JsonKey(name: 'order_date', includeIfNull: false) String? orderDate,@JsonKey(name: 'meal_time', includeIfNull: false) String? mealTime,@JsonKey(name: 'order_number') String orderNumber,@JsonKey(name: 'created_at') String createdAt,@JsonKey(name: 'updated_at') String updatedAt
 });
 
 

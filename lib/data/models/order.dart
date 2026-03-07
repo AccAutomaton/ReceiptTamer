@@ -9,14 +9,14 @@ part 'order.g.dart';
 abstract class Order with _$Order {
   const factory Order({
     @JsonKey(includeIfNull: false) int? id,
-    @Default('') String imagePath,
-    @Default('') String shopName,
+    @JsonKey(name: 'image_path') @Default('') String imagePath,
+    @JsonKey(name: 'shop_name') @Default('') String shopName,
     @Default(0.0) double amount,
-    @JsonKey(includeIfNull: false) String? orderDate,
-    @JsonKey(includeIfNull: false) String? mealTime,
-    @Default('') String orderNumber,
-    @Default('') String createdAt,
-    @Default('') String updatedAt,
+    @JsonKey(name: 'order_date', includeIfNull: false) String? orderDate,
+    @JsonKey(name: 'meal_time', includeIfNull: false) String? mealTime,
+    @JsonKey(name: 'order_number') @Default('') String orderNumber,
+    @JsonKey(name: 'created_at') @Default('') String createdAt,
+    @JsonKey(name: 'updated_at') @Default('') String updatedAt,
   }) = _Order;
 
   factory Order.fromJson(Map<String, dynamic> json) => _$OrderFromJson(json);

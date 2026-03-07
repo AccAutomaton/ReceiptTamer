@@ -210,7 +210,10 @@ class AppAmountField extends StatelessWidget {
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       prefixIcon: const Padding(
         padding: EdgeInsets.only(left: 16, right: 8),
-        child: Text('¥', style: TextStyle(fontSize: 18)),
+        child: Align(
+          widthFactor: 1.0,
+          child: Text('¥', style: TextStyle(fontSize: 18)),
+        ),
       ),
       errorText: errorText,
       helperText: helperText,

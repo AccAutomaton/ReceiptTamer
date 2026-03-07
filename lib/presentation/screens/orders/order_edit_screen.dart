@@ -178,6 +178,29 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
       return;
     }
 
+    // Validate required fields that are not TextFormField
+    final amount = double.tryParse(_amountController.text) ?? 0.0;
+    if (amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请输入有效的实付金额')),
+      );
+      return;
+    }
+
+    if (_orderDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请选择订单日期')),
+      );
+      return;
+    }
+
+    if (_mealTime == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请选择用餐时段')),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -186,12 +209,8 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
       // Save image to app directory if not already saved
       final savedImagePath = await _imageService.saveImage(File(_imagePath!));
 
-      final amount = double.tryParse(_amountController.text) ?? 0.0;
-
-      final orderDateStr = _orderDate != null
-          ? DateFormatter.formatStorage(_orderDate!)
-          : null;
-      final mealTimeStr = _mealTime?.name;
+      final orderDateStr = DateFormatter.formatStorage(_orderDate!);
+      final mealTimeStr = _mealTime!.name;
 
       final order = widget.orderId != null
           ? Order(
@@ -370,7 +389,7 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
               label: AppConstants.labelAmount,
               hint: AppConstants.hintAmount,
               controller: _amountController,
-              required: false,
+              required: true,
             ),
 
             const SizedBox(height: 16),
@@ -394,7 +413,7 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
                   _orderDate = date;
                 });
               },
-              required: false,
+              required: true,
             ),
 
             const SizedBox(height: 16),
@@ -409,7 +428,7 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
                   _mealTime = value;
                 });
               },
-              required: false,
+              required: true,
             ),
 
             const SizedBox(height: 24),

@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Invoice {
 
-@JsonKey(includeIfNull: false) int? get id; String get imagePath;@JsonKey(includeIfNull: false) int? get orderId; String get invoiceNumber;@JsonKey(includeIfNull: false) String? get invoiceDate; double get totalAmount; String get createdAt; String get updatedAt;
+@JsonKey(includeIfNull: false) int? get id;@JsonKey(name: 'image_path') String get imagePath;@JsonKey(name: 'order_id', includeIfNull: false) int? get orderId;@JsonKey(name: 'invoice_number') String get invoiceNumber;@JsonKey(name: 'invoice_date', includeIfNull: false) String? get invoiceDate;@JsonKey(name: 'total_amount') double get totalAmount;@JsonKey(name: 'created_at') String get createdAt;@JsonKey(name: 'updated_at') String get updatedAt;
 /// Create a copy of Invoice
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,7 +48,7 @@ abstract mixin class $InvoiceCopyWith<$Res>  {
   factory $InvoiceCopyWith(Invoice value, $Res Function(Invoice) _then) = _$InvoiceCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(includeIfNull: false) int? id, String imagePath,@JsonKey(includeIfNull: false) int? orderId, String invoiceNumber,@JsonKey(includeIfNull: false) String? invoiceDate, double totalAmount, String createdAt, String updatedAt
+@JsonKey(includeIfNull: false) int? id,@JsonKey(name: 'image_path') String imagePath,@JsonKey(name: 'order_id', includeIfNull: false) int? orderId,@JsonKey(name: 'invoice_number') String invoiceNumber,@JsonKey(name: 'invoice_date', includeIfNull: false) String? invoiceDate,@JsonKey(name: 'total_amount') double totalAmount,@JsonKey(name: 'created_at') String createdAt,@JsonKey(name: 'updated_at') String updatedAt
 });
 
 
@@ -160,7 +160,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(includeIfNull: false)  int? id,  String imagePath, @JsonKey(includeIfNull: false)  int? orderId,  String invoiceNumber, @JsonKey(includeIfNull: false)  String? invoiceDate,  double totalAmount,  String createdAt,  String updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(includeIfNull: false)  int? id, @JsonKey(name: 'image_path')  String imagePath, @JsonKey(name: 'order_id', includeIfNull: false)  int? orderId, @JsonKey(name: 'invoice_number')  String invoiceNumber, @JsonKey(name: 'invoice_date', includeIfNull: false)  String? invoiceDate, @JsonKey(name: 'total_amount')  double totalAmount, @JsonKey(name: 'created_at')  String createdAt, @JsonKey(name: 'updated_at')  String updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Invoice() when $default != null:
 return $default(_that.id,_that.imagePath,_that.orderId,_that.invoiceNumber,_that.invoiceDate,_that.totalAmount,_that.createdAt,_that.updatedAt);case _:
@@ -181,7 +181,7 @@ return $default(_that.id,_that.imagePath,_that.orderId,_that.invoiceNumber,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(includeIfNull: false)  int? id,  String imagePath, @JsonKey(includeIfNull: false)  int? orderId,  String invoiceNumber, @JsonKey(includeIfNull: false)  String? invoiceDate,  double totalAmount,  String createdAt,  String updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(includeIfNull: false)  int? id, @JsonKey(name: 'image_path')  String imagePath, @JsonKey(name: 'order_id', includeIfNull: false)  int? orderId, @JsonKey(name: 'invoice_number')  String invoiceNumber, @JsonKey(name: 'invoice_date', includeIfNull: false)  String? invoiceDate, @JsonKey(name: 'total_amount')  double totalAmount, @JsonKey(name: 'created_at')  String createdAt, @JsonKey(name: 'updated_at')  String updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _Invoice():
 return $default(_that.id,_that.imagePath,_that.orderId,_that.invoiceNumber,_that.invoiceDate,_that.totalAmount,_that.createdAt,_that.updatedAt);case _:
@@ -201,7 +201,7 @@ return $default(_that.id,_that.imagePath,_that.orderId,_that.invoiceNumber,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(includeIfNull: false)  int? id,  String imagePath, @JsonKey(includeIfNull: false)  int? orderId,  String invoiceNumber, @JsonKey(includeIfNull: false)  String? invoiceDate,  double totalAmount,  String createdAt,  String updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(includeIfNull: false)  int? id, @JsonKey(name: 'image_path')  String imagePath, @JsonKey(name: 'order_id', includeIfNull: false)  int? orderId, @JsonKey(name: 'invoice_number')  String invoiceNumber, @JsonKey(name: 'invoice_date', includeIfNull: false)  String? invoiceDate, @JsonKey(name: 'total_amount')  double totalAmount, @JsonKey(name: 'created_at')  String createdAt, @JsonKey(name: 'updated_at')  String updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _Invoice() when $default != null:
 return $default(_that.id,_that.imagePath,_that.orderId,_that.invoiceNumber,_that.invoiceDate,_that.totalAmount,_that.createdAt,_that.updatedAt);case _:
@@ -216,17 +216,17 @@ return $default(_that.id,_that.imagePath,_that.orderId,_that.invoiceNumber,_that
 @JsonSerializable()
 
 class _Invoice implements Invoice {
-  const _Invoice({@JsonKey(includeIfNull: false) this.id, this.imagePath = '', @JsonKey(includeIfNull: false) this.orderId, this.invoiceNumber = '', @JsonKey(includeIfNull: false) this.invoiceDate, this.totalAmount = 0.0, this.createdAt = '', this.updatedAt = ''});
+  const _Invoice({@JsonKey(includeIfNull: false) this.id, @JsonKey(name: 'image_path') this.imagePath = '', @JsonKey(name: 'order_id', includeIfNull: false) this.orderId, @JsonKey(name: 'invoice_number') this.invoiceNumber = '', @JsonKey(name: 'invoice_date', includeIfNull: false) this.invoiceDate, @JsonKey(name: 'total_amount') this.totalAmount = 0.0, @JsonKey(name: 'created_at') this.createdAt = '', @JsonKey(name: 'updated_at') this.updatedAt = ''});
   factory _Invoice.fromJson(Map<String, dynamic> json) => _$InvoiceFromJson(json);
 
 @override@JsonKey(includeIfNull: false) final  int? id;
-@override@JsonKey() final  String imagePath;
-@override@JsonKey(includeIfNull: false) final  int? orderId;
-@override@JsonKey() final  String invoiceNumber;
-@override@JsonKey(includeIfNull: false) final  String? invoiceDate;
-@override@JsonKey() final  double totalAmount;
-@override@JsonKey() final  String createdAt;
-@override@JsonKey() final  String updatedAt;
+@override@JsonKey(name: 'image_path') final  String imagePath;
+@override@JsonKey(name: 'order_id', includeIfNull: false) final  int? orderId;
+@override@JsonKey(name: 'invoice_number') final  String invoiceNumber;
+@override@JsonKey(name: 'invoice_date', includeIfNull: false) final  String? invoiceDate;
+@override@JsonKey(name: 'total_amount') final  double totalAmount;
+@override@JsonKey(name: 'created_at') final  String createdAt;
+@override@JsonKey(name: 'updated_at') final  String updatedAt;
 
 /// Create a copy of Invoice
 /// with the given fields replaced by the non-null parameter values.
@@ -261,7 +261,7 @@ abstract mixin class _$InvoiceCopyWith<$Res> implements $InvoiceCopyWith<$Res> {
   factory _$InvoiceCopyWith(_Invoice value, $Res Function(_Invoice) _then) = __$InvoiceCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(includeIfNull: false) int? id, String imagePath,@JsonKey(includeIfNull: false) int? orderId, String invoiceNumber,@JsonKey(includeIfNull: false) String? invoiceDate, double totalAmount, String createdAt, String updatedAt
+@JsonKey(includeIfNull: false) int? id,@JsonKey(name: 'image_path') String imagePath,@JsonKey(name: 'order_id', includeIfNull: false) int? orderId,@JsonKey(name: 'invoice_number') String invoiceNumber,@JsonKey(name: 'invoice_date', includeIfNull: false) String? invoiceDate,@JsonKey(name: 'total_amount') double totalAmount,@JsonKey(name: 'created_at') String createdAt,@JsonKey(name: 'updated_at') String updatedAt
 });
 
 

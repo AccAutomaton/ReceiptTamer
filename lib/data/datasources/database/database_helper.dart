@@ -36,7 +36,6 @@ class DatabaseHelper {
       path,
       version: AppConstants.databaseVersion,
       onCreate: _onCreate,
-      onUpgrade: _onUpgrade,
     );
   }
 
@@ -84,28 +83,6 @@ class DatabaseHelper {
     await db.execute('''
       CREATE INDEX idx_invoices_created_at ON ${AppConstants.invoicesTable}(${AppConstants.colCreatedAt} DESC)
     ''');
-  }
-
-  /// Handle database upgrades
-  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // Version 1 to 2: Split order_time into order_date and meal_time
-    if (oldVersion < 2) {
-      // Add new columns
-      await db.execute('ALTER TABLE ${AppConstants.ordersTable} ADD COLUMN ${AppConstants.colOrderDate} TEXT');
-      await db.execute('ALTER TABLE ${AppConstants.ordersTable} ADD COLUMN ${AppConstants.colMealTime} TEXT');
-
-      // Migrate existing data: copy order_time to order_date (date part only)
-      // Note: Using hardcoded column name 'order_time' since it's the old column name
-      await db.execute('''
-        UPDATE ${AppConstants.ordersTable}
-        SET ${AppConstants.colOrderDate} = date(order_time)
-        WHERE order_time IS NOT NULL
-      ''');
-
-      // Note: meal_time cannot be automatically derived from order_time since
-      // we only stored the date part, not the time part.
-      // Users can manually set meal_time later.
-    }
   }
 
   /// Close database connection

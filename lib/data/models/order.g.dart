@@ -8,24 +8,24 @@ part of 'order.dart';
 
 _Order _$OrderFromJson(Map<String, dynamic> json) => _Order(
   id: (json['id'] as num?)?.toInt(),
-  imagePath: json['imagePath'] as String? ?? '',
-  shopName: json['shopName'] as String? ?? '',
+  imagePath: json['image_path'] as String? ?? '',
+  shopName: json['shop_name'] as String? ?? '',
   amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
-  orderDate: json['orderDate'] as String?,
-  mealTime: json['mealTime'] as String?,
-  orderNumber: json['orderNumber'] as String? ?? '',
-  createdAt: json['createdAt'] as String? ?? '',
-  updatedAt: json['updatedAt'] as String? ?? '',
+  orderDate: json['order_date'] as String?,
+  mealTime: json['meal_time'] as String?,
+  orderNumber: json['order_number'] as String? ?? '',
+  createdAt: json['created_at'] as String? ?? '',
+  updatedAt: json['updated_at'] as String? ?? '',
 );
 
 Map<String, dynamic> _$OrderToJson(_Order instance) => <String, dynamic>{
   'id': ?instance.id,
-  'imagePath': instance.imagePath,
-  'shopName': instance.shopName,
+  'image_path': instance.imagePath,
+  'shop_name': instance.shopName,
   'amount': instance.amount,
-  'orderDate': ?instance.orderDate,
-  'mealTime': ?instance.mealTime,
-  'orderNumber': instance.orderNumber,
-  'createdAt': instance.createdAt,
-  'updatedAt': instance.updatedAt,
+  'order_date': ?instance.orderDate,
+  'meal_time': ?instance.mealTime,
+  'order_number': instance.orderNumber,
+  'created_at': instance.createdAt,
+  'updated_at': instance.updatedAt,
 };

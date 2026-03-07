@@ -272,8 +272,8 @@ class HomeScreen extends ConsumerWidget {
 
     return Column(
       children: recentOrders.map((order) {
-        final orderTime = order.orderTime != null && order.orderTime!.isNotEmpty
-            ? DateTime.tryParse(order.orderTime!)
+        final orderDate = order.orderDate != null && order.orderDate!.isNotEmpty
+            ? DateTime.tryParse(order.orderDate!)
             : null;
 
         return AppCard(
@@ -308,15 +308,16 @@ class HomeScreen extends ConsumerWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (orderTime != null) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        DateFormatter.formatDisplayWithTime(orderTime!),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
+                    if (orderDate != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          DateFormatter.formatDisplay(orderDate),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
                       ),
-                    ],
                   ],
                 ),
               ),
@@ -335,7 +336,7 @@ class HomeScreen extends ConsumerWidget {
             ],
           ),
         );
-      }).toList(),
+      }).cast<Widget>().toList(),
     );
   }
 }
