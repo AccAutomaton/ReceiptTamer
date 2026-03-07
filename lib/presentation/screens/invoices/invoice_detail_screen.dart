@@ -10,7 +10,6 @@ import 'package:catering_receipt_recorder/data/models/invoice.dart';
 import 'package:catering_receipt_recorder/data/models/order.dart';
 import 'package:catering_receipt_recorder/presentation/providers/invoice_provider.dart';
 import 'package:catering_receipt_recorder/presentation/providers/order_provider.dart';
-import 'package:catering_receipt_recorder/presentation/widgets/common/app_button.dart';
 import 'package:catering_receipt_recorder/presentation/widgets/invoice/invoice_image_preview.dart';
 
 /// Invoice detail screen

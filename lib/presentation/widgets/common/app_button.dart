@@ -217,7 +217,7 @@ class AppButton extends StatelessWidget {
       foregroundColor: foregroundColor ?? colorScheme.primary,
       side: borderSide ??
           BorderSide(
-            color: colorScheme.outline.withOpacity(0.5),
+            color: colorScheme.outline.withValues(alpha: 0.5),
             width: 1,
           ),
       padding: EdgeInsets.symmetric(

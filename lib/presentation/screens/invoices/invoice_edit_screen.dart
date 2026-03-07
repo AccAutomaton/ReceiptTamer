@@ -133,13 +133,13 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
               setState(() {
                 if (ocrResult?.invoiceNumber != null &&
                     ocrResult!.invoiceNumber!.isNotEmpty) {
-                  _invoiceNumberController.text = ocrResult!.invoiceNumber!;
+                  _invoiceNumberController.text = ocrResult.invoiceNumber!;
                 }
                 if (ocrResult?.totalAmount != null && ocrResult!.totalAmount! > 0) {
-                  _amountController.text = ocrResult!.totalAmount!.toStringAsFixed(2);
+                  _amountController.text = ocrResult.totalAmount!.toStringAsFixed(2);
                 }
                 if (ocrResult?.invoiceDate != null && ocrResult!.invoiceDate!.isNotEmpty) {
-                  _invoiceDate = DateTime.tryParse(ocrResult!.invoiceDate!);
+                  _invoiceDate = DateTime.tryParse(ocrResult.invoiceDate!);
                 }
               });
               ScaffoldMessenger.of(context).showSnackBar(
@@ -363,7 +363,7 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
                 leading: const Icon(Icons.receipt_long),
                 title: const Text(AppConstants.labelRelatedOrder),
                 subtitle: order != null
-                    ? Text(order!.shopName.isEmpty ? '未命名店铺' : order!.shopName)
+                    ? Text(order.shopName.isEmpty ? '未命名店铺' : order.shopName)
                     : Text(
                         _orderId != null ? '加载中...' : AppConstants.labelNoOrder,
                         style: TextStyle(

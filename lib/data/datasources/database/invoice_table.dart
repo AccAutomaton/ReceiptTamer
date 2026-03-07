@@ -113,36 +113,48 @@ class InvoiceTable {
     return maps.map((map) => Invoice.fromJson(map)).toList();
   }
 
-  /// Get invoices by date range
+  /// Get invoices by invoice date range
+  /// Uses invoice_date field (stored as 'yyyy-MM-dd' format)
   Future<List<Invoice>> getByDateRange(DateTime start, DateTime end) async {
-    final startDate = start.toIso8601String();
-    final endDate = end.toIso8601String();
+    // Format dates as 'yyyy-MM-dd' for comparison with invoice_date field
+    final startDate = _formatDate(start);
+    final endDate = _formatDate(end);
 
     final List<Map<String, dynamic>> maps = await database.query(
       AppConstants.invoicesTable,
-      where: '${AppConstants.colCreatedAt} BETWEEN ? AND ?',
+      where: '${AppConstants.colInvoiceDate} >= ? AND ${AppConstants.colInvoiceDate} <= ?',
       whereArgs: [startDate, endDate],
-      orderBy: '${AppConstants.colCreatedAt} DESC',
+      orderBy: '${AppConstants.colInvoiceDate} DESC',
     );
 
     return maps.map((map) => Invoice.fromJson(map)).toList();
   }
 
-  /// Get invoices created today
-  Future<List<Invoice>> getTodayInvoices() async {
-    final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day);
-    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
-
-    return getByDateRange(startOfDay, endOfDay);
+  /// Format DateTime to 'yyyy-MM-dd' string
+  String _formatDate(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
-  /// Get invoices created this month
+  /// Get invoices with invoice date today
+  Future<List<Invoice>> getTodayInvoices() async {
+    final now = DateTime.now();
+    final todayStr = _formatDate(now);
+
+    final List<Map<String, dynamic>> maps = await database.query(
+      AppConstants.invoicesTable,
+      where: '${AppConstants.colInvoiceDate} = ?',
+      whereArgs: [todayStr],
+      orderBy: '${AppConstants.colInvoiceDate} DESC',
+    );
+
+    return maps.map((map) => Invoice.fromJson(map)).toList();
+  }
+
+  /// Get invoices with invoice date in this month
   Future<List<Invoice>> getThisMonthInvoices() async {
     final now = DateTime.now();
     final startOfMonth = DateTime(now.year, now.month, 1);
-    final endOfMonth = DateTime(now.year, now.month + 1, 1)
-        .subtract(const Duration(days: 1, seconds: 1));
+    final endOfMonth = DateTime(now.year, now.month + 1, 0); // Last day of month
 
     return getByDateRange(startOfMonth, endOfMonth);
   }
@@ -171,14 +183,14 @@ class InvoiceTable {
     return 0.0;
   }
 
-  /// Get the total amount for a date range
+  /// Get the total amount for a date range (based on invoice_date)
   Future<double> getTotalAmountByDateRange(DateTime start, DateTime end) async {
-    final startDate = start.toIso8601String();
-    final endDate = end.toIso8601String();
+    final startDate = _formatDate(start);
+    final endDate = _formatDate(end);
 
     final result = await database.rawQuery(
       'SELECT SUM(${AppConstants.colTotalAmount}) as total FROM ${AppConstants.invoicesTable} '
-      'WHERE ${AppConstants.colCreatedAt} BETWEEN ? AND ?',
+      'WHERE ${AppConstants.colInvoiceDate} >= ? AND ${AppConstants.colInvoiceDate} <= ?',
       [startDate, endDate],
     );
 
@@ -248,13 +260,13 @@ class InvoiceTable {
     }
 
     if (startDate != null) {
-      conditions.add('${AppConstants.colCreatedAt} >= ?');
-      args.add(startDate.toIso8601String());
+      conditions.add('${AppConstants.colInvoiceDate} >= ?');
+      args.add(_formatDate(startDate));
     }
 
     if (endDate != null) {
-      conditions.add('${AppConstants.colCreatedAt} <= ?');
-      args.add(endDate.toIso8601String());
+      conditions.add('${AppConstants.colInvoiceDate} <= ?');
+      args.add(_formatDate(endDate));
     }
 
     if (hasLinkedOrder == true) {

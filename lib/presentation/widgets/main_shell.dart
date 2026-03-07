@@ -14,6 +14,7 @@ class MainShell extends ConsumerStatefulWidget {
 
 class _MainShellState extends ConsumerState<MainShell> {
   int _currentIndex = 0;
+  bool _initialized = false;
 
   // Navigation destinations (excluding the center FAB)
   static const _destinations = [
@@ -59,18 +60,34 @@ class _MainShellState extends ConsumerState<MainShell> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // Use SchedulerBinding to defer state update to after build
     _updateCurrentIndex();
   }
 
   void _updateCurrentIndex() {
-    final location = GoRouterState.of(context).matchedLocation;
-    final destIndex = _destinations.indexWhere((d) => d.path == location);
-    if (destIndex != -1 && destIndex != _currentIndex) {
-      // Map destination index back to UI index (add 1 for items after placeholder)
-      // _destinations: [0:首页, 1:订单, 2:发票, 3:设置]
-      // UI: [0:首页, 1:订单, 2:占位符, 3:发票, 4:设置]
-      final uiIndex = destIndex < 2 ? destIndex : destIndex + 1;
-      setState(() => _currentIndex = uiIndex);
+    try {
+      final state = GoRouterState.of(context);
+      final location = state.matchedLocation;
+      final destIndex = _destinations.indexWhere((d) => d.path == location);
+      if (destIndex != -1) {
+        // Map destination index back to UI index (add 1 for items after placeholder)
+        // _destinations: [0:首页, 1:订单, 2:发票, 3:设置]
+        // UI: [0:首页, 1:订单, 2:占位符, 3:发票, 4:设置]
+        final uiIndex = destIndex < 2 ? destIndex : destIndex + 1;
+        if (uiIndex != _currentIndex) {
+          // Use WidgetsBinding to defer setState to after the current build frame
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() => _currentIndex = uiIndex);
+            }
+          });
+        }
+        _initialized = true;
+      }
+    } catch (e) {
+      // Ignore errors during route state access
+      // This can happen during initial build before router is fully initialized
+      debugPrint('Error updating current index: $e');
     }
   }
 
@@ -122,7 +139,7 @@ class _MainShellState extends ConsumerState<MainShell> {
         ),
         // FAB positioned outside Scaffold to prevent animation on rebuild
         Positioned(
-          bottom: 40,
+          bottom: 35,
           left: 0,
           right: 0,
           child: Center(

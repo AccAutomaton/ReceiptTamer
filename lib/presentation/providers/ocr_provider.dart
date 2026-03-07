@@ -181,16 +181,25 @@ class OcrNotifier extends Notifier<OcrState> {
   /// Watch model loading status and update state when done
   void _watchModelLoading() {
     Future(() async {
-      final llmService = _service.llmService;
-      if (llmService != null && llmService.isModelLoading) {
-        // Wait for LLM to finish loading
-        await llmService.waitForInitialization();
+      try {
+        final llmService = _service.llmService;
+        if (llmService != null && llmService.isModelLoading) {
+          // Wait for LLM to finish loading
+          await llmService.waitForInitialization();
 
-        // Update state when loading is complete
+          // Update state when loading is complete
+          state = state.copyWith(
+            isModelLoading: false,
+            isModelAvailable: _service.isModelAvailable && llmService.isInitialized,
+            archNotSupported: llmService.archNotSupported,
+          );
+        }
+      } catch (e) {
+        debugPrint('Error watching model loading: $e');
+        // Update state to reflect error
         state = state.copyWith(
           isModelLoading: false,
-          isModelAvailable: _service.isModelAvailable && llmService.isInitialized,
-          archNotSupported: llmService.archNotSupported,
+          errorMessage: 'Model loading failed: ${e.toString()}',
         );
       }
     });

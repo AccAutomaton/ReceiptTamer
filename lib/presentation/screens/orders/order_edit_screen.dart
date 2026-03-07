@@ -131,17 +131,17 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
             if (ocrResult?.success == true) {
               setState(() {
                 if (ocrResult?.shopName != null && ocrResult!.shopName!.isNotEmpty) {
-                  _shopNameController.text = ocrResult!.shopName!;
+                  _shopNameController.text = ocrResult.shopName!;
                 }
                 if (ocrResult?.amount != null && ocrResult!.amount! > 0) {
-                  _amountController.text = ocrResult!.amount!.toStringAsFixed(2);
+                  _amountController.text = ocrResult.amount!.toStringAsFixed(2);
                 }
                 if (ocrResult?.orderNumber != null && ocrResult!.orderNumber!.isNotEmpty) {
-                  _orderNumberController.text = ocrResult!.orderNumber!;
+                  _orderNumberController.text = ocrResult.orderNumber!;
                 }
                 // Parse orderTime from OCR result into orderDate and mealTime
                 if (ocrResult?.orderTime != null && ocrResult!.orderTime!.isNotEmpty) {
-                  final (dateStr, mealTime) = DateFormatter.parseDateTimeToOrderDateAndMealTime(ocrResult!.orderTime);
+                  final (dateStr, mealTime) = DateFormatter.parseDateTimeToOrderDateAndMealTime(ocrResult.orderTime);
                   if (dateStr != null) {
                     _orderDate = DateTime.tryParse(dateStr);
                   }

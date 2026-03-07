@@ -86,8 +86,10 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, OCR_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "initialize" -> {
-                    val success = initializeOcr()
-                    result.success(success)
+                    // 异步初始化 OCR，避免阻塞主线程
+                    initializeOcrAsync { success ->
+                        result.success(success)
+                    }
                 }
                 "recognize" -> {
                     val imageBytes = call.argument<ByteArray>("imageBytes")
@@ -213,8 +215,38 @@ class MainActivity : FlutterActivity() {
     // ==================== OCR 相关方法 ====================
 
     /**
-     * 初始化 OCR 引擎
+     * 异步初始化 OCR 引擎（在后台线程执行，避免阻塞UI）
      */
+    private fun initializeOcrAsync(callback: (Boolean) -> Unit) {
+        ocrExecutor.execute {
+            try {
+                // Disable OpenMP affinity BEFORE creating OcrEngine to prevent crash on Xiaomi devices
+                // 仅在 arm64-v8a 上调用 native 方法
+                if (mnnLibLoaded) {
+                    try {
+                        setOmpAffinityDisabled()
+                    } catch (e: UnsatisfiedLinkError) {
+                        android.util.Log.w("MainActivity", "setOmpAffinityDisabled 调用失败: ${e.message}")
+                    }
+                }
+
+                if (ocrEngine == null) {
+                    ocrEngine = OcrEngine(applicationContext)
+                }
+                android.util.Log.d("MainActivity", "OCR引擎初始化成功 (RapidOcrAndroidOnnx)")
+                mainHandler.post { callback(true) }
+            } catch (e: Exception) {
+                android.util.Log.e("MainActivity", "OCR初始化失败: ${e.message}")
+                mainHandler.post { callback(false) }
+            }
+        }
+    }
+
+    /**
+     * 初始化 OCR 引擎（同步方法，已弃用，请使用 initializeOcrAsync）
+     * @deprecated 使用 initializeOcrAsync 替代，避免阻塞主线程
+     */
+    @Deprecated("Use initializeOcrAsync instead", ReplaceWith("initializeOcrAsync(callback)"))
     private fun initializeOcr(): Boolean {
         return try {
             // Disable OpenMP affinity BEFORE creating OcrEngine to prevent crash on Xiaomi devices

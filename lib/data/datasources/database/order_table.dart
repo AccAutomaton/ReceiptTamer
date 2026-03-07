@@ -58,11 +58,16 @@ class OrderTable {
     return Order.fromJson(maps.first);
   }
 
-  /// Get all orders, ordered by creation date (newest first)
+  /// Get all orders, ordered by order date (newest first), then by meal time (dinner > lunch > breakfast)
   Future<List<Order>> getAll({int? limit, int? offset}) async {
     final List<Map<String, dynamic>> maps = await database.query(
       AppConstants.ordersTable,
-      orderBy: '${AppConstants.colCreatedAt} DESC',
+      orderBy: '${AppConstants.colOrderDate} DESC, '
+          'CASE ${AppConstants.colMealTime} '
+          "WHEN 'dinner' THEN 1 "
+          "WHEN 'lunch' THEN 2 "
+          "WHEN 'breakfast' THEN 3 "
+          'ELSE 4 END ASC',
       limit: limit,
       offset: offset,
     );
@@ -76,7 +81,12 @@ class OrderTable {
       AppConstants.ordersTable,
       where: '${AppConstants.colShopName} LIKE ?',
       whereArgs: ['%$shopName%'],
-      orderBy: '${AppConstants.colCreatedAt} DESC',
+      orderBy: '${AppConstants.colOrderDate} DESC, '
+          'CASE ${AppConstants.colMealTime} '
+          "WHEN 'dinner' THEN 1 "
+          "WHEN 'lunch' THEN 2 "
+          "WHEN 'breakfast' THEN 3 "
+          'ELSE 4 END ASC',
     );
 
     return maps.map((map) => Order.fromJson(map)).toList();
@@ -88,42 +98,69 @@ class OrderTable {
       AppConstants.ordersTable,
       where: '${AppConstants.colOrderNumber} = ?',
       whereArgs: [orderNumber],
-      orderBy: '${AppConstants.colCreatedAt} DESC',
+      orderBy: '${AppConstants.colOrderDate} DESC, '
+          'CASE ${AppConstants.colMealTime} '
+          "WHEN 'dinner' THEN 1 "
+          "WHEN 'lunch' THEN 2 "
+          "WHEN 'breakfast' THEN 3 "
+          'ELSE 4 END ASC',
     );
 
     return maps.map((map) => Order.fromJson(map)).toList();
   }
 
-  /// Get orders by date range
+  /// Get orders by order date range
+  /// Uses order_date field (stored as 'yyyy-MM-dd' format)
   Future<List<Order>> getByDateRange(DateTime start, DateTime end) async {
-    final startDate = start.toIso8601String();
-    final endDate = end.toIso8601String();
+    // Format dates as 'yyyy-MM-dd' for comparison with order_date field
+    final startDate = _formatDate(start);
+    final endDate = _formatDate(end);
 
     final List<Map<String, dynamic>> maps = await database.query(
       AppConstants.ordersTable,
-      where: '${AppConstants.colCreatedAt} BETWEEN ? AND ?',
+      where: '${AppConstants.colOrderDate} >= ? AND ${AppConstants.colOrderDate} <= ?',
       whereArgs: [startDate, endDate],
-      orderBy: '${AppConstants.colCreatedAt} DESC',
+      orderBy: '${AppConstants.colOrderDate} DESC, '
+          'CASE ${AppConstants.colMealTime} '
+          "WHEN 'dinner' THEN 1 "
+          "WHEN 'lunch' THEN 2 "
+          "WHEN 'breakfast' THEN 3 "
+          'ELSE 4 END ASC',
     );
 
     return maps.map((map) => Order.fromJson(map)).toList();
   }
 
-  /// Get orders created today
-  Future<List<Order>> getTodayOrders() async {
-    final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day);
-    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
-
-    return getByDateRange(startOfDay, endOfDay);
+  /// Format DateTime to 'yyyy-MM-dd' string
+  String _formatDate(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
-  /// Get orders created this month
+  /// Get orders with order date today
+  Future<List<Order>> getTodayOrders() async {
+    final now = DateTime.now();
+    final todayStr = _formatDate(now);
+
+    final List<Map<String, dynamic>> maps = await database.query(
+      AppConstants.ordersTable,
+      where: '${AppConstants.colOrderDate} = ?',
+      whereArgs: [todayStr],
+      orderBy: '${AppConstants.colOrderDate} DESC, '
+          'CASE ${AppConstants.colMealTime} '
+          "WHEN 'dinner' THEN 1 "
+          "WHEN 'lunch' THEN 2 "
+          "WHEN 'breakfast' THEN 3 "
+          'ELSE 4 END ASC',
+    );
+
+    return maps.map((map) => Order.fromJson(map)).toList();
+  }
+
+  /// Get orders with order date in this month
   Future<List<Order>> getThisMonthOrders() async {
     final now = DateTime.now();
     final startOfMonth = DateTime(now.year, now.month, 1);
-    final endOfMonth = DateTime(now.year, now.month + 1, 1)
-        .subtract(const Duration(days: 1, seconds: 1));
+    final endOfMonth = DateTime(now.year, now.month + 1, 0); // Last day of month
 
     return getByDateRange(startOfMonth, endOfMonth);
   }
@@ -140,14 +177,14 @@ class OrderTable {
     return 0.0;
   }
 
-  /// Get the total amount for a date range
+  /// Get the total amount for a date range (based on order_date)
   Future<double> getTotalAmountByDateRange(DateTime start, DateTime end) async {
-    final startDate = start.toIso8601String();
-    final endDate = end.toIso8601String();
+    final startDate = _formatDate(start);
+    final endDate = _formatDate(end);
 
     final result = await database.rawQuery(
       'SELECT SUM(${AppConstants.colAmount}) as total FROM ${AppConstants.ordersTable} '
-      'WHERE ${AppConstants.colCreatedAt} BETWEEN ? AND ?',
+      'WHERE ${AppConstants.colOrderDate} >= ? AND ${AppConstants.colOrderDate} <= ?',
       [startDate, endDate],
     );
 
@@ -175,13 +212,20 @@ class OrderTable {
       'SELECT o.* FROM ${AppConstants.ordersTable} o '
       'LEFT JOIN ${AppConstants.invoicesTable} i ON o.${AppConstants.colId} = i.${AppConstants.colOrderId} '
       'WHERE i.${AppConstants.colId} IS NULL '
-      'ORDER BY o.${AppConstants.colCreatedAt} DESC',
+      'ORDER BY o.${AppConstants.colOrderDate} DESC, '
+      'CASE o.${AppConstants.colMealTime} '
+      "WHEN 'dinner' THEN 1 "
+      "WHEN 'lunch' THEN 2 "
+      "WHEN 'breakfast' THEN 3 "
+      'ELSE 4 END ASC',
     );
 
     return maps.map((map) => Order.fromJson(map)).toList();
   }
 
   /// Search orders by multiple criteria
+  /// When both shopName and orderNumber are provided with the same value (keyword search),
+  /// it performs an OR search on both fields.
   Future<List<Order>> search({
     String? shopName,
     String? orderNumber,
@@ -193,14 +237,27 @@ class OrderTable {
     final conditions = <String>[];
     final args = <dynamic>[];
 
-    if (shopName != null && shopName.isNotEmpty) {
-      conditions.add('${AppConstants.colShopName} LIKE ?');
+    // Check if this is a keyword search (same value for shopName and orderNumber)
+    // In this case, perform an OR search on both fields
+    if (shopName != null &&
+        shopName.isNotEmpty &&
+        orderNumber != null &&
+        orderNumber.isNotEmpty &&
+        shopName == orderNumber) {
+      conditions.add('(${AppConstants.colShopName} LIKE ? OR ${AppConstants.colOrderNumber} LIKE ?)');
       args.add('%$shopName%');
-    }
-
-    if (orderNumber != null && orderNumber.isNotEmpty) {
-      conditions.add('${AppConstants.colOrderNumber} LIKE ?');
       args.add('%$orderNumber%');
+    } else {
+      // Separate criteria search - use AND logic
+      if (shopName != null && shopName.isNotEmpty) {
+        conditions.add('${AppConstants.colShopName} LIKE ?');
+        args.add('%$shopName%');
+      }
+
+      if (orderNumber != null && orderNumber.isNotEmpty) {
+        conditions.add('${AppConstants.colOrderNumber} LIKE ?');
+        args.add('%$orderNumber%');
+      }
     }
 
     if (minAmount != null) {
@@ -214,13 +271,13 @@ class OrderTable {
     }
 
     if (startDate != null) {
-      conditions.add('${AppConstants.colCreatedAt} >= ?');
-      args.add(startDate.toIso8601String());
+      conditions.add('${AppConstants.colOrderDate} >= ?');
+      args.add(_formatDate(startDate));
     }
 
     if (endDate != null) {
-      conditions.add('${AppConstants.colCreatedAt} <= ?');
-      args.add(endDate.toIso8601String());
+      conditions.add('${AppConstants.colOrderDate} <= ?');
+      args.add(_formatDate(endDate));
     }
 
     final whereClause = conditions.isNotEmpty
@@ -231,7 +288,12 @@ class OrderTable {
       AppConstants.ordersTable,
       where: whereClause,
       whereArgs: args.isEmpty ? null : args,
-      orderBy: '${AppConstants.colCreatedAt} DESC',
+      orderBy: '${AppConstants.colOrderDate} DESC, '
+          'CASE ${AppConstants.colMealTime} '
+          "WHEN 'dinner' THEN 1 "
+          "WHEN 'lunch' THEN 2 "
+          "WHEN 'breakfast' THEN 3 "
+          'ELSE 4 END ASC',
     );
 
     return maps.map((map) => Order.fromJson(map)).toList();

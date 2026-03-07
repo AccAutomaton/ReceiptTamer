@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'package:catering_receipt_recorder/core/utils/date_formatter.dart';
 import 'package:catering_receipt_recorder/data/models/invoice.dart';
-import 'package:catering_receipt_recorder/core/constants/app_constants.dart';
 import 'package:catering_receipt_recorder/presentation/widgets/common/app_card.dart';
 
 /// Invoice card widget for displaying invoice information in the list

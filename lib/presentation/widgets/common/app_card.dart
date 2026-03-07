@@ -49,7 +49,7 @@ class AppCard extends StatelessWidget {
     final effectiveBorderRadius = borderRadius ?? BorderRadius.circular(12);
     final effectiveBorderSide = borderSide ??
         BorderSide(
-          color: colorScheme.outlineVariant.withOpacity(0.3),
+          color: colorScheme.outlineVariant.withValues(alpha: 0.3),
           width: 1,
         );
 
@@ -154,7 +154,7 @@ class AppCardWithHeader extends StatelessWidget {
               vertical: 12,
             ),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceVariant.withOpacity(0.3),
+              color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),

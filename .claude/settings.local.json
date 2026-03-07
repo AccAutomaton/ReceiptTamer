@@ -20,7 +20,12 @@
       "Bash(./gradlew:*)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:mnn-docs.readthedocs.io)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(flutter test:*)",
+      "Bash(flutter logs:*)",
+      "Bash(adb devices:*)",
+      "Bash(adb shell:*)",
+      "Bash(sed:*)"
     ]
   }
 }

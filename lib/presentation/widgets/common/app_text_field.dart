@@ -111,7 +111,7 @@ class AppTextField extends StatelessWidget {
           const SizedBox(height: 6),
         ],
         TextField(
-          controller: controller != null ? controller : TextEditingController(text: initialValue ?? ''),
+          controller: controller ?? TextEditingController(text: initialValue ?? ''),
           onChanged: onChanged,
           onTap: onTap,
           readOnly: readOnly,
@@ -410,7 +410,7 @@ class AppSelectField<T> extends StatelessWidget {
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButtonFormField<T>(
-              value: value,
+              initialValue: value,
               items: options.map((option) {
                 return DropdownMenuItem<T>(
                   value: option,

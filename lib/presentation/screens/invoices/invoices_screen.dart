@@ -224,12 +224,15 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
           TextButton(
             onPressed: () {
               final query = searchController.text.trim();
+              Navigator.pop(context);
               if (query.isNotEmpty) {
                 ref.read(invoiceProvider.notifier).searchInvoices(
                       invoiceNumber: query,
                     );
+              } else {
+                // Empty search returns all invoices
+                ref.read(invoiceProvider.notifier).loadInvoices();
               }
-              Navigator.pop(context);
             },
             child: const Text('搜索'),
           ),

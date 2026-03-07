@@ -18,7 +18,7 @@ class LlmService {
   bool _isModelLoading = false;
   bool _archNotSupported = false;
   String? _loadError;
-  int _modelSizeBytes = 0;
+  final int _modelSizeBytes = 0;
 
   // 模型路径 (Flutter assets 中的路径 - MNN模型目录)
   static const String _modelPath = 'assets/models/qwen3.5-0.8b.mnn';
