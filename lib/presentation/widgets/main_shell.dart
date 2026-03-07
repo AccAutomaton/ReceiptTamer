@@ -54,7 +54,43 @@ class _MainShellState extends ConsumerState<MainShell> {
   }
 
   void _onAddPressed() {
-    context.push('/orders/new');
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(
+                Icons.receipt_long,
+                color: colorScheme.primary,
+              ),
+              title: const Text('添加订单'),
+              subtitle: const Text('通过订单截图导入'),
+              onTap: () {
+                Navigator.pop(context);
+                context.push('/orders/new');
+              },
+            ),
+            ListTile(
+              leading: Icon(
+                Icons.description,
+                color: colorScheme.primary,
+              ),
+              title: const Text('添加发票'),
+              subtitle: const Text('通过图片或PDF导入'),
+              onTap: () {
+                Navigator.pop(context);
+                context.push('/invoices/new');
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override

@@ -35,7 +35,10 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
     if (widget.filterOrderId != null) {
       _filterOrder = await ref.read(orderProvider.notifier).getOrderById(widget.filterOrderId!);
     }
-    _loadInvoices();
+    // Use Future.microtask to delay provider modification until after build
+    Future.microtask(() {
+      _loadInvoices();
+    });
   }
 
   void _loadInvoices() {
