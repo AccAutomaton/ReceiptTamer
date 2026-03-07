@@ -28,9 +28,33 @@ import android.os.Looper
 class MainActivity : FlutterActivity() {
 
     companion object {
-        init {
-            // Load mnn_jni library early
-            System.loadLibrary("mnn_jni")
+        // 延迟加载 MNN 库，避免在 x86 模拟器上崩溃
+        private var mnnLibLoaded = false
+        private var mnnLibLoadAttempted = false
+
+        /**
+         * 尝试加载 MNN 库，仅在 arm64-v8a 架构上加载
+         */
+        private fun tryLoadMnnLibrary(): Boolean {
+            if (mnnLibLoadAttempted) return mnnLibLoaded
+            mnnLibLoadAttempted = true
+
+            // 检查是否为 arm64-v8a 架构
+            val arch = Build.SUPPORTED_ABIS.firstOrNull() ?: "unknown"
+            if (arch != "arm64-v8a") {
+                android.util.Log.w("MainActivity", "MNN 仅支持 arm64-v8a 架构，当前架构: $arch，跳过加载")
+                return false
+            }
+
+            return try {
+                System.loadLibrary("mnn_jni")
+                mnnLibLoaded = true
+                android.util.Log.i("MainActivity", "MNN 库加载成功")
+                true
+            } catch (e: UnsatisfiedLinkError) {
+                android.util.Log.e("MainActivity", "MNN 库加载失败: ${e.message}")
+                false
+            }
         }
     }
 
@@ -194,7 +218,14 @@ class MainActivity : FlutterActivity() {
     private fun initializeOcr(): Boolean {
         return try {
             // Disable OpenMP affinity BEFORE creating OcrEngine to prevent crash on Xiaomi devices
-            setOmpAffinityDisabled()
+            // 仅在 arm64-v8a 上调用 native 方法
+            if (mnnLibLoaded) {
+                try {
+                    setOmpAffinityDisabled()
+                } catch (e: UnsatisfiedLinkError) {
+                    android.util.Log.w("MainActivity", "setOmpAffinityDisabled 调用失败: ${e.message}")
+                }
+            }
 
             if (ocrEngine == null) {
                 ocrEngine = OcrEngine(applicationContext)
@@ -369,6 +400,20 @@ class MainActivity : FlutterActivity() {
      * 返回状态Map，包含isLoading、archNotSupported、error等信息
      */
     private fun initializeLlmAsync(modelPath: String): Map<String, Any?> {
+        // 先尝试加载 MNN 库
+        if (!tryLoadMnnLibrary()) {
+            val arch = getDeviceArch()
+            archNotSupported = true
+            llmLoadError = "仅支持 arm64-v8a 架构，当前架构: $arch"
+            android.util.Log.w("MainActivity", llmLoadError!!)
+            return mapOf(
+                "isLoading" to false,
+                "archNotSupported" to true,
+                "error" to llmLoadError,
+                "deviceArch" to arch
+            )
+        }
+
         // 架构检查
         if (!isArm64V8()) {
             val arch = getDeviceArch()
