@@ -51,6 +51,11 @@ android {
         }
     }
 
+    // 不压缩模型文件，允许通过fd直接访问
+    aaptOptions {
+        noCompress += listOf("mnn", "json", "txt", "weight")
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.

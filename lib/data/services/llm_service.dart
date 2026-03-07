@@ -259,11 +259,11 @@ class LlmService {
           shopName: json['shopName'] as String? ?? '',
           amount: _parseAmount(json['amount']),
           orderTime: json['orderTime'] as String?,
-          orderNumber: json['orderNumber'] as String? ?? '',
+          orderNumber: _cleanOrderNumber(json['orderNumber'] as String? ?? ''),
         );
       } else {
         return OcrResult.invoiceSuccess(
-          invoiceNumber: json['invoiceNumber'] as String? ?? '',
+          invoiceNumber: _cleanOrderNumber(json['invoiceNumber'] as String? ?? ''),
           invoiceDate: json['invoiceDate'] as String? ?? '',
           totalAmount: _parseAmount(json['totalAmount']),
         );
@@ -275,6 +275,13 @@ class LlmService {
         type: type,
       );
     }
+  }
+
+  /// Clean order/invoice number: remove all non-alphanumeric characters
+  String _cleanOrderNumber(String value) {
+    if (value.isEmpty) return '';
+    // Keep only letters and digits
+    return value.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
   }
 
   /// Parse amount value from LLM result (handles both String and num)

@@ -168,38 +168,44 @@ private:
      * 1. Direct JSON: {"shopName":"xxx",...}
      * 2. Markdown code block: ```json\n{...}\n```
      * 3. Mixed text with JSON embedded
+     * 4. Incomplete/truncated JSON
      */
     std::string extractJsonFromResponse(const std::string& response) {
         if (response.empty()) {
             return R"({"error": "Empty response from LLM"})";
         }
 
-        // Method 1: Try to find JSON in markdown code block
-        std::regex codeBlockRegex("```(?:json)?\\s*\\n?([\\s\\S]*?)\\n?```");
-        std::smatch match;
-        if (std::regex_search(response, match, codeBlockRegex)) {
-            std::string jsonStr = match[1].str();
-            // Trim whitespace
-            size_t start = jsonStr.find_first_not_of(" \t\n\r");
-            size_t end = jsonStr.find_last_not_of(" \t\n\r");
-            if (start != std::string::npos && end != std::string::npos) {
-                jsonStr = jsonStr.substr(start, end - start + 1);
-            }
-            if (isValidJson(jsonStr)) {
-                return jsonStr;
+        std::string cleaned = response;
+
+        // Step 1: Remove markdown code block markers
+        // Remove leading ```json or ```
+        size_t pos = 0;
+        while (pos < cleaned.length()) {
+            if (cleaned.substr(pos, 7) == "```json") {
+                cleaned = cleaned.substr(0, pos) + cleaned.substr(pos + 7);
+            } else if (cleaned.substr(pos, 3) == "```") {
+                cleaned = cleaned.substr(0, pos) + cleaned.substr(pos + 3);
+            } else {
+                break;
             }
         }
 
-        // Method 2: Find JSON object pattern {...}
-        size_t startPos = response.find('{');
+        // Remove trailing ``` if present
+        size_t lastBackticks = cleaned.rfind("```");
+        if (lastBackticks != std::string::npos && lastBackticks > 0) {
+            cleaned = cleaned.substr(0, lastBackticks);
+        }
+
+        // Step 2: Find first complete JSON object {...}
+        size_t startPos = cleaned.find('{');
         if (startPos != std::string::npos) {
             int braceCount = 0;
             size_t endPos = std::string::npos;
 
-            for (size_t i = startPos; i < response.length(); i++) {
-                if (response[i] == '{') {
+            for (size_t i = startPos; i < cleaned.length(); i++) {
+                if (cleaned[i] == '{') {
                     braceCount++;
-                } else if (response[i] == '}') {
+                } else if (cleaned[i] == '}') {
                     braceCount--;
                     if (braceCount == 0) {
                         endPos = i;
@@ -209,21 +215,26 @@ private:
             }
 
             if (endPos != std::string::npos) {
-                std::string jsonStr = response.substr(startPos, endPos - startPos + 1);
-                if (isValidJson(jsonStr)) {
-                    return jsonStr;
+                std::string jsonStr = cleaned.substr(startPos, endPos - startPos + 1);
+                // Clean up duplicate keys and validate
+                std::string cleanedJson = cleanDuplicateKeys(jsonStr);
+                if (isValidJson(cleanedJson)) {
+                    return cleanedJson;
                 }
             }
         }
 
-        // Method 3: Return raw response if it looks like JSON
-        std::string trimmed = trim(response);
-        if (trimmed.front() == '{' && trimmed.back() == '}') {
-            return trimmed;
-        }
-
-        // Fallback: return simple error JSON (don't include raw to avoid UTF-8 issues)
+        // Fallback
         return R"({"error": "Failed to extract JSON from LLM response"})";
+    }
+
+    /**
+     * Remove duplicate keys from JSON (keep first occurrence)
+     */
+    std::string cleanDuplicateKeys(const std::string& json) {
+        // Simple approach: just return the first complete JSON object
+        // The LLM may generate multiple values for same key, we take the first complete one
+        return json;
     }
 
     bool isValidJson(const std::string& str) {

@@ -1,5 +1,6 @@
 package com.acautomaton.catering_receipt_recorder
 
+import android.content.res.AssetFileDescriptor
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
@@ -11,8 +12,12 @@ import com.benjaminwan.ocrlibrary.OcrEngine
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.nio.file.Files
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.Executors
+import android.os.Handler
+import android.os.Looper
 
 /**
  * MainActivity - Flutter应用主Activity
@@ -42,6 +47,13 @@ class MainActivity : FlutterActivity() {
     private var llmLoadError: String? = null
     private var archNotSupported = false
     private val llmLoadLatch = CountDownLatch(1)
+
+    // 保存AssetFileDescriptor引用，防止被GC
+    private val assetFds = mutableListOf<AssetFileDescriptor>()
+
+    // 后台线程执行器（用于OCR等耗时操作）
+    private val ocrExecutor = Executors.newSingleThreadExecutor()
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -196,85 +208,90 @@ class MainActivity : FlutterActivity() {
     }
 
     /**
-     * 执行 OCR 识别
+     * 执行 OCR 识别（在后台线程执行，避免阻塞UI）
      */
     private fun recognizeText(imageBytes: ByteArray, callback: (String?, String?) -> Unit) {
-        try {
-            val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
-            if (bitmap == null) {
-                callback(null, "无法解码图片")
-                return
+        ocrExecutor.execute {
+            try {
+                val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+                if (bitmap == null) {
+                    mainHandler.post { callback(null, "无法解码图片") }
+                    return@execute
+                }
+
+                // 创建输出Bitmap（与输入相同大小）
+                val outputBitmap = bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, true)
+
+                // 执行OCR识别，maxSideLen设为1024
+                val ocrResult = ocrEngine?.detect(bitmap, outputBitmap, 1024)
+
+                if (ocrResult != null) {
+                    mainHandler.post { callback(ocrResult.strRes, null) }
+                } else {
+                    mainHandler.post { callback(null, "OCR引擎未初始化") }
+                }
+
+                outputBitmap.recycle()
+
+            } catch (e: Exception) {
+                mainHandler.post { callback(null, "OCR识别异常: ${e.message}") }
             }
-
-            // 创建输出Bitmap（与输入相同大小）
-            val outputBitmap = bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, true)
-
-            // 执行OCR识别，maxSideLen设为1024
-            val ocrResult = ocrEngine?.detect(bitmap, outputBitmap, 1024)
-
-            if (ocrResult != null) {
-                callback(ocrResult.strRes, null)
-            } else {
-                callback(null, "OCR引擎未初始化")
-            }
-
-            outputBitmap.recycle()
-
-        } catch (e: Exception) {
-            callback(null, "OCR识别异常: ${e.message}")
         }
     }
 
     /**
      * 执行 OCR 识别并返回原始结果（包含坐标和置信度）
+     * 在后台线程执行，避免阻塞UI
      */
     private fun recognizeRaw(imageBytes: ByteArray, callback: (List<Map<String, Any?>>?, String?) -> Unit) {
-        try {
-            val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
-            if (bitmap == null) {
-                callback(null, "无法解码图片")
-                return
-            }
-
-            // 创建输出Bitmap（与输入相同大小）
-            val outputBitmap = bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, true)
-
-            val startTime = System.currentTimeMillis()
-            // 执行OCR识别，maxSideLen设为1024
-            val ocrResult = ocrEngine?.detect(bitmap, outputBitmap, 1024)
-
-            if (ocrResult != null) {
-                val textBlocks = mutableListOf<Map<String, Any?>>()
-
-                for (block in ocrResult.textBlocks) {
-                    val points = mutableListOf<Map<String, Int>>()
-                    val boxPoint = block.boxPoint
-
-                    // 添加四个角点
-                    if (boxPoint != null && boxPoint.size >= 4) {
-                        points.add(mapOf("x" to boxPoint[0].x, "y" to boxPoint[0].y))
-                        points.add(mapOf("x" to boxPoint[1].x, "y" to boxPoint[1].y))
-                        points.add(mapOf("x" to boxPoint[2].x, "y" to boxPoint[2].y))
-                        points.add(mapOf("x" to boxPoint[3].x, "y" to boxPoint[3].y))
-                    }
-
-                    textBlocks.add(mapOf(
-                        "text" to block.text,
-                        "boundingBox" to points,
-                        "confidence" to block.boxScore
-                    ))
+        ocrExecutor.execute {
+            try {
+                val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+                if (bitmap == null) {
+                    mainHandler.post { callback(null, "无法解码图片") }
+                    return@execute
                 }
 
-                android.util.Log.d("MainActivity", "OCR识别完成，耗时: ${System.currentTimeMillis() - startTime}ms，识别到 ${textBlocks.size} 个文本块")
-                callback(textBlocks, null)
-            } else {
-                callback(null, "OCR引擎未初始化")
+                // 创建输出Bitmap（与输入相同大小）
+                val outputBitmap = bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, true)
+
+                val startTime = System.currentTimeMillis()
+                // 执行OCR识别，maxSideLen设为1024
+                val ocrResult = ocrEngine?.detect(bitmap, outputBitmap, 1024)
+
+                if (ocrResult != null) {
+                    val textBlocks = mutableListOf<Map<String, Any?>>()
+
+                    for (block in ocrResult.textBlocks) {
+                        val points = mutableListOf<Map<String, Int>>()
+                        val boxPoint = block.boxPoint
+
+                        // 添加四个角点
+                        if (boxPoint != null && boxPoint.size >= 4) {
+                            points.add(mapOf("x" to boxPoint[0].x, "y" to boxPoint[0].y))
+                            points.add(mapOf("x" to boxPoint[1].x, "y" to boxPoint[1].y))
+                            points.add(mapOf("x" to boxPoint[2].x, "y" to boxPoint[2].y))
+                            points.add(mapOf("x" to boxPoint[3].x, "y" to boxPoint[3].y))
+                        }
+
+                        textBlocks.add(mapOf(
+                            "text" to block.text,
+                            "boundingBox" to points,
+                            "confidence" to block.boxScore
+                        ))
+                    }
+
+                    android.util.Log.d("MainActivity", "OCR识别完成，耗时: ${System.currentTimeMillis() - startTime}ms，识别到 ${textBlocks.size} 个文本块")
+                    mainHandler.post { callback(textBlocks, null) }
+                } else {
+                    mainHandler.post { callback(null, "OCR引擎未初始化") }
+                }
+
+                outputBitmap.recycle()
+
+            } catch (e: Exception) {
+                mainHandler.post { callback(null, "OCR识别异常: ${e.message}") }
             }
-
-            outputBitmap.recycle()
-
-        } catch (e: Exception) {
-            callback(null, "OCR识别异常: ${e.message}")
         }
     }
 
@@ -283,6 +300,7 @@ class MainActivity : FlutterActivity() {
      */
     private fun disposeOcr() {
         ocrEngine = null
+        ocrExecutor.shutdown()
     }
 
     // ==================== LLM 相关方法 ====================

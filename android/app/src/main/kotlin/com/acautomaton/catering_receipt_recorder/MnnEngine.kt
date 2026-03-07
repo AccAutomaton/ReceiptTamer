@@ -148,7 +148,8 @@ class MnnEngine private constructor() {
         Log.i(TAG, "[DIAG] Full prompt length: ${prompt.length} chars")
         Log.i(TAG, "[DIAG] Full prompt: $prompt")
 
-        return generateAsync(prompt, maxTokens = 256, callback = callback)
+        // 减少maxTokens，强制模型输出简洁JSON
+        return generateAsync(prompt, maxTokens = 128, callback = callback)
     }
 
     /**
@@ -166,21 +167,25 @@ class MnnEngine private constructor() {
         Log.i(TAG, "[DIAG] Full prompt length: ${prompt.length} chars")
         Log.i(TAG, "[DIAG] Full prompt: $prompt")
 
-        return generateAsync(prompt, maxTokens = 256, callback = callback)
+        // 减少maxTokens，强制模型输出简洁JSON
+        return generateAsync(prompt, maxTokens = 128, callback = callback)
     }
 
     /**
      * 构建订单信息提取提示词
      */
     private fun buildOrderExtractionPrompt(ocrText: String): String {
-        return """从外卖订单OCR文本中提取以下字段：
+        return """提取订单信息。只输出一行JSON，无其他内容。
 
-- shopName: 外卖店铺名称，寻找最像店铺的名称，若找不到填写"其它"
-- amount: 实付金额，找"实付"或相似含义后面的数字，如"实付￥29.8"中的29.8
-- orderTime: 下单时间，格式如"yyyy-MM-dd HH:mm:ss"
-- orderNumber: 订单号，不要包含中文或特殊字符等无关信息，若找不到填写""
+规则：
+- shopName: 找含"店"含义的商家名，不是"管家"、"骑士"
+- amount: 找"实付"后的数字
+- orderTime: 格式yyyy-MM-dd HH:mm:ss，去除毫秒
+- orderNumber: 纯数字，去除"|复制"等后缀
 
-只返回JSON，不要其他内容。
+示例：
+输入："总优惠￥28.7实付￥29.8...闪购京广德北京烤鸭(天河店)...订单号8092120303538936145|复制...下单时间2026-03-03 18:37:43.667"
+输出：{"shopName":"闪购京广德北京烤鸭(天河店)","amount":"29.8","orderTime":"2026-03-03 18:37:43","orderNumber":"8092120303538936145"}
 
 OCR文本：
 $ocrText"""
@@ -190,13 +195,16 @@ $ocrText"""
      * 构建发票信息提取提示词
      */
     private fun buildInvoiceExtractionPrompt(ocrText: String): String {
-        return """从发票OCR文本中提取以下字段：
+        return """提取发票信息。只输出一行JSON，无其他内容。
 
+规则：
 - invoiceNumber: 发票号码，纯数字
-- invoiceDate: 开票日期
+- invoiceDate: 开票日期，格式yyyy-MM-dd
 - totalAmount: 价税合计金额
 
-只返回JSON，不要其他内容。
+示例：
+输入："发票号码12345678...开票日期2026年03月03日...价税合计￥100.00"
+输出：{"invoiceNumber":"12345678","invoiceDate":"2026-03-03","totalAmount":"100.00"}
 
 OCR文本：
 $ocrText"""
