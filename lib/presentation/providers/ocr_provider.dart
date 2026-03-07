@@ -1,12 +1,21 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/ocr_result.dart';
 import '../../data/services/llm_service.dart';
 import '../../data/services/ocr_service.dart';
+
+/// OCR processing stage
+enum OcrStage {
+  idle,
+  ocrRecognizing,  // OCR text recognition phase
+  llmParsing,      // LLM structured extraction phase
+}
 
 /// OCR state
 class OcrState {
@@ -18,6 +27,8 @@ class OcrState {
   final bool archNotSupported;
   final String? errorMessage;
   final LlmService? llmService;
+  final OcrStage stage;
+  final double progress;
 
   const OcrState({
     this.result,
@@ -28,6 +39,8 @@ class OcrState {
     this.archNotSupported = false,
     this.errorMessage,
     this.llmService,
+    this.stage = OcrStage.idle,
+    this.progress = 0.0,
   });
 
   OcrState copyWith({
@@ -39,30 +52,99 @@ class OcrState {
     bool? archNotSupported,
     String? errorMessage,
     LlmService? llmService,
+    OcrStage? stage,
+    double? progress,
+    bool clearResult = false,
+    bool clearError = false,
   }) {
     return OcrState(
-      result: result ?? this.result,
+      result: clearResult ? null : (result ?? this.result),
       isLoading: isLoading ?? this.isLoading,
       isInitialized: isInitialized ?? this.isInitialized,
       isModelAvailable: isModelAvailable ?? this.isModelAvailable,
       isModelLoading: isModelLoading ?? this.isModelLoading,
       archNotSupported: archNotSupported ?? this.archNotSupported,
-      errorMessage: errorMessage,
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       llmService: llmService ?? this.llmService,
+      stage: stage ?? this.stage,
+      progress: progress ?? this.progress,
     );
   }
 }
 
 /// OCR state notifier (Riverpod 3.x Notifier)
 class OcrNotifier extends Notifier<OcrState> {
+  // Progress animation settings
+  static const int _ocrDurationMs = 4000; // 4 seconds for OCR phase
+  static const int _llmDurationMs = 15000; // 15 seconds for LLM phase
+  static const int _progressUpdateIntervalMs = 100; // Update every 100ms
+
+  // OCR phase: 0% to 21% (4/19 ≈ 21%)
+  // LLM phase: 21% to 100%
+  static const double _ocrEndProgress = 0.21;
+
+  Timer? _progressTimer;
+
   @override
   OcrState build() {
     // Initialize OCR in background without blocking
     Future.microtask(() => initialize());
+    ref.onDispose(() {
+      _progressTimer?.cancel();
+    });
     return const OcrState(isModelLoading: true);
   }
 
   OcrService get _service => ref.watch(ocrServiceProvider);
+
+  /// Start progress animation for a given stage
+  void _startProgressAnimation(OcrStage stage, Duration totalDuration) {
+    _progressTimer?.cancel();
+
+    final startTime = DateTime.now();
+    final startProgress = stage == OcrStage.ocrRecognizing ? 0.0 : _ocrEndProgress;
+    final endProgress = stage == OcrStage.ocrRecognizing ? _ocrEndProgress : 1.0;
+
+    _progressTimer = Timer.periodic(
+      const Duration(milliseconds: _progressUpdateIntervalMs),
+      (timer) {
+        final elapsed = DateTime.now().difference(startTime);
+        final progress = elapsed.inMilliseconds / totalDuration.inMilliseconds;
+
+        if (progress >= 1.0) {
+          // Cap at end progress but don't complete yet
+          state = state.copyWith(
+            stage: stage,
+            progress: endProgress,
+          );
+          timer.cancel();
+        } else {
+          final currentProgress = startProgress + (endProgress - startProgress) * progress;
+          state = state.copyWith(
+            stage: stage,
+            progress: currentProgress,
+          );
+        }
+      },
+    );
+  }
+
+  /// Stop progress animation
+  void _stopProgressAnimation() {
+    _progressTimer?.cancel();
+    _progressTimer = null;
+  }
+
+  /// Cancel ongoing recognition
+  void cancelRecognition() {
+    _stopProgressAnimation();
+    state = state.copyWith(
+      isLoading: false,
+      stage: OcrStage.idle,
+      progress: 0.0,
+      clearResult: true,
+    );
+  }
 
   /// Initialize the OCR service (async, non-blocking)
   Future<void> initialize() async {
@@ -120,40 +202,256 @@ class OcrNotifier extends Notifier<OcrState> {
     return _service.waitForInitialization();
   }
 
-  /// Recognize text from an order image path
-  Future<void> recognizeOrder(String imagePath) async {
-    state = state.copyWith(isLoading: true, errorMessage: null);
+  /// Recognize text from an order image path with progress
+  Future<OcrResult?> recognizeOrderWithProgress(String imagePath) async {
+    state = state.copyWith(
+      isLoading: true,
+      errorMessage: null,
+      clearResult: true,
+      stage: OcrStage.idle,
+      progress: 0.0,
+    );
 
     try {
-      final result = await _service.recognizeOrder(imagePath);
-      state = state.copyWith(
-        result: result,
-        isLoading: false,
-      );
+      // Wait for model if loading
+      if (_service.isModelLoading) {
+        await _service.waitForInitialization();
+      }
+
+      final llmService = _service.llmService;
+      if (llmService?.isModelLoading == true) {
+        await llmService!.waitForInitialization();
+      }
+
+      // Check architecture support
+      if (llmService?.archNotSupported == true) {
+        state = state.copyWith(
+          isLoading: false,
+          stage: OcrStage.idle,
+          errorMessage: 'OCR功能仅支持 arm64-v8a 架构设备',
+        );
+        return OcrResult.failure(
+          errorMessage: 'OCR功能仅支持 arm64-v8a 架构设备',
+          type: OcrType.order,
+        );
+      }
+
+      if (!_service.isModelAvailable) {
+        state = state.copyWith(
+          isLoading: false,
+          stage: OcrStage.idle,
+          errorMessage: 'OCR模型未加载',
+        );
+        return OcrResult.failure(
+          errorMessage: 'OCR模型未加载',
+          type: OcrType.order,
+        );
+      }
+
+      // Read image bytes
+      final file = File(imagePath);
+      if (!await file.exists()) {
+        state = state.copyWith(
+          isLoading: false,
+          stage: OcrStage.idle,
+          errorMessage: '图片文件不存在',
+        );
+        return OcrResult.failure(
+          errorMessage: '图片文件不存在',
+          type: OcrType.order,
+        );
+      }
+      final bytes = await file.readAsBytes();
+
+      // Phase 1: OCR recognition
+      _startProgressAnimation(OcrStage.ocrRecognizing, const Duration(milliseconds: _ocrDurationMs));
+
+      final rawResult = await _service.recognizeRaw(bytes);
+
+      _stopProgressAnimation();
+
+      if (!rawResult.success) {
+        state = state.copyWith(
+          isLoading: false,
+          stage: OcrStage.idle,
+          errorMessage: rawResult.errorMessage ?? 'OCR识别失败',
+        );
+        return OcrResult.failure(
+          errorMessage: rawResult.errorMessage ?? 'OCR识别失败',
+          type: OcrType.order,
+        );
+      }
+
+      // Phase 2: LLM parsing
+      if (llmService != null && llmService.isInitialized) {
+        _startProgressAnimation(OcrStage.llmParsing, const Duration(milliseconds: _llmDurationMs));
+
+        final llmResult = await llmService.extractStructuredData(rawResult, OcrType.order);
+
+        _stopProgressAnimation();
+
+        state = state.copyWith(
+          result: llmResult,
+          isLoading: false,
+          stage: OcrStage.idle,
+          progress: 1.0,
+        );
+        return llmResult;
+      } else {
+        // LLM not available
+        state = state.copyWith(
+          isLoading: false,
+          stage: OcrStage.idle,
+          errorMessage: 'LLM未初始化，无法进行结构化提取',
+        );
+        return OcrResult.failure(
+          errorMessage: 'LLM未初始化，无法进行结构化提取',
+          type: OcrType.order,
+        );
+      }
     } catch (e) {
+      _stopProgressAnimation();
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'OCR recognition failed: ${e.toString()}',
+        stage: OcrStage.idle,
+        errorMessage: 'OCR识别失败: ${e.toString()}',
+      );
+      return OcrResult.failure(
+        errorMessage: 'OCR识别失败: ${e.toString()}',
+        type: OcrType.order,
       );
     }
   }
 
-  /// Recognize text from an invoice image path
-  Future<void> recognizeInvoice(String imagePath) async {
-    state = state.copyWith(isLoading: true, errorMessage: null);
+  /// Recognize text from an order image path (without progress)
+  Future<void> recognizeOrder(String imagePath) async {
+    await recognizeOrderWithProgress(imagePath);
+  }
+
+  /// Recognize text from an invoice image path with progress
+  Future<OcrResult?> recognizeInvoiceWithProgress(String imagePath) async {
+    state = state.copyWith(
+      isLoading: true,
+      errorMessage: null,
+      clearResult: true,
+      stage: OcrStage.idle,
+      progress: 0.0,
+    );
 
     try {
-      final result = await _service.recognizeInvoice(imagePath);
-      state = state.copyWith(
-        result: result,
-        isLoading: false,
-      );
+      // Wait for model if loading
+      if (_service.isModelLoading) {
+        await _service.waitForInitialization();
+      }
+
+      final llmService = _service.llmService;
+      if (llmService?.isModelLoading == true) {
+        await llmService!.waitForInitialization();
+      }
+
+      // Check architecture support
+      if (llmService?.archNotSupported == true) {
+        state = state.copyWith(
+          isLoading: false,
+          stage: OcrStage.idle,
+          errorMessage: 'OCR功能仅支持 arm64-v8a 架构设备',
+        );
+        return OcrResult.failure(
+          errorMessage: 'OCR功能仅支持 arm64-v8a 架构设备',
+          type: OcrType.invoice,
+        );
+      }
+
+      if (!_service.isModelAvailable) {
+        state = state.copyWith(
+          isLoading: false,
+          stage: OcrStage.idle,
+          errorMessage: 'OCR模型未加载',
+        );
+        return OcrResult.failure(
+          errorMessage: 'OCR模型未加载',
+          type: OcrType.invoice,
+        );
+      }
+
+      // Read image bytes
+      final file = File(imagePath);
+      if (!await file.exists()) {
+        state = state.copyWith(
+          isLoading: false,
+          stage: OcrStage.idle,
+          errorMessage: '图片文件不存在',
+        );
+        return OcrResult.failure(
+          errorMessage: '图片文件不存在',
+          type: OcrType.invoice,
+        );
+      }
+      final bytes = await file.readAsBytes();
+
+      // Phase 1: OCR recognition
+      _startProgressAnimation(OcrStage.ocrRecognizing, const Duration(milliseconds: _ocrDurationMs));
+
+      final rawResult = await _service.recognizeRaw(bytes);
+
+      _stopProgressAnimation();
+
+      if (!rawResult.success) {
+        state = state.copyWith(
+          isLoading: false,
+          stage: OcrStage.idle,
+          errorMessage: rawResult.errorMessage ?? 'OCR识别失败',
+        );
+        return OcrResult.failure(
+          errorMessage: rawResult.errorMessage ?? 'OCR识别失败',
+          type: OcrType.invoice,
+        );
+      }
+
+      // Phase 2: LLM parsing
+      if (llmService != null && llmService.isInitialized) {
+        _startProgressAnimation(OcrStage.llmParsing, const Duration(milliseconds: _llmDurationMs));
+
+        final llmResult = await llmService.extractStructuredData(rawResult, OcrType.invoice);
+
+        _stopProgressAnimation();
+
+        state = state.copyWith(
+          result: llmResult,
+          isLoading: false,
+          stage: OcrStage.idle,
+          progress: 1.0,
+        );
+        return llmResult;
+      } else {
+        // LLM not available
+        state = state.copyWith(
+          isLoading: false,
+          stage: OcrStage.idle,
+          errorMessage: 'LLM未初始化，无法进行结构化提取',
+        );
+        return OcrResult.failure(
+          errorMessage: 'LLM未初始化，无法进行结构化提取',
+          type: OcrType.invoice,
+        );
+      }
     } catch (e) {
+      _stopProgressAnimation();
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'OCR recognition failed: ${e.toString()}',
+        stage: OcrStage.idle,
+        errorMessage: 'OCR识别失败: ${e.toString()}',
+      );
+      return OcrResult.failure(
+        errorMessage: 'OCR识别失败: ${e.toString()}',
+        type: OcrType.invoice,
       );
     }
+  }
+
+  /// Recognize text from an invoice image path (without progress)
+  Future<void> recognizeInvoice(String imagePath) async {
+    await recognizeInvoiceWithProgress(imagePath);
   }
 
   /// Recognize text from image bytes
@@ -199,7 +497,12 @@ class OcrNotifier extends Notifier<OcrState> {
 
   /// Clear the OCR result
   void clearResult() {
-    state = state.copyWith(result: null, errorMessage: null);
+    state = state.copyWith(
+      result: null,
+      errorMessage: null,
+      stage: OcrStage.idle,
+      progress: 0.0,
+    );
   }
 
   /// Clear error message

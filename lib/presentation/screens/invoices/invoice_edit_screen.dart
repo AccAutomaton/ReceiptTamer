@@ -9,6 +9,7 @@ import 'package:catering_receipt_recorder/core/constants/app_constants.dart';
 import 'package:catering_receipt_recorder/core/utils/date_formatter.dart';
 import 'package:catering_receipt_recorder/data/models/invoice.dart';
 import 'package:catering_receipt_recorder/data/models/order.dart';
+import 'package:catering_receipt_recorder/data/models/ocr_result.dart';
 import 'package:catering_receipt_recorder/data/services/image_service.dart';
 import 'package:catering_receipt_recorder/presentation/providers/invoice_provider.dart';
 import 'package:catering_receipt_recorder/presentation/providers/order_provider.dart';
@@ -120,43 +121,38 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      await ref.read(ocrProvider.notifier).recognizeInvoice(_imagePath!);
-      final ocrResult = ref.read(ocrProvider).result;
-
-      if (ocrResult?.success == true) {
-        setState(() {
-          if (ocrResult?.invoiceNumber != null &&
-              ocrResult!.invoiceNumber!.isNotEmpty) {
-            _invoiceNumberController.text = ocrResult!.invoiceNumber!;
-          }
-          if (ocrResult?.totalAmount != null && ocrResult!.totalAmount! > 0) {
-            _amountController.text = ocrResult!.totalAmount!.toStringAsFixed(2);
-          }
-          if (ocrResult?.invoiceDate != null && ocrResult!.invoiceDate!.isNotEmpty) {
-            _invoiceDate = DateTime.tryParse(ocrResult!.invoiceDate!);
-          }
-        });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('OCR识别成功')),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(ocrResult?.errorMessage ?? 'OCR识别失败')),
-          );
-        }
-      }
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+    // Show progress dialog
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => _InvoiceOcrProgressDialog(
+          imagePath: _imagePath!,
+          onResult: (ocrResult) {
+            if (ocrResult?.success == true) {
+              setState(() {
+                if (ocrResult?.invoiceNumber != null &&
+                    ocrResult!.invoiceNumber!.isNotEmpty) {
+                  _invoiceNumberController.text = ocrResult!.invoiceNumber!;
+                }
+                if (ocrResult?.totalAmount != null && ocrResult!.totalAmount! > 0) {
+                  _amountController.text = ocrResult!.totalAmount!.toStringAsFixed(2);
+                }
+                if (ocrResult?.invoiceDate != null && ocrResult!.invoiceDate!.isNotEmpty) {
+                  _invoiceDate = DateTime.tryParse(ocrResult!.invoiceDate!);
+                }
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('OCR识别成功')),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(ocrResult?.errorMessage ?? 'OCR识别失败')),
+              );
+            }
+          },
+        ),
+      );
     }
   }
 
@@ -470,6 +466,175 @@ class _OrderSelectorDialog extends StatelessWidget {
           child: const Text(AppConstants.btnCancel),
         ),
       ],
+    );
+  }
+}
+
+/// Invoice OCR progress dialog widget
+class _InvoiceOcrProgressDialog extends ConsumerStatefulWidget {
+  final String imagePath;
+  final void Function(OcrResult?) onResult;
+
+  const _InvoiceOcrProgressDialog({
+    required this.imagePath,
+    required this.onResult,
+  });
+
+  @override
+  ConsumerState<_InvoiceOcrProgressDialog> createState() => _InvoiceOcrProgressDialogState();
+}
+
+class _InvoiceOcrProgressDialogState extends ConsumerState<_InvoiceOcrProgressDialog> {
+  bool _started = false;
+  bool _cancelled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Start OCR after the dialog is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startOcr();
+    });
+  }
+
+  Future<void> _startOcr() async {
+    if (_started) return;
+    _started = true;
+
+    final result = await ref.read(ocrProvider.notifier).recognizeInvoiceWithProgress(widget.imagePath);
+
+    if (_cancelled) return;
+
+    if (mounted) {
+      Navigator.of(context).pop();
+      widget.onResult(result);
+    }
+  }
+
+  void _handleCancel() {
+    _cancelled = true;
+    ref.read(ocrProvider.notifier).cancelRecognition();
+    Navigator.of(context).pop();
+    widget.onResult(null);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ocrState = ref.watch(ocrProvider);
+
+    // Get stage text
+    String stageText;
+    switch (ocrState.stage) {
+      case OcrStage.ocrRecognizing:
+        stageText = '正在识别文本...';
+        break;
+      case OcrStage.llmParsing:
+        stageText = '正在解析文本...';
+        break;
+      default:
+        stageText = '准备中...';
+    }
+
+    return AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      content: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Progress indicator
+            SizedBox(
+              width: 72,
+              height: 72,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    width: 72,
+                    height: 72,
+                    child: CircularProgressIndicator(
+                      value: ocrState.progress,
+                      strokeWidth: 6,
+                      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    ),
+                  ),
+                  Text(
+                    '${(ocrState.progress * 100).toInt()}%',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            // Stage text
+            Text(
+              stageText,
+              style: Theme.of(context).textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            // Stage indicator
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildStageChip(
+                  context,
+                  'OCR识别',
+                  ocrState.stage == OcrStage.ocrRecognizing,
+                  ocrState.progress > 0.21 || ocrState.stage == OcrStage.llmParsing,
+                ),
+                Container(
+                  width: 24,
+                  height: 2,
+                  color: ocrState.progress > 0.21
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.outlineVariant,
+                ),
+                _buildStageChip(
+                  context,
+                  'LLM解析',
+                  ocrState.stage == OcrStage.llmParsing,
+                  ocrState.progress >= 1.0,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _handleCancel,
+          child: const Text('取消'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStageChip(BuildContext context, String label, bool isActive, bool isCompleted) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: isActive
+            ? Theme.of(context).colorScheme.primaryContainer
+            : isCompleted
+                ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5)
+                : Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          color: isActive
+              ? Theme.of(context).colorScheme.onPrimaryContainer
+              : Theme.of(context).colorScheme.onSurfaceVariant,
+          fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
     );
   }
 }
