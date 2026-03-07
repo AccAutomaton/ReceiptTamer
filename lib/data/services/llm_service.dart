@@ -15,6 +15,9 @@ class LlmService {
 
   bool _isInitialized = false;
   bool _isLoading = false;
+  bool _isModelLoading = false;
+  bool _archNotSupported = false;
+  String? _loadError;
   int _modelSizeBytes = 0;
 
   // 模型路径 (Flutter assets 中的路径 - MNN模型目录)
@@ -25,6 +28,15 @@ class LlmService {
 
   /// Check if model is currently loading
   bool get isLoading => _isLoading;
+
+  /// Check if model is loading in background
+  bool get isModelLoading => _isModelLoading;
+
+  /// Check if architecture is not supported
+  bool get archNotSupported => _archNotSupported;
+
+  /// Get load error message
+  String? get loadError => _loadError;
 
   /// Get model name
   String get modelName => 'Qwen3.5-0.8B-MNN';
@@ -40,39 +52,93 @@ class LlmService {
     return '${(_modelSizeBytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
-  /// Initialize the LLM service
-  /// Returns true if initialization was successful
+  /// Initialize the LLM service (async, non-blocking)
+  /// Returns true if initialization started successfully
   Future<bool> initialize() async {
     if (_isInitialized) return true;
-    if (_isLoading) return false;
+    if (_isLoading) return true;
 
     _isLoading = true;
+    _isModelLoading = true;
 
     try {
       debugPrint('正在初始化LLM服务...');
 
-      final result = await _channel.invokeMethod<bool>('initialize', {
+      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('initialize', {
         'modelPath': _modelPath,
+      });
+
+      // Parse result
+      _isModelLoading = result?['isLoading'] ?? false;
+      _archNotSupported = result?['archNotSupported'] ?? false;
+      _loadError = result?['error'] as String?;
+      _isInitialized = result?['isInitialized'] ?? false;
+
+      if (_archNotSupported) {
+        debugPrint('LLM不支持当前架构: $_loadError');
+        _isLoading = false;
+        return false;
+      }
+
+      // If still loading in background, we don't wait
+      if (_isModelLoading) {
+        debugPrint('LLM模型正在后台加载...');
+      }
+
+      return true;
+    } on PlatformException catch (e) {
+      debugPrint('LLM初始化失败: ${e.message}');
+      _loadError = e.message;
+      _isLoading = false;
+      _isModelLoading = false;
+      return false;
+    } catch (e) {
+      debugPrint('LLM初始化异常: $e');
+      _loadError = e.toString();
+      _isLoading = false;
+      _isModelLoading = false;
+      return false;
+    }
+  }
+
+  /// Wait for model initialization to complete
+  /// Returns true if model is initialized successfully
+  Future<bool> waitForInitialization({Duration timeout = const Duration(seconds: 120)}) async {
+    if (_isInitialized) return true;
+    if (_archNotSupported) return false;
+
+    try {
+      final result = await _channel.invokeMethod<bool>('waitForLoaded', {
+        'timeoutMs': timeout.inMilliseconds,
       });
 
       _isInitialized = result ?? false;
       _isLoading = false;
-
-      if (_isInitialized) {
-        debugPrint('LLM服务初始化成功 (Qwen3.5-0.8B-MNN)');
-      } else {
-        debugPrint('LLM服务初始化失败');
-      }
+      _isModelLoading = false;
 
       return _isInitialized;
-    } on PlatformException catch (e) {
-      debugPrint('LLM初始化失败: ${e.message}');
-      _isLoading = false;
-      return false;
     } catch (e) {
-      debugPrint('LLM初始化异常: $e');
+      debugPrint('等待LLM初始化失败: $e');
       _isLoading = false;
+      _isModelLoading = false;
       return false;
+    }
+  }
+
+  /// Get current status from native side
+  Future<Map<String, dynamic>> getStatus() async {
+    try {
+      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('getStatus');
+      if (result != null) {
+        _isInitialized = result['isInitialized'] ?? false;
+        _isModelLoading = result['isLoading'] ?? false;
+        _archNotSupported = result['archNotSupported'] ?? false;
+        _loadError = result['error'] as String?;
+      }
+      return Map<String, dynamic>.from(result ?? {});
+    } catch (e) {
+      debugPrint('获取LLM状态失败: $e');
+      return {};
     }
   }
 
@@ -238,6 +304,9 @@ class LlmService {
     return {
       'isInitialized': _isInitialized,
       'isLoading': _isLoading,
+      'isModelLoading': _isModelLoading,
+      'archNotSupported': _archNotSupported,
+      'loadError': _loadError,
       'modelName': modelName,
       'modelSize': modelSizeFormatted,
       'modelSizeBytes': _modelSizeBytes,

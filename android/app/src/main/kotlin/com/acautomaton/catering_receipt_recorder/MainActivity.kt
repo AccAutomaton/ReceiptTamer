@@ -2,6 +2,7 @@ package com.acautomaton.catering_receipt_recorder
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.os.Build
 import androidx.annotation.NonNull
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -10,6 +11,8 @@ import com.benjaminwan.ocrlibrary.OcrEngine
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * MainActivity - Flutter应用主Activity
@@ -33,6 +36,12 @@ class MainActivity : FlutterActivity() {
     private val LLM_CHANNEL = "com.example.catering_receipt_recorder/llm"
     private var ocrEngine: OcrEngine? = null
     private var mnnEngine: MnnEngine? = null
+
+    // LLM 加载状态
+    private var isLlmLoading = false
+    private var llmLoadError: String? = null
+    private var archNotSupported = false
+    private val llmLoadLatch = CountDownLatch(1)
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -98,11 +107,20 @@ class MainActivity : FlutterActivity() {
                 "initialize" -> {
                     val modelPath = call.argument<String>("modelPath")
                     if (modelPath != null) {
-                        val success = initializeLlm(modelPath)
-                        result.success(success)
+                        val status = initializeLlmAsync(modelPath)
+                        result.success(status)
                     } else {
                         result.error("INVALID_ARGUMENT", "modelPath is null", null)
                     }
+                }
+                "waitForLoaded" -> {
+                    val timeoutArg = call.argument<Number>("timeoutMs")
+                    val timeoutMs = timeoutArg?.toLong() ?: 120000L
+                    val success = waitForLlmLoaded(timeoutMs)
+                    result.success(success)
+                }
+                "getStatus" -> {
+                    result.success(getLlmStatus())
                 }
                 "extractOrder" -> {
                     val ocrText = call.argument<String>("ocrText")
@@ -270,65 +288,158 @@ class MainActivity : FlutterActivity() {
     // ==================== LLM 相关方法 ====================
 
     /**
-     * 初始化 LLM 引擎
-     * 将模型从assets复制到内部存储，然后加载
+     * 获取设备架构
      */
-    private fun initializeLlm(modelPath: String): Boolean {
+    private fun getDeviceArch(): String {
+        return Build.SUPPORTED_ABIS.firstOrNull() ?: "unknown"
+    }
+
+    /**
+     * 检查是否为 arm64-v8a 架构
+     */
+    private fun isArm64V8(): Boolean {
+        return getDeviceArch() == "arm64-v8a"
+    }
+
+    /**
+     * 检查模型目录是否有效
+     */
+    private fun isModelDirValid(modelDir: File): Boolean {
+        if (!modelDir.exists() || modelDir.listFiles()?.isEmpty() != false) {
+            return false
+        }
+        // 检查关键文件是否存在且大小合理（权重文件约450MB）
+        val weightFile = File(modelDir, "llm.mnn.weight")
+        return weightFile.exists() && weightFile.length() > 400_000_000
+    }
+
+    /**
+     * 获取 LLM 加载状态
+     */
+    private fun getLlmStatus(): Map<String, Any?> {
+        return mapOf(
+            "isLoading" to isLlmLoading,
+            "isInitialized" to (mnnEngine?.isInitialized() ?: false),
+            "archNotSupported" to archNotSupported,
+            "error" to llmLoadError,
+            "deviceArch" to getDeviceArch()
+        )
+    }
+
+    /**
+     * 等待 LLM 加载完成
+     */
+    private fun waitForLlmLoaded(timeoutMs: Long): Boolean {
+        if (mnnEngine?.isInitialized() == true) {
+            return true
+        }
+        if (archNotSupported) {
+            return false
+        }
         return try {
-            // 获取MnnEngine单例
-            if (mnnEngine == null) {
-                mnnEngine = MnnEngine.getInstance()
-            }
-
-            // 构建目标路径（应用内部存储目录）
-            // MNN模型是一个目录，包含多个文件
-            val destDir = filesDir.absolutePath
-            val modelDirName = modelPath.substringAfterLast("/").removeSuffix(".mnn")
-            val destModelDir = "$destDir/$modelDirName"
-            val modelDir = File(destModelDir)
-
-            // 如果模型目录不存在，从assets复制
-            if (!modelDir.exists() || modelDir.listFiles()?.isEmpty() != false) {
-                android.util.Log.i("MainActivity", "模型文件不存在，正在从assets复制...")
-                // Flutter assets 在 APK 中的路径格式为: flutter_assets/<asset_path>
-                val assetBasePath = "flutter_assets/$modelPath"
-                android.util.Log.d("MainActivity", "Asset base path: $assetBasePath")
-                if (!copyModelDirFromAssets(assetBasePath, destModelDir)) {
-                    android.util.Log.e("MainActivity", "模型复制失败")
-                    return false
-                }
-            } else {
-                android.util.Log.i("MainActivity", "模型文件已存在: $destModelDir")
-            }
-
-            // 在后台线程同步加载模型，避免阻塞主线程
-            var loadSuccess = false
-            val latch = java.util.concurrent.CountDownLatch(1)
-
-            Thread {
-                try {
-                    android.util.Log.i("MainActivity", "开始在后台线程加载MNN模型...")
-                    loadSuccess = mnnEngine?.loadModel(destModelDir, 4) ?: false
-                    android.util.Log.i("MainActivity", if (loadSuccess) "MNN模型加载成功" else "MNN模型加载失败")
-                } catch (e: Exception) {
-                    android.util.Log.e("MainActivity", "MNN模型加载异常: ${e.message}")
-                }
-                latch.countDown()
-            }.start()
-
-            // 等待加载完成（最多等待120秒，模型加载可能需要较长时间）
-            latch.await(120, java.util.concurrent.TimeUnit.SECONDS)
-
-            if (loadSuccess) {
-                android.util.Log.i("MainActivity", "LLM引擎初始化成功 (MNN)")
-            } else {
-                android.util.Log.e("MainActivity", "LLM引擎初始化失败")
-            }
-            loadSuccess
-        } catch (e: Exception) {
-            android.util.Log.e("MainActivity", "LLM初始化失败: ${e.message}")
+            llmLoadLatch.await(timeoutMs, TimeUnit.MILLISECONDS)
+            mnnEngine?.isInitialized() ?: false
+        } catch (e: InterruptedException) {
+            android.util.Log.e("MainActivity", "等待LLM加载被中断: ${e.message}")
             false
         }
+    }
+
+    /**
+     * 异步初始化 LLM 引擎
+     * 立即返回，不阻塞主线程
+     * 返回状态Map，包含isLoading、archNotSupported、error等信息
+     */
+    private fun initializeLlmAsync(modelPath: String): Map<String, Any?> {
+        // 架构检查
+        if (!isArm64V8()) {
+            val arch = getDeviceArch()
+            archNotSupported = true
+            llmLoadError = "仅支持 arm64-v8a 架构，当前架构: $arch"
+            android.util.Log.w("MainActivity", llmLoadError!!)
+            return mapOf(
+                "isLoading" to false,
+                "archNotSupported" to true,
+                "error" to llmLoadError
+            )
+        }
+
+        // 已加载检查
+        if (mnnEngine?.isInitialized() == true) {
+            android.util.Log.i("MainActivity", "LLM已初始化，跳过重复加载")
+            return mapOf(
+                "isLoading" to false,
+                "isInitialized" to true,
+                "archNotSupported" to false
+            )
+        }
+
+        // 正在加载检查
+        if (isLlmLoading) {
+            android.util.Log.i("MainActivity", "LLM正在加载中...")
+            return mapOf(
+                "isLoading" to true,
+                "archNotSupported" to false
+            )
+        }
+
+        // 开始异步加载
+        isLlmLoading = true
+        llmLoadError = null
+        archNotSupported = false
+
+        Thread {
+            try {
+                // 获取MnnEngine单例
+                if (mnnEngine == null) {
+                    mnnEngine = MnnEngine.getInstance()
+                }
+
+                // 构建目标路径（应用内部存储目录）
+                val destDir = filesDir.absolutePath
+                val modelDirName = modelPath.substringAfterLast("/").removeSuffix(".mnn")
+                val destModelDir = "$destDir/$modelDirName"
+                val modelDir = File(destModelDir)
+
+                // 检查模型目录是否已存在且有效
+                if (isModelDirValid(modelDir)) {
+                    android.util.Log.i("MainActivity", "模型目录已存在且有效，跳过拷贝: $destModelDir")
+                } else if (!modelDir.exists() || modelDir.listFiles()?.isEmpty() != false) {
+                    android.util.Log.i("MainActivity", "模型文件不存在或不完整，正在从assets复制...")
+                    val assetBasePath = "flutter_assets/$modelPath"
+                    android.util.Log.d("MainActivity", "Asset base path: $assetBasePath")
+                    if (!copyModelDirFromAssets(assetBasePath, destModelDir)) {
+                        llmLoadError = "模型复制失败"
+                        android.util.Log.e("MainActivity", llmLoadError!!)
+                        return@Thread
+                    }
+                } else {
+                    android.util.Log.i("MainActivity", "模型文件已存在: $destModelDir")
+                }
+
+                // 加载模型
+                android.util.Log.i("MainActivity", "开始在后台线程加载MNN模型...")
+                val loadSuccess = mnnEngine?.loadModel(destModelDir, 4) ?: false
+
+                if (loadSuccess) {
+                    android.util.Log.i("MainActivity", "LLM引擎初始化成功 (MNN)")
+                } else {
+                    llmLoadError = "MNN模型加载失败"
+                    android.util.Log.e("MainActivity", llmLoadError!!)
+                }
+            } catch (e: Exception) {
+                llmLoadError = "LLM初始化异常: ${e.message}"
+                android.util.Log.e("MainActivity", llmLoadError!!)
+            } finally {
+                isLlmLoading = false
+                llmLoadLatch.countDown()
+            }
+        }.start()
+
+        return mapOf(
+            "isLoading" to true,
+            "archNotSupported" to false
+        )
     }
 
     /**

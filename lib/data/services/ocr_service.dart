@@ -40,9 +40,8 @@ class OcrService {
     return value;
   }
 
-  /// Initialize the OCR service
-  /// Returns true if initialization was successful
-  /// If already initializing, waits for the existing initialization to complete
+  /// Initialize the OCR service (async, non-blocking)
+  /// Starts background initialization and returns immediately
   Future<bool> initialize() async {
     if (_isInitialized && _isModelAvailable) return true;
 
@@ -56,10 +55,10 @@ class OcrService {
     _initCompleter = Completer<bool>();
 
     try {
-      // Initialize LLM service first
+      // Initialize LLM service first (async, non-blocking)
       _llmService = LlmService();
-      final llmSuccess = await _llmService!.initialize();
-      debugPrint('LLM初始化: ${llmSuccess ? "成功" : "失败"}');
+      await _llmService!.initialize();
+      debugPrint('LLM初始化已启动 (后台加载中)');
 
       // Initialize native OCR engine
       final result = await _channel.invokeMethod<bool>('initialize');
@@ -107,7 +106,10 @@ class OcrService {
   bool get isLlmAvailable => _llmService?.isInitialized ?? false;
 
   /// Check if model is currently loading
-  bool get isModelLoading => _isLoading;
+  bool get isModelLoading => _isLoading || (_llmService?.isModelLoading ?? false);
+
+  /// Check if architecture is not supported
+  bool get archNotSupported => _llmService?.archNotSupported ?? false;
 
   /// Get LLM service instance
   LlmService? get llmService => _llmService;
@@ -118,6 +120,20 @@ class OcrService {
     if (_isLoading) {
       debugPrint('等待OCR模型加载完成...');
       await waitForInitialization();
+    }
+
+    // Wait for LLM if it's loading
+    if (_llmService?.isModelLoading == true) {
+      debugPrint('等待LLM模型加载完成...');
+      await _llmService!.waitForInitialization();
+    }
+
+    // Check architecture support
+    if (_llmService?.archNotSupported == true) {
+      return OcrResult.failure(
+        errorMessage: 'OCR功能仅支持 arm64-v8a 架构设备',
+        type: OcrType.order,
+      );
     }
 
     if (!_isModelAvailable) {
@@ -154,6 +170,20 @@ class OcrService {
       await waitForInitialization();
     }
 
+    // Wait for LLM if it's loading
+    if (_llmService?.isModelLoading == true) {
+      debugPrint('等待LLM模型加载完成...');
+      await _llmService!.waitForInitialization();
+    }
+
+    // Check architecture support
+    if (_llmService?.archNotSupported == true) {
+      return OcrResult.failure(
+        errorMessage: 'OCR功能仅支持 arm64-v8a 架构设备',
+        type: OcrType.invoice,
+      );
+    }
+
     if (!_isModelAvailable) {
       return OcrResult.failure(
         errorMessage: 'OCR模型未加载',
@@ -186,6 +216,20 @@ class OcrService {
     if (_isLoading) {
       debugPrint('等待OCR模型加载完成...');
       await waitForInitialization();
+    }
+
+    // Wait for LLM if it's loading
+    if (_llmService?.isModelLoading == true) {
+      debugPrint('等待LLM模型加载完成...');
+      await _llmService!.waitForInitialization();
+    }
+
+    // Check architecture support
+    if (_llmService?.archNotSupported == true) {
+      return OcrResult.failure(
+        errorMessage: 'OCR功能仅支持 arm64-v8a 架构设备',
+        type: type,
+      );
     }
 
     if (!_isModelAvailable) {
@@ -323,10 +367,11 @@ class OcrService {
     return {
       'isInitialized': _isInitialized,
       'isModelAvailable': _isModelAvailable,
-      'isModelLoading': _isLoading,
+      'isModelLoading': isModelLoading,
       'supportedFormats': ['jpg', 'jpeg', 'png'],
       'engine': 'Paddle-Lite (RapidOcrAndroidOnnx)',
       'llmAvailable': isLlmAvailable,
+      'archNotSupported': archNotSupported,
       'llmInfo': _llmService?.getModelInfo(),
     };
   }

@@ -15,6 +15,7 @@ class OcrState {
   final bool isInitialized;
   final bool isModelAvailable;
   final bool isModelLoading;
+  final bool archNotSupported;
   final String? errorMessage;
   final LlmService? llmService;
 
@@ -24,6 +25,7 @@ class OcrState {
     this.isInitialized = false,
     this.isModelAvailable = false,
     this.isModelLoading = false,
+    this.archNotSupported = false,
     this.errorMessage,
     this.llmService,
   });
@@ -34,6 +36,7 @@ class OcrState {
     bool? isInitialized,
     bool? isModelAvailable,
     bool? isModelLoading,
+    bool? archNotSupported,
     String? errorMessage,
     LlmService? llmService,
   }) {
@@ -43,6 +46,7 @@ class OcrState {
       isInitialized: isInitialized ?? this.isInitialized,
       isModelAvailable: isModelAvailable ?? this.isModelAvailable,
       isModelLoading: isModelLoading ?? this.isModelLoading,
+      archNotSupported: archNotSupported ?? this.archNotSupported,
       errorMessage: errorMessage,
       llmService: llmService ?? this.llmService,
     );
@@ -53,26 +57,35 @@ class OcrState {
 class OcrNotifier extends Notifier<OcrState> {
   @override
   OcrState build() {
-    // Initialize OCR when the provider is first created
+    // Initialize OCR in background without blocking
     Future.microtask(() => initialize());
     return const OcrState(isModelLoading: true);
   }
 
   OcrService get _service => ref.watch(ocrServiceProvider);
 
-  /// Initialize the OCR service
+  /// Initialize the OCR service (async, non-blocking)
   Future<void> initialize() async {
     state = state.copyWith(isModelLoading: true);
 
     try {
-      final success = await _service.initialize();
+      // Start initialization (non-blocking)
+      await _service.initialize();
 
+      // Update state with initial status
       state = state.copyWith(
-        isInitialized: success,
+        isInitialized: _service.isModelAvailable,
         isModelAvailable: _service.isModelAvailable,
-        isModelLoading: false,
+        isModelLoading: _service.isModelLoading,
+        archNotSupported: _service.archNotSupported,
         llmService: _service.llmService,
       );
+
+      // If LLM is still loading in background, wait for it
+      if (_service.isModelLoading) {
+        // Start a background watcher for model loading
+        _watchModelLoading();
+      }
     } catch (e) {
       state = state.copyWith(
         isInitialized: false,
@@ -81,6 +94,24 @@ class OcrNotifier extends Notifier<OcrState> {
         errorMessage: 'Failed to initialize OCR: ${e.toString()}',
       );
     }
+  }
+
+  /// Watch model loading status and update state when done
+  void _watchModelLoading() {
+    Future(() async {
+      final llmService = _service.llmService;
+      if (llmService != null && llmService.isModelLoading) {
+        // Wait for LLM to finish loading
+        await llmService.waitForInitialization();
+
+        // Update state when loading is complete
+        state = state.copyWith(
+          isModelLoading: false,
+          isModelAvailable: _service.isModelAvailable && llmService.isInitialized,
+          archNotSupported: llmService.archNotSupported,
+        );
+      }
+    });
   }
 
   /// Wait for model initialization to complete

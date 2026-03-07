@@ -51,6 +51,7 @@ class MnnEngine private constructor() {
 
     /**
      * 异步加载模型
+     * 如果模型已加载，直接返回成功
      */
     fun loadModelAsync(
         modelDir: String,
@@ -59,6 +60,13 @@ class MnnEngine private constructor() {
     ): Future<*> {
         return executor.submit {
             try {
+                // 检查是否已初始化
+                if (isInitialized()) {
+                    Log.i(TAG, "模型已加载，跳过重复加载")
+                    mainHandler.post { callback(true, null) }
+                    return@submit
+                }
+
                 Log.i(TAG, "开始加载MNN模型: $modelDir")
                 val success = loadModel(modelDir, nThreads)
                 mainHandler.post {
