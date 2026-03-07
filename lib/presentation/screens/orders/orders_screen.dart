@@ -1,9 +1,7 @@
 import 'package:catering_receipt_recorder/core/constants/app_constants.dart';
 import 'package:catering_receipt_recorder/presentation/providers/order_provider.dart';
-import 'package:catering_receipt_recorder/presentation/widgets/common/app_button.dart';
 import 'package:catering_receipt_recorder/presentation/widgets/common/empty_state.dart';
 import 'package:catering_receipt_recorder/presentation/widgets/order/order_card.dart';
-import 'package:catering_receipt_recorder/presentation/screens/home/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -26,10 +24,6 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
     });
   }
 
-  void _handleRefresh() {
-    ref.read(orderProvider.notifier).loadOrders(refresh: true);
-  }
-
   void _handleAddOrder() {
     context.push('/orders/new');
   }
@@ -40,9 +34,6 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     final orderState = ref.watch(orderProvider);
 
     return Scaffold(
@@ -89,11 +80,6 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                       );
                     },
                   ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _handleAddOrder,
-        icon: const Icon(Icons.add),
-        label: const Text('添加订单'),
       ),
     );
   }

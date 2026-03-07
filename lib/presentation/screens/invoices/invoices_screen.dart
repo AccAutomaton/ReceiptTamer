@@ -3,11 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:catering_receipt_recorder/core/constants/app_constants.dart';
-import 'package:catering_receipt_recorder/data/models/invoice.dart';
 import 'package:catering_receipt_recorder/data/models/order.dart';
 import 'package:catering_receipt_recorder/presentation/providers/order_provider.dart';
 import 'package:catering_receipt_recorder/presentation/providers/invoice_provider.dart';
-import 'package:catering_receipt_recorder/presentation/widgets/common/app_button.dart';
 import 'package:catering_receipt_recorder/presentation/widgets/common/empty_state.dart';
 import 'package:catering_receipt_recorder/presentation/widgets/invoice/invoice_card.dart';
 
@@ -46,13 +44,6 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
         );
   }
 
-  void _handleRefresh() {
-    ref.read(invoiceProvider.notifier).loadInvoices(
-          filterOrderId: widget.filterOrderId,
-          refresh: true,
-        );
-  }
-
   void _handleAddInvoice() {
     if (widget.filterOrderId != null) {
       context.push('/invoices/new?orderId=${widget.filterOrderId}');
@@ -67,9 +58,6 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     final invoiceState = ref.watch(invoiceProvider);
 
     return Scaffold(
@@ -140,17 +128,12 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
                     },
                   ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _handleAddInvoice,
-        icon: const Icon(Icons.add),
-        label: const Text('添加发票'),
-      ),
     );
   }
 
   Future<List<dynamic>> _loadOrderNames() async {
     final invoices = ref.read(invoiceProvider).invoices;
-    final orderIds = invoices.map((i) => i.orderId).where((id) => id != null && id! > 0).toSet();
+    final orderIds = invoices.map((i) => i.orderId).where((id) => id != null && id > 0).toSet();
 
     final orderMap = <int, String>{};
     for (final orderId in orderIds) {

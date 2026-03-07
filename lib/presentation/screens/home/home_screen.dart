@@ -5,7 +5,6 @@ import 'package:catering_receipt_recorder/presentation/providers/invoice_provide
 import 'package:catering_receipt_recorder/presentation/providers/ocr_provider.dart';
 import 'package:catering_receipt_recorder/presentation/widgets/common/app_button.dart';
 import 'package:catering_receipt_recorder/presentation/widgets/common/app_card.dart';
-import 'package:catering_receipt_recorder/presentation/widgets/order/order_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -177,46 +176,22 @@ class HomeScreen extends ConsumerWidget {
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 3,
+      crossAxisCount: 2,
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
-      childAspectRatio: 1.2,
+      childAspectRatio: 2.5,
       children: [
-        _QuickAccessButton(
-          icon: Icons.add_circle_outline,
-          label: '添加订单',
-          color: colorScheme.primary,
-          onTap: () => context.push('/orders/new'),
-        ),
-        _QuickAccessButton(
-          icon: Icons.inventory_2_outlined,
-          label: '订单管理',
-          color: colorScheme.secondary,
-          onTap: () => context.push('/orders'),
-        ),
-        _QuickAccessButton(
-          icon: Icons.receipt,
-          label: '发票管理',
-          color: colorScheme.tertiary,
-          onTap: () => context.push('/invoices'),
-        ),
         _QuickAccessButton(
           icon: Icons.file_download_outlined,
           label: '数据导出',
-          color: colorScheme.outline,
+          color: colorScheme.primary,
           onTap: () => context.push('/export'),
         ),
         _QuickAccessButton(
           icon: Icons.search,
-          label: '搜索',
-          color: colorScheme.primaryContainer,
+          label: '搜索订单',
+          color: colorScheme.secondary,
           onTap: () => context.push('/orders'),
-        ),
-        _QuickAccessButton(
-          icon: Icons.settings,
-          label: '设置',
-          color: colorScheme.surfaceContainerHighest,
-          onTap: () => context.push('/settings'),
         ),
       ],
     );

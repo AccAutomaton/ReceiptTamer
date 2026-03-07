@@ -11,6 +11,7 @@ import '../presentation/screens/invoices/invoice_detail_screen.dart';
 import '../presentation/screens/invoices/invoice_edit_screen.dart';
 import '../presentation/screens/export/export_screen.dart';
 import '../presentation/screens/settings/settings_screen.dart';
+import '../presentation/widgets/main_shell.dart';
 
 /// Provider for the app router
 final routerProvider = Provider<GoRouter>((ref) {
@@ -18,16 +19,40 @@ final routerProvider = Provider<GoRouter>((ref) {
     debugLogDiagnostics: true,
     initialLocation: '/',
     routes: [
-      GoRoute(
-        path: '/',
-        name: 'home',
-        builder: (context, state) => const HomeScreen(),
+      // Main shell with bottom navigation
+      ShellRoute(
+        builder: (context, state, child) => MainShell(child: child),
+        routes: [
+          GoRoute(
+            path: '/',
+            name: 'home',
+            builder: (context, state) => const HomeScreen(),
+          ),
+          GoRoute(
+            path: '/orders',
+            name: 'orders',
+            builder: (context, state) => const OrdersScreen(),
+          ),
+          GoRoute(
+            path: '/invoices',
+            name: 'invoices',
+            builder: (context, state) {
+              final orderId = state.uri.queryParameters['orderId'] != null
+                  ? int.tryParse(state.uri.queryParameters['orderId']!)
+                  : null;
+              return InvoicesScreen(
+                filterOrderId: orderId,
+              );
+            },
+          ),
+          GoRoute(
+            path: '/settings',
+            name: 'settings',
+            builder: (context, state) => const SettingsScreen(),
+          ),
+        ],
       ),
-      GoRoute(
-        path: '/orders',
-        name: 'orders',
-        builder: (context, state) => const OrdersScreen(),
-      ),
+      // Routes outside the shell (no bottom nav)
       GoRoute(
         path: '/orders/new',
         name: 'order_new',
@@ -53,18 +78,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             return const _ErrorScreen(message: 'Invalid order ID');
           }
           return OrderEditScreen(orderId: id);
-        },
-      ),
-      GoRoute(
-        path: '/invoices',
-        name: 'invoices',
-        builder: (context, state) {
-          final orderId = state.uri.queryParameters['orderId'] != null
-              ? int.tryParse(state.uri.queryParameters['orderId']!)
-              : null;
-          return InvoicesScreen(
-            filterOrderId: orderId,
-          );
         },
       ),
       GoRoute(
@@ -105,11 +118,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/export',
         name: 'export',
         builder: (context, state) => const ExportScreen(),
-      ),
-      GoRoute(
-        path: '/settings',
-        name: 'settings',
-        builder: (context, state) => const SettingsScreen(),
       ),
     ],
     errorBuilder: (context, state) => _ErrorScreen(
