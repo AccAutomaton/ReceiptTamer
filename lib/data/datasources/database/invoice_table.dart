@@ -5,6 +5,7 @@ import '../../../core/constants/app_constants.dart';
 
 /// Invoice table data access object
 /// Handles all CRUD operations for the invoices table
+/// Note: Order relationships are managed through invoice_order_relations table
 class InvoiceTable {
   final Database database;
 
@@ -43,15 +44,6 @@ class InvoiceTable {
     return await database.delete(AppConstants.invoicesTable);
   }
 
-  /// Delete invoices by order ID
-  Future<int> deleteByOrderId(int orderId) async {
-    return await database.delete(
-      AppConstants.invoicesTable,
-      where: '${AppConstants.colOrderId} = ?',
-      whereArgs: [orderId],
-    );
-  }
-
   /// Get an invoice by ID
   Future<Invoice?> getById(int id) async {
     final List<Map<String, dynamic>> maps = await database.query(
@@ -77,13 +69,17 @@ class InvoiceTable {
     return maps.map((map) => Invoice.fromJson(map)).toList();
   }
 
-  /// Get invoices by order ID
+  /// Get invoices by order ID (through relation table)
   Future<List<Invoice>> getByOrderId(int orderId) async {
-    final List<Map<String, dynamic>> maps = await database.query(
-      AppConstants.invoicesTable,
-      where: '${AppConstants.colOrderId} = ?',
-      whereArgs: [orderId],
-      orderBy: '${AppConstants.colCreatedAt} DESC',
+    final List<Map<String, dynamic>> maps = await database.rawQuery(
+      '''
+      SELECT i.* FROM ${AppConstants.invoicesTable} i
+      INNER JOIN ${AppConstants.invoiceOrderRelationsTable} r
+      ON i.${AppConstants.colId} = r.${AppConstants.colInvoiceId}
+      WHERE r.${AppConstants.colOrderId} = ?
+      ORDER BY i.${AppConstants.colCreatedAt} DESC
+      ''',
+      [orderId],
     );
 
     return maps.map((map) => Invoice.fromJson(map)).toList();
@@ -159,13 +155,16 @@ class InvoiceTable {
     return getByDateRange(startOfMonth, endOfMonth);
   }
 
-  /// Get invoices without linked orders
+  /// Get invoices without linked orders (no relations in the relation table)
   Future<List<Invoice>> getWithoutOrders() async {
-    final List<Map<String, dynamic>> maps = await database.query(
-      AppConstants.invoicesTable,
-      where: '${AppConstants.colOrderId} IS NULL OR ${AppConstants.colOrderId} = ?',
-      whereArgs: [0],
-      orderBy: '${AppConstants.colCreatedAt} DESC',
+    final List<Map<String, dynamic>> maps = await database.rawQuery(
+      '''
+      SELECT * FROM ${AppConstants.invoicesTable}
+      WHERE ${AppConstants.colId} NOT IN (
+        SELECT DISTINCT ${AppConstants.colInvoiceId} FROM ${AppConstants.invoiceOrderRelationsTable}
+      )
+      ORDER BY ${AppConstants.colCreatedAt} DESC
+      ''',
     );
 
     return maps.map((map) => Invoice.fromJson(map)).toList();
@@ -212,11 +211,13 @@ class InvoiceTable {
     return 0;
   }
 
-  /// Get invoice count by order ID
+  /// Get invoice count by order ID (through relation table)
   Future<int> getCountByOrderId(int orderId) async {
     final result = await database.rawQuery(
-      'SELECT COUNT(*) as count FROM ${AppConstants.invoicesTable} '
-      'WHERE ${AppConstants.colOrderId} = ?',
+      '''
+      SELECT COUNT(*) as count FROM ${AppConstants.invoiceOrderRelationsTable}
+      WHERE ${AppConstants.colOrderId} = ?
+      ''',
       [orderId],
     );
 
@@ -227,6 +228,7 @@ class InvoiceTable {
   }
 
   /// Search invoices by multiple criteria
+  /// Note: orderId filter uses the invoice_order_relations table
   Future<List<Invoice>> search({
     String? invoiceNumber,
     int? orderId,
@@ -242,11 +244,6 @@ class InvoiceTable {
     if (invoiceNumber != null && invoiceNumber.isNotEmpty) {
       conditions.add('${AppConstants.colInvoiceNumber} LIKE ?');
       args.add('%$invoiceNumber%');
-    }
-
-    if (orderId != null) {
-      conditions.add('${AppConstants.colOrderId} = ?');
-      args.add(orderId);
     }
 
     if (minAmount != null) {
@@ -269,34 +266,42 @@ class InvoiceTable {
       args.add(_formatDate(endDate));
     }
 
-    if (hasLinkedOrder == true) {
-      conditions.add('${AppConstants.colOrderId} IS NOT NULL AND ${AppConstants.colOrderId} > 0');
-    } else if (hasLinkedOrder == false) {
-      conditions.add('${AppConstants.colOrderId} IS NULL OR ${AppConstants.colOrderId} = 0');
+    String whereClause = conditions.isNotEmpty ? 'WHERE ${conditions.join(' AND ')}' : '';
+
+    // Handle orderId filter through relation table
+    if (orderId != null) {
+      whereClause += conditions.isNotEmpty ? ' AND ' : 'WHERE ';
+      whereClause += '${AppConstants.colId} IN (SELECT ${AppConstants.colInvoiceId} FROM ${AppConstants.invoiceOrderRelationsTable} WHERE ${AppConstants.colOrderId} = ?)';
+      args.add(orderId);
     }
 
-    final whereClause = conditions.isNotEmpty
-        ? conditions.join(' AND ')
-        : '1=1';
+    // Handle hasLinkedOrder filter through relation table
+    if (hasLinkedOrder == true) {
+      whereClause += conditions.isNotEmpty ? ' AND ' : 'WHERE ';
+      whereClause += '${AppConstants.colId} IN (SELECT DISTINCT ${AppConstants.colInvoiceId} FROM ${AppConstants.invoiceOrderRelationsTable})';
+    } else if (hasLinkedOrder == false) {
+      whereClause += conditions.isNotEmpty ? ' AND ' : 'WHERE ';
+      whereClause += '${AppConstants.colId} NOT IN (SELECT DISTINCT ${AppConstants.colInvoiceId} FROM ${AppConstants.invoiceOrderRelationsTable})';
+    }
 
-    final List<Map<String, dynamic>> maps = await database.query(
-      AppConstants.invoicesTable,
-      where: whereClause,
-      whereArgs: args.isEmpty ? null : args,
-      orderBy: '${AppConstants.colCreatedAt} DESC',
+    final List<Map<String, dynamic>> maps = await database.rawQuery(
+      'SELECT * FROM ${AppConstants.invoicesTable} $whereClause ORDER BY ${AppConstants.colCreatedAt} DESC',
+      args,
     );
 
     return maps.map((map) => Invoice.fromJson(map)).toList();
   }
 
-  /// Get invoices with their related order information (JOIN query)
+  /// Get invoices with their related order information (JOIN query through relation table)
+  /// Returns one row per invoice-order pair, so an invoice with multiple orders will appear multiple times
   Future<List<Map<String, dynamic>>> getWithOrderInfo() async {
     final List<Map<String, dynamic>> maps = await database.rawQuery(
       '''
       SELECT i.*, o.${AppConstants.colShopName}, o.${AppConstants.colAmount} as order_amount,
              o.${AppConstants.colOrderDate}, o.${AppConstants.colMealTime}, o.${AppConstants.colOrderNumber}
       FROM ${AppConstants.invoicesTable} i
-      LEFT JOIN ${AppConstants.ordersTable} o ON i.${AppConstants.colOrderId} = o.${AppConstants.colId}
+      LEFT JOIN ${AppConstants.invoiceOrderRelationsTable} r ON i.${AppConstants.colId} = r.${AppConstants.colInvoiceId}
+      LEFT JOIN ${AppConstants.ordersTable} o ON r.${AppConstants.colOrderId} = o.${AppConstants.colId}
       ORDER BY i.${AppConstants.colCreatedAt} DESC
       ''',
     );

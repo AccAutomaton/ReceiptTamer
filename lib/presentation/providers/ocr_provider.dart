@@ -7,8 +7,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/ocr_result.dart';
+import '../../data/models/ocr_text_block.dart';
 import '../../data/services/llm_service.dart';
 import '../../data/services/ocr_service.dart';
+import '../../data/services/pdf_service.dart';
 
 /// OCR processing stage
 enum OcrStage {
@@ -461,6 +463,156 @@ class OcrNotifier extends Notifier<OcrState> {
   /// Recognize text from an invoice image path (without progress)
   Future<void> recognizeInvoice(String imagePath) async {
     await recognizeInvoiceWithProgress(imagePath);
+  }
+
+  /// Recognize invoice from PDF file with progress
+  /// For text-based PDF: extract text and call LLM directly
+  /// For image-based PDF: not supported (syncfusion_flutter_pdf doesn't support image extraction)
+  Future<OcrResult?> recognizeInvoiceFromPdf(String pdfPath) async {
+    state = state.copyWith(
+      isLoading: true,
+      errorMessage: null,
+      clearResult: true,
+      stage: OcrStage.idle,
+      progress: 0.0,
+    );
+
+    try {
+      // Wait for model if loading
+      if (_service.isModelLoading) {
+        await _service.waitForInitialization();
+      }
+
+      final llmService = _service.llmService;
+      if (llmService?.isModelLoading == true) {
+        await llmService!.waitForInitialization();
+      }
+
+      // Check architecture support
+      if (llmService?.archNotSupported == true) {
+        state = state.copyWith(
+          isLoading: false,
+          stage: OcrStage.idle,
+          errorMessage: 'OCR功能仅支持 arm64-v8a 架构设备',
+        );
+        return OcrResult.failure(
+          errorMessage: 'OCR功能仅支持 arm64-v8a 架构设备',
+          type: OcrType.invoice,
+        );
+      }
+
+      if (llmService == null || !llmService.isInitialized) {
+        state = state.copyWith(
+          isLoading: false,
+          stage: OcrStage.idle,
+          errorMessage: 'LLM未初始化',
+        );
+        return OcrResult.failure(
+          errorMessage: 'LLM未初始化',
+          type: OcrType.invoice,
+        );
+      }
+
+      // Check if file exists
+      final file = File(pdfPath);
+      if (!await file.exists()) {
+        state = state.copyWith(
+          isLoading: false,
+          stage: OcrStage.idle,
+          errorMessage: 'PDF文件不存在',
+        );
+        return OcrResult.failure(
+          errorMessage: 'PDF文件不存在',
+          type: OcrType.invoice,
+        );
+      }
+
+      // Phase 1: Extract text from PDF (skip OCR for text-based PDF)
+      _startProgressAnimation(OcrStage.ocrRecognizing, const Duration(milliseconds: _ocrDurationMs));
+
+      final pdfService = PdfService();
+      final isTextBased = await pdfService.isTextBasedPdf(pdfPath, minTextLength: 20);
+
+      OcrRawResult rawResult;
+
+      if (isTextBased) {
+        // Text-based PDF: extract text directly
+        debugPrint('Detected text-based PDF, extracting text directly');
+        final text = await pdfService.extractTextFromPdf(pdfPath);
+        // Create a simple text block from the extracted text
+        // Use dummy bounding box and confidence since we don't have position info
+        rawResult = OcrRawResult(
+          success: true,
+          textBlocks: [
+            OcrTextBlock(
+              text: text,
+              boundingBox: [
+                OcrPoint(x: 0, y: 0),
+                OcrPoint(x: 100, y: 0),
+                OcrPoint(x: 100, y: 100),
+                OcrPoint(x: 0, y: 100),
+              ],
+              confidence: 1.0,
+            ),
+          ],
+        );
+      } else {
+        // Image-based PDF: not supported
+        _stopProgressAnimation();
+        state = state.copyWith(
+          isLoading: false,
+          stage: OcrStage.idle,
+          errorMessage: '图片型PDF暂不支持OCR识别，请上传图片或文本型PDF',
+        );
+        return OcrResult.failure(
+          errorMessage: '图片型PDF暂不支持OCR识别，请上传图片或文本型PDF',
+          type: OcrType.invoice,
+        );
+      }
+
+      _stopProgressAnimation();
+
+      if (!rawResult.success || rawResult.fullText.isEmpty) {
+        state = state.copyWith(
+          isLoading: false,
+          stage: OcrStage.idle,
+          errorMessage: 'PDF文本提取失败',
+        );
+        return OcrResult.failure(
+          errorMessage: 'PDF文本提取失败',
+          type: OcrType.invoice,
+        );
+      }
+
+      debugPrint('PDF extracted text: ${rawResult.fullText.substring(0, rawResult.fullText.length > 200 ? 200 : rawResult.fullText.length)}');
+
+      // Phase 2: LLM parsing
+      _startProgressAnimation(OcrStage.llmParsing, const Duration(milliseconds: _llmDurationMs));
+
+      final llmResult = await llmService.extractStructuredData(rawResult, OcrType.invoice);
+
+      _stopProgressAnimation();
+
+      state = state.copyWith(
+        result: llmResult,
+        isLoading: false,
+        stage: OcrStage.idle,
+        progress: 1.0,
+      );
+      return llmResult;
+    } catch (e) {
+      _stopProgressAnimation();
+      debugPrint('PDF recognition error: $e');
+      state = state.copyWith(
+        isLoading: false,
+        stage: OcrStage.idle,
+        errorMessage: 'PDF识别失败: ${e.toString()}',
+      );
+      return OcrResult.failure(
+        errorMessage: 'PDF识别失败: ${e.toString()}',
+        type: OcrType.invoice,
+      );
+    }
   }
 
   /// Recognize text from image bytes

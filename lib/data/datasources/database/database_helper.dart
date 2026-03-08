@@ -35,6 +35,7 @@ class DatabaseHelper {
       path,
       version: AppConstants.databaseVersion,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -60,12 +61,22 @@ class DatabaseHelper {
       CREATE TABLE ${AppConstants.invoicesTable} (
         ${AppConstants.colId} INTEGER PRIMARY KEY AUTOINCREMENT,
         ${AppConstants.colImagePath} TEXT NOT NULL,
-        ${AppConstants.colOrderId} INTEGER,
         ${AppConstants.colInvoiceNumber} TEXT,
         ${AppConstants.colInvoiceDate} TEXT,
         ${AppConstants.colTotalAmount} REAL,
+        ${AppConstants.colSellerName} TEXT DEFAULT '',
         ${AppConstants.colCreatedAt} TEXT NOT NULL,
-        ${AppConstants.colUpdatedAt} TEXT NOT NULL,
+        ${AppConstants.colUpdatedAt} TEXT NOT NULL
+      )
+    ''');
+
+    // Create invoice_order_relations table
+    await db.execute('''
+      CREATE TABLE ${AppConstants.invoiceOrderRelationsTable} (
+        ${AppConstants.colInvoiceId} INTEGER NOT NULL,
+        ${AppConstants.colOrderId} INTEGER NOT NULL,
+        PRIMARY KEY (${AppConstants.colInvoiceId}, ${AppConstants.colOrderId}),
+        FOREIGN KEY (${AppConstants.colInvoiceId}) REFERENCES ${AppConstants.invoicesTable}(${AppConstants.colId}) ON DELETE CASCADE,
         FOREIGN KEY (${AppConstants.colOrderId}) REFERENCES ${AppConstants.ordersTable}(${AppConstants.colId}) ON DELETE CASCADE
       )
     ''');
@@ -76,12 +87,64 @@ class DatabaseHelper {
     ''');
 
     await db.execute('''
-      CREATE INDEX idx_invoices_order_id ON ${AppConstants.invoicesTable}(${AppConstants.colOrderId})
+      CREATE INDEX idx_invoices_created_at ON ${AppConstants.invoicesTable}(${AppConstants.colCreatedAt} DESC)
     ''');
 
     await db.execute('''
-      CREATE INDEX idx_invoices_created_at ON ${AppConstants.invoicesTable}(${AppConstants.colCreatedAt} DESC)
+      CREATE INDEX idx_invoice_order_relations_invoice_id
+      ON ${AppConstants.invoiceOrderRelationsTable}(${AppConstants.colInvoiceId})
     ''');
+
+    await db.execute('''
+      CREATE INDEX idx_invoice_order_relations_order_id
+      ON ${AppConstants.invoiceOrderRelationsTable}(${AppConstants.colOrderId})
+    ''');
+  }
+
+  /// Upgrade database when version changes
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Version 1 to 2: Add seller_name column, create invoice_order_relations table,
+      // migrate existing order_id data to relations table
+
+      // Step 1: Create invoice_order_relations table
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS ${AppConstants.invoiceOrderRelationsTable} (
+          ${AppConstants.colInvoiceId} INTEGER NOT NULL,
+          ${AppConstants.colOrderId} INTEGER NOT NULL,
+          PRIMARY KEY (${AppConstants.colInvoiceId}, ${AppConstants.colOrderId}),
+          FOREIGN KEY (${AppConstants.colInvoiceId}) REFERENCES ${AppConstants.invoicesTable}(${AppConstants.colId}) ON DELETE CASCADE,
+          FOREIGN KEY (${AppConstants.colOrderId}) REFERENCES ${AppConstants.ordersTable}(${AppConstants.colId}) ON DELETE CASCADE
+        )
+      ''');
+
+      // Step 2: Add seller_name column to invoices table
+      await db.execute('''
+        ALTER TABLE ${AppConstants.invoicesTable} ADD COLUMN ${AppConstants.colSellerName} TEXT DEFAULT ''
+      ''');
+
+      // Step 3: Migrate existing order_id data to invoice_order_relations table
+      await db.execute('''
+        INSERT INTO ${AppConstants.invoiceOrderRelationsTable} (${AppConstants.colInvoiceId}, ${AppConstants.colOrderId})
+        SELECT ${AppConstants.colId}, ${AppConstants.colOrderId}
+        FROM ${AppConstants.invoicesTable}
+        WHERE ${AppConstants.colOrderId} IS NOT NULL AND ${AppConstants.colOrderId} > 0
+      ''');
+
+      // Step 4: Create index for relations table
+      await db.execute('''
+        CREATE INDEX IF NOT EXISTS idx_invoice_order_relations_invoice_id
+        ON ${AppConstants.invoiceOrderRelationsTable}(${AppConstants.colInvoiceId})
+      ''');
+
+      await db.execute('''
+        CREATE INDEX IF NOT EXISTS idx_invoice_order_relations_order_id
+        ON ${AppConstants.invoiceOrderRelationsTable}(${AppConstants.colOrderId})
+      ''');
+
+      // Note: We keep the order_id column in invoices table for backward compatibility
+      // but it will no longer be used for new data
+    }
   }
 
   /// Close database connection

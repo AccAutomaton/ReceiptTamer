@@ -269,4 +269,19 @@ class FileService {
       return false;
     }
   }
+
+  /// Save a PDF file to the app's PDFs directory
+  Future<String> savePdf(File pdfFile) async {
+    try {
+      final pdfsDir = await getPdfsDirectory();
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}${path.extension(pdfFile.path)}';
+      final savedPath = path.join(pdfsDir.path, fileName);
+
+      // Copy the file to the app's PDFs directory
+      await pdfFile.copy(savedPath);
+      return savedPath;
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

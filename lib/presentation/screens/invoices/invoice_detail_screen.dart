@@ -28,6 +28,7 @@ class InvoiceDetailScreen extends ConsumerStatefulWidget {
 
 class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
   Invoice? _invoice;
+  List<Order> _relatedOrders = [];
 
   @override
   void initState() {
@@ -38,9 +39,20 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
   Future<void> _loadInvoice() async {
     final invoice =
         await ref.read(invoiceProvider.notifier).getInvoiceById(widget.invoiceId);
-    if (mounted) {
+    if (mounted && invoice != null) {
+      // Load related orders
+      final orderIds = await ref.read(invoiceProvider.notifier).getOrderIdsForInvoice(widget.invoiceId);
+      final orders = <Order>[];
+      for (final orderId in orderIds) {
+        final order = await ref.read(orderProvider.notifier).getOrderById(orderId);
+        if (order != null) {
+          orders.add(order);
+        }
+      }
+
       setState(() {
         _invoice = invoice;
+        _relatedOrders = orders;
       });
     }
   }
@@ -109,9 +121,6 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
     }
 
     final invoice = _invoice!;
-    final order = invoice.orderId != null
-        ? ref.watch(orderByIdProvider(invoice.orderId!)).value
-        : null;
 
     final invoiceDate = invoice.invoiceDate != null &&
             invoice.invoiceDate!.isNotEmpty
@@ -168,8 +177,14 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Related order card
-                  if (order != null) _buildOrderCard(context, order, colorScheme),
+                  // Related orders card
+                  if (_relatedOrders.isNotEmpty) ...[
+                    for (final order in _relatedOrders)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _buildOrderCard(context, order, colorScheme),
+                      ),
+                  ],
                 ],
               ),
             ),

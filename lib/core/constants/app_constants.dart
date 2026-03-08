@@ -6,11 +6,12 @@ class AppConstants {
 
   // Database
   static const String databaseName = 'catering_receipts.db';
-  static const int databaseVersion = 1;
+  static const int databaseVersion = 2;
 
   // Table names
   static const String ordersTable = 'orders';
   static const String invoicesTable = 'invoices';
+  static const String invoiceOrderRelationsTable = 'invoice_order_relations';
 
   // Column names - Orders
   static const String colId = 'id';
@@ -28,6 +29,10 @@ class AppConstants {
   static const String colInvoiceNumber = 'invoice_number';
   static const String colInvoiceDate = 'invoice_date';
   static const String colTotalAmount = 'total_amount';
+  static const String colSellerName = 'seller_name';
+
+  // Column names - Invoice-Order Relations
+  static const String colInvoiceId = 'invoice_id';
 
   // File storage
   static const String imagesFolder = 'receipt_images';
@@ -104,14 +109,19 @@ class AppConstants {
   static const String labelInvoiceNumber = '发票号码';
   static const String labelInvoiceDate = '开票日期';
   static const String labelTotalAmount = '价税合计';
+  static const String labelSellerName = '销售方名称';
+  static const String labelRelatedOrders = '关联订单';
   static const String labelRelatedOrder = '关联订单';
   static const String labelNoOrder = '未关联订单';
+  static const String labelNoOrdersSelected = '未选择订单';
+  static const String labelOrdersSelected = '已选择 {} 个订单';
 
   // Hints
   static const String hintShopName = '请输入店铺名称';
   static const String hintAmount = '请输入金额';
   static const String hintOrderNumber = '请输入订单号';
   static const String hintInvoiceNumber = '请输入发票号码';
+  static const String hintSellerName = '请输入销售方名称';
 
   // Screen titles
   static const String titleHome = '首页';

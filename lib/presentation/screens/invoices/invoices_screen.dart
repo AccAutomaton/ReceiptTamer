@@ -115,10 +115,18 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
                           final invoice = invoiceState.invoices[index];
                           String? orderShopName;
 
-                          if (snapshot.hasData) {
-                            final orderMap = snapshot.data!;
-                            final orderId = invoice.orderId;
-                            orderShopName = orderId != null ? orderMap[orderId] : null;
+                          if (snapshot.hasData && snapshot.data!.length >= 2) {
+                            final invoiceOrderMap = snapshot.data![0] as Map<int, List<int>>;
+                            final orderMap = snapshot.data![1] as Map<int, String>;
+                            final orderIds = invoiceOrderMap[invoice.id];
+                            if (orderIds != null && orderIds.isNotEmpty) {
+                              // Show the first order's shop name, or show count if multiple
+                              if (orderIds.length == 1) {
+                                orderShopName = orderMap[orderIds.first];
+                              } else {
+                                orderShopName = '${orderIds.length}个订单';
+                              }
+                            }
                           }
 
                           return InvoiceCard(
@@ -136,19 +144,33 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
 
   Future<List<dynamic>> _loadOrderNames() async {
     final invoices = ref.read(invoiceProvider).invoices;
-    final orderIds = invoices.map((i) => i.orderId).where((id) => id != null && id > 0).toSet();
+    final invoiceIds = invoices.map((i) => i.id).where((id) => id != null).toList();
 
-    final orderMap = <int, String>{};
-    for (final orderId in orderIds) {
-      if (orderId != null) {
-        final order = await ref.read(orderProvider.notifier).getOrderById(orderId);
-        if (order != null) {
-          orderMap[orderId] = order.shopName;
-        }
+    // Get order IDs for all invoices from the relation table
+    final invoiceOrderMap = <int, List<int>>{};
+    for (final invoiceId in invoiceIds) {
+      if (invoiceId != null) {
+        final orderIds = await ref.read(invoiceProvider.notifier).getOrderIdsForInvoice(invoiceId);
+        invoiceOrderMap[invoiceId] = orderIds;
       }
     }
 
-    return [orderMap];
+    // Get unique order IDs
+    final allOrderIds = <int>{};
+    for (final orderIds in invoiceOrderMap.values) {
+      allOrderIds.addAll(orderIds);
+    }
+
+    // Load order names
+    final orderMap = <int, String>{};
+    for (final orderId in allOrderIds) {
+      final order = await ref.read(orderProvider.notifier).getOrderById(orderId);
+      if (order != null) {
+        orderMap[orderId] = order.shopName;
+      }
+    }
+
+    return [invoiceOrderMap, orderMap];
   }
 
   void _showFilterDialog(BuildContext context) {

@@ -116,11 +116,11 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
   }
 
   /// Create a new invoice
-  Future<bool> createInvoice(Invoice invoice) async {
+  Future<bool> createInvoice(Invoice invoice, {List<int>? orderIds}) async {
     state = state.copyWith(isLoading: true);
 
     try {
-      final id = await _repository.create(invoice);
+      final id = await _repository.create(invoice, orderIds: orderIds);
       if (state.filterOrderId != null) {
         await loadInvoices(filterOrderId: state.filterOrderId);
       } else {
@@ -137,11 +137,11 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
   }
 
   /// Update an existing invoice
-  Future<bool> updateInvoice(Invoice invoice) async {
+  Future<bool> updateInvoice(Invoice invoice, {List<int>? orderIds}) async {
     state = state.copyWith(isLoading: true);
 
     try {
-      final rowsAffected = await _repository.update(invoice);
+      final rowsAffected = await _repository.update(invoice, orderIds: orderIds);
       if (rowsAffected > 0) {
         // Update the invoice in the list
         final updatedInvoices = state.invoices.map((i) {
@@ -298,6 +298,16 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
 
   Future<List<Invoice>> getByDateRangeForExport(DateTime start, DateTime end) async {
     return await _repository.getByDateRange(start, end);
+  }
+
+  /// Get order IDs for an invoice
+  Future<List<int>> getOrderIdsForInvoice(int invoiceId) async {
+    return await _repository.getOrderIdsForInvoice(invoiceId);
+  }
+
+  /// Update order relations for an invoice
+  Future<void> updateOrderRelations(int invoiceId, List<int> orderIds) async {
+    await _repository.updateOrderRelations(invoiceId, orderIds);
   }
 }
 

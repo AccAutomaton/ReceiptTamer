@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +11,7 @@ import 'package:catering_receipt_recorder/core/utils/date_formatter.dart';
 import 'package:catering_receipt_recorder/data/models/invoice.dart';
 import 'package:catering_receipt_recorder/data/models/order.dart';
 import 'package:catering_receipt_recorder/data/models/ocr_result.dart';
+import 'package:catering_receipt_recorder/data/services/file_service.dart';
 import 'package:catering_receipt_recorder/data/services/image_service.dart';
 import 'package:catering_receipt_recorder/presentation/providers/invoice_provider.dart';
 import 'package:catering_receipt_recorder/presentation/providers/order_provider.dart';
@@ -38,18 +40,23 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
   final _formKey = GlobalKey<FormState>();
   final _invoiceNumberController = TextEditingController();
   final _amountController = TextEditingController();
+  final _sellerNameController = TextEditingController();
 
   DateTime? _invoiceDate;
-  int? _orderId;
-  String? _imagePath;
+  List<int> _selectedOrderIds = [];
+  String? _filePath;
+  bool _isPdf = false;
   final ImageService _imageService = ImageService();
+  final FileService _fileService = FileService();
 
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _orderId = widget.initialOrderId;
+    if (widget.initialOrderId != null) {
+      _selectedOrderIds = [widget.initialOrderId!];
+    }
     if (widget.invoiceId != null) {
       _loadInvoice();
     }
@@ -59,6 +66,7 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
   void dispose() {
     _invoiceNumberController.dispose();
     _amountController.dispose();
+    _sellerNameController.dispose();
     super.dispose();
   }
 
@@ -66,11 +74,15 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
     final invoice =
         await ref.read(invoiceProvider.notifier).getInvoiceById(widget.invoiceId!);
     if (invoice != null && mounted) {
+      // Load order relations
+      final orderIds = await ref.read(invoiceProvider.notifier).getOrderIdsForInvoice(widget.invoiceId!);
       setState(() {
         _invoiceNumberController.text = invoice.invoiceNumber;
         _amountController.text = invoice.totalAmount.toStringAsFixed(2);
-        _imagePath = invoice.imagePath;
-        _orderId = invoice.orderId;
+        _sellerNameController.text = invoice.sellerName;
+        _filePath = invoice.imagePath;
+        _isPdf = invoice.imagePath.toLowerCase().endsWith('.pdf');
+        _selectedOrderIds = orderIds;
         if (invoice.invoiceDate != null && invoice.invoiceDate!.isNotEmpty) {
           _invoiceDate = DateTime.tryParse(invoice.invoiceDate!);
         }
@@ -78,8 +90,8 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
     }
   }
 
-  Future<void> _pickImage() async {
-    final result = await showModalBottomSheet<ImageSource>(
+  Future<void> _pickFile() async {
+    final result = await showModalBottomSheet<_FilePickResult>(
       context: context,
       builder: (context) => SafeArea(
         child: Column(
@@ -88,12 +100,17 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
             ListTile(
               leading: const Icon(Icons.camera_alt),
               title: const Text(AppConstants.btnTakePhoto),
-              onTap: () => Navigator.pop(context, ImageSource.camera),
+              onTap: () => Navigator.pop(context, _FilePickResult(ImageSource.camera, false)),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library),
               title: const Text(AppConstants.btnSelectFromGallery),
-              onTap: () => Navigator.pop(context, ImageSource.gallery),
+              onTap: () => Navigator.pop(context, _FilePickResult(ImageSource.gallery, false)),
+            ),
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf),
+              title: const Text(AppConstants.btnSelectPDF),
+              onTap: () => Navigator.pop(context, _FilePickResult(null, true)),
             ),
           ],
         ),
@@ -101,33 +118,50 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
     );
 
     if (result != null) {
-      final imageFile = result == ImageSource.camera
-          ? await _imageService.pickImageFromCamera()
-          : await _imageService.pickImageFromGallery();
+      if (result.isPdf) {
+        // Pick PDF file
+        final pickResult = await FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: ['pdf'],
+        );
+        if (pickResult != null && pickResult.files.single.path != null) {
+          setState(() {
+            _filePath = pickResult.files.single.path;
+            _isPdf = true;
+          });
+        }
+      } else if (result.imageSource != null) {
+        // Pick image
+        final imageFile = result.imageSource == ImageSource.camera
+            ? await _imageService.pickImageFromCamera()
+            : await _imageService.pickImageFromGallery();
 
-      if (imageFile != null) {
-        setState(() {
-          _imagePath = imageFile.path;
-        });
+        if (imageFile != null) {
+          setState(() {
+            _filePath = imageFile.path;
+            _isPdf = false;
+          });
+        }
       }
     }
   }
 
   Future<void> _handleOCR() async {
-    if (_imagePath == null || _imagePath!.isEmpty) {
+    if (_filePath == null || _filePath!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先选择图片')),
+        const SnackBar(content: Text('请先选择图片或PDF')),
       );
       return;
     }
 
-    // Show progress dialog
+    // Show progress dialog (handles both image and PDF)
     if (mounted) {
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (context) => _InvoiceOcrProgressDialog(
-          imagePath: _imagePath!,
+          filePath: _filePath!,
+          isPdf: _isPdf,
           onResult: (ocrResult) {
             if (ocrResult?.success == true) {
               setState(() {
@@ -140,6 +174,9 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
                 }
                 if (ocrResult?.invoiceDate != null && ocrResult!.invoiceDate!.isNotEmpty) {
                   _invoiceDate = DateTime.tryParse(ocrResult.invoiceDate!);
+                }
+                if (ocrResult?.sellerName != null && ocrResult!.sellerName!.isNotEmpty) {
+                  _sellerNameController.text = ocrResult.sellerName!;
                 }
               });
               ScaffoldMessenger.of(context).showSnackBar(
@@ -161,14 +198,17 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
 
     if (!mounted) return;
 
-    final selected = await showDialog<Order>(
+    final selected = await showDialog<List<int>>(
       context: context,
-      builder: (context) => _OrderSelectorDialog(orders: orders),
+      builder: (context) => _MultiOrderSelectorDialog(
+        orders: orders,
+        selectedIds: _selectedOrderIds,
+      ),
     );
 
     if (selected != null) {
       setState(() {
-        _orderId = selected.id;
+        _selectedOrderIds = selected;
       });
     }
   }
@@ -178,9 +218,9 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
       return;
     }
 
-    if (_imagePath == null || _imagePath!.isEmpty) {
+    if (_filePath == null || _filePath!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请选择发票图片')),
+        const SnackBar(content: Text('请选择发票图片或PDF')),
       );
       return;
     }
@@ -190,33 +230,38 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
     });
 
     try {
-      // Save image to app directory if not already saved
-      final savedImagePath = await _imageService.saveImage(File(_imagePath!));
+      // Save file to app directory if not already saved
+      String savedPath;
+      if (_isPdf) {
+        savedPath = await _fileService.savePdf(File(_filePath!));
+      } else {
+        savedPath = await _imageService.saveImage(File(_filePath!));
+      }
 
       final amount = double.tryParse(_amountController.text) ?? 0.0;
 
       final invoice = widget.invoiceId != null
           ? Invoice(
               id: widget.invoiceId,
-              imagePath: savedImagePath,
-              orderId: _orderId,
+              imagePath: savedPath,
               invoiceNumber: _invoiceNumberController.text.trim(),
               invoiceDate: _invoiceDate?.toIso8601String(),
               totalAmount: amount,
+              sellerName: _sellerNameController.text.trim(),
               createdAt: '', // Will be preserved by repository
               updatedAt: DateTime.now().toIso8601String(),
             )
           : Invoice.create(
-              imagePath: savedImagePath,
-              orderId: _orderId,
+              imagePath: savedPath,
               invoiceNumber: _invoiceNumberController.text.trim(),
               invoiceDate: _invoiceDate?.toIso8601String(),
               totalAmount: amount,
+              sellerName: _sellerNameController.text.trim(),
             );
 
       final success = widget.invoiceId != null
-          ? await ref.read(invoiceProvider.notifier).updateInvoice(invoice)
-          : await ref.read(invoiceProvider.notifier).createInvoice(invoice);
+          ? await ref.read(invoiceProvider.notifier).updateInvoice(invoice, orderIds: _selectedOrderIds)
+          : await ref.read(invoiceProvider.notifier).createInvoice(invoice, orderIds: _selectedOrderIds);
 
       if (mounted) {
         if (success) {
@@ -237,12 +282,16 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
     }
   }
 
+  String _getOrderSelectorSubtitle() {
+    if (_selectedOrderIds.isEmpty) {
+      return AppConstants.labelNoOrdersSelected;
+    }
+    return AppConstants.labelOrdersSelected.replaceAll('{}', _selectedOrderIds.length.toString());
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.invoiceId != null;
-    final order = _orderId != null
-        ? ref.watch(orderByIdProvider(_orderId!)).value
-        : null;
     final ocrState = ref.watch(ocrProvider);
     final isModelLoading = ocrState.isModelLoading;
 
@@ -258,7 +307,7 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Image picker section
+            // File picker section
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -266,15 +315,15 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '发票图片',
+                      '发票文件',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                     ),
                     const SizedBox(height: 12),
-                    if (_imagePath != null && _imagePath!.isNotEmpty)
+                    if (_filePath != null && _filePath!.isNotEmpty)
                       InvoiceImagePreview(
-                        imagePath: _imagePath!,
+                        imagePath: _filePath!,
                         height: 200,
                       )
                     else
@@ -307,7 +356,7 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                '点击下方按钮选择图片',
+                                '点击下方按钮选择图片或PDF',
                                 style: TextStyle(
                                   color: Theme.of(context)
                                       .colorScheme
@@ -323,15 +372,15 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
                       children: [
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: _pickImage,
-                            icon: const Icon(Icons.image),
-                            label: const Text('选择图片'),
+                            onPressed: _pickFile,
+                            icon: const Icon(Icons.attach_file),
+                            label: const Text('选择文件'),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: _isLoading ? null : _handleOCR,
+                            onPressed: (_isLoading || isModelLoading) ? null : _handleOCR,
                             icon: _isLoading || isModelLoading
                                 ? const SizedBox(
                                     width: 18,
@@ -357,19 +406,17 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
 
             const SizedBox(height: 16),
 
-            // Order selector
+            // Order selector (multi-select)
             Card(
               child: ListTile(
                 leading: const Icon(Icons.receipt_long),
-                title: const Text(AppConstants.labelRelatedOrder),
-                subtitle: order != null
-                    ? Text(order.shopName.isEmpty ? '未命名店铺' : order.shopName)
-                    : Text(
-                        _orderId != null ? '加载中...' : AppConstants.labelNoOrder,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
+                title: const Text(AppConstants.labelRelatedOrders),
+                subtitle: Text(
+                  _getOrderSelectorSubtitle(),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: _showOrderSelector,
               ),
@@ -409,6 +456,17 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
               required: false,
             ),
 
+            const SizedBox(height: 16),
+
+            AppTextField(
+              label: AppConstants.labelSellerName,
+              hint: AppConstants.hintSellerName,
+              controller: _sellerNameController,
+              required: false,
+              keyboardType: TextInputType.text,
+              prefixIcon: const Icon(Icons.store),
+            ),
+
             const SizedBox(height: 24),
 
             // Save button
@@ -426,11 +484,36 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
   }
 }
 
-/// Order selector dialog
-class _OrderSelectorDialog extends StatelessWidget {
-  final List<Order> orders;
+/// File pick result helper class
+class _FilePickResult {
+  final ImageSource? imageSource;
+  final bool isPdf;
 
-  const _OrderSelectorDialog({required this.orders});
+  _FilePickResult(this.imageSource, this.isPdf);
+}
+
+/// Multi-order selector dialog
+class _MultiOrderSelectorDialog extends StatefulWidget {
+  final List<Order> orders;
+  final List<int> selectedIds;
+
+  const _MultiOrderSelectorDialog({
+    required this.orders,
+    required this.selectedIds,
+  });
+
+  @override
+  State<_MultiOrderSelectorDialog> createState() => _MultiOrderSelectorDialogState();
+}
+
+class _MultiOrderSelectorDialogState extends State<_MultiOrderSelectorDialog> {
+  late List<int> _tempSelectedIds;
+
+  @override
+  void initState() {
+    super.initState();
+    _tempSelectedIds = List.from(widget.selectedIds);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -438,24 +521,34 @@ class _OrderSelectorDialog extends StatelessWidget {
       title: const Text('选择关联订单'),
       content: SizedBox(
         width: double.maxFinite,
-        child: orders.isEmpty
+        child: widget.orders.isEmpty
             ? const Center(
                 child: Text('暂无订单'),
               )
             : ListView.builder(
                 shrinkWrap: true,
-                itemCount: orders.length,
+                itemCount: widget.orders.length,
                 itemBuilder: (context, index) {
-                  final order = orders[index];
-                  return ListTile(
-                    leading: const Icon(Icons.receipt_long),
+                  final order = widget.orders[index];
+                  final isSelected = _tempSelectedIds.contains(order.id);
+                  return CheckboxListTile(
+                    value: isSelected,
+                    onChanged: (checked) {
+                      setState(() {
+                        if (checked == true) {
+                          _tempSelectedIds.add(order.id!);
+                        } else {
+                          _tempSelectedIds.remove(order.id);
+                        }
+                      });
+                    },
+                    secondary: const Icon(Icons.receipt_long),
                     title: Text(order.shopName.isEmpty
                         ? '未命名店铺'
                         : order.shopName),
                     subtitle: Text(
                       DateFormatter.formatAmount(order.amount),
                     ),
-                    onTap: () => Navigator.pop(context, order),
                   );
                 },
               ),
@@ -465,6 +558,10 @@ class _OrderSelectorDialog extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
           child: const Text(AppConstants.btnCancel),
         ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, _tempSelectedIds),
+          child: const Text(AppConstants.btnConfirm),
+        ),
       ],
     );
   }
@@ -472,11 +569,13 @@ class _OrderSelectorDialog extends StatelessWidget {
 
 /// Invoice OCR progress dialog widget
 class _InvoiceOcrProgressDialog extends ConsumerStatefulWidget {
-  final String imagePath;
+  final String filePath;
+  final bool isPdf;
   final void Function(OcrResult?) onResult;
 
   const _InvoiceOcrProgressDialog({
-    required this.imagePath,
+    required this.filePath,
+    required this.isPdf,
     required this.onResult,
   });
 
@@ -501,7 +600,14 @@ class _InvoiceOcrProgressDialogState extends ConsumerState<_InvoiceOcrProgressDi
     if (_started) return;
     _started = true;
 
-    final result = await ref.read(ocrProvider.notifier).recognizeInvoiceWithProgress(widget.imagePath);
+    final OcrResult? result;
+    if (widget.isPdf) {
+      // PDF file: use PDF recognition
+      result = await ref.read(ocrProvider.notifier).recognizeInvoiceFromPdf(widget.filePath);
+    } else {
+      // Image file: use image recognition
+      result = await ref.read(ocrProvider.notifier).recognizeInvoiceWithProgress(widget.filePath);
+    }
 
     if (_cancelled) return;
 

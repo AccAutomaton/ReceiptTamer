@@ -356,7 +356,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         TextCellValue('发票号码'),
         TextCellValue('开票日期'),
         TextCellValue('价税合计'),
-        TextCellValue('关联订单ID'),
+        TextCellValue('销售方名称'),
         TextCellValue('录入时间'),
       ]);
 
@@ -365,7 +365,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
           TextCellValue(invoice.invoiceNumber),
           TextCellValue(invoice.invoiceDate ?? ''),
           DoubleCellValue(invoice.totalAmount),
-          TextCellValue(invoice.orderId?.toString() ?? ''),
+          TextCellValue(invoice.sellerName),
           TextCellValue(invoice.createdAt),
         ]);
       }
@@ -456,14 +456,14 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
 
   String _generateInvoicesCsv(List<Invoice> invoices) {
     final buffer = StringBuffer();
-    buffer.writeln('发票号码,开票日期,价税合计,关联订单ID,录入时间');
+    buffer.writeln('发票号码,开票日期,价税合计,销售方名称,录入时间');
 
     for (final invoice in invoices) {
       buffer.writeln(
         '${_escapeCsv(invoice.invoiceNumber)},'
         '${invoice.invoiceDate ?? ''},'
         '${invoice.totalAmount},'
-        '${invoice.orderId ?? ''},'
+        '${_escapeCsv(invoice.sellerName)},'
         '${invoice.createdAt}',
       );
     }

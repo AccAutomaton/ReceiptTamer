@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Invoice {
 
-@JsonKey(includeIfNull: false) int? get id;@JsonKey(name: 'image_path') String get imagePath;@JsonKey(name: 'order_id', includeIfNull: false) int? get orderId;@JsonKey(name: 'invoice_number') String get invoiceNumber;@JsonKey(name: 'invoice_date', includeIfNull: false) String? get invoiceDate;@JsonKey(name: 'total_amount') double get totalAmount;@JsonKey(name: 'created_at') String get createdAt;@JsonKey(name: 'updated_at') String get updatedAt;
+@JsonKey(includeIfNull: false) int? get id;@JsonKey(name: 'image_path') String get imagePath;@JsonKey(name: 'invoice_number') String get invoiceNumber;@JsonKey(name: 'invoice_date', includeIfNull: false) String? get invoiceDate;@JsonKey(name: 'total_amount') double get totalAmount;@JsonKey(name: 'seller_name') String get sellerName;@JsonKey(name: 'created_at') String get createdAt;@JsonKey(name: 'updated_at') String get updatedAt;
 /// Create a copy of Invoice
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $InvoiceCopyWith<Invoice> get copyWith => _$InvoiceCopyWithImpl<Invoice>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Invoice&&(identical(other.id, id) || other.id == id)&&(identical(other.imagePath, imagePath) || other.imagePath == imagePath)&&(identical(other.orderId, orderId) || other.orderId == orderId)&&(identical(other.invoiceNumber, invoiceNumber) || other.invoiceNumber == invoiceNumber)&&(identical(other.invoiceDate, invoiceDate) || other.invoiceDate == invoiceDate)&&(identical(other.totalAmount, totalAmount) || other.totalAmount == totalAmount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Invoice&&(identical(other.id, id) || other.id == id)&&(identical(other.imagePath, imagePath) || other.imagePath == imagePath)&&(identical(other.invoiceNumber, invoiceNumber) || other.invoiceNumber == invoiceNumber)&&(identical(other.invoiceDate, invoiceDate) || other.invoiceDate == invoiceDate)&&(identical(other.totalAmount, totalAmount) || other.totalAmount == totalAmount)&&(identical(other.sellerName, sellerName) || other.sellerName == sellerName)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,imagePath,orderId,invoiceNumber,invoiceDate,totalAmount,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,imagePath,invoiceNumber,invoiceDate,totalAmount,sellerName,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'Invoice(id: $id, imagePath: $imagePath, orderId: $orderId, invoiceNumber: $invoiceNumber, invoiceDate: $invoiceDate, totalAmount: $totalAmount, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'Invoice(id: $id, imagePath: $imagePath, invoiceNumber: $invoiceNumber, invoiceDate: $invoiceDate, totalAmount: $totalAmount, sellerName: $sellerName, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $InvoiceCopyWith<$Res>  {
   factory $InvoiceCopyWith(Invoice value, $Res Function(Invoice) _then) = _$InvoiceCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(includeIfNull: false) int? id,@JsonKey(name: 'image_path') String imagePath,@JsonKey(name: 'order_id', includeIfNull: false) int? orderId,@JsonKey(name: 'invoice_number') String invoiceNumber,@JsonKey(name: 'invoice_date', includeIfNull: false) String? invoiceDate,@JsonKey(name: 'total_amount') double totalAmount,@JsonKey(name: 'created_at') String createdAt,@JsonKey(name: 'updated_at') String updatedAt
+@JsonKey(includeIfNull: false) int? id,@JsonKey(name: 'image_path') String imagePath,@JsonKey(name: 'invoice_number') String invoiceNumber,@JsonKey(name: 'invoice_date', includeIfNull: false) String? invoiceDate,@JsonKey(name: 'total_amount') double totalAmount,@JsonKey(name: 'seller_name') String sellerName,@JsonKey(name: 'created_at') String createdAt,@JsonKey(name: 'updated_at') String updatedAt
 });
 
 
@@ -65,15 +65,15 @@ class _$InvoiceCopyWithImpl<$Res>
 
 /// Create a copy of Invoice
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? imagePath = null,Object? orderId = freezed,Object? invoiceNumber = null,Object? invoiceDate = freezed,Object? totalAmount = null,Object? createdAt = null,Object? updatedAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? imagePath = null,Object? invoiceNumber = null,Object? invoiceDate = freezed,Object? totalAmount = null,Object? sellerName = null,Object? createdAt = null,Object? updatedAt = null,}) {
   return _then(_self.copyWith(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int?,imagePath: null == imagePath ? _self.imagePath : imagePath // ignore: cast_nullable_to_non_nullable
-as String,orderId: freezed == orderId ? _self.orderId : orderId // ignore: cast_nullable_to_non_nullable
-as int?,invoiceNumber: null == invoiceNumber ? _self.invoiceNumber : invoiceNumber // ignore: cast_nullable_to_non_nullable
+as String,invoiceNumber: null == invoiceNumber ? _self.invoiceNumber : invoiceNumber // ignore: cast_nullable_to_non_nullable
 as String,invoiceDate: freezed == invoiceDate ? _self.invoiceDate : invoiceDate // ignore: cast_nullable_to_non_nullable
 as String?,totalAmount: null == totalAmount ? _self.totalAmount : totalAmount // ignore: cast_nullable_to_non_nullable
-as double,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as double,sellerName: null == sellerName ? _self.sellerName : sellerName // ignore: cast_nullable_to_non_nullable
+as String,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as String,
   ));
@@ -160,10 +160,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(includeIfNull: false)  int? id, @JsonKey(name: 'image_path')  String imagePath, @JsonKey(name: 'order_id', includeIfNull: false)  int? orderId, @JsonKey(name: 'invoice_number')  String invoiceNumber, @JsonKey(name: 'invoice_date', includeIfNull: false)  String? invoiceDate, @JsonKey(name: 'total_amount')  double totalAmount, @JsonKey(name: 'created_at')  String createdAt, @JsonKey(name: 'updated_at')  String updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(includeIfNull: false)  int? id, @JsonKey(name: 'image_path')  String imagePath, @JsonKey(name: 'invoice_number')  String invoiceNumber, @JsonKey(name: 'invoice_date', includeIfNull: false)  String? invoiceDate, @JsonKey(name: 'total_amount')  double totalAmount, @JsonKey(name: 'seller_name')  String sellerName, @JsonKey(name: 'created_at')  String createdAt, @JsonKey(name: 'updated_at')  String updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Invoice() when $default != null:
-return $default(_that.id,_that.imagePath,_that.orderId,_that.invoiceNumber,_that.invoiceDate,_that.totalAmount,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.imagePath,_that.invoiceNumber,_that.invoiceDate,_that.totalAmount,_that.sellerName,_that.createdAt,_that.updatedAt);case _:
   return orElse();
 
 }
@@ -181,10 +181,10 @@ return $default(_that.id,_that.imagePath,_that.orderId,_that.invoiceNumber,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(includeIfNull: false)  int? id, @JsonKey(name: 'image_path')  String imagePath, @JsonKey(name: 'order_id', includeIfNull: false)  int? orderId, @JsonKey(name: 'invoice_number')  String invoiceNumber, @JsonKey(name: 'invoice_date', includeIfNull: false)  String? invoiceDate, @JsonKey(name: 'total_amount')  double totalAmount, @JsonKey(name: 'created_at')  String createdAt, @JsonKey(name: 'updated_at')  String updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(includeIfNull: false)  int? id, @JsonKey(name: 'image_path')  String imagePath, @JsonKey(name: 'invoice_number')  String invoiceNumber, @JsonKey(name: 'invoice_date', includeIfNull: false)  String? invoiceDate, @JsonKey(name: 'total_amount')  double totalAmount, @JsonKey(name: 'seller_name')  String sellerName, @JsonKey(name: 'created_at')  String createdAt, @JsonKey(name: 'updated_at')  String updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _Invoice():
-return $default(_that.id,_that.imagePath,_that.orderId,_that.invoiceNumber,_that.invoiceDate,_that.totalAmount,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.imagePath,_that.invoiceNumber,_that.invoiceDate,_that.totalAmount,_that.sellerName,_that.createdAt,_that.updatedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -201,10 +201,10 @@ return $default(_that.id,_that.imagePath,_that.orderId,_that.invoiceNumber,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(includeIfNull: false)  int? id, @JsonKey(name: 'image_path')  String imagePath, @JsonKey(name: 'order_id', includeIfNull: false)  int? orderId, @JsonKey(name: 'invoice_number')  String invoiceNumber, @JsonKey(name: 'invoice_date', includeIfNull: false)  String? invoiceDate, @JsonKey(name: 'total_amount')  double totalAmount, @JsonKey(name: 'created_at')  String createdAt, @JsonKey(name: 'updated_at')  String updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(includeIfNull: false)  int? id, @JsonKey(name: 'image_path')  String imagePath, @JsonKey(name: 'invoice_number')  String invoiceNumber, @JsonKey(name: 'invoice_date', includeIfNull: false)  String? invoiceDate, @JsonKey(name: 'total_amount')  double totalAmount, @JsonKey(name: 'seller_name')  String sellerName, @JsonKey(name: 'created_at')  String createdAt, @JsonKey(name: 'updated_at')  String updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _Invoice() when $default != null:
-return $default(_that.id,_that.imagePath,_that.orderId,_that.invoiceNumber,_that.invoiceDate,_that.totalAmount,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.imagePath,_that.invoiceNumber,_that.invoiceDate,_that.totalAmount,_that.sellerName,_that.createdAt,_that.updatedAt);case _:
   return null;
 
 }
@@ -216,15 +216,15 @@ return $default(_that.id,_that.imagePath,_that.orderId,_that.invoiceNumber,_that
 @JsonSerializable()
 
 class _Invoice implements Invoice {
-  const _Invoice({@JsonKey(includeIfNull: false) this.id, @JsonKey(name: 'image_path') this.imagePath = '', @JsonKey(name: 'order_id', includeIfNull: false) this.orderId, @JsonKey(name: 'invoice_number') this.invoiceNumber = '', @JsonKey(name: 'invoice_date', includeIfNull: false) this.invoiceDate, @JsonKey(name: 'total_amount') this.totalAmount = 0.0, @JsonKey(name: 'created_at') this.createdAt = '', @JsonKey(name: 'updated_at') this.updatedAt = ''});
+  const _Invoice({@JsonKey(includeIfNull: false) this.id, @JsonKey(name: 'image_path') this.imagePath = '', @JsonKey(name: 'invoice_number') this.invoiceNumber = '', @JsonKey(name: 'invoice_date', includeIfNull: false) this.invoiceDate, @JsonKey(name: 'total_amount') this.totalAmount = 0.0, @JsonKey(name: 'seller_name') this.sellerName = '', @JsonKey(name: 'created_at') this.createdAt = '', @JsonKey(name: 'updated_at') this.updatedAt = ''});
   factory _Invoice.fromJson(Map<String, dynamic> json) => _$InvoiceFromJson(json);
 
 @override@JsonKey(includeIfNull: false) final  int? id;
 @override@JsonKey(name: 'image_path') final  String imagePath;
-@override@JsonKey(name: 'order_id', includeIfNull: false) final  int? orderId;
 @override@JsonKey(name: 'invoice_number') final  String invoiceNumber;
 @override@JsonKey(name: 'invoice_date', includeIfNull: false) final  String? invoiceDate;
 @override@JsonKey(name: 'total_amount') final  double totalAmount;
+@override@JsonKey(name: 'seller_name') final  String sellerName;
 @override@JsonKey(name: 'created_at') final  String createdAt;
 @override@JsonKey(name: 'updated_at') final  String updatedAt;
 
@@ -241,16 +241,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Invoice&&(identical(other.id, id) || other.id == id)&&(identical(other.imagePath, imagePath) || other.imagePath == imagePath)&&(identical(other.orderId, orderId) || other.orderId == orderId)&&(identical(other.invoiceNumber, invoiceNumber) || other.invoiceNumber == invoiceNumber)&&(identical(other.invoiceDate, invoiceDate) || other.invoiceDate == invoiceDate)&&(identical(other.totalAmount, totalAmount) || other.totalAmount == totalAmount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Invoice&&(identical(other.id, id) || other.id == id)&&(identical(other.imagePath, imagePath) || other.imagePath == imagePath)&&(identical(other.invoiceNumber, invoiceNumber) || other.invoiceNumber == invoiceNumber)&&(identical(other.invoiceDate, invoiceDate) || other.invoiceDate == invoiceDate)&&(identical(other.totalAmount, totalAmount) || other.totalAmount == totalAmount)&&(identical(other.sellerName, sellerName) || other.sellerName == sellerName)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,imagePath,orderId,invoiceNumber,invoiceDate,totalAmount,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,imagePath,invoiceNumber,invoiceDate,totalAmount,sellerName,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'Invoice(id: $id, imagePath: $imagePath, orderId: $orderId, invoiceNumber: $invoiceNumber, invoiceDate: $invoiceDate, totalAmount: $totalAmount, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'Invoice(id: $id, imagePath: $imagePath, invoiceNumber: $invoiceNumber, invoiceDate: $invoiceDate, totalAmount: $totalAmount, sellerName: $sellerName, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -261,7 +261,7 @@ abstract mixin class _$InvoiceCopyWith<$Res> implements $InvoiceCopyWith<$Res> {
   factory _$InvoiceCopyWith(_Invoice value, $Res Function(_Invoice) _then) = __$InvoiceCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(includeIfNull: false) int? id,@JsonKey(name: 'image_path') String imagePath,@JsonKey(name: 'order_id', includeIfNull: false) int? orderId,@JsonKey(name: 'invoice_number') String invoiceNumber,@JsonKey(name: 'invoice_date', includeIfNull: false) String? invoiceDate,@JsonKey(name: 'total_amount') double totalAmount,@JsonKey(name: 'created_at') String createdAt,@JsonKey(name: 'updated_at') String updatedAt
+@JsonKey(includeIfNull: false) int? id,@JsonKey(name: 'image_path') String imagePath,@JsonKey(name: 'invoice_number') String invoiceNumber,@JsonKey(name: 'invoice_date', includeIfNull: false) String? invoiceDate,@JsonKey(name: 'total_amount') double totalAmount,@JsonKey(name: 'seller_name') String sellerName,@JsonKey(name: 'created_at') String createdAt,@JsonKey(name: 'updated_at') String updatedAt
 });
 
 
@@ -278,15 +278,15 @@ class __$InvoiceCopyWithImpl<$Res>
 
 /// Create a copy of Invoice
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? imagePath = null,Object? orderId = freezed,Object? invoiceNumber = null,Object? invoiceDate = freezed,Object? totalAmount = null,Object? createdAt = null,Object? updatedAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? imagePath = null,Object? invoiceNumber = null,Object? invoiceDate = freezed,Object? totalAmount = null,Object? sellerName = null,Object? createdAt = null,Object? updatedAt = null,}) {
   return _then(_Invoice(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int?,imagePath: null == imagePath ? _self.imagePath : imagePath // ignore: cast_nullable_to_non_nullable
-as String,orderId: freezed == orderId ? _self.orderId : orderId // ignore: cast_nullable_to_non_nullable
-as int?,invoiceNumber: null == invoiceNumber ? _self.invoiceNumber : invoiceNumber // ignore: cast_nullable_to_non_nullable
+as String,invoiceNumber: null == invoiceNumber ? _self.invoiceNumber : invoiceNumber // ignore: cast_nullable_to_non_nullable
 as String,invoiceDate: freezed == invoiceDate ? _self.invoiceDate : invoiceDate // ignore: cast_nullable_to_non_nullable
 as String?,totalAmount: null == totalAmount ? _self.totalAmount : totalAmount // ignore: cast_nullable_to_non_nullable
-as double,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as double,sellerName: null == sellerName ? _self.sellerName : sellerName // ignore: cast_nullable_to_non_nullable
+as String,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as String,
   ));

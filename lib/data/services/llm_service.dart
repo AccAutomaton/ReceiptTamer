@@ -266,6 +266,7 @@ class LlmService {
           invoiceNumber: _cleanOrderNumber(json['invoiceNumber'] as String? ?? ''),
           invoiceDate: json['invoiceDate'] as String? ?? '',
           totalAmount: _parseAmount(json['totalAmount']),
+          sellerName: json['sellerName'] as String? ?? '',
         );
       }
     } catch (e) {

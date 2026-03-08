@@ -26,6 +26,7 @@ abstract class OcrResult with _$OcrResult {
     String? invoiceNumber,
     String? invoiceDate,
     double? totalAmount,
+    String? sellerName,
   }) = _OcrResult;
 
   /// Create a successful order OCR result
@@ -50,6 +51,7 @@ abstract class OcrResult with _$OcrResult {
     required String invoiceNumber,
     required String invoiceDate,
     required double totalAmount,
+    String? sellerName,
   }) {
     return OcrResult(
       success: true,
@@ -57,6 +59,7 @@ abstract class OcrResult with _$OcrResult {
       invoiceNumber: invoiceNumber,
       invoiceDate: invoiceDate,
       totalAmount: totalAmount,
+      sellerName: sellerName,
     );
   }
 

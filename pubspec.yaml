@@ -24,6 +24,7 @@ dependencies:
 
   # Image Picker
   image_picker: ^1.0.5
+  file_picker: ^8.0.0
 
   # PDF Processing
   syncfusion_flutter_pdf: ^32.2.8

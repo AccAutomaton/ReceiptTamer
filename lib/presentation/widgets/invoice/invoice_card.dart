@@ -36,7 +36,7 @@ class InvoiceCard extends StatelessWidget {
         ? DateFormatter.formatDisplay(invoiceDate)
         : invoice.invoiceDate ?? '-';
 
-    final hasLinkedOrder = invoice.orderId != null && invoice.orderId! > 0;
+    final hasLinkedOrder = orderShopName != null && orderShopName!.isNotEmpty;
 
     return AppCard(
       onTap: onTap,

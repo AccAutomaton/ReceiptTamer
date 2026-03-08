@@ -1,9 +1,11 @@
 import '../datasources/database/database_helper.dart';
 import '../datasources/database/invoice_table.dart';
+import '../datasources/database/invoice_order_relation_table.dart';
 import '../models/invoice.dart';
 
 /// Invoice repository
 /// Provides data access methods for invoices using the invoice table
+/// Order relationships are managed through InvoiceOrderRelationTable
 class InvoiceRepository {
   InvoiceRepository() : _dbHelper = DatabaseHelper();
 
@@ -15,15 +17,41 @@ class InvoiceRepository {
     return InvoiceTable(database: db);
   }
 
-  /// Create a new invoice
-  Future<int> create(Invoice invoice) async {
-    final table = await _invoiceTable;
-    return await table.insert(invoice);
+  /// Get the invoice-order relation table instance
+  Future<InvoiceOrderRelationTable> get _relationTable async {
+    final db = await _dbHelper.database;
+    return InvoiceOrderRelationTable(database: db);
   }
 
-  /// Update an existing invoice
-  Future<int> update(Invoice invoice) async {
+  /// Create a new invoice with optional order relations
+  Future<int> create(Invoice invoice, {List<int>? orderIds}) async {
     final table = await _invoiceTable;
+    final id = await table.insert(invoice);
+
+    // Create order relations if provided
+    if (orderIds != null && orderIds.isNotEmpty) {
+      final relationTable = await _relationTable;
+      await relationTable.insertRelationsForInvoice(id, orderIds);
+    }
+
+    return id;
+  }
+
+  /// Update an existing invoice and its order relations
+  Future<int> update(Invoice invoice, {List<int>? orderIds}) async {
+    final table = await _invoiceTable;
+
+    // Update order relations if provided
+    if (orderIds != null && invoice.id != null) {
+      final relationTable = await _relationTable;
+      // Delete existing relations
+      await relationTable.deleteByInvoiceId(invoice.id!);
+      // Insert new relations
+      if (orderIds.isNotEmpty) {
+        await relationTable.insertRelationsForInvoice(invoice.id!, orderIds);
+      }
+    }
+
     return await table.update(invoice.copyWith(
       updatedAt: DateTime.now().toIso8601String(),
     ));
@@ -31,6 +59,7 @@ class InvoiceRepository {
 
   /// Delete an invoice by ID
   Future<int> delete(int id) async {
+    // Relations will be deleted automatically by CASCADE
     final table = await _invoiceTable;
     return await table.delete(id);
   }
@@ -39,12 +68,6 @@ class InvoiceRepository {
   Future<int> deleteAll() async {
     final table = await _invoiceTable;
     return await table.deleteAll();
-  }
-
-  /// Delete invoices by order ID
-  Future<int> deleteByOrderId(int orderId) async {
-    final table = await _invoiceTable;
-    return await table.deleteByOrderId(orderId);
   }
 
   /// Get an invoice by ID
@@ -151,6 +174,21 @@ class InvoiceRepository {
   Future<List<Map<String, dynamic>>> getWithOrderInfo() async {
     final table = await _invoiceTable;
     return await table.getWithOrderInfo();
+  }
+
+  /// Get order IDs for an invoice
+  Future<List<int>> getOrderIdsForInvoice(int invoiceId) async {
+    final relationTable = await _relationTable;
+    return await relationTable.getOrderIdsForInvoice(invoiceId);
+  }
+
+  /// Update order relations for an invoice
+  Future<void> updateOrderRelations(int invoiceId, List<int> orderIds) async {
+    final relationTable = await _relationTable;
+    await relationTable.deleteByInvoiceId(invoiceId);
+    if (orderIds.isNotEmpty) {
+      await relationTable.insertRelationsForInvoice(invoiceId, orderIds);
+    }
   }
 
   /// Close database connection
