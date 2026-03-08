@@ -151,6 +151,7 @@ class InvoiceRepository {
   /// Search invoices by multiple criteria
   Future<List<Invoice>> search({
     String? invoiceNumber,
+    String? sellerName,
     int? orderId,
     double? minAmount,
     double? maxAmount,
@@ -161,6 +162,7 @@ class InvoiceRepository {
     final table = await _invoiceTable;
     return await table.search(
       invoiceNumber: invoiceNumber,
+      sellerName: sellerName,
       orderId: orderId,
       minAmount: minAmount,
       maxAmount: maxAmount,

@@ -231,6 +231,7 @@ class InvoiceTable {
   /// Note: orderId filter uses the invoice_order_relations table
   Future<List<Invoice>> search({
     String? invoiceNumber,
+    String? sellerName,
     int? orderId,
     double? minAmount,
     double? maxAmount,
@@ -244,6 +245,11 @@ class InvoiceTable {
     if (invoiceNumber != null && invoiceNumber.isNotEmpty) {
       conditions.add('${AppConstants.colInvoiceNumber} LIKE ?');
       args.add('%$invoiceNumber%');
+    }
+
+    if (sellerName != null && sellerName.isNotEmpty) {
+      conditions.add('${AppConstants.colSellerName} LIKE ?');
+      args.add('%$sellerName%');
     }
 
     if (minAmount != null) {

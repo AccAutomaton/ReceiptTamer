@@ -252,6 +252,13 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
             ),
             const SizedBox(height: 16),
             _buildDetailRow(
+              AppConstants.labelSellerName,
+              invoice.sellerName.isEmpty ? '-' : invoice.sellerName,
+              Icons.store,
+              colorScheme,
+            ),
+            const Divider(),
+            _buildDetailRow(
               AppConstants.labelInvoiceNumber,
               invoice.invoiceNumber.isEmpty ? '-' : invoice.invoiceNumber,
               Icons.description,
@@ -264,17 +271,6 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
                   ? DateFormatter.formatDisplay(invoiceDate)
                   : '-',
               Icons.event,
-              colorScheme,
-            ),
-            const Divider(),
-            _buildDetailRow(
-              '录入时间',
-              invoice.createdAt.isNotEmpty
-                  ? DateFormatter.formatDisplayWithTime(
-                      DateTime.tryParse(invoice.createdAt) ?? DateTime.now(),
-                    )
-                  : '-',
-              Icons.edit_calendar,
               colorScheme,
             ),
           ],

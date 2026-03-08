@@ -186,6 +186,7 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
   /// Search invoices
   Future<void> searchInvoices({
     String? invoiceNumber,
+    String? sellerName,
     int? orderId,
     double? minAmount,
     double? maxAmount,
@@ -198,6 +199,7 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
     try {
       final invoices = await _repository.search(
         invoiceNumber: invoiceNumber,
+        sellerName: sellerName,
         orderId: orderId,
         minAmount: minAmount,
         maxAmount: maxAmount,

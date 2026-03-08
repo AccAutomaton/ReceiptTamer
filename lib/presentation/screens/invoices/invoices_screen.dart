@@ -4,12 +4,17 @@ import 'package:go_router/go_router.dart';
 
 import 'package:catering_receipt_recorder/core/constants/app_constants.dart';
 import 'package:catering_receipt_recorder/data/models/order.dart';
+import 'package:catering_receipt_recorder/data/models/invoice.dart';
 import 'package:catering_receipt_recorder/presentation/providers/order_provider.dart';
 import 'package:catering_receipt_recorder/presentation/providers/invoice_provider.dart';
 import 'package:catering_receipt_recorder/presentation/widgets/common/empty_state.dart';
+import 'package:catering_receipt_recorder/presentation/widgets/common/month_range_picker.dart';
 import 'package:catering_receipt_recorder/presentation/widgets/invoice/invoice_card.dart';
+import 'package:catering_receipt_recorder/presentation/widgets/invoice/invoice_month_group.dart';
+import 'package:catering_receipt_recorder/presentation/widgets/invoice/invoice_month_section_header.dart';
+import 'package:catering_receipt_recorder/presentation/widgets/order/month_fast_scroll_bar.dart';
 
-/// Invoices screen - displays list of all invoices
+/// Invoices screen - displays list of all invoices grouped by month
 class InvoicesScreen extends ConsumerStatefulWidget {
   final int? filterOrderId; // Optional: filter by order ID
 
@@ -23,12 +28,21 @@ class InvoicesScreen extends ConsumerStatefulWidget {
 }
 
 class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
+  final ScrollController _scrollController = ScrollController();
   Order? _filterOrder;
+  List<InvoiceMonthGroup> _monthGroups = [];
+  Map<int, int> _invoiceOrderCounts = {}; // invoiceId -> order count
 
   @override
   void initState() {
     super.initState();
     _init();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _init() async {
@@ -57,6 +71,100 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
 
   void _handleInvoiceTap(int invoiceId) {
     context.push('/invoices/$invoiceId');
+  }
+
+  void _scrollToGroup(int index) {
+    if (!_scrollController.hasClients || _monthGroups.isEmpty) return;
+    if (index < 0 || index >= _monthGroups.length) return;
+
+    // Calculate approximate offset for the group
+    const estimatedItemHeight = 80.0;
+    const estimatedHeaderHeight = 64.0;
+    double targetOffset = 0;
+
+    for (int i = 0; i < index; i++) {
+      final group = _monthGroups[i];
+      targetOffset +=
+          estimatedHeaderHeight + (group.count * estimatedItemHeight);
+    }
+
+    _scrollController.animateTo(
+      targetOffset,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  /// Group invoices by year and month (descending order)
+  List<InvoiceMonthGroup> _groupInvoicesByMonth(List<Invoice> invoices) {
+    final Map<String, List<Invoice>> grouped = {};
+
+    for (final invoice in invoices) {
+      // Use invoiceDate if available, otherwise fall back to createdAt
+      final dateStr = invoice.invoiceDate ?? invoice.createdAt;
+      DateTime? date;
+      try {
+        date = DateTime.parse(dateStr);
+      } catch (_) {
+        continue;
+      }
+
+      final key = '${date.year}-${date.month}';
+      grouped.putIfAbsent(key, () => []);
+      grouped[key]!.add(invoice);
+    }
+
+    // Convert to list of InvoiceMonthGroup and sort by date (descending)
+    final groups = grouped.entries.map((entry) {
+      final parts = entry.key.split('-');
+      final year = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+
+      // Sort invoices within group by date (descending)
+      final sortedInvoices = entry.value.toList()
+        ..sort((a, b) {
+          final dateA = a.invoiceDate ?? a.createdAt;
+          final dateB = b.invoiceDate ?? b.createdAt;
+          return dateB.compareTo(dateA);
+        });
+
+      // Build order counts map for this group
+      final groupOrderCounts = <int, int>{};
+      for (final invoice in sortedInvoices) {
+        if (invoice.id != null) {
+          groupOrderCounts[invoice.id!] = _invoiceOrderCounts[invoice.id!] ?? 0;
+        }
+      }
+
+      return InvoiceMonthGroup(
+        year: year,
+        month: month,
+        invoices: sortedInvoices,
+        invoiceOrderCounts: groupOrderCounts,
+      );
+    }).toList();
+
+    // Sort groups by date (descending - newest first)
+    groups.sort((a, b) {
+      if (a.year != b.year) return b.year.compareTo(a.year);
+      return b.month.compareTo(a.month);
+    });
+
+    return groups;
+  }
+
+  /// Load order counts for all invoices
+  Future<Map<int, int>> _loadInvoiceOrderCounts(List<Invoice> invoices) async {
+    final invoiceOrderCounts = <int, int>{};
+
+    for (final invoice in invoices) {
+      if (invoice.id != null) {
+        final orderIds = await ref.read(invoiceProvider.notifier).getOrderIdsForInvoice(invoice.id!);
+        invoiceOrderCounts[invoice.id!] = orderIds.length;
+      }
+    }
+
+    return invoiceOrderCounts;
   }
 
   @override
@@ -105,36 +213,29 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
                 ? EmptyInvoices(
                     onAdd: _handleAddInvoice,
                   )
-                : FutureBuilder<List<dynamic>>(
-                    future: _loadOrderNames(),
+                : FutureBuilder<Map<int, int>>(
+                    future: _loadInvoiceOrderCounts(invoiceState.invoices),
                     builder: (context, snapshot) {
-                      return ListView.builder(
-                        padding: const EdgeInsets.only(bottom: 80),
-                        itemCount: invoiceState.invoices.length,
-                        itemBuilder: (context, index) {
-                          final invoice = invoiceState.invoices[index];
-                          String? orderShopName;
+                      if (snapshot.hasData) {
+                        _invoiceOrderCounts = snapshot.data!;
+                        _monthGroups = _groupInvoicesByMonth(invoiceState.invoices);
+                      }
 
-                          if (snapshot.hasData && snapshot.data!.length >= 2) {
-                            final invoiceOrderMap = snapshot.data![0] as Map<int, List<int>>;
-                            final orderMap = snapshot.data![1] as Map<int, String>;
-                            final orderIds = invoiceOrderMap[invoice.id];
-                            if (orderIds != null && orderIds.isNotEmpty) {
-                              // Show the first order's shop name, or show count if multiple
-                              if (orderIds.length == 1) {
-                                orderShopName = orderMap[orderIds.first];
-                              } else {
-                                orderShopName = '${orderIds.length}个订单';
-                              }
-                            }
-                          }
-
-                          return InvoiceCard(
-                            invoice: invoice,
-                            orderShopName: orderShopName,
-                            onTap: () => _handleInvoiceTap(invoice.id!),
-                          );
-                        },
+                      return Row(
+                        children: [
+                          // Main list takes remaining space
+                          Expanded(
+                            child: _buildGroupedList(),
+                          ),
+                          // Fast scroll bar on the right (non-overlapping)
+                          if (_monthGroups.length > 1)
+                            MonthFastScrollBar(
+                              items: _monthGroups
+                                  .map((g) => MonthScrollItem(year: g.year, month: g.month))
+                                  .toList(),
+                              onJumpToIndex: _scrollToGroup,
+                            ),
+                        ],
                       );
                     },
                   ),
@@ -142,35 +243,50 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
     );
   }
 
-  Future<List<dynamic>> _loadOrderNames() async {
-    final invoices = ref.read(invoiceProvider).invoices;
-    final invoiceIds = invoices.map((i) => i.id).where((id) => id != null).toList();
+  Widget _buildGroupedList() {
+    return CustomScrollView(
+      controller: _scrollController,
+      slivers: [
+        ..._buildSliverGroups(),
+        const SliverPadding(padding: EdgeInsets.only(bottom: 80)),
+      ],
+    );
+  }
 
-    // Get order IDs for all invoices from the relation table
-    final invoiceOrderMap = <int, List<int>>{};
-    for (final invoiceId in invoiceIds) {
-      if (invoiceId != null) {
-        final orderIds = await ref.read(invoiceProvider.notifier).getOrderIdsForInvoice(invoiceId);
-        invoiceOrderMap[invoiceId] = orderIds;
-      }
-    }
-
-    // Get unique order IDs
-    final allOrderIds = <int>{};
-    for (final orderIds in invoiceOrderMap.values) {
-      allOrderIds.addAll(orderIds);
-    }
-
-    // Load order names
-    final orderMap = <int, String>{};
-    for (final orderId in allOrderIds) {
-      final order = await ref.read(orderProvider.notifier).getOrderById(orderId);
-      if (order != null) {
-        orderMap[orderId] = order.shopName;
-      }
-    }
-
-    return [invoiceOrderMap, orderMap];
+  List<Widget> _buildSliverGroups() {
+    return _monthGroups.map((group) {
+      return SliverMainAxisGroup(
+        slivers: [
+          // Pinned section header (sticky)
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: _StickyMonthHeaderDelegate(
+              year: group.year,
+              month: group.month,
+              invoiceCount: group.count,
+              totalAmount: group.totalAmount,
+            ),
+          ),
+          // Invoice cards with padding
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final invoice = group.invoices[index];
+                  return InvoiceCard(
+                    invoice: invoice,
+                    orderCount: group.getOrderCount(invoice.id!),
+                    onTap: () => _handleInvoiceTap(invoice.id!),
+                  );
+                },
+                childCount: group.invoices.length,
+              ),
+            ),
+          ),
+        ],
+      );
+    }).toList();
   }
 
   void _showFilterDialog(BuildContext context) {
@@ -213,10 +329,34 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
                 },
               ),
               ListTile(
+                leading: const Icon(Icons.date_range),
+                title: const Text('按月份范围'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final result = await MonthRangePicker.show(context);
+                  if (result != null) {
+                    ref.read(invoiceProvider.notifier).searchInvoices(
+                          startDate: result.startDate,
+                          endDate: result.endDate,
+                        );
+                  }
+                },
+              ),
+              ListTile(
                 leading: const Icon(Icons.link_off),
                 title: const Text('未关联订单'),
                 onTap: () {
                   ref.read(invoiceProvider.notifier).loadInvoicesWithoutOrders();
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.link),
+                title: const Text('已关联订单'),
+                onTap: () {
+                  ref.read(invoiceProvider.notifier).searchInvoices(
+                        hasLinkedOrder: true,
+                      );
                   Navigator.pop(context);
                 },
               ),
@@ -237,7 +377,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
         content: TextField(
           controller: searchController,
           decoration: const InputDecoration(
-            hintText: '输入发票号码',
+            hintText: '输入销售方名称',
           ),
           autofocus: true,
         ),
@@ -252,7 +392,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
               Navigator.pop(context);
               if (query.isNotEmpty) {
                 ref.read(invoiceProvider.notifier).searchInvoices(
-                      invoiceNumber: query,
+                      sellerName: query,
                     );
               } else {
                 // Empty search returns all invoices
@@ -264,5 +404,58 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
         ],
       ),
     );
+  }
+}
+
+/// Delegate for sticky month header
+class _StickyMonthHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final int year;
+  final int month;
+  final int invoiceCount;
+  final double totalAmount;
+
+  _StickyMonthHeaderDelegate({
+    required this.year,
+    required this.month,
+    required this.invoiceCount,
+    required this.totalAmount,
+  });
+
+  @override
+  double get minExtent => 64;
+
+  @override
+  double get maxExtent => 64;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return SizedBox(
+      height: 64,
+      child: ColoredBox(
+        color: Theme.of(context).colorScheme.surface,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 4, bottom: 4),
+          child: InvoiceMonthSectionHeader(
+            year: year,
+            month: month,
+            invoiceCount: invoiceCount,
+            totalAmount: totalAmount,
+            isPinned: overlapsContent,
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _StickyMonthHeaderDelegate oldDelegate) {
+    return year != oldDelegate.year ||
+        month != oldDelegate.month ||
+        invoiceCount != oldDelegate.invoiceCount ||
+        totalAmount != oldDelegate.totalAmount;
   }
 }
