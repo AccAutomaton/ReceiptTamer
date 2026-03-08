@@ -43,6 +43,7 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
   final ImageService _imageService = ImageService();
 
   bool _isLoading = false;
+  bool _hasOcrResult = false; // 是否有OCR识别结果
 
   @override
   void initState() {
@@ -130,6 +131,7 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
           onResult: (ocrResult) {
             if (ocrResult?.success == true) {
               setState(() {
+                _hasOcrResult = true;
                 if (ocrResult?.shopName != null && ocrResult!.shopName!.isNotEmpty) {
                   _shopNameController.text = ocrResult.shopName!;
                 }
@@ -368,6 +370,36 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
             ),
 
             const SizedBox(height: 16),
+
+            // OCR提示
+            if (_hasOcrResult)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: Theme.of(context).colorScheme.error,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '由于设备性能限制，识别结果可能存在错误。\n请自行核对识别结果的准确性。',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
             // Form fields - 按日期、时段、金额、店铺名称、订单号顺序排列
             AppDateField(
