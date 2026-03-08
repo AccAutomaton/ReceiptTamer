@@ -47,7 +47,7 @@ class _OrderSelectorScreenState extends ConsumerState<OrderSelectorScreen> {
   bool _isLoading = true;
 
   // Filter state
-  InvoiceRelationFilter _relationFilter = InvoiceRelationFilter.all;
+  InvoiceRelationFilter _relationFilter = InvoiceRelationFilter.withoutInvoice;
   DateTime? _startDate;
   DateTime? _endDate;
   String _searchKeyword = '';
@@ -153,14 +153,13 @@ class _OrderSelectorScreenState extends ConsumerState<OrderSelectorScreen> {
         title: const Text('选择关联订单'),
         elevation: 0,
         actions: [
-          if (_selectedOrderIds.isNotEmpty)
-            TextButton(
-              onPressed: _confirmSelection,
-              child: Text(
-                '确认(${_selectedOrderIds.length})',
-                style: TextStyle(color: colorScheme.primary),
-              ),
+          TextButton(
+            onPressed: _confirmSelection,
+            child: Text(
+              _selectedOrderIds.isNotEmpty ? '确认(${_selectedOrderIds.length})' : '确认',
+              style: TextStyle(color: colorScheme.primary),
             ),
+          ),
         ],
       ),
       body: Column(
@@ -178,7 +177,7 @@ class _OrderSelectorScreenState extends ConsumerState<OrderSelectorScreen> {
           ),
 
           // Bottom confirm bar
-          if (_selectedOrderIds.isNotEmpty) _buildBottomBar(context),
+          _buildBottomBar(context),
         ],
       ),
     );
@@ -342,6 +341,8 @@ class _OrderSelectorScreenState extends ConsumerState<OrderSelectorScreen> {
         .where((o) => _selectedOrderIds.contains(o.id))
         .fold<double>(0.0, (sum, o) => sum + o.amount);
 
+    final hasSelection = _selectedOrderIds.isNotEmpty;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -363,15 +364,15 @@ class _OrderSelectorScreenState extends ConsumerState<OrderSelectorScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '已选择 ${_selectedOrderIds.length} 个订单',
+                  hasSelection ? '已选择 ${_selectedOrderIds.length} 个订单' : '未选择订单',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
-                  '合计: ${DateFormatter.formatAmount(totalAmount)}',
+                  hasSelection ? '合计: ${DateFormatter.formatAmount(totalAmount)}' : '将取消所有订单关联',
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.primary,
+                    color: hasSelection ? colorScheme.primary : colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -379,7 +380,7 @@ class _OrderSelectorScreenState extends ConsumerState<OrderSelectorScreen> {
             const Spacer(),
             FilledButton(
               onPressed: _confirmSelection,
-              child: const Text('确认选择'),
+              child: const Text('确认'),
             ),
           ],
         ),

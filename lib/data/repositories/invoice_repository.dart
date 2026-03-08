@@ -24,6 +24,9 @@ class InvoiceRepository {
   }
 
   /// Create a new invoice with optional order relations
+  /// Note: When associating orders with this invoice, any existing relations
+  /// between these orders and other invoices will be removed first.
+  /// This ensures one order can only be associated with one invoice at a time.
   Future<int> create(Invoice invoice, {List<int>? orderIds}) async {
     final table = await _invoiceTable;
     final id = await table.insert(invoice);
@@ -31,6 +34,14 @@ class InvoiceRepository {
     // Create order relations if provided
     if (orderIds != null && orderIds.isNotEmpty) {
       final relationTable = await _relationTable;
+
+      // For each order, remove any existing relation with other invoices first
+      // This ensures one order can only have one invoice
+      for (final orderId in orderIds) {
+        await relationTable.deleteByOrderId(orderId);
+      }
+
+      // Now insert the new relations
       await relationTable.insertRelationsForInvoice(id, orderIds);
     }
 
@@ -38,17 +49,39 @@ class InvoiceRepository {
   }
 
   /// Update an existing invoice and its order relations
+  /// Note: When associating orders with this invoice, any existing relations
+  /// between these orders and other invoices will be removed first.
+  /// This ensures one order can only be associated with one invoice at a time.
   Future<int> update(Invoice invoice, {List<int>? orderIds}) async {
     final table = await _invoiceTable;
 
     // Update order relations if provided
     if (orderIds != null && invoice.id != null) {
       final relationTable = await _relationTable;
-      // Delete existing relations
-      await relationTable.deleteByInvoiceId(invoice.id!);
+
+      // Get current order IDs for this invoice
+      final currentOrderIds = await relationTable.getOrderIdsForInvoice(invoice.id!);
+
+      // Find orders to remove (in current but not in new list)
+      final ordersToRemove = currentOrderIds.where((id) => !orderIds.contains(id)).toList();
+      // Find orders to add (in new list but not in current)
+      final ordersToAdd = orderIds.where((id) => !currentOrderIds.contains(id)).toList();
+
+      // Remove orders that are no longer selected
+      for (final orderId in ordersToRemove) {
+        await relationTable.deleteRelation(invoice.id!, orderId);
+      }
+
+      // For new orders, first remove any existing relations with other invoices,
+      // then add the new relation. This ensures one order can only have one invoice.
+      for (final orderId in ordersToAdd) {
+        // Remove any existing relation this order has with other invoices
+        await relationTable.deleteByOrderId(orderId);
+      }
+
       // Insert new relations
-      if (orderIds.isNotEmpty) {
-        await relationTable.insertRelationsForInvoice(invoice.id!, orderIds);
+      if (ordersToAdd.isNotEmpty) {
+        await relationTable.insertRelationsForInvoice(invoice.id!, ordersToAdd);
       }
     }
 
@@ -185,11 +218,31 @@ class InvoiceRepository {
   }
 
   /// Update order relations for an invoice
+  /// Note: This will remove any existing relations the orders have with other invoices.
+  /// This ensures one order can only be associated with one invoice at a time.
   Future<void> updateOrderRelations(int invoiceId, List<int> orderIds) async {
     final relationTable = await _relationTable;
-    await relationTable.deleteByInvoiceId(invoiceId);
-    if (orderIds.isNotEmpty) {
-      await relationTable.insertRelationsForInvoice(invoiceId, orderIds);
+
+    // Get current order IDs for this invoice
+    final currentOrderIds = await relationTable.getOrderIdsForInvoice(invoiceId);
+
+    // Find orders to remove and add
+    final ordersToRemove = currentOrderIds.where((id) => !orderIds.contains(id)).toList();
+    final ordersToAdd = orderIds.where((id) => !currentOrderIds.contains(id)).toList();
+
+    // Remove orders that are no longer selected
+    for (final orderId in ordersToRemove) {
+      await relationTable.deleteRelation(invoiceId, orderId);
+    }
+
+    // For new orders, remove any existing relations with other invoices first
+    for (final orderId in ordersToAdd) {
+      await relationTable.deleteByOrderId(orderId);
+    }
+
+    // Insert new relations
+    if (ordersToAdd.isNotEmpty) {
+      await relationTable.insertRelationsForInvoice(invoiceId, ordersToAdd);
     }
   }
 

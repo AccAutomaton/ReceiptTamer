@@ -302,9 +302,12 @@ class OrderTable {
 
   /// Search orders with invoice relation filter
   /// [hasInvoice] - null: all orders, true: only orders with invoices, false: only orders without invoices
-  /// [excludeInvoiceId] - exclude orders that are already linked to this invoice (for editing)
+  /// [excludeInvoiceId] - the current invoice ID being edited
   /// When both shopName and orderNumber are provided with the same value (keyword search),
   /// it performs an OR search on both fields.
+  /// Note: For "all" and "with invoice" filters, orders linked to the current invoice
+  /// (excludeInvoiceId) are included and will be shown as selected in the UI.
+  /// For "without invoice" filter, only truly unlinked orders are shown.
   Future<List<Order>> searchWithInvoiceRelation({
     String? keyword,
     double? minAmount,
@@ -347,17 +350,13 @@ class OrderTable {
     // Filter by invoice relation status
     String invoiceRelationClause = '';
     if (hasInvoice == true) {
+      // "已关联": Show orders with invoices (including current invoice's orders)
       invoiceRelationClause = 'o.${AppConstants.colId} IN (SELECT DISTINCT ${AppConstants.colOrderId} FROM ${AppConstants.invoiceOrderRelationsTable})';
     } else if (hasInvoice == false) {
+      // "未关联": Only show orders without ANY invoices (not including current invoice's orders)
       invoiceRelationClause = 'o.${AppConstants.colId} NOT IN (SELECT DISTINCT ${AppConstants.colOrderId} FROM ${AppConstants.invoiceOrderRelationsTable})';
     }
-
-    // Exclude orders already linked to the current invoice (for editing)
-    String excludeInvoiceClause = '';
-    if (excludeInvoiceId != null) {
-      excludeInvoiceClause = 'o.${AppConstants.colId} NOT IN (SELECT ${AppConstants.colOrderId} FROM ${AppConstants.invoiceOrderRelationsTable} WHERE ${AppConstants.colInvoiceId} = ?)';
-      args.add(excludeInvoiceId);
-    }
+    // When hasInvoice is null ("全部"), no filter - all orders are shown
 
     // Build WHERE clause
     final allConditions = <String>[];
@@ -367,20 +366,36 @@ class OrderTable {
     if (invoiceRelationClause.isNotEmpty) {
       allConditions.add(invoiceRelationClause);
     }
-    if (excludeInvoiceClause.isNotEmpty) {
-      allConditions.add(excludeInvoiceClause);
-    }
 
     final whereClause = allConditions.isNotEmpty ? 'WHERE ${allConditions.join(' AND ')}' : '';
 
+    // Build ORDER BY clause - put orders linked to current invoice first
+    String orderByClause;
+    if (excludeInvoiceId != null) {
+      orderByClause = '''
+        CASE WHEN o.${AppConstants.colId} IN (SELECT ${AppConstants.colOrderId} FROM ${AppConstants.invoiceOrderRelationsTable} WHERE ${AppConstants.colInvoiceId} = ?) THEN 0 ELSE 1 END,
+        o.${AppConstants.colOrderDate} DESC,
+        CASE o.${AppConstants.colMealTime}
+        WHEN 'dinner' THEN 1
+        WHEN 'lunch' THEN 2
+        WHEN 'breakfast' THEN 3
+        ELSE 4 END ASC
+      ''';
+      args.add(excludeInvoiceId);
+    } else {
+      orderByClause = '''
+        o.${AppConstants.colOrderDate} DESC,
+        CASE o.${AppConstants.colMealTime}
+        WHEN 'dinner' THEN 1
+        WHEN 'lunch' THEN 2
+        WHEN 'breakfast' THEN 3
+        ELSE 4 END ASC
+      ''';
+    }
+
     final List<Map<String, dynamic>> maps = await database.rawQuery(
       'SELECT o.* FROM ${AppConstants.ordersTable} o $whereClause '
-      'ORDER BY o.${AppConstants.colOrderDate} DESC, '
-      'CASE o.${AppConstants.colMealTime} '
-      "WHEN 'dinner' THEN 1 "
-      "WHEN 'lunch' THEN 2 "
-      "WHEN 'breakfast' THEN 3 "
-      'ELSE 4 END ASC',
+      'ORDER BY $orderByClause',
       args,
     );
 

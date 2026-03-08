@@ -50,6 +50,15 @@ class InvoiceOrderRelationTable {
     );
   }
 
+  /// Delete a specific invoice-order relation
+  Future<int> deleteRelation(int invoiceId, int orderId) async {
+    return await database.delete(
+      AppConstants.invoiceOrderRelationsTable,
+      where: '${AppConstants.colInvoiceId} = ? AND ${AppConstants.colOrderId} = ?',
+      whereArgs: [invoiceId, orderId],
+    );
+  }
+
   /// Get all order IDs for an invoice
   Future<List<int>> getOrderIdsForInvoice(int invoiceId) async {
     final List<Map<String, dynamic>> maps = await database.query(
