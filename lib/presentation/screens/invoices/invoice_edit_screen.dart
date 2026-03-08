@@ -225,6 +225,22 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
       return;
     }
 
+    // Validate required fields that are not TextFormField
+    final amount = double.tryParse(_amountController.text) ?? 0.0;
+    if (amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请输入有效的价税合计金额')),
+      );
+      return;
+    }
+
+    if (_invoiceDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请选择开票日期')),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -425,26 +441,6 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
             const SizedBox(height: 16),
 
             // Form fields
-            AppTextField(
-              label: AppConstants.labelInvoiceNumber,
-              hint: AppConstants.hintInvoiceNumber,
-              controller: _invoiceNumberController,
-              required: false,
-              keyboardType: TextInputType.text,
-              prefixIcon: const Icon(Icons.description),
-            ),
-
-            const SizedBox(height: 16),
-
-            AppAmountField(
-              label: AppConstants.labelTotalAmount,
-              hint: AppConstants.hintAmount,
-              controller: _amountController,
-              required: false,
-            ),
-
-            const SizedBox(height: 16),
-
             AppDateField(
               label: AppConstants.labelInvoiceDate,
               initialValue: _invoiceDate,
@@ -453,7 +449,16 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
                   _invoiceDate = date;
                 });
               },
-              required: false,
+              required: true,
+            ),
+
+            const SizedBox(height: 16),
+
+            AppAmountField(
+              label: AppConstants.labelTotalAmount,
+              hint: AppConstants.hintAmount,
+              controller: _amountController,
+              required: true,
             ),
 
             const SizedBox(height: 16),
@@ -465,6 +470,17 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
               required: false,
               keyboardType: TextInputType.text,
               prefixIcon: const Icon(Icons.store),
+            ),
+
+            const SizedBox(height: 16),
+
+            AppTextField(
+              label: AppConstants.labelInvoiceNumber,
+              hint: AppConstants.hintInvoiceNumber,
+              controller: _invoiceNumberController,
+              required: false,
+              keyboardType: TextInputType.text,
+              prefixIcon: const Icon(Icons.description),
             ),
 
             const SizedBox(height: 24),

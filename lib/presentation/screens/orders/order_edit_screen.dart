@@ -369,38 +369,7 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
 
             const SizedBox(height: 16),
 
-            // Form fields
-            AppTextField(
-              label: AppConstants.labelShopName,
-              hint: AppConstants.hintShopName,
-              controller: _shopNameController,
-              required: false,
-              keyboardType: TextInputType.text,
-              prefixIcon: const Icon(Icons.store),
-            ),
-
-            const SizedBox(height: 16),
-
-            AppAmountField(
-              label: AppConstants.labelAmount,
-              hint: AppConstants.hintAmount,
-              controller: _amountController,
-              required: true,
-            ),
-
-            const SizedBox(height: 16),
-
-            AppTextField(
-              label: AppConstants.labelOrderNumber,
-              hint: AppConstants.hintOrderNumber,
-              controller: _orderNumberController,
-              required: false,
-              keyboardType: TextInputType.text,
-              prefixIcon: const Icon(Icons.receipt),
-            ),
-
-            const SizedBox(height: 16),
-
+            // Form fields - 按日期、时段、金额、店铺名称、订单号顺序排列
             AppDateField(
               label: AppConstants.labelOrderDate,
               initialValue: _orderDate,
@@ -425,6 +394,37 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
                 });
               },
               required: true,
+            ),
+
+            const SizedBox(height: 16),
+
+            AppAmountField(
+              label: AppConstants.labelAmount,
+              hint: AppConstants.hintAmount,
+              controller: _amountController,
+              required: true,
+            ),
+
+            const SizedBox(height: 16),
+
+            AppTextField(
+              label: AppConstants.labelShopName,
+              hint: AppConstants.hintShopName,
+              controller: _shopNameController,
+              required: false,
+              keyboardType: TextInputType.text,
+              prefixIcon: const Icon(Icons.store),
+            ),
+
+            const SizedBox(height: 16),
+
+            AppTextField(
+              label: AppConstants.labelOrderNumber,
+              hint: AppConstants.hintOrderNumber,
+              controller: _orderNumberController,
+              required: false,
+              keyboardType: TextInputType.text,
+              prefixIcon: const Icon(Icons.receipt),
             ),
 
             const SizedBox(height: 24),
