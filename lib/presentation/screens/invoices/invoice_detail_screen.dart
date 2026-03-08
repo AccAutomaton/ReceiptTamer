@@ -289,7 +289,9 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
     return Card(
       child: InkWell(
         onTap: () {
-          context.push('/orders/${order.id}');
+          if (order.id != null && order.id! > 0) {
+            context.push('/orders/${order.id}');
+          }
         },
         child: Padding(
           padding: const EdgeInsets.all(16),

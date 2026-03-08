@@ -252,7 +252,11 @@ class HomeScreen extends ConsumerWidget {
             : null;
 
         return AppCard(
-          onTap: () => context.push('/orders/${order.id}'),
+          onTap: () {
+            if (order.id != null && order.id! > 0) {
+              context.push('/orders/${order.id}');
+            }
+          },
           padding: const EdgeInsets.all(12),
           margin: const EdgeInsets.only(bottom: 8),
           child: Row(

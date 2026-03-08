@@ -127,6 +127,45 @@ class OrderRepository {
     );
   }
 
+  /// Search orders with invoice relation filter
+  /// [hasInvoice] - null: all orders, true: only orders with invoices, false: only orders without invoices
+  /// [excludeInvoiceId] - exclude orders already linked to this invoice (for editing)
+  Future<List<Order>> searchWithInvoiceRelation({
+    String? keyword,
+    double? minAmount,
+    double? maxAmount,
+    DateTime? startDate,
+    DateTime? endDate,
+    bool? hasInvoice,
+    int? excludeInvoiceId,
+  }) async {
+    final table = await _orderTable;
+    return await table.searchWithInvoiceRelation(
+      keyword: keyword,
+      minAmount: minAmount,
+      maxAmount: maxAmount,
+      startDate: startDate,
+      endDate: endDate,
+      hasInvoice: hasInvoice,
+      excludeInvoiceId: excludeInvoiceId,
+    );
+  }
+
+  /// Get orders with their invoice relation info
+  /// [excludeInvoiceId] - exclude orders already linked to this invoice (for editing)
+  Future<List<Map<String, dynamic>>> getOrdersWithInvoiceInfo({
+    int? excludeInvoiceId,
+  }) async {
+    final table = await _orderTable;
+    return await table.getOrdersWithInvoiceInfo(excludeInvoiceId: excludeInvoiceId);
+  }
+
+  /// Get invoice IDs linked to a specific order
+  Future<List<int>> getInvoiceIdsForOrder(int orderId) async {
+    final table = await _orderTable;
+    return await table.getInvoiceIdsForOrder(orderId);
+  }
+
   /// Close database connection
   Future<void> close() async {
     await _dbHelper.close();

@@ -9,6 +9,7 @@ import '../presentation/screens/orders/order_edit_screen.dart';
 import '../presentation/screens/invoices/invoices_screen.dart';
 import '../presentation/screens/invoices/invoice_detail_screen.dart';
 import '../presentation/screens/invoices/invoice_edit_screen.dart';
+import '../presentation/screens/invoices/order_selector_screen.dart';
 import '../presentation/screens/export/export_screen.dart';
 import '../presentation/screens/settings/settings_screen.dart';
 import '../presentation/widgets/main_shell.dart';
@@ -57,6 +58,28 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/orders/new',
         name: 'order_new',
         builder: (context, state) => const OrderEditScreen(),
+      ),
+      // Order selector screen must be before /orders/:id to avoid matching "select" as an ID
+      GoRoute(
+        path: '/orders/select',
+        name: 'order_selector',
+        builder: (context, state) {
+          // Parse selected order IDs from query parameters
+          final selectedIdsStr = state.uri.queryParameters['selectedIds'];
+          final excludeInvoiceId = state.uri.queryParameters['excludeInvoiceId'] != null
+              ? int.tryParse(state.uri.queryParameters['excludeInvoiceId']!)
+              : null;
+
+          List<int> selectedIds = [];
+          if (selectedIdsStr != null && selectedIdsStr.isNotEmpty) {
+            selectedIds = selectedIdsStr.split(',').map((id) => int.tryParse(id)).whereType<int>().toList();
+          }
+
+          return OrderSelectorScreen(
+            selectedOrderIds: selectedIds,
+            excludeInvoiceId: excludeInvoiceId,
+          );
+        },
       ),
       GoRoute(
         path: '/orders/:id',

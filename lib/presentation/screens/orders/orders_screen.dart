@@ -208,9 +208,12 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
                   final order = group.orders[index];
+                  final orderId = order.id;
                   return OrderCard(
                     order: order,
-                    onTap: () => _handleOrderTap(order.id!),
+                    onTap: orderId != null && orderId > 0
+                        ? () => _handleOrderTap(orderId)
+                        : null,
                   );
                 },
                 childCount: group.orders.length,

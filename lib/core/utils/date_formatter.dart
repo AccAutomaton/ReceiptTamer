@@ -16,6 +16,11 @@ class DateFormatter {
     return DateFormat(AppConstants.dateFormatDisplay).format(date);
   }
 
+  /// Format year and month for display (e.g., 2024年01月)
+  static String formatYearMonth(DateTime date) {
+    return '${date.year}年${date.month.toString().padLeft(2, '0')}月';
+  }
+
   /// Format date with time for display (e.g., 2024年01月15日 14:30)
   static String formatDisplayWithTime(DateTime? date) {
     if (date == null) return '-';

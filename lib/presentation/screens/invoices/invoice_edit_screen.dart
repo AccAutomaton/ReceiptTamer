@@ -7,15 +7,13 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:catering_receipt_recorder/core/constants/app_constants.dart';
-import 'package:catering_receipt_recorder/core/utils/date_formatter.dart';
 import 'package:catering_receipt_recorder/data/models/invoice.dart';
-import 'package:catering_receipt_recorder/data/models/order.dart';
 import 'package:catering_receipt_recorder/data/models/ocr_result.dart';
 import 'package:catering_receipt_recorder/data/services/file_service.dart';
 import 'package:catering_receipt_recorder/data/services/image_service.dart';
 import 'package:catering_receipt_recorder/presentation/providers/invoice_provider.dart';
-import 'package:catering_receipt_recorder/presentation/providers/order_provider.dart';
 import 'package:catering_receipt_recorder/presentation/providers/ocr_provider.dart';
+import 'package:catering_receipt_recorder/presentation/screens/invoices/order_selector_screen.dart';
 import 'package:catering_receipt_recorder/presentation/widgets/common/app_button.dart';
 import 'package:catering_receipt_recorder/presentation/widgets/common/app_text_field.dart';
 import 'package:catering_receipt_recorder/presentation/widgets/invoice/invoice_image_preview.dart';
@@ -196,21 +194,21 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
   }
 
   void _showOrderSelector() async {
-    final orders = await ref.read(orderProvider.notifier).getAll();
-
-    if (!mounted) return;
-
-    final selected = await showDialog<List<int>>(
-      context: context,
-      builder: (context) => _MultiOrderSelectorDialog(
-        orders: orders,
-        selectedIds: _selectedOrderIds,
-      ),
+    // Build the URL with query parameters
+    final selectedIdsStr = _selectedOrderIds.join(',');
+    final uri = Uri(
+      path: '/orders/select',
+      queryParameters: {
+        if (selectedIdsStr.isNotEmpty) 'selectedIds': selectedIdsStr,
+        if (widget.invoiceId != null) 'excludeInvoiceId': widget.invoiceId.toString(),
+      },
     );
 
-    if (selected != null) {
+    final result = await context.push<OrderSelectorResult>(uri.toString());
+
+    if (result != null) {
       setState(() {
-        _selectedOrderIds = selected;
+        _selectedOrderIds = result.selectedOrderIds;
       });
     }
   }
@@ -538,81 +536,6 @@ class _FilePickResult {
   final bool isPdf;
 
   _FilePickResult(this.imageSource, this.isPdf);
-}
-
-/// Multi-order selector dialog
-class _MultiOrderSelectorDialog extends StatefulWidget {
-  final List<Order> orders;
-  final List<int> selectedIds;
-
-  const _MultiOrderSelectorDialog({
-    required this.orders,
-    required this.selectedIds,
-  });
-
-  @override
-  State<_MultiOrderSelectorDialog> createState() => _MultiOrderSelectorDialogState();
-}
-
-class _MultiOrderSelectorDialogState extends State<_MultiOrderSelectorDialog> {
-  late List<int> _tempSelectedIds;
-
-  @override
-  void initState() {
-    super.initState();
-    _tempSelectedIds = List.from(widget.selectedIds);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('选择关联订单'),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: widget.orders.isEmpty
-            ? const Center(
-                child: Text('暂无订单'),
-              )
-            : ListView.builder(
-                shrinkWrap: true,
-                itemCount: widget.orders.length,
-                itemBuilder: (context, index) {
-                  final order = widget.orders[index];
-                  final isSelected = _tempSelectedIds.contains(order.id);
-                  return CheckboxListTile(
-                    value: isSelected,
-                    onChanged: (checked) {
-                      setState(() {
-                        if (checked == true) {
-                          _tempSelectedIds.add(order.id!);
-                        } else {
-                          _tempSelectedIds.remove(order.id);
-                        }
-                      });
-                    },
-                    secondary: const Icon(Icons.receipt_long),
-                    title: Text(order.shopName.isEmpty
-                        ? '未命名店铺'
-                        : order.shopName),
-                    subtitle: Text(
-                      DateFormatter.formatAmount(order.amount),
-                    ),
-                  );
-                },
-              ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text(AppConstants.btnCancel),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(context, _tempSelectedIds),
-          child: const Text(AppConstants.btnConfirm),
-        ),
-      ],
-    );
-  }
 }
 
 /// Invoice OCR progress dialog widget

@@ -206,12 +206,13 @@ class OrderTable {
     return 0;
   }
 
-  /// Get orders without linked invoices
+  /// Get orders without linked invoices (using relation table)
   Future<List<Order>> getWithoutInvoices() async {
     final List<Map<String, dynamic>> maps = await database.rawQuery(
       'SELECT o.* FROM ${AppConstants.ordersTable} o '
-      'LEFT JOIN ${AppConstants.invoicesTable} i ON o.${AppConstants.colId} = i.${AppConstants.colOrderId} '
-      'WHERE i.${AppConstants.colId} IS NULL '
+      'WHERE o.${AppConstants.colId} NOT IN ('
+      '  SELECT DISTINCT ${AppConstants.colOrderId} FROM ${AppConstants.invoiceOrderRelationsTable}'
+      ') '
       'ORDER BY o.${AppConstants.colOrderDate} DESC, '
       'CASE o.${AppConstants.colMealTime} '
       "WHEN 'dinner' THEN 1 "
@@ -297,5 +298,135 @@ class OrderTable {
     );
 
     return maps.map((map) => Order.fromJson(map)).toList();
+  }
+
+  /// Search orders with invoice relation filter
+  /// [hasInvoice] - null: all orders, true: only orders with invoices, false: only orders without invoices
+  /// [excludeInvoiceId] - exclude orders that are already linked to this invoice (for editing)
+  /// When both shopName and orderNumber are provided with the same value (keyword search),
+  /// it performs an OR search on both fields.
+  Future<List<Order>> searchWithInvoiceRelation({
+    String? keyword,
+    double? minAmount,
+    double? maxAmount,
+    DateTime? startDate,
+    DateTime? endDate,
+    bool? hasInvoice,
+    int? excludeInvoiceId,
+  }) async {
+    final conditions = <String>[];
+    final args = <dynamic>[];
+
+    // Keyword search (shopName OR orderNumber)
+    if (keyword != null && keyword.isNotEmpty) {
+      conditions.add('(${AppConstants.colShopName} LIKE ? OR ${AppConstants.colOrderNumber} LIKE ?)');
+      args.add('%$keyword%');
+      args.add('%$keyword%');
+    }
+
+    if (minAmount != null) {
+      conditions.add('${AppConstants.colAmount} >= ?');
+      args.add(minAmount);
+    }
+
+    if (maxAmount != null) {
+      conditions.add('${AppConstants.colAmount} <= ?');
+      args.add(maxAmount);
+    }
+
+    if (startDate != null) {
+      conditions.add('o.${AppConstants.colOrderDate} >= ?');
+      args.add(_formatDate(startDate));
+    }
+
+    if (endDate != null) {
+      conditions.add('o.${AppConstants.colOrderDate} <= ?');
+      args.add(_formatDate(endDate));
+    }
+
+    // Filter by invoice relation status
+    String invoiceRelationClause = '';
+    if (hasInvoice == true) {
+      invoiceRelationClause = 'o.${AppConstants.colId} IN (SELECT DISTINCT ${AppConstants.colOrderId} FROM ${AppConstants.invoiceOrderRelationsTable})';
+    } else if (hasInvoice == false) {
+      invoiceRelationClause = 'o.${AppConstants.colId} NOT IN (SELECT DISTINCT ${AppConstants.colOrderId} FROM ${AppConstants.invoiceOrderRelationsTable})';
+    }
+
+    // Exclude orders already linked to the current invoice (for editing)
+    String excludeInvoiceClause = '';
+    if (excludeInvoiceId != null) {
+      excludeInvoiceClause = 'o.${AppConstants.colId} NOT IN (SELECT ${AppConstants.colOrderId} FROM ${AppConstants.invoiceOrderRelationsTable} WHERE ${AppConstants.colInvoiceId} = ?)';
+      args.add(excludeInvoiceId);
+    }
+
+    // Build WHERE clause
+    final allConditions = <String>[];
+    if (conditions.isNotEmpty) {
+      allConditions.add('(${conditions.join(' AND ')})');
+    }
+    if (invoiceRelationClause.isNotEmpty) {
+      allConditions.add(invoiceRelationClause);
+    }
+    if (excludeInvoiceClause.isNotEmpty) {
+      allConditions.add(excludeInvoiceClause);
+    }
+
+    final whereClause = allConditions.isNotEmpty ? 'WHERE ${allConditions.join(' AND ')}' : '';
+
+    final List<Map<String, dynamic>> maps = await database.rawQuery(
+      'SELECT o.* FROM ${AppConstants.ordersTable} o $whereClause '
+      'ORDER BY o.${AppConstants.colOrderDate} DESC, '
+      'CASE o.${AppConstants.colMealTime} '
+      "WHEN 'dinner' THEN 1 "
+      "WHEN 'lunch' THEN 2 "
+      "WHEN 'breakfast' THEN 3 "
+      'ELSE 4 END ASC',
+      args,
+    );
+
+    return maps.map((map) => Order.fromJson(map)).toList();
+  }
+
+  /// Get orders with their invoice relation info
+  /// Returns orders with additional `linked_invoice_id` field if linked
+  /// [excludeInvoiceId] - exclude orders that are already linked to this invoice (for editing)
+  Future<List<Map<String, dynamic>>> getOrdersWithInvoiceInfo({
+    int? excludeInvoiceId,
+  }) async {
+    String excludeClause = '';
+    final args = <dynamic>[];
+
+    if (excludeInvoiceId != null) {
+      excludeClause = 'WHERE o.${AppConstants.colId} NOT IN (SELECT ${AppConstants.colOrderId} FROM ${AppConstants.invoiceOrderRelationsTable} WHERE ${AppConstants.colInvoiceId} = ?)';
+      args.add(excludeInvoiceId);
+    }
+
+    final List<Map<String, dynamic>> maps = await database.rawQuery(
+      'SELECT o.*, r.${AppConstants.colInvoiceId} as linked_invoice_id '
+      'FROM ${AppConstants.ordersTable} o '
+      'LEFT JOIN ${AppConstants.invoiceOrderRelationsTable} r ON o.${AppConstants.colId} = r.${AppConstants.colOrderId} '
+      '$excludeClause '
+      'ORDER BY o.${AppConstants.colOrderDate} DESC, '
+      'CASE o.${AppConstants.colMealTime} '
+      "WHEN 'dinner' THEN 1 "
+      "WHEN 'lunch' THEN 2 "
+      "WHEN 'breakfast' THEN 3 "
+      'ELSE 4 END ASC',
+      args,
+    );
+
+    return maps;
+  }
+
+  /// Get invoice IDs linked to a specific order
+  Future<List<int>> getInvoiceIdsForOrder(int orderId) async {
+    final List<Map<String, dynamic>> maps = await database.query(
+      AppConstants.invoiceOrderRelationsTable,
+      columns: [AppConstants.colInvoiceId],
+      where: '${AppConstants.colOrderId} = ?',
+      whereArgs: [orderId],
+    );
+
+    return maps.map((map) => map[AppConstants.colInvoiceId] as int).toList();
   }
 }

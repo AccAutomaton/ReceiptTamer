@@ -267,6 +267,55 @@ class OrderNotifier extends Notifier<OrderState> {
   Future<List<Order>> getByDateRangeForExport(DateTime start, DateTime end) async {
     return await _repository.getByDateRange(start, end);
   }
+
+  /// Search orders with invoice relation filter
+  /// Used by the order selector for invoices
+  Future<List<Order>> searchOrdersWithInvoiceRelation({
+    String? keyword,
+    double? minAmount,
+    double? maxAmount,
+    DateTime? startDate,
+    DateTime? endDate,
+    bool? hasInvoice,
+    int? excludeInvoiceId,
+  }) async {
+    try {
+      return await _repository.searchWithInvoiceRelation(
+        keyword: keyword,
+        minAmount: minAmount,
+        maxAmount: maxAmount,
+        startDate: startDate,
+        endDate: endDate,
+        hasInvoice: hasInvoice,
+        excludeInvoiceId: excludeInvoiceId,
+      );
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      return [];
+    }
+  }
+
+  /// Get orders with their invoice relation info
+  Future<List<Map<String, dynamic>>> getOrdersWithInvoiceInfo({
+    int? excludeInvoiceId,
+  }) async {
+    try {
+      return await _repository.getOrdersWithInvoiceInfo(excludeInvoiceId: excludeInvoiceId);
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      return [];
+    }
+  }
+
+  /// Get invoice IDs linked to a specific order
+  Future<List<int>> getInvoiceIdsForOrder(int orderId) async {
+    try {
+      return await _repository.getInvoiceIdsForOrder(orderId);
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      return [];
+    }
+  }
 }
 
 /// Provider for OrderRepository
