@@ -10,6 +10,7 @@ import 'package:catering_receipt_recorder/data/models/order.dart';
 import 'package:catering_receipt_recorder/presentation/providers/order_provider.dart';
 import 'package:catering_receipt_recorder/presentation/providers/invoice_provider.dart';
 import 'package:catering_receipt_recorder/presentation/widgets/order/order_image_preview.dart';
+import 'package:catering_receipt_recorder/presentation/screens/orders/invoice_selector_screen.dart';
 
 /// Order detail screen
 class OrderDetailScreen extends ConsumerStatefulWidget {
@@ -89,11 +90,54 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   }
 
   void _handleAddInvoice() {
-    context.push('/invoices/new?orderId=${widget.orderId}');
-  }
-
-  void _handleViewInvoices() {
-    context.push('/invoices?orderId=${widget.orderId}');
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.add),
+              title: const Text('新增发票'),
+              subtitle: const Text('创建一张新发票并关联'),
+              onTap: () async {
+                Navigator.pop(context);
+                final result = await context.push<bool>('/invoices/new?orderId=${widget.orderId}');
+                if (result == true) {
+                  _loadOrder();
+                  // Invalidate the provider to refresh invoices list
+                  ref.invalidate(invoicesByOrderIdProvider(widget.orderId));
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.list_alt),
+              title: const Text('选择已有发票'),
+              subtitle: const Text('从已有发票中选择一张关联'),
+              onTap: () async {
+                Navigator.pop(context);
+                final result = await context.push<InvoiceSelectorResult>(
+                  '/invoices/select?orderId=${widget.orderId}',
+                );
+                if (result?.selectedInvoiceId != null) {
+                  _loadOrder();
+                  // Invalidate the provider to refresh invoices list
+                  ref.invalidate(invoicesByOrderIdProvider(widget.orderId));
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('发票关联成功')),
+                    );
+                  }
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -316,33 +360,37 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     AsyncValue<List<dynamic>> invoices,
     ColorScheme colorScheme,
   ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return invoices.when(
+      data: (invoiceList) {
+        final hasInvoice = invoiceList.isNotEmpty;
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '关联发票',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '关联发票',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: _handleAddInvoice,
+                      icon: Icon(
+                        hasInvoice ? Icons.swap_horiz : Icons.add,
+                        size: 18,
+                      ),
+                      label: Text(hasInvoice ? '关联其他发票' : '添加'),
+                    ),
+                  ],
                 ),
-                TextButton.icon(
-                  onPressed: _handleAddInvoice,
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('添加'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            invoices.when(
-              data: (invoiceList) {
-                if (invoiceList.isEmpty) {
-                  return Center(
+                const SizedBox(height: 12),
+                if (invoiceList.isEmpty)
+                  Center(
                     child: Column(
                       children: [
                         Icon(
@@ -359,34 +407,68 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                         ),
                       ],
                     ),
-                  );
-                }
-                return ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: invoiceList.length,
-                  itemBuilder: (context, index) {
-                    final invoice = invoiceList[index];
-                    return ListTile(
-                      leading: const Icon(Icons.description),
-                      title: Text(invoice.invoiceNumber.isEmpty
-                          ? '未填写发票号'
-                          : invoice.invoiceNumber),
-                      subtitle: Text(
-                        DateFormatter.formatAmount(invoice.totalAmount),
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () {
-                        context.push('/invoices/${invoice.id}');
-                      },
-                    );
-                  },
-                );
-              },
-              loading: () => const Center(
+                  )
+                else
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: invoiceList.length,
+                    itemBuilder: (context, index) {
+                      final invoice = invoiceList[index];
+                      return ListTile(
+                        leading: const Icon(Icons.description),
+                        title: Text(invoice.invoiceNumber.isEmpty
+                            ? '未填写发票号'
+                            : invoice.invoiceNumber),
+                        subtitle: Text(
+                          DateFormatter.formatAmount(invoice.totalAmount),
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () {
+                          context.push('/invoices/${invoice.id}');
+                        },
+                      );
+                    },
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+      loading: () => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '关联发票',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Center(
                 child: CircularProgressIndicator(),
               ),
-              error: (error, stack) => Center(
+            ],
+          ),
+        ),
+      ),
+      error: (error, stack) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '关联发票',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Center(
                 child: Text(
                   '加载失败: $error',
                   style: TextStyle(
@@ -394,8 +476,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

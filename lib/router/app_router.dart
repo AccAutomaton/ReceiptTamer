@@ -6,6 +6,7 @@ import '../presentation/screens/home/home_screen.dart';
 import '../presentation/screens/orders/orders_screen.dart';
 import '../presentation/screens/orders/order_detail_screen.dart';
 import '../presentation/screens/orders/order_edit_screen.dart';
+import '../presentation/screens/orders/invoice_selector_screen.dart';
 import '../presentation/screens/invoices/invoices_screen.dart';
 import '../presentation/screens/invoices/invoice_detail_screen.dart';
 import '../presentation/screens/invoices/invoice_edit_screen.dart';
@@ -79,6 +80,20 @@ final routerProvider = Provider<GoRouter>((ref) {
             selectedOrderIds: selectedIds,
             excludeInvoiceId: excludeInvoiceId,
           );
+        },
+      ),
+      // Invoice selector for orders
+      GoRoute(
+        path: '/invoices/select',
+        name: 'invoice_selector',
+        builder: (context, state) {
+          final orderId = state.uri.queryParameters['orderId'] != null
+              ? int.tryParse(state.uri.queryParameters['orderId']!)
+              : null;
+          if (orderId == null) {
+            return const _ErrorScreen(message: 'Invalid order ID');
+          }
+          return InvoiceSelectorScreen(orderId: orderId);
         },
       ),
       GoRoute(

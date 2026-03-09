@@ -217,6 +217,12 @@ class InvoiceRepository {
     return await relationTable.getOrderIdsForInvoice(invoiceId);
   }
 
+  /// Get order count for an invoice
+  Future<int> getOrderCountForInvoice(int invoiceId) async {
+    final relationTable = await _relationTable;
+    return await relationTable.getOrderCountForInvoice(invoiceId);
+  }
+
   /// Update order relations for an invoice
   /// Note: This will remove any existing relations the orders have with other invoices.
   /// This ensures one order can only be associated with one invoice at a time.
