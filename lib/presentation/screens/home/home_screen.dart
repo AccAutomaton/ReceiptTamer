@@ -10,105 +10,90 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 /// Home screen - main dashboard with statistics overview
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Load orders when screen initializes
+    Future.microtask(() {
+      ref.read(orderProvider.notifier).loadOrders();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
 
     // Preload OCR provider to start model initialization at app startup
     ref.watch(ocrProvider);
 
     final orderCountAsync = ref.watch(orderCountProvider);
     final invoiceCountAsync = ref.watch(invoiceCountProvider);
-    final totalOrderAmountAsync = ref.watch(totalOrderAmountProvider);
-    final totalInvoiceAmountAsync = ref.watch(totalInvoiceAmountProvider);
-    final todayOrderCountAsync = ref.watch(todayOrderCountProvider);
 
     final orderState = ref.watch(orderProvider);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 180,
-            floating: false,
-            pinned: true,
-            backgroundColor: colorScheme.primaryContainer,
-            flexibleSpace: FlexibleSpaceBar(
-              title: const Text(
-                AppConstants.titleHome,
-                style: TextStyle(color: Colors.black),
+      appBar: AppBar(
+        title: const Text(AppConstants.titleHome),
+        elevation: 0,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Statistics cards
+            Text(
+              '数据概览',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
               ),
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      colorScheme.primaryContainer,
-                      colorScheme.secondaryContainer,
-                    ],
+            ),
+            const SizedBox(height: 12),
+            _buildStatisticsCards(context, orderCountAsync, invoiceCountAsync),
+
+            const SizedBox(height: 24),
+
+            // Quick access
+            Text(
+              '快捷功能',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildQuickAccessGrid(context, colorScheme),
+
+            const SizedBox(height: 24),
+
+            // Recent orders
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '最近订单',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              ),
+                TextButton(
+                  onPressed: () => context.push('/orders'),
+                  child: const Text('查看全部'),
+                ),
+              ],
             ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Statistics cards
-                  _buildStatisticsCards(
-                    context,
-                    orderCountAsync,
-                    invoiceCountAsync,
-                    totalOrderAmountAsync,
-                    totalInvoiceAmountAsync,
-                    todayOrderCountAsync,
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Quick access
-                  Text(
-                    '快捷功能',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildQuickAccessGrid(context, colorScheme),
-
-                  const SizedBox(height: 24),
-
-                  // Recent orders
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '最近订单',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () => context.push('/orders'),
-                        child: const Text('查看全部'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _buildRecentOrders(context, orderState),
-                ],
-              ),
-            ),
-          ),
-        ],
+            const SizedBox(height: 12),
+            _buildRecentOrders(context, orderState),
+          ],
+        ),
       ),
     );
   }
@@ -117,56 +102,25 @@ class HomeScreen extends ConsumerWidget {
     BuildContext context,
     AsyncValue<int> orderCount,
     AsyncValue<int> invoiceCount,
-    AsyncValue<double> totalOrderAmount,
-    AsyncValue<double> totalInvoiceAmount,
-    AsyncValue<int> todayOrderCount,
   ) {
-    return Column(
+    return Row(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _StatCard(
-                title: '订单总数',
-                value: orderCount.value?.toString() ?? '-',
-                icon: Icons.receipt_long,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _StatCard(
-                title: '发票总数',
-                value: invoiceCount.value?.toString() ?? '-',
-                icon: Icons.description,
-                color: Theme.of(context).colorScheme.secondary,
-              ),
-            ),
-          ],
+        Expanded(
+          child: _StatCard(
+            title: '订单总数',
+            value: orderCount.value?.toString() ?? '-',
+            icon: Icons.receipt_long,
+            color: Theme.of(context).colorScheme.primary,
+          ),
         ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _StatCard(
-                title: '订单总金额',
-                value: totalOrderAmount.value != null
-                    ? DateFormatter.formatAmount(totalOrderAmount.value!)
-                    : '-',
-                icon: Icons.account_balance_wallet,
-                color: Theme.of(context).colorScheme.tertiary,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _StatCard(
-                title: '今日订单',
-                value: todayOrderCount.value?.toString() ?? '-',
-                icon: Icons.today,
-                color: Theme.of(context).colorScheme.outline,
-              ),
-            ),
-          ],
+        const SizedBox(width: 12),
+        Expanded(
+          child: _StatCard(
+            title: '发票总数',
+            value: invoiceCount.value?.toString() ?? '-',
+            icon: Icons.description,
+            color: Theme.of(context).colorScheme.secondary,
+          ),
         ),
       ],
     );
@@ -179,7 +133,7 @@ class HomeScreen extends ConsumerWidget {
       crossAxisCount: 2,
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
-      childAspectRatio: 2.5,
+      childAspectRatio: 2.0,
       children: [
         _QuickAccessButton(
           icon: Icons.file_download_outlined,
@@ -211,33 +165,37 @@ class HomeScreen extends ConsumerWidget {
     }
 
     if (orders.isEmpty) {
-      return AppCard(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Icon(
-                Icons.inbox_outlined,
-                size: 48,
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurfaceVariant
-                    .withValues(alpha: 0.3),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '暂无订单',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+      return SizedBox(
+        width: double.infinity,
+        child: AppCard(
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.inbox_outlined,
+                  size: 48,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurfaceVariant
+                      .withValues(alpha: 0.3),
                 ),
-              ),
-              const SizedBox(height: 12),
-              AppButton(
-                text: '添加订单',
-                onPressed: () => context.push('/orders/new'),
-                type: AppButtonType.primary,
-              ),
-            ],
+                const SizedBox(height: 8),
+                Text(
+                  '暂无订单',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                AppButton(
+                  text: '添加订单',
+                  onPressed: () => context.push('/orders/new'),
+                  type: AppButtonType.primary,
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -338,6 +296,7 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppCard(
       padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.zero,
       child: Row(
         children: [
           Container(
@@ -393,33 +352,24 @@ class _QuickAccessButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return AppCard(
+      margin: EdgeInsets.zero,
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 28),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
