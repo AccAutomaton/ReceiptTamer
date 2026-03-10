@@ -115,7 +115,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   static const String _privacyPolicyContent = '''
 餐饮发票报销助手 隐私政策
 
-更新日期：2025年1月
+更新日期：2026年3月
 
 感谢您使用餐饮发票报销助手（以下简称"本应用"）。我们非常重视您的隐私保护，本隐私政策旨在向您说明我们如何收集、使用和保护您的信息。
 
@@ -171,7 +171,7 @@ acautomaton@icloud.com
 ''';
 
   static const String _openSourceContent = '''
-餐饮发票报销单据记录器 开源许可证
+餐饮发票报销助手 开源许可证
 
 本应用使用了以下开源软件包和库：
 
@@ -388,6 +388,32 @@ Licensed under the Apache License 2.0
                 onTap: () => _navigateToInfo(context, 'opensource'),
               ),
             ],
+          ),
+
+          const SizedBox(height: 32),
+
+          // 底部版权信息
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Column(
+              children: [
+                Text(
+                  'Copyright 2026 acautomaton.com. All rights reserved.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Powered By Claude Code With GLM-5.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ),
         ],
       ),
