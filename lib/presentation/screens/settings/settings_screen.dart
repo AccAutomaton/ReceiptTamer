@@ -1,4 +1,3 @@
-
 import 'package:catering_receipt_recorder/core/constants/app_constants.dart';
 import 'package:catering_receipt_recorder/data/services/file_service.dart';
 import 'package:catering_receipt_recorder/data/services/llm_service.dart';
@@ -7,7 +6,7 @@ import 'package:catering_receipt_recorder/presentation/widgets/common/app_button
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Settings screen
+/// About screen
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
@@ -79,6 +78,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  void _checkUpdate() {
+    // TODO: 实现检查更新逻辑
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('当前已是最新版本')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -87,116 +93,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('设置'),
+        title: const Text('关于'),
         elevation: 0,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // 应用信息
-          _buildSection(
-            context,
-            '应用信息',
-            [
-              _buildListTile(
-                context,
-                icon: Icons.info_outline,
-                title: '应用名称',
-                subtitle: AppConstants.appName,
-              ),
-              _buildListTile(
-                context,
-                icon: Icons.verified,
-                title: '版本',
-                subtitle: '1.0.0',
-              ),
-            ],
-          ),
+          // 应用信息头部
+          _buildAppHeader(context, theme, colorScheme),
 
-          const SizedBox(height: 16),
-
-          // OCR模型状态
-          _buildSection(
-            context,
-            'OCR识别',
-            [
-              _buildListTile(
-                context,
-                icon: Icons.document_scanner,
-                title: 'PaddleOCR 模型',
-                subtitle: ocrState.isModelAvailable
-                    ? '已加载'
-                    : '未加载',
-                trailing: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: ocrState.isModelAvailable
-                        ? Colors.green.withValues(alpha: 0.2)
-                        : Colors.orange.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    ocrState.isModelAvailable ? '可用' : '不可用',
-                    style: TextStyle(
-                      color: ocrState.isModelAvailable ? Colors.green : Colors.orange,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: Text(
-                  ocrState.isModelAvailable
-                      ? 'PaddleOCR模型已加载，可以进行文字识别'
-                      : '请将PaddleOCR模型文件放入 assets/models/ 目录',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-              const Divider(indent: 16, endIndent: 16),
-              _buildListTile(
-                context,
-                icon: Icons.psychology,
-                title: 'LLM 结构化模型',
-                subtitle: _llmService?.isInitialized == true
-                    ? '${_llmService!.modelName} (${_llmService!.modelSizeFormatted})'
-                    : _llmService?.isLoading == true
-                        ? '加载中...'
-                        : '未加载',
-                trailing: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _llmService?.isInitialized == true
-                        ? Colors.green.withValues(alpha: 0.2)
-                        : Colors.orange.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    _llmService?.isInitialized == true ? '可用' : '不可用',
-                    style: TextStyle(
-                      color: _llmService?.isInitialized == true ? Colors.green : Colors.orange,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: Text(
-                  _llmService?.isInitialized == true
-                      ? 'LLM模型已加载，可进行智能结构化提取'
-                      : '请将Qwen GGUF模型文件放入应用存储目录',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            ],
-          ),
+          // AI引擎状态
+          _buildAiEngineSection(context, theme, colorScheme, ocrState),
 
           const SizedBox(height: 16),
 
@@ -244,18 +151,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           const SizedBox(height: 16),
 
-          // 关于
+          // 隐私政策
           _buildSection(
             context,
-            '关于',
+            '',
             [
-              _buildListTile(
-                context,
-                icon: Icons.description_outlined,
-                title: '使用说明',
-                subtitle: '如何使用本应用',
-                onTap: () => _showUsageDialog(context),
-              ),
               _buildListTile(
                 context,
                 icon: Icons.privacy_tip_outlined,
@@ -265,6 +165,192 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAppHeader(
+    BuildContext context,
+    ThemeData theme,
+    ColorScheme colorScheme,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // 应用图标
+          Icon(
+            Icons.receipt_long,
+            size: 48,
+            color: colorScheme.primary,
+          ),
+          const SizedBox(height: 16),
+          // 应用名称
+          Text(
+            AppConstants.appName,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          // 版本号
+          Text(
+            '版本 1.0.0',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          // 检查更新按钮
+          TextButton.icon(
+            onPressed: _checkUpdate,
+            icon: const Icon(Icons.refresh, size: 18),
+            label: const Text('检查更新'),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAiEngineSection(
+    BuildContext context,
+    ThemeData theme,
+    ColorScheme colorScheme,
+    dynamic ocrState,
+  ) {
+    final isOcrAvailable = ocrState.isModelAvailable;
+    final isLlmAvailable = _llmService?.isInitialized == true;
+    final isLlmLoading = _llmService?.isLoading == true;
+    final isArchNotSupported = _llmService?.archNotSupported == true;
+
+    return Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  ' AI 引擎',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  '均在您的设备上运行',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Paddle OCR
+          ListTile(
+            leading: Icon(Icons.document_scanner, color: colorScheme.primary),
+            title: const Text('Paddle OCR'),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (!isOcrAvailable) ...[
+                  GestureDetector(
+                    onTap: () => _showUnavailableInfo(context, 'ocr', false),
+                    child: Icon(
+                      Icons.help_outline,
+                      size: 20,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                _buildStatusBadge(
+                  isOcrAvailable ? '可用' : '不可用',
+                  isOcrAvailable ? Colors.green : Colors.orange,
+                ),
+              ],
+            ),
+          ),
+          // Qwen 3.5
+          ListTile(
+            leading: Icon(Icons.psychology, color: colorScheme.primary),
+            title: const Text('Qwen 3.5'),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (!isLlmAvailable && !isLlmLoading) ...[
+                  GestureDetector(
+                    onTap: () => _showUnavailableInfo(context, 'llm', isArchNotSupported),
+                    child: Icon(
+                      Icons.help_outline,
+                      size: 20,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                _buildStatusBadge(
+                  isLlmAvailable ? '可用' : '不可用',
+                  isLlmAvailable ? Colors.green : Colors.orange,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showUnavailableInfo(BuildContext context, String type, bool isArchNotSupported) {
+    String title;
+    String message;
+
+    if (type == 'ocr') {
+      title = 'Paddle OCR 不可用';
+      message = 'Paddle OCR 模型加载失败，请尝试重启 APP。';
+    } else {
+      title = 'Qwen 3.5 不可用';
+      if (isArchNotSupported) {
+        message = 'Qwen 3.5 仅支持 arm64-v8a 架构设备。';
+      } else {
+        message = 'Qwen 3.5 模型加载失败，请尝试重启 APP。';
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('知道了'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
@@ -280,15 +366,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text(
-              title,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
+          if (title.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                title,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-          ),
           ...children,
         ],
       ),
@@ -330,39 +417,5 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } else {
       return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
     }
-  }
-
-  void _showUsageDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('使用说明'),
-        content: const SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('1. 添加订单', style: TextStyle(fontWeight: FontWeight.bold)),
-              Text('从首页点击"添加订单"，选择外卖订单截图，使用OCR识别或手动填写信息。'),
-              SizedBox(height: 12),
-              Text('2. 添加发票', style: TextStyle(fontWeight: FontWeight.bold)),
-              Text('从发票页面点击添加，选择发票图片或PDF，关联对应订单。'),
-              SizedBox(height: 12),
-              Text('3. 数据导出', style: TextStyle(fontWeight: FontWeight.bold)),
-              Text('在导出页面选择导出范围和格式，导出Excel或CSV文件。'),
-              SizedBox(height: 12),
-              Text('4. OCR识别', style: TextStyle(fontWeight: FontWeight.bold)),
-              Text('需要将OCR模型文件放入 assets/models/ 目录才能使用OCR功能。'),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('知道了'),
-          ),
-        ],
-      ),
-    );
   }
 }

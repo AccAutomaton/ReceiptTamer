@@ -1,7 +1,7 @@
 /// App constants used throughout the application
 class AppConstants {
   // App info
-  static const String appName = '餐饮发票报销单据管理';
+  static const String appName = '餐饮发票报销助手';
   static const String appTitle = 'Catering Receipt Recorder';
 
   // Database

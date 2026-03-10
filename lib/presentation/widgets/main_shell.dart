@@ -38,9 +38,9 @@ class _MainShellState extends ConsumerState<MainShell> {
     ),
     _NavDestination(
       path: '/settings',
-      icon: Icons.settings_outlined,
-      selectedIcon: Icons.settings,
-      label: '设置',
+      icon: Icons.info_outline,
+      selectedIcon: Icons.info,
+      label: '关于',
     ),
   ];
 
@@ -164,7 +164,7 @@ class _MainShellState extends ConsumerState<MainShell> {
                 selectedIcon: Icon(_destinations[2].selectedIcon),
                 label: _destinations[2].label,
               ),
-              // 设置
+              // 关于
               NavigationDestination(
                 icon: Icon(_destinations[3].icon),
                 selectedIcon: Icon(_destinations[3].selectedIcon),
