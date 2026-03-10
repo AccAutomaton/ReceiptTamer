@@ -83,8 +83,8 @@ class AppConstants {
 
   // Confirmation messages
   static const String confirmDelete = '确认删除';
-  static const String confirmDeleteOrder = '确认删除此订单吗？关联的发票也将被删除。';
-  static const String confirmDeleteInvoice = '确认删除此发票吗？';
+  static const String confirmDeleteOrder = '确认删除此订单吗？\n不会删除与此订单关联的发票。';
+  static const String confirmDeleteInvoice = '确认删除此发票吗？\n不会删除与此发票关联的订单。';
 
   // Button labels
   static const String btnAdd = '添加';

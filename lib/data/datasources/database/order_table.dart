@@ -30,9 +30,9 @@ class OrderTable {
   }
 
   /// Delete an order by ID
+  /// Note: Relations in invoice_order_relations will be deleted automatically by CASCADE,
+  /// but linked invoices will NOT be deleted - they remain independent.
   Future<int> delete(int id) async {
-    // Note: Due to foreign key constraint with ON DELETE CASCADE,
-    // related invoices will be automatically deleted
     return await database.delete(
       AppConstants.ordersTable,
       where: '${AppConstants.colId} = ?',

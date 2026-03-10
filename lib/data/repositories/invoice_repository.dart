@@ -91,8 +91,9 @@ class InvoiceRepository {
   }
 
   /// Delete an invoice by ID
+  /// Note: Relations will be deleted automatically by CASCADE,
+  /// but linked orders will NOT be deleted - they remain independent.
   Future<int> delete(int id) async {
-    // Relations will be deleted automatically by CASCADE
     final table = await _invoiceTable;
     return await table.delete(id);
   }
