@@ -43,7 +43,7 @@ class AppCard extends StatelessWidget {
         );
     final effectiveMargin = margin ??
         const EdgeInsets.symmetric(
-          horizontal: 16,
+          horizontal: 8,
           vertical: 6,
         );
     final effectiveBorderRadius = borderRadius ?? BorderRadius.circular(12);
