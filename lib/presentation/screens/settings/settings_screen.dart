@@ -2,6 +2,7 @@ import 'package:catering_receipt_recorder/core/constants/app_constants.dart';
 import 'package:catering_receipt_recorder/data/services/file_service.dart';
 import 'package:catering_receipt_recorder/data/services/llm_service.dart';
 import 'package:catering_receipt_recorder/presentation/providers/ocr_provider.dart';
+import 'package:catering_receipt_recorder/presentation/screens/settings/info_screen.dart';
 import 'package:catering_receipt_recorder/presentation/widgets/common/app_button.dart';
 import 'package:catering_receipt_recorder/presentation/widgets/common/storage_ring_chart.dart';
 import 'package:flutter/material.dart';
@@ -86,6 +87,222 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  void _navigateToInfo(BuildContext context, String type) {
+    String title;
+    String content;
+
+    switch (type) {
+      case 'privacy':
+        title = '隐私政策';
+        content = _privacyPolicyContent;
+        break;
+      case 'opensource':
+        title = '开源信息';
+        content = _openSourceContent;
+        break;
+      default:
+        return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => InfoScreen(title: title, content: content),
+      ),
+    );
+  }
+
+  static const String _privacyPolicyContent = '''
+餐饮发票报销助手 隐私政策
+
+更新日期：2025年1月
+
+感谢您使用餐饮发票报销助手（以下简称"本应用"）。我们非常重视您的隐私保护，本隐私政策旨在向您说明我们如何收集、使用和保护您的信息。
+
+一、信息收集
+
+本应用是一款本地化应用，所有数据均存储在您的设备本地，不会上传至任何服务器。我们收集的信息包括：
+
+1. 订单信息：店铺名称、实付款、下单时间、订单号
+2. 发票信息：发票号码、开票日期、价税合计金额
+3. 图片文件：订单截图、发票图片/PDF
+
+以上信息均由您主动输入或通过OCR识别功能获取，存储在您设备的本地数据库中。
+
+二、信息使用
+
+您的信息仅用于：
+1. 记录和管理您的餐饮发票报销单据
+2. 导出订单和发票数据为Excel文件
+3. 通过本地OCR识别提取订单和发票信息
+
+三、信息存储与安全
+
+1. 所有数据存储在您的设备本地数据库中
+2. 我们不会将您的任何数据上传至云端服务器
+3. 您可以随时删除本应用，所有数据将随之删除
+
+四、OCR与AI功能
+
+本应用的OCR识别和AI推理功能完全在您的设备本地运行：
+1. OCR引擎：RapidOcrAndroidOnnx，基于ONNX Runtime
+2. AI推理：MNN框架，运行Qwen3.5-0.8B模型
+
+所有识别过程均在本地完成，不会将您的图片或数据发送到任何服务器。
+
+五、第三方服务
+
+本应用不集成任何第三方分析、广告或推送服务。
+
+六、权限说明
+
+本应用需要以下权限：
+1. 存储权限：用于读取和保存图片、PDF文件
+2. 相机权限：用于拍摄订单截图（可选）
+
+七、联系我们
+
+如您对本隐私政策有任何疑问，请通过以下方式联系我们：
+acautomaton@icloud.com
+
+八、隐私政策更新
+
+我们可能会不时更新本隐私政策。更新后的政策将在本应用中发布，请定期查阅。
+''';
+
+  static const String _openSourceContent = '''
+餐饮发票报销单据记录器 开源许可证
+
+本应用使用了以下开源软件包和库：
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Flutter SDK
+Copyright 2014 The Flutter Authors. All rights reserved.
+Licensed under the BSD 3-Clause License
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+cupertino_icons
+Copyright 2014 The Flutter Authors. All rights reserved.
+Licensed under the BSD 3-Clause License
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+flutter_riverpod
+Copyright 2020 Remi Rousselet
+Licensed under the MIT License
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+sqflite
+Copyright 2014 Tekartik
+Licensed under the BSD 2-Clause License
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+sqflite_common_ffi
+Copyright 2020 Tekartik
+Licensed under the BSD 2-Clause License
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+image_picker
+Copyright 2013 The Flutter Authors
+Licensed under the BSD 3-Clause License
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+file_picker
+Copyright 2018 Miguel Henvu
+Licensed under the MIT License
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+syncfusion_flutter_pdf
+syncfusion_flutter_pdfviewer
+Copyright 2001-2024 Syncfusion Inc.
+Licensed under the Syncfusion Commercial License
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+go_router
+Copyright 2014 The Flutter Authors. All rights reserved.
+Licensed under the BSD 3-Clause License
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+freezed_annotation
+freezed
+Copyright 2019 Remi Rousselet
+Licensed under the MIT License
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+json_annotation
+json_serializable
+Copyright 2017, the Dart project authors.
+Licensed under the BSD 3-Clause License
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+intl
+Copyright 2013, the Dart project authors.
+Licensed under the BSD 3-Clause License
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+uuid
+Copyright 2018 Yulian Kuncheff
+Licensed under the MIT License
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+path_provider
+Copyright 2013 The Flutter Authors
+Licensed under the BSD 3-Clause License
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+share_plus
+Copyright 2019 The Flutter Authors
+Licensed under the BSD 3-Clause License
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+excel
+Copyright 2019 Kawaljeet Singh
+Licensed under the BSD 3-Clause License
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+image
+Copyright 2013-2022, Brendan Duncan.
+Licensed under the MIT License
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+RapidOcrAndroidOnnx
+Copyright 2022 RapidAI
+Licensed under the Apache License 2.0
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MNN (Mobile Neural Network)
+Copyright 2018 Alibaba Group
+Licensed under the Apache License 2.0
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Qwen3.5-0.8B
+Copyright 2024 Alibaba Group
+Licensed under the Apache License 2.0
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+感谢以上开源项目的贡献者！
+''';
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -151,7 +368,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           const SizedBox(height: 16),
 
-          // 隐私政策
+          // 隐私政策与开源信息
           _buildSection(
             context,
             '',
@@ -161,6 +378,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 icon: Icons.privacy_tip_outlined,
                 title: '隐私政策',
                 subtitle: '数据仅存储在本地设备',
+                onTap: () => _navigateToInfo(context, 'privacy'),
+              ),
+              _buildListTile(
+                context,
+                icon: Icons.code_outlined,
+                title: '开源信息',
+                subtitle: '查看开源许可证',
+                onTap: () => _navigateToInfo(context, 'opensource'),
               ),
             ],
           ),
