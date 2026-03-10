@@ -114,6 +114,8 @@ class OrderNotifier extends Notifier<OrderState> {
     try {
       final id = await _repository.create(order);
       await loadOrders();
+      // Invalidate count provider to refresh statistics
+      ref.invalidate(orderCountProvider);
       return id > 0;
     } catch (e) {
       state = state.copyWith(
@@ -158,6 +160,8 @@ class OrderNotifier extends Notifier<OrderState> {
       if (rowsAffected > 0) {
         final updatedOrders = state.orders.where((o) => o.id != id).toList();
         state = state.copyWith(orders: updatedOrders, isLoading: false);
+        // Invalidate count provider to refresh statistics
+        ref.invalidate(orderCountProvider);
         return true;
       }
       state = state.copyWith(isLoading: false);

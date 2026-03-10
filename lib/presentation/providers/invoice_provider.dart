@@ -126,6 +126,8 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
       } else {
         await loadInvoices();
       }
+      // Invalidate count provider to refresh statistics
+      ref.invalidate(invoiceCountProvider);
       return id > 0;
     } catch (e) {
       state = state.copyWith(
@@ -170,6 +172,8 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
       if (rowsAffected > 0) {
         final updatedInvoices = state.invoices.where((i) => i.id != id).toList();
         state = state.copyWith(invoices: updatedInvoices, isLoading: false);
+        // Invalidate count provider to refresh statistics
+        ref.invalidate(invoiceCountProvider);
         return true;
       }
       state = state.copyWith(isLoading: false);
