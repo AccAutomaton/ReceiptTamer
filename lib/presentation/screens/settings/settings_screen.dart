@@ -3,6 +3,7 @@ import 'package:catering_receipt_recorder/data/services/file_service.dart';
 import 'package:catering_receipt_recorder/data/services/llm_service.dart';
 import 'package:catering_receipt_recorder/presentation/providers/ocr_provider.dart';
 import 'package:catering_receipt_recorder/presentation/widgets/common/app_button.dart';
+import 'package:catering_receipt_recorder/presentation/widgets/common/storage_ring_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -118,23 +119,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   child: Center(child: CircularProgressIndicator()),
                 )
               else ...[
-                _buildListTile(
-                  context,
-                  icon: Icons.image,
-                  title: '图片存储',
-                  subtitle: _formatSize(_storageUsage['images'] ?? 0),
-                ),
-                _buildListTile(
-                  context,
-                  icon: Icons.picture_as_pdf,
-                  title: 'PDF存储',
-                  subtitle: _formatSize(_storageUsage['pdfs'] ?? 0),
-                ),
-                _buildListTile(
-                  context,
-                  icon: Icons.folder,
-                  title: '总存储',
-                  subtitle: _formatSize(_storageUsage['total'] ?? 0),
+                // Ring chart with legend on the right
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      StorageRingChart(
+                        storageData: _storageUsage,
+                        size: 160,
+                        strokeWidth: 16,
+                      ),
+                      const SizedBox(width: 24),
+                      StorageLegend(storageData: _storageUsage),
+                    ],
+                  ),
                 ),
               ],
               Padding(
@@ -405,17 +405,5 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       trailing: trailing ?? (onTap != null ? const Icon(Icons.chevron_right) : null),
       onTap: onTap,
     );
-  }
-
-  String _formatSize(int bytes) {
-    if (bytes < 1024) {
-      return '$bytes B';
-    } else if (bytes < 1024 * 1024) {
-      return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    } else if (bytes < 1024 * 1024 * 1024) {
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-    } else {
-      return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
-    }
   }
 }

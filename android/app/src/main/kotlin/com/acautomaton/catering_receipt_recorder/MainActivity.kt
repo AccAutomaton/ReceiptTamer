@@ -63,6 +63,7 @@ class MainActivity : FlutterActivity() {
 
     private val OCR_CHANNEL = "com.example.catering_receipt_recorder/ocr"
     private val LLM_CHANNEL = "com.example.catering_receipt_recorder/llm"
+    private val STORAGE_CHANNEL = "com.example.catering_receipt_recorder/storage"
     private var ocrEngine: OcrEngine? = null
     private var mnnEngine: MnnEngine? = null
 
@@ -206,6 +207,16 @@ class MainActivity : FlutterActivity() {
                 }
                 "isInitialized" -> {
                     result.success(isLlmInitialized())
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // Storage MethodChannel
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, STORAGE_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getFilesDirPath" -> {
+                    result.success(filesDir.absolutePath)
                 }
                 else -> result.notImplemented()
             }
