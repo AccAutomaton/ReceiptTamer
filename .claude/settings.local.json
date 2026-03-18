@@ -25,7 +25,10 @@
       "Bash(flutter logs:*)",
       "Bash(adb devices:*)",
       "Bash(adb shell:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(git lfs:*)",
+      "Bash(git stash:*)",
+      "Bash(pip list:*)"
     ]
   }
 }

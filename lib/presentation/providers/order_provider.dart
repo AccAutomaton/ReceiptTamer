@@ -320,6 +320,16 @@ class OrderNotifier extends Notifier<OrderState> {
       return [];
     }
   }
+
+  /// Get shop names with count, ordered by count (highest first)
+  Future<List<Map<String, dynamic>>> getShopNamesWithCount() async {
+    try {
+      return await _repository.getShopNamesWithCount();
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      return [];
+    }
+  }
 }
 
 /// Provider for OrderRepository

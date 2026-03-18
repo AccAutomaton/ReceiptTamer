@@ -166,6 +166,13 @@ class OrderRepository {
     return await table.getInvoiceIdsForOrder(orderId);
   }
 
+  /// Get shop names with count, ordered by count (highest first)
+  /// Returns a list of maps with 'shop_name' and 'count' keys
+  Future<List<Map<String, dynamic>>> getShopNamesWithCount() async {
+    final table = await _orderTable;
+    return await table.getShopNamesWithCount();
+  }
+
   /// Close database connection
   Future<void> close() async {
     await _dbHelper.close();

@@ -44,13 +44,24 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
 
   bool _isLoading = false;
   bool _hasOcrResult = false; // 是否有OCR识别结果
+  List<Map<String, dynamic>> _shopNameOptions = []; // 店铺名称选项列表（含次数）
 
   @override
   void initState() {
     super.initState();
     _imagePath = widget.initialImagePath;
+    _loadShopNames();
     if (widget.orderId != null) {
       _loadOrder();
+    }
+  }
+
+  Future<void> _loadShopNames() async {
+    final shopNamesWithCount = await ref.read(orderProvider.notifier).getShopNamesWithCount();
+    if (mounted) {
+      setState(() {
+        _shopNameOptions = shopNamesWithCount;
+      });
     }
   }
 
@@ -162,6 +173,80 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
         ),
       );
     }
+  }
+
+  void _showShopNamePicker() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                '选择店铺',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const Divider(height: 1),
+            if (_shopNameOptions.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.restaurant_menu,
+                      size: 48,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      '还没有吃过的店铺',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _shopNameOptions.length,
+                  itemBuilder: (context, index) {
+                    final item = _shopNameOptions[index];
+                    final shopName = item['shop_name'] as String;
+                    final count = item['count'] as int;
+                    return ListTile(
+                      title: Text(shopName),
+                      trailing: Text(
+                        '吃过 $count 次',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 13,
+                        ),
+                      ),
+                      onTap: () {
+                        setState(() {
+                          _shopNameController.text = shopName;
+                        });
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _handleSave() async {
@@ -446,6 +531,11 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
               required: false,
               keyboardType: TextInputType.text,
               prefixIcon: const Icon(Icons.store),
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.arrow_drop_down),
+                onPressed: _showShopNamePicker,
+                tooltip: '从历史记录选择',
+              ),
             ),
 
             const SizedBox(height: 16),

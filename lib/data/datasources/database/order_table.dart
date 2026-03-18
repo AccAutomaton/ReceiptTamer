@@ -444,4 +444,18 @@ class OrderTable {
 
     return maps.map((map) => map[AppConstants.colInvoiceId] as int).toList();
   }
+
+  /// Get shop names with count, ordered by count (highest first)
+  /// Returns a list of maps with 'shop_name' and 'count' keys
+  Future<List<Map<String, dynamic>>> getShopNamesWithCount() async {
+    final List<Map<String, dynamic>> maps = await database.rawQuery(
+      'SELECT ${AppConstants.colShopName} as shop_name, COUNT(*) as count '
+      'FROM ${AppConstants.ordersTable} '
+      'WHERE ${AppConstants.colShopName} IS NOT NULL AND ${AppConstants.colShopName} != "" '
+      'GROUP BY ${AppConstants.colShopName} '
+      'ORDER BY count DESC, ${AppConstants.colShopName} ASC',
+    );
+
+    return maps;
+  }
 }
