@@ -197,7 +197,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
 
           // Export button
           AppButton(
-            text: '导出数据',
+            text: '导出',
             onPressed: _handleExport,
             isLoading: _isExporting,
             isFullWidth: true,

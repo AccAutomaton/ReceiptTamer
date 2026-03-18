@@ -67,7 +67,7 @@ class AppConstants {
   static const String errorDeletingData = '删除数据失败';
   static const String errorPickingImage = '选择图片失败';
   static const String errorProcessingImage = '处理图片失败';
-  static const String errorExporting = '导出数据失败';
+  static const String errorExporting = '导出失败';
   static const String errorNoData = '暂无数据';
 
   // Success messages
@@ -133,7 +133,7 @@ class AppConstants {
   static const String titleInvoiceDetail = '发票详情';
   static const String titleInvoiceEdit = '编辑发票';
   static const String titleInvoiceAdd = '添加发票';
-  static const String titleExport = '数据导出';
+  static const String titleExport = '报销材料导出';
 
   // Navigation labels
   static const String navHome = '首页';

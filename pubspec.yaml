@@ -42,6 +42,7 @@ dependencies:
   share_plus: ^12.0.1
   excel: ^4.0.1
   image: ^4.1.3
+  easy_refresh: ^3.4.0
 
 dev_dependencies:
   flutter_test:

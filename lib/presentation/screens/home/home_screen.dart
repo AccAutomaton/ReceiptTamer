@@ -5,6 +5,7 @@ import 'package:catering_receipt_recorder/presentation/providers/invoice_provide
 import 'package:catering_receipt_recorder/presentation/providers/ocr_provider.dart';
 import 'package:catering_receipt_recorder/presentation/widgets/common/app_button.dart';
 import 'package:catering_receipt_recorder/presentation/widgets/common/app_card.dart';
+import 'package:easy_refresh/easy_refresh.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -18,6 +19,16 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  final EasyRefreshController _refreshController = EasyRefreshController(
+    controlFinishRefresh: true,
+  );
+
+  @override
+  void dispose() {
+    _refreshController.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -45,54 +56,76 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         title: const Text(AppConstants.titleHome),
         elevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Statistics cards
-            Text(
-              '数据概览',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
+      body: EasyRefresh(
+        controller: _refreshController,
+        onRefresh: () async {
+          await ref.read(orderProvider.notifier).loadOrders();
+          _refreshController.finishRefresh(IndicatorResult.success);
+        },
+        header: ClassicHeader(
+          dragText: '下拉刷新',
+          armedText: '松手刷新',
+          readyText: '正在刷新...',
+          processingText: '正在刷新...',
+          processedText: '刷新完成',
+          noMoreText: '',
+          showMessage: false,
+          iconDimension: 20,
+          iconTheme: IconThemeData(color: colorScheme.primary),
+          textStyle: TextStyle(
+            color: colorScheme.primary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Statistics cards
+              Text(
+                '数据概览',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            _buildStatisticsCards(context, orderCountAsync, invoiceCountAsync),
+              const SizedBox(height: 12),
+              _buildStatisticsCards(context, orderCountAsync, invoiceCountAsync),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // Quick access
-            Text(
-              '快捷功能',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
+              // Quick access
+              Text(
+                '快捷功能',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            _buildQuickAccessGrid(context, colorScheme),
+              const SizedBox(height: 12),
+              _buildQuickAccessGrid(context, colorScheme),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // Recent orders
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '最近订单',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
+              // Recent orders
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '最近订单',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                TextButton(
-                  onPressed: () => context.push('/orders'),
-                  child: const Text('查看全部'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _buildRecentOrders(context, orderState),
-          ],
+                  TextButton(
+                    onPressed: () => context.push('/orders'),
+                    child: const Text('查看全部'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _buildRecentOrders(context, orderState),
+            ],
+          ),
         ),
       ),
     );
@@ -127,25 +160,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildQuickAccessGrid(BuildContext context, ColorScheme colorScheme) {
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2,
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 2.0,
+    return Row(
       children: [
-        _QuickAccessButton(
-          icon: Icons.file_download_outlined,
-          label: '数据导出',
-          color: colorScheme.primary,
-          onTap: () => context.push('/export'),
-        ),
-        _QuickAccessButton(
-          icon: Icons.search,
-          label: '搜索订单',
-          color: colorScheme.secondary,
-          onTap: () => context.push('/orders'),
+        Expanded(
+          child: _QuickAccessButton(
+            icon: Icons.file_download_outlined,
+            label: '报销材料导出',
+            color: colorScheme.primary,
+            onTap: () => context.push('/export'),
+          ),
         ),
       ],
     );
@@ -201,7 +224,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
     }
 
-    final recentOrders = orders.take(3).toList();
+    final recentOrders = orders.take(5).toList();
 
     return Column(
       children: recentOrders.map((order) {
