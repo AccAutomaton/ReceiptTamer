@@ -314,4 +314,19 @@ class InvoiceTable {
 
     return maps;
   }
+
+
+  /// Get seller names with count, ordered by count (highest first)
+  /// Returns a list of maps with 'seller_name' and 'count' keys
+  Future<List<Map<String, dynamic>>> getSellerNamesWithCount() async {
+    final List<Map<String, dynamic>> maps = await database.rawQuery(
+      'SELECT ${AppConstants.colSellerName} as seller_name, COUNT(*) as count '
+      'FROM ${AppConstants.invoicesTable} '
+      'WHERE ${AppConstants.colSellerName} IS NOT NULL AND ${AppConstants.colSellerName} != "" '
+      'GROUP BY ${AppConstants.colSellerName} '
+      'ORDER BY count DESC, ${AppConstants.colSellerName} ASC',
+    );
+
+    return maps;
+  }
 }

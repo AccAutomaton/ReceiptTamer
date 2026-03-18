@@ -253,6 +253,13 @@ class InvoiceRepository {
     }
   }
 
+  /// Get seller names with count, ordered by count (highest first)
+  /// Returns a list of maps with 'seller_name' and 'count' keys
+  Future<List<Map<String, dynamic>>> getSellerNamesWithCount() async {
+    final table = await _invoiceTable;
+    return await table.getSellerNamesWithCount();
+  }
+
   /// Close database connection
   Future<void> close() async {
     await _dbHelper.close();

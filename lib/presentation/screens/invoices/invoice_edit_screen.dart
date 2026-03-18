@@ -49,15 +49,26 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
 
   bool _isLoading = false;
   bool _hasOcrResult = false; // 是否有OCR识别结果
+  List<Map<String, dynamic>> _sellerNameOptions = []; // 销售方名称选项列表（含次数）
 
   @override
   void initState() {
     super.initState();
+    _loadSellerNames();
     if (widget.initialOrderId != null) {
       _selectedOrderIds = [widget.initialOrderId!];
     }
     if (widget.invoiceId != null) {
       _loadInvoice();
+    }
+  }
+
+  Future<void> _loadSellerNames() async {
+    final sellerNamesWithCount = await ref.read(invoiceProvider.notifier).getSellerNamesWithCount();
+    if (mounted) {
+      setState(() {
+        _sellerNameOptions = sellerNamesWithCount;
+      });
     }
   }
 
@@ -305,6 +316,80 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
     return AppConstants.labelOrdersSelected.replaceAll('{}', _selectedOrderIds.length.toString());
   }
 
+  void _showSellerNamePicker() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                '选择销售方',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const Divider(height: 1),
+            if (_sellerNameOptions.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.store,
+                      size: 48,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      '还没有开过发票的销售方',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _sellerNameOptions.length,
+                  itemBuilder: (context, index) {
+                    final item = _sellerNameOptions[index];
+                    final sellerName = item['seller_name'] as String;
+                    final count = item['count'] as int;
+                    return ListTile(
+                      title: Text(sellerName),
+                      trailing: Text(
+                        '开过 $count 次',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 13,
+                        ),
+                      ),
+                      onTap: () {
+                        setState(() {
+                          _sellerNameController.text = sellerName;
+                        });
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.invoiceId != null;
@@ -500,6 +585,11 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
               required: false,
               keyboardType: TextInputType.text,
               prefixIcon: const Icon(Icons.store),
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.arrow_drop_down),
+                onPressed: _showSellerNamePicker,
+                tooltip: '从历史记录选择',
+              ),
             ),
 
             const SizedBox(height: 16),

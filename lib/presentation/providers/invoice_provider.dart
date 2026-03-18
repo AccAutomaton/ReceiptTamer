@@ -320,6 +320,11 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
   Future<void> updateOrderRelations(int invoiceId, List<int> orderIds) async {
     await _repository.updateOrderRelations(invoiceId, orderIds);
   }
+
+  /// Get seller names with count, ordered by count (highest first)
+  Future<List<Map<String, dynamic>>> getSellerNamesWithCount() async {
+    return await _repository.getSellerNamesWithCount();
+  }
 }
 
 /// Provider for InvoiceRepository

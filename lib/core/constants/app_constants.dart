@@ -120,8 +120,8 @@ class AppConstants {
   static const String hintShopName = '请输入/选择店铺名称(选填)';
   static const String hintAmount = '请输入金额';
   static const String hintOrderNumber = '请输入订单号(选填)';
-  static const String hintInvoiceNumber = '请输入发票号码';
-  static const String hintSellerName = '请输入销售方名称';
+  static const String hintInvoiceNumber = '请输入发票号码(选填)';
+  static const String hintSellerName = '请输入/选择销售方名称(选填)';
 
   // Screen titles
   static const String titleHome = '首页';
