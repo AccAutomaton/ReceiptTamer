@@ -325,6 +325,18 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
   Future<List<Map<String, dynamic>>> getSellerNamesWithCount() async {
     return await _repository.getSellerNamesWithCount();
   }
+
+  /// Check if an invoice number already exists (excluding a specific invoice ID)
+  /// Returns the existing invoice if found, null otherwise
+  Future<Invoice?> checkInvoiceNumberExists(String invoiceNumber, {int? excludeId}) async {
+    if (invoiceNumber.trim().isEmpty) return null;
+    final invoices = await _repository.getByInvoiceNumber(invoiceNumber.trim());
+    // Exclude the current invoice if editing
+    if (excludeId != null) {
+      return invoices.where((i) => i.id != excludeId).firstOrNull;
+    }
+    return invoices.isNotEmpty ? invoices.first : null;
+  }
 }
 
 /// Provider for InvoiceRepository

@@ -252,6 +252,34 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
       return;
     }
 
+    // Check if invoice number already exists
+    final invoiceNumber = _invoiceNumberController.text.trim();
+    if (invoiceNumber.isNotEmpty) {
+      final existingInvoice = await ref
+          .read(invoiceProvider.notifier)
+          .checkInvoiceNumberExists(invoiceNumber, excludeId: widget.invoiceId);
+      if (existingInvoice != null && mounted) {
+        final shouldContinue = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('发票号码已存在'),
+            content: Text('发票号码 "$invoiceNumber" 已存在，是否继续保存？'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('继续保存'),
+              ),
+            ],
+          ),
+        );
+        if (shouldContinue != true) return;
+      }
+    }
+
     setState(() {
       _isLoading = true;
     });
