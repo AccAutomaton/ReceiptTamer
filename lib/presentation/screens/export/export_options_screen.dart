@@ -1,4 +1,5 @@
 import 'package:catering_receipt_recorder/data/models/invoice.dart';
+import 'package:catering_receipt_recorder/data/services/invoice_export_service.dart';
 import 'package:catering_receipt_recorder/data/services/meal_proof_export_service.dart';
 import 'package:catering_receipt_recorder/presentation/providers/invoice_provider.dart';
 import 'package:catering_receipt_recorder/presentation/providers/order_provider.dart';
@@ -28,6 +29,9 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
   bool _exportMealProof = true;
   bool _exportInvoice = true;
   bool _exportMealDetails = true;
+
+  // Invoice export options
+  bool _showInvoiceTimeLabel = true; // Show time labels on invoices
 
   bool _isExporting = false;
 
@@ -131,10 +135,57 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
             ),
           ),
 
+          // Time label option (shown when invoice is selected)
+          if (_exportInvoice)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: InkWell(
+                onTap: () => setState(() => _showInvoiceTimeLabel = !_showInvoiceTimeLabel),
+                borderRadius: BorderRadius.circular(20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Circular checkbox
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _showInvoiceTimeLabel
+                            ? colorScheme.primary
+                            : Colors.transparent,
+                        border: Border.all(
+                          color: _showInvoiceTimeLabel
+                              ? colorScheme.primary
+                              : colorScheme.outline,
+                          width: 2,
+                        ),
+                      ),
+                      child: _showInvoiceTimeLabel
+                          ? Icon(
+                              Icons.check,
+                              size: 14,
+                              color: colorScheme.onPrimary,
+                            )
+                          : null,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '发票中标注订单时间',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
           // Export button
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               child: AppButton(
                 text: '开始导出',
                 onPressed: _canExport() ? _handleExport : null,
@@ -297,10 +348,46 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
         }
       }
 
-      // Export invoice (placeholder)
-      if (_exportInvoice) {
-        // TODO: Implement invoice export
-        errors.add('发票导出功能暂未实现');
+      // Export invoice
+      if (_exportInvoice && invoices.isNotEmpty) {
+        try {
+          final fileName = '发票_$timestamp.pdf';
+
+          // Prepare invoice export items
+          final items = await InvoiceExportService.prepareInvoiceExportItems(
+            invoices: invoices,
+            getOrderIdsForInvoice: (id) =>
+                ref.read(invoiceProvider.notifier).getOrderIdsForInvoice(id),
+            getOrderById: (id) =>
+                ref.read(orderProvider.notifier).getOrderById(id),
+          );
+
+          if (items.isEmpty) {
+            errors.add('发票：没有可导出的发票');
+          } else {
+            // Save to app temp directory first (avoids Android permission issues)
+            final tempDir = await getTemporaryDirectory();
+            final tempPath = '${tempDir.path}/$fileName';
+
+            await InvoiceExportService.generateInvoicePdf(
+              items: items,
+              outputPath: tempPath,
+              getFilePath: (p) => p, // File path is already absolute
+              showTimeLabel: _showInvoiceTimeLabel,
+            );
+
+            // Share the file using share_plus
+            await SharePlus.instance.share(
+              ShareParams(
+                files: [XFile(tempPath)],
+                subject: fileName,
+              ),
+            );
+            successCount++;
+          }
+        } catch (e) {
+          errors.add('发票导出失败: $e');
+        }
       }
 
       // Export meal details (placeholder)
