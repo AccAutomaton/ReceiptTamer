@@ -5,6 +5,7 @@ import 'package:catering_receipt_recorder/core/utils/date_formatter.dart';
 import 'package:catering_receipt_recorder/data/models/invoice.dart';
 import 'package:catering_receipt_recorder/data/models/meal_proof_item.dart';
 import 'package:catering_receipt_recorder/data/models/order.dart';
+import 'package:catering_receipt_recorder/data/services/invoice_proration_util.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 
 /// Meal proof export service
@@ -35,60 +36,19 @@ class MealProofExportService {
 
       if (orders.isEmpty) continue;
 
-      // Calculate total order amount for this invoice
-      final totalOrderAmount = orders.fold<double>(0, (sum, o) => sum + o.amount);
+      // Use shared proration utility
+      final prorationResult = InvoiceProrationUtil.calculate(
+        invoice: invoice,
+        orders: orders,
+      );
 
-      // Check if proration is needed
-      // Proration is needed when:
-      // 1. Multiple orders are linked to this invoice
-      // 2. Total order amount differs from invoice total amount
-      final needsProRation = orders.length > 1 &&
-          (totalOrderAmount - invoice.totalAmount).abs() > 0.01;
-
-      // Calculate prorated amounts for all orders
-      final proratedAmounts = <Order, double>{};
-      if (needsProRation && totalOrderAmount > 0) {
-        for (final order in orders) {
-          final proratedAmount = (order.amount / totalOrderAmount) * invoice.totalAmount;
-          proratedAmounts[order] = proratedAmount;
-        }
-
-        // Adjust for rounding errors: ensure sum of prorated amounts equals invoice total
-        // The adjustment must not make any prorated amount exceed the order's actual payment
-        final totalProrated = proratedAmounts.values.fold<double>(0, (sum, v) => sum + v);
-        final diff = invoice.totalAmount - totalProrated;
-
-        if (diff.abs() > 0.001) {
-          // Find an order that can absorb the adjustment
-          // (prorated amount + diff should not exceed the order's actual payment)
-          Order? adjustableOrder;
-          for (final order in orders) {
-            final currentProrated = proratedAmounts[order]!;
-            final adjustedAmount = currentProrated + diff;
-            // Can adjust if the adjusted amount doesn't exceed the actual payment
-            // and is non-negative
-            if (adjustedAmount >= 0 && adjustedAmount <= order.amount) {
-              adjustableOrder = order;
-              break;
-            }
-          }
-
-          // Apply the adjustment
-          if (adjustableOrder != null) {
-            proratedAmounts[adjustableOrder] = proratedAmounts[adjustableOrder]! + diff;
-          }
-        }
-      }
-
-      for (final order in orders) {
-        final proratedAmount = proratedAmounts[order] ?? 0.0;
-
+      for (final proratedOrder in prorationResult.orderAmounts) {
         items.add(MealProofItem(
-          order: order,
+          order: proratedOrder.order,
           invoice: invoice,
-          proratedInvoiceAmount: proratedAmount,
+          proratedInvoiceAmount: proratedOrder.proratedInvoiceAmount,
           totalInvoiceAmount: invoice.totalAmount,
-          isProRated: needsProRation,
+          isProRated: prorationResult.needsProration,
         ));
       }
     }

@@ -1,5 +1,6 @@
 import 'package:catering_receipt_recorder/data/models/invoice.dart';
 import 'package:catering_receipt_recorder/data/services/invoice_export_service.dart';
+import 'package:catering_receipt_recorder/data/services/meal_details_export_service.dart';
 import 'package:catering_receipt_recorder/data/services/meal_proof_export_service.dart';
 import 'package:catering_receipt_recorder/presentation/providers/invoice_provider.dart';
 import 'package:catering_receipt_recorder/presentation/providers/order_provider.dart';
@@ -32,6 +33,9 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
 
   // Invoice export options
   bool _showInvoiceTimeLabel = true; // Show time labels on invoices
+
+  // Meal details export options
+  bool _skipEmptyDays = true; // Skip days without meal records
 
   bool _isExporting = false;
 
@@ -135,52 +139,109 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
             ),
           ),
 
-          // Time label option (shown when invoice is selected)
-          if (_exportInvoice)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: InkWell(
-                onTap: () => setState(() => _showInvoiceTimeLabel = !_showInvoiceTimeLabel),
-                borderRadius: BorderRadius.circular(20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Circular checkbox
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      width: 20,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _showInvoiceTimeLabel
-                            ? colorScheme.primary
-                            : Colors.transparent,
-                        border: Border.all(
-                          color: _showInvoiceTimeLabel
-                              ? colorScheme.primary
-                              : colorScheme.outline,
-                          width: 2,
-                        ),
-                      ),
-                      child: _showInvoiceTimeLabel
-                          ? Icon(
-                              Icons.check,
-                              size: 14,
-                              color: colorScheme.onPrimary,
-                            )
-                          : null,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '发票中标注订单时间',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurface,
+          // Time label option for invoice export
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: InkWell(
+              onTap: _exportInvoice
+                  ? () => setState(() => _showInvoiceTimeLabel = !_showInvoiceTimeLabel)
+                  : null,
+              borderRadius: BorderRadius.circular(20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  // Circular checkbox
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _exportInvoice && _showInvoiceTimeLabel
+                          ? colorScheme.primary
+                          : Colors.transparent,
+                      border: Border.all(
+                        color: _exportInvoice
+                            ? (_showInvoiceTimeLabel
+                                ? colorScheme.primary
+                                : colorScheme.outline)
+                            : colorScheme.outline.withValues(alpha: 0.5),
+                        width: 2,
                       ),
                     ),
-                  ],
-                ),
+                    child: _exportInvoice && _showInvoiceTimeLabel
+                        ? Icon(
+                            Icons.check,
+                            size: 14,
+                            color: colorScheme.onPrimary,
+                          )
+                        : null,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '发票中标注订单时间',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: _exportInvoice
+                          ? colorScheme.onSurface
+                          : colorScheme.onSurface.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ],
               ),
             ),
+          ),
+
+          // Skip empty days option for meal details export
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: InkWell(
+              onTap: _exportMealDetails
+                  ? () => setState(() => _skipEmptyDays = !_skipEmptyDays)
+                  : null,
+              borderRadius: BorderRadius.circular(20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  // Circular checkbox
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _exportMealDetails && _skipEmptyDays
+                          ? colorScheme.primary
+                          : Colors.transparent,
+                      border: Border.all(
+                        color: _exportMealDetails
+                            ? (_skipEmptyDays
+                                ? colorScheme.primary
+                                : colorScheme.outline)
+                            : colorScheme.outline.withValues(alpha: 0.5),
+                        width: 2,
+                      ),
+                    ),
+                    child: _exportMealDetails && _skipEmptyDays
+                        ? Icon(
+                            Icons.check,
+                            size: 14,
+                            color: colorScheme.onPrimary,
+                          )
+                        : null,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '用餐明细忽略无用餐记录的日期',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: _exportMealDetails
+                          ? colorScheme.onSurface
+                          : colorScheme.onSurface.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
 
           // Export button
           SafeArea(
@@ -390,10 +451,47 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
         }
       }
 
-      // Export meal details (placeholder)
-      if (_exportMealDetails) {
-        // TODO: Implement meal details export
-        errors.add('用餐明细导出功能暂未实现');
+      // Export meal details
+      if (_exportMealDetails && invoices.isNotEmpty) {
+        try {
+          final fileName = '用餐明细_$timestamp.xlsx';
+
+          // Prepare daily meal details
+          // When skipEmptyDays is false, fill missing dates between first and last order date
+          final items = await MealDetailsExportService.prepareDailyMealDetails(
+            invoices: invoices,
+            getOrderIdsForInvoice: (id) =>
+                ref.read(invoiceProvider.notifier).getOrderIdsForInvoice(id),
+            getOrderById: (id) =>
+                ref.read(orderProvider.notifier).getOrderById(id),
+            fillMissingDates: !_skipEmptyDays,
+          );
+
+          if (items.isEmpty) {
+            errors.add('用餐明细：没有可导出的订单');
+          } else {
+            // Save to app temp directory first (avoids Android permission issues)
+            final tempDir = await getTemporaryDirectory();
+            final tempPath = '${tempDir.path}/$fileName';
+
+            await MealDetailsExportService.generateExcel(
+              items: items,
+              outputPath: tempPath,
+              skipEmptyDays: _skipEmptyDays,
+            );
+
+            // Share the file using share_plus
+            await SharePlus.instance.share(
+              ShareParams(
+                files: [XFile(tempPath)],
+                subject: fileName,
+              ),
+            );
+            successCount++;
+          }
+        } catch (e) {
+          errors.add('用餐明细导出失败: $e');
+        }
       }
 
       if (mounted) {
