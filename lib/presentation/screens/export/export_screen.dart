@@ -1,20 +1,13 @@
-import 'dart:io';
-
 import 'package:catering_receipt_recorder/core/constants/app_constants.dart';
 import 'package:catering_receipt_recorder/core/utils/date_formatter.dart';
 import 'package:catering_receipt_recorder/data/models/invoice.dart';
-import 'package:catering_receipt_recorder/data/models/order.dart';
-import 'package:catering_receipt_recorder/data/services/pdf_export_service.dart';
 import 'package:catering_receipt_recorder/presentation/providers/order_provider.dart';
 import 'package:catering_receipt_recorder/presentation/providers/invoice_provider.dart';
 import 'package:catering_receipt_recorder/presentation/widgets/common/app_button.dart';
 import 'package:catering_receipt_recorder/presentation/widgets/common/empty_state.dart';
-import 'package:excel/excel.dart' hide Border;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart' as share_plus;
 
 /// Export screen - export reimbursement materials
 class ExportScreen extends ConsumerStatefulWidget {
@@ -35,8 +28,6 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
 
   List<Invoice> _availableInvoices = [];
   bool _isLoadingInvoices = false;
-
-  bool _isExporting = false;
 
   @override
   void initState() {
@@ -139,8 +130,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: AppButton(
                 text: '导出报销材料',
-                onPressed: _selectedInvoiceIds.isEmpty ? null : _handleExport,
-                isLoading: _isExporting,
+                onPressed: _selectedInvoiceIds.isEmpty ? null : _navigateToExportOptions,
                 isFullWidth: true,
                 type: AppButtonType.primary,
               ),
@@ -625,7 +615,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     );
   }
 
-  Future<void> _handleExport() async {
+  void _navigateToExportOptions() {
     if (_selectedInvoiceIds.isEmpty) {
       ScaffoldMessenger.of(
         context,
@@ -633,170 +623,12 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       return;
     }
 
-    setState(() {
-      _isExporting = true;
-    });
-
-    try {
-      // Get selected invoices
-      final selectedInvoices = _availableInvoices
-          .where((i) => _selectedInvoiceIds.contains(i.id))
-          .toList();
-
-      // Get orders for selected invoices
-      final orderIds = <int>{};
-      for (final invoice in selectedInvoices) {
-        if (invoice.id != null) {
-          final ids = await ref
-              .read(invoiceProvider.notifier)
-              .getOrderIdsForInvoice(invoice.id!);
-          orderIds.addAll(ids);
-        }
-      }
-
-      final orders = <Order>[];
-      for (final orderId in orderIds) {
-        final order = await ref
-            .read(orderProvider.notifier)
-            .getOrderById(orderId);
-        if (order != null) {
-          orders.add(order);
-        }
-      }
-
-      // Export files
-      await _exportFiles(orders, selectedInvoices);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('导出失败: $e')));
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isExporting = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _exportFiles(List<Order> orders, List<Invoice> invoices) async {
-    final directory = await getApplicationDocumentsDirectory();
-    final timestamp = _formatTimestamp(DateTime.now());
-    final files = <share_plus.XFile>[];
-
-    // Generate orders PDF
-    final ordersPdfPath = '${directory.path}/订单列表_$timestamp.pdf';
-    await PdfExportService.generateOrdersPdf(orders, ordersPdfPath);
-    files.add(share_plus.XFile(ordersPdfPath));
-
-    // Generate invoices PDF
-    final invoicesPdfPath = '${directory.path}/发票列表_$timestamp.pdf';
-    await PdfExportService.generateInvoicesPdf(invoices, invoicesPdfPath);
-    files.add(share_plus.XFile(invoicesPdfPath));
-
-    // Generate Excel for consumption details
-    final excelPath = '${directory.path}/消费明细_$timestamp.xlsx';
-    await _generateExcelFile(orders, invoices, excelPath);
-    files.add(share_plus.XFile(excelPath));
-
-    if (mounted) {
-      _showExportSuccess(orders.length, invoices.length);
-
-      // Share files
-      await share_plus.SharePlus.instance.share(
-        share_plus.ShareParams(files: files, text: '餐饮发票报销材料'),
-      );
-    }
-  }
-
-  Future<void> _generateExcelFile(
-    List<Order> orders,
-    List<Invoice> invoices,
-    String outputPath,
-  ) async {
-    final excel = Excel.createExcel();
-    excel.delete('Sheet1');
-
-    // Create orders sheet
-    final orderSheet = excel['订单明细'];
-    orderSheet.appendRow([
-      TextCellValue('店铺名称'),
-      TextCellValue('实付款'),
-      TextCellValue('日期'),
-      TextCellValue('时段'),
-      TextCellValue('订单号'),
-      TextCellValue('录入时间'),
-    ]);
-
-    for (final order in orders) {
-      orderSheet.appendRow([
-        TextCellValue(order.shopName),
-        DoubleCellValue(order.amount),
-        TextCellValue(order.orderDate ?? ''),
-        TextCellValue(
-          DateFormatter.mealTimeToDisplayName(
-            DateFormatter.mealTimeFromString(order.mealTime),
-          ),
-        ),
-        TextCellValue(order.orderNumber),
-        TextCellValue(order.createdAt),
-      ]);
-    }
-
-    // Create invoices sheet
-    final invoiceSheet = excel['发票明细'];
-    invoiceSheet.appendRow([
-      TextCellValue('发票号码'),
-      TextCellValue('开票日期'),
-      TextCellValue('价税合计'),
-      TextCellValue('销售方名称'),
-      TextCellValue('关联订单数'),
-      TextCellValue('录入时间'),
-    ]);
-
-    for (final invoice in invoices) {
-      final orderCount = _invoiceOrderCounts[invoice.id] ?? 0;
-      invoiceSheet.appendRow([
-        TextCellValue(invoice.invoiceNumber),
-        TextCellValue(invoice.invoiceDate ?? ''),
-        DoubleCellValue(invoice.totalAmount),
-        TextCellValue(invoice.sellerName),
-        IntCellValue(orderCount),
-        TextCellValue(invoice.createdAt),
-      ]);
-    }
-
-    final bytes = excel.encode();
-    if (bytes != null) {
-      await File(outputPath).writeAsBytes(bytes);
-    }
-  }
-
-  String _formatTimestamp(DateTime dt) {
-    return '${dt.year}${dt.month.toString().padLeft(2, '0')}${dt.day.toString().padLeft(2, '0')}_${dt.hour.toString().padLeft(2, '0')}${dt.minute.toString().padLeft(2, '0')}';
-  }
-
-  void _showExportSuccess(int orderCount, int invoiceCount) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('导出成功'),
-        content: Text(
-          '已导出:\n'
-          '- 订单列表 PDF\n'
-          '- 发票列表 PDF\n'
-          '- 消费明细 Excel\n\n'
-          '包含 $invoiceCount 张发票和 $orderCount 条订单',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('确定'),
-          ),
-        ],
-      ),
+    context.pushNamed(
+      'export_options',
+      queryParameters: {
+        'invoiceIds': _selectedInvoiceIds.join(','),
+        'orderIds': _selectedOrderIds.join(','),
+      },
     );
   }
 }

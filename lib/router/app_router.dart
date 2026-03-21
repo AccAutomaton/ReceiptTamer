@@ -12,6 +12,7 @@ import '../presentation/screens/invoices/invoice_detail_screen.dart';
 import '../presentation/screens/invoices/invoice_edit_screen.dart';
 import '../presentation/screens/invoices/order_selector_screen.dart';
 import '../presentation/screens/export/export_screen.dart';
+import '../presentation/screens/export/export_options_screen.dart';
 import '../presentation/screens/settings/settings_screen.dart';
 import '../presentation/widgets/main_shell.dart';
 
@@ -156,6 +157,26 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/export',
         name: 'export',
         builder: (context, state) => const ExportScreen(),
+      ),
+      GoRoute(
+        path: '/export/options',
+        name: 'export_options',
+        builder: (context, state) {
+          final invoiceIdsStr = state.uri.queryParameters['invoiceIds'] ?? '';
+          final orderIdsStr = state.uri.queryParameters['orderIds'] ?? '';
+
+          final invoiceIds = invoiceIdsStr.isEmpty
+              ? <int>[]
+              : invoiceIdsStr.split(',').map((id) => int.tryParse(id)).whereType<int>().toList();
+          final orderIds = orderIdsStr.isEmpty
+              ? <int>[]
+              : orderIdsStr.split(',').map((id) => int.tryParse(id)).whereType<int>().toList();
+
+          return ExportOptionsScreen(
+            invoiceIds: invoiceIds,
+            orderIds: orderIds,
+          );
+        },
       ),
     ],
     errorBuilder: (context, state) => _ErrorScreen(
