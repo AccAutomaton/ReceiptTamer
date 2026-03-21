@@ -1,9 +1,12 @@
-import 'dart:typed_data';
-
+import 'package:catering_receipt_recorder/data/models/invoice.dart';
+import 'package:catering_receipt_recorder/data/services/meal_proof_export_service.dart';
+import 'package:catering_receipt_recorder/presentation/providers/invoice_provider.dart';
+import 'package:catering_receipt_recorder/presentation/providers/order_provider.dart';
 import 'package:catering_receipt_recorder/presentation/widgets/common/app_button.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 /// Export options screen - choose what to export
 class ExportOptionsScreen extends ConsumerStatefulWidget {
@@ -25,11 +28,6 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
   bool _exportMealProof = true;
   bool _exportInvoice = true;
   bool _exportMealDetails = true;
-
-  // Format selection for each type
-  ExportFormat _mealProofFormat = ExportFormat.pdf;
-  ExportFormat _invoiceFormat = ExportFormat.pdf;
-  // Meal details only supports xlsx
 
   bool _isExporting = false;
 
@@ -100,10 +98,8 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
                   subtitle: '订单截图汇总文档',
                   icon: Icons.restaurant_menu,
                   value: _exportMealProof,
-                  format: _mealProofFormat,
-                  showFormat: true,
+                  formatLabel: 'PDF',
                   onToggle: (v) => setState(() => _exportMealProof = v),
-                  onFormatChange: (f) => setState(() => _mealProofFormat = f),
                 ),
 
                 const SizedBox(height: 12),
@@ -114,10 +110,8 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
                   subtitle: '发票信息汇总文档',
                   icon: Icons.receipt_long,
                   value: _exportInvoice,
-                  format: _invoiceFormat,
-                  showFormat: true,
+                  formatLabel: 'PDF',
                   onToggle: (v) => setState(() => _exportInvoice = v),
-                  onFormatChange: (f) => setState(() => _invoiceFormat = f),
                 ),
 
                 const SizedBox(height: 12),
@@ -128,8 +122,7 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
                   subtitle: '订单和发票明细表格',
                   icon: Icons.table_chart,
                   value: _exportMealDetails,
-                  format: ExportFormat.xlsx,
-                  showFormat: false,
+                  formatLabel: 'XLSX',
                   onToggle: (v) => setState(() => _exportMealDetails = v),
                 ),
 
@@ -165,10 +158,8 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
     required String subtitle,
     required IconData icon,
     required bool value,
-    ExportFormat format = ExportFormat.pdf,
-    bool showFormat = true,
+    String formatLabel = 'XLSX',
     required ValueChanged<bool> onToggle,
-    ValueChanged<ExportFormat>? onFormatChange,
   }) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -222,9 +213,7 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
                     ],
                   ),
                 ),
-                if (value && showFormat)
-                  _buildFormatSelector(format, onFormatChange!),
-                if (value && !showFormat)
+                if (value)
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
@@ -238,7 +227,7 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
-                        'XLSX',
+                        formatLabel,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: colorScheme.onPrimary,
                           fontWeight: FontWeight.w500,
@@ -254,59 +243,6 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
     );
   }
 
-  Widget _buildFormatSelector(
-    ExportFormat currentFormat,
-    ValueChanged<ExportFormat> onChanged,
-  ) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildFormatChip('PDF', ExportFormat.pdf, currentFormat, onChanged),
-          const SizedBox(width: 4),
-          _buildFormatChip('DOCX', ExportFormat.docx, currentFormat, onChanged),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFormatChip(
-    String label,
-    ExportFormat format,
-    ExportFormat currentFormat,
-    ValueChanged<ExportFormat> onChanged,
-  ) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final isSelected = format == currentFormat;
-
-    return GestureDetector(
-      onTap: () => onChanged(format),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? colorScheme.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Text(
-          label,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: isSelected ? colorScheme.onPrimary : colorScheme.onSurfaceVariant,
-            fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
-          ),
-        ),
-      ),
-    );
-  }
-
   Future<void> _handleExport() async {
     setState(() {
       _isExporting = true;
@@ -315,56 +251,79 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
     try {
       final timestamp = _formatTimestamp(DateTime.now());
       int successCount = 0;
+      List<String> errors = [];
+
+      // Get selected invoices
+      final invoices = await _getSelectedInvoices();
 
       // Export meal proof
-      if (_exportMealProof) {
-        final extension = _mealProofFormat == ExportFormat.pdf ? 'pdf' : 'docx';
-        final path = await FilePicker.platform.saveFile(
-          dialogTitle: '保存用餐证明',
-          fileName: '用餐证明_$timestamp.$extension',
-          type: FileType.custom,
-          allowedExtensions: [extension],
-          bytes: Uint8List(0),
-        );
-        if (path != null) {
-          successCount++;
+      if (_exportMealProof && invoices.isNotEmpty) {
+        try {
+          final fileName = '用餐证明_$timestamp.pdf';
+
+          // Prepare meal proof items
+          final items = await MealProofExportService.prepareMealProofItems(
+            invoices: invoices,
+            getOrderIdsForInvoice: (id) =>
+                ref.read(invoiceProvider.notifier).getOrderIdsForInvoice(id),
+            getOrderById: (id) =>
+                ref.read(orderProvider.notifier).getOrderById(id),
+          );
+
+          if (items.isEmpty) {
+            errors.add('用餐证明：没有可导出的订单');
+          } else {
+            // Save to app temp directory first (avoids Android permission issues)
+            final tempDir = await getTemporaryDirectory();
+            final tempPath = '${tempDir.path}/$fileName';
+
+            await MealProofExportService.generatePdf(
+              items: items,
+              outputPath: tempPath,
+              getImagePath: (p) => p, // Image path is already absolute
+            );
+
+            // Share the file using share_plus
+            await SharePlus.instance.share(
+              ShareParams(
+                files: [XFile(tempPath)],
+                subject: fileName,
+              ),
+            );
+            successCount++;
+          }
+        } catch (e) {
+          errors.add('用餐证明导出失败: $e');
         }
       }
 
-      // Export invoice
+      // Export invoice (placeholder)
       if (_exportInvoice) {
-        final extension = _invoiceFormat == ExportFormat.pdf ? 'pdf' : 'docx';
-        final path = await FilePicker.platform.saveFile(
-          dialogTitle: '保存发票',
-          fileName: '发票_$timestamp.$extension',
-          type: FileType.custom,
-          allowedExtensions: [extension],
-          bytes: Uint8List(0),
-        );
-        if (path != null) {
-          successCount++;
-        }
+        // TODO: Implement invoice export
+        errors.add('发票导出功能暂未实现');
       }
 
-      // Export meal details
+      // Export meal details (placeholder)
       if (_exportMealDetails) {
-        final path = await FilePicker.platform.saveFile(
-          dialogTitle: '保存用餐明细',
-          fileName: '用餐明细_$timestamp.xlsx',
-          type: FileType.custom,
-          allowedExtensions: ['xlsx'],
-          bytes: Uint8List(0),
-        );
-        if (path != null) {
-          successCount++;
-        }
+        // TODO: Implement meal details export
+        errors.add('用餐明细导出功能暂未实现');
       }
 
-      if (mounted && successCount > 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('成功导出 $successCount 个文件')),
-        );
-        Navigator.pop(context);
+      if (mounted) {
+        if (successCount > 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('成功导出 $successCount 个文件')),
+          );
+          Navigator.pop(context);
+        }
+        if (errors.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errors.join('\n')),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -381,14 +340,19 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
     }
   }
 
+  /// Get selected invoices from invoice IDs
+  Future<List<Invoice>> _getSelectedInvoices() async {
+    final invoices = <Invoice>[];
+    for (final id in widget.invoiceIds) {
+      final invoice = await ref.read(invoiceProvider.notifier).getInvoiceById(id);
+      if (invoice != null) {
+        invoices.add(invoice);
+      }
+    }
+    return invoices;
+  }
+
   String _formatTimestamp(DateTime dt) {
     return '${dt.year}${dt.month.toString().padLeft(2, '0')}${dt.day.toString().padLeft(2, '0')}_${dt.hour.toString().padLeft(2, '0')}${dt.minute.toString().padLeft(2, '0')}';
   }
-}
-
-/// Export format enum
-enum ExportFormat {
-  pdf,
-  docx,
-  xlsx,
 }
