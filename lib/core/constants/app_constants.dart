@@ -147,4 +147,8 @@ class AppConstants {
   static const String exportRangeLastMonth = '上月数据';
   static const String exportRangeThisYear = '本年数据';
   static const String exportRangeCustom = '自定义范围';
+
+  // GitHub Release Configuration
+  static const String githubOwner = 'AccAutomaton';
+  static const String githubRepo = 'catering_receipt_recorder';
 }

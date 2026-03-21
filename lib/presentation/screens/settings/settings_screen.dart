@@ -1,12 +1,15 @@
 import 'package:catering_receipt_recorder/core/constants/app_constants.dart';
+import 'package:catering_receipt_recorder/data/models/app_version.dart';
 import 'package:catering_receipt_recorder/data/services/file_service.dart';
 import 'package:catering_receipt_recorder/data/services/llm_service.dart';
+import 'package:catering_receipt_recorder/data/services/update_service.dart';
 import 'package:catering_receipt_recorder/presentation/providers/ocr_provider.dart';
 import 'package:catering_receipt_recorder/presentation/screens/settings/info_screen.dart';
 import 'package:catering_receipt_recorder/presentation/widgets/common/app_button.dart';
 import 'package:catering_receipt_recorder/presentation/widgets/common/storage_ring_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 /// About screen
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -18,15 +21,28 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final FileService _fileService = FileService();
+  final UpdateService _updateService = UpdateService();
   Map<String, int> _storageUsage = {};
   bool _isLoading = true;
+  bool _isCheckingUpdate = false;
   LlmService? _llmService;
+  String _currentVersion = '';
 
   @override
   void initState() {
     super.initState();
     _loadStorageUsage();
     _initLlmService();
+    _loadCurrentVersion();
+  }
+
+  Future<void> _loadCurrentVersion() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    if (mounted) {
+      setState(() {
+        _currentVersion = packageInfo.version;
+      });
+    }
   }
 
   Future<void> _initLlmService() async {
@@ -80,11 +96,167 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
-  void _checkUpdate() {
-    // TODO: 实现检查更新逻辑
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('当前已是最新版本')),
+  Future<void> _checkUpdate() async {
+    if (_isCheckingUpdate) return;
+
+    setState(() => _isCheckingUpdate = true);
+
+    try {
+      final response = await _updateService.checkForUpdates();
+
+      if (!mounted) return;
+
+      if (response.result == UpdateCheckResult.available &&
+          response.latestVersion != null) {
+        _showUpdateDialog(response.latestVersion!);
+      } else if (response.result == UpdateCheckResult.notAvailable) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('当前已是最新版本')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('检查更新失败: ${response.errorMessage ?? "未知错误"}'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isCheckingUpdate = false);
+      }
+    }
+  }
+
+  void _showUpdateDialog(AppVersion latestVersion) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.system_update, color: Colors.blue),
+            const SizedBox(width: 8),
+            Text('发现新版本 ${latestVersion.version}'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (latestVersion.formattedFileSize != null)
+                Text(
+                  '安装包大小: ${latestVersion.formattedFileSize}',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 13,
+                  ),
+                ),
+              const SizedBox(height: 12),
+              if (latestVersion.changelog != null &&
+                  latestVersion.changelog!.isNotEmpty) ...[
+                const Text(
+                  '更新内容:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 200),
+                  child: SingleChildScrollView(
+                    child: Text(
+                      latestVersion.changelog!,
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('稍后提醒'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _downloadAndInstall(latestVersion);
+            },
+            child: const Text('立即更新'),
+          ),
+        ],
+      ),
     );
+  }
+
+  Future<void> _downloadAndInstall(AppVersion version) async {
+    if (version.downloadUrl == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('下载地址不可用')),
+      );
+      return;
+    }
+
+    double progress = 0;
+    bool downloadCancelled = false;
+
+    // Show download progress dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('正在下载'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              LinearProgressIndicator(value: progress),
+              const SizedBox(height: 16),
+              Text('${(progress * 100).toStringAsFixed(1)}%'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                downloadCancelled = true;
+                Navigator.pop(context);
+              },
+              child: const Text('取消'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    // Download APK
+    final filePath = await _updateService.downloadApk(
+      version.downloadUrl!,
+      onProgress: (p) {
+        if (mounted && !downloadCancelled) {
+          setState(() => progress = p);
+        }
+      },
+    );
+
+    if (!mounted) return;
+
+    // Close progress dialog if still open
+    if (filePath != null && !downloadCancelled) {
+      Navigator.of(context, rootNavigator: true).pop();
+
+      // Install APK
+      final installed = await _updateService.installApk(filePath);
+      if (!installed && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('安装失败，请手动打开下载的文件')),
+        );
+      }
+    } else if (mounted && !downloadCancelled) {
+      Navigator.of(context, rootNavigator: true).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('下载失败，请稍后重试')),
+      );
+    }
   }
 
   void _navigateToInfo(BuildContext context, String type) {
@@ -448,16 +620,22 @@ Licensed under the Apache License 2.0
           const SizedBox(height: 4),
           // 版本号
           Text(
-            '版本 1.0.0',
+            '版本 ${_currentVersion.isNotEmpty ? _currentVersion : '...'}',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: colorScheme.onSurfaceVariant,
             ),
           ),
           // 检查更新按钮
           TextButton.icon(
-            onPressed: _checkUpdate,
-            icon: const Icon(Icons.refresh, size: 18),
-            label: const Text('检查更新'),
+            onPressed: _isCheckingUpdate ? null : _checkUpdate,
+            icon: _isCheckingUpdate
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.refresh, size: 18),
+            label: Text(_isCheckingUpdate ? '检查中...' : '检查更新'),
             style: TextButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),

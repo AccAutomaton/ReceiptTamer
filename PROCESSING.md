@@ -32,6 +32,7 @@
 | OCR引擎 | ✅ | RapidOcrAndroidOnnx (ONNX格式，内置模型)          |
 | LLM推理 | ✅ | MNN框架集成 (阿里开源)                             |
 | OCR+LLM识别 | ✅ | RapidOcr ONNX + Qwen3.5-0.8B-MNN 结构化提取     |
+| 应用更新 | ✅ | 基于 GitHub Release 的检查更新与下载安装          |
 
 ### 待完善功能
 
@@ -184,3 +185,78 @@ flutter run
 flutter build apk
 flutter build ipa
 ```
+
+---
+
+## 应用更新发布规范
+
+应用通过 GitHub Release 实现检查更新功能，发布新版本时需遵循以下规范。
+
+### GitHub Release 格式约定
+
+| 字段 | 格式要求 | 示例 |
+|------|---------|------|
+| tag_name | `v` + 版本号 | `v1.0.0` |
+| name | 版本标题 | `餐饮发票报销助手 v1.0.0` |
+| body | 更新说明（Markdown格式） | 见下方示例 |
+| assets | APK安装包 | `app-release.apk` |
+
+### 发布流程
+
+1. **更新版本号**
+   ```yaml
+   # pubspec.yaml
+   version: 1.0.1+2  # 版本号+构建号
+   ```
+
+2. **构建APK**
+   ```bash
+   flutter build apk --release
+   ```
+
+3. **创建Git标签**
+   ```bash
+   git tag v1.0.1
+   git push origin v1.0.1
+   ```
+
+4. **创建GitHub Release**
+   - 进入仓库的 Releases 页面
+   - 点击 "Draft a new release"
+   - 选择标签 `v1.0.1`
+   - 填写标题和更新说明
+   - 上传构建的APK文件 (`build/app/outputs/flutter-apk/app-release.apk`)
+   - 发布
+
+### 更新说明示例
+
+```markdown
+## 新功能
+- 添加XXX功能
+
+## 优化
+- 优化XXX体验
+
+## 修复
+- 修复XXX问题
+
+## 注意事项
+- 如有重要提示请在此说明
+```
+
+### 配置项
+
+GitHub 仓库配置位于 `lib/core/constants/app_constants.dart`：
+
+```dart
+// GitHub Release Configuration
+static const String githubOwner = 'AccAutomaton';  // GitHub 用户名
+static const String githubRepo = 'catering_receipt_recorder';  // 仓库名
+```
+
+### 注意事项
+
+1. **版本号格式**: 必须使用语义化版本号 (Semantic Versioning)，如 `v1.0.0`、`v1.1.0`、`v2.0.0`
+2. **APK文件**: Release 中必须包含 `.apk` 文件，否则应用无法下载更新
+3. **更新说明**: `body` 字段会在更新对话框中显示，建议填写清晰的更新内容
+4. **API限制**: GitHub API 未认证请求限制 60次/小时/IP，一般足够使用

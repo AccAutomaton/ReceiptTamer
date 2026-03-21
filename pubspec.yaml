@@ -44,6 +44,15 @@ dependencies:
   image: ^4.1.3
   easy_refresh: ^3.4.0
 
+  # Network
+  http: ^1.2.0
+
+  # App Info
+  package_info_plus: ^8.0.0
+
+  # File Opening
+  open_file: ^3.5.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
