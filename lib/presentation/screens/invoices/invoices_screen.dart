@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:catering_receipt_recorder/core/constants/app_constants.dart';
-import 'package:catering_receipt_recorder/data/models/order.dart';
-import 'package:catering_receipt_recorder/data/models/invoice.dart';
-import 'package:catering_receipt_recorder/presentation/providers/order_provider.dart';
-import 'package:catering_receipt_recorder/presentation/providers/invoice_provider.dart';
-import 'package:catering_receipt_recorder/presentation/widgets/common/empty_state.dart';
-import 'package:catering_receipt_recorder/presentation/widgets/common/month_range_picker.dart';
-import 'package:catering_receipt_recorder/presentation/widgets/invoice/invoice_card.dart';
-import 'package:catering_receipt_recorder/presentation/widgets/invoice/invoice_month_group.dart';
-import 'package:catering_receipt_recorder/presentation/widgets/invoice/invoice_month_section_header.dart';
-import 'package:catering_receipt_recorder/presentation/widgets/order/month_fast_scroll_bar.dart';
+import 'package:receipt_tamer/core/constants/app_constants.dart';
+import 'package:receipt_tamer/data/models/order.dart';
+import 'package:receipt_tamer/data/models/invoice.dart';
+import 'package:receipt_tamer/presentation/providers/order_provider.dart';
+import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
+import 'package:receipt_tamer/presentation/widgets/common/empty_state.dart';
+import 'package:receipt_tamer/presentation/widgets/common/month_range_picker.dart';
+import 'package:receipt_tamer/presentation/widgets/invoice/invoice_card.dart';
+import 'package:receipt_tamer/presentation/widgets/invoice/invoice_month_group.dart';
+import 'package:receipt_tamer/presentation/widgets/invoice/invoice_month_section_header.dart';
+import 'package:receipt_tamer/presentation/widgets/order/month_fast_scroll_bar.dart';
 
 /// Invoices screen - displays list of all invoices grouped by month
 class InvoicesScreen extends ConsumerStatefulWidget {

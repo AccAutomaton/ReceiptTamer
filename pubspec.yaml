@@ -1,5 +1,5 @@
-name: catering_receipt_recorder
-description: "A Catering Receipt Recorder App"
+name: receipt_tamer
+description: "ReceiptTamer - A Receipt Management App"
 publish_to: 'none'
 
 version: 1.0.0+1

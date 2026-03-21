@@ -1,11 +1,11 @@
 /// App constants used throughout the application
 class AppConstants {
   // App info
-  static const String appName = '餐饮发票报销助手';
-  static const String appTitle = 'Catering Receipt Recorder';
+  static const String appName = 'ReceiptTamer';
+  static const String appTitle = 'ReceiptTamer';
 
   // Database
-  static const String databaseName = 'catering_receipts.db';
+  static const String databaseName = 'receipt_tamer.db';
   static const int databaseVersion = 2;
 
   // Table names
@@ -150,5 +150,5 @@ class AppConstants {
 
   // GitHub Release Configuration
   static const String githubOwner = 'AccAutomaton';
-  static const String githubRepo = 'catering_receipt_recorder';
+  static const String githubRepo = 'ReceiptTamer';
 }

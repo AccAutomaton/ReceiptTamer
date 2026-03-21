@@ -1,4 +1,4 @@
-import 'package:catering_receipt_recorder/data/models/invoice.dart';
+import 'package:receipt_tamer/data/models/invoice.dart';
 
 /// Group invoices by year and month
 class InvoiceMonthGroup {

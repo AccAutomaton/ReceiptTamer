@@ -1,10 +1,10 @@
-import 'package:catering_receipt_recorder/data/models/invoice.dart';
-import 'package:catering_receipt_recorder/data/services/invoice_export_service.dart';
-import 'package:catering_receipt_recorder/data/services/meal_details_export_service.dart';
-import 'package:catering_receipt_recorder/data/services/meal_proof_export_service.dart';
-import 'package:catering_receipt_recorder/presentation/providers/invoice_provider.dart';
-import 'package:catering_receipt_recorder/presentation/providers/order_provider.dart';
-import 'package:catering_receipt_recorder/presentation/widgets/common/app_button.dart';
+import 'package:receipt_tamer/data/models/invoice.dart';
+import 'package:receipt_tamer/data/services/invoice_export_service.dart';
+import 'package:receipt_tamer/data/services/meal_details_export_service.dart';
+import 'package:receipt_tamer/data/services/meal_proof_export_service.dart';
+import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
+import 'package:receipt_tamer/presentation/providers/order_provider.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';

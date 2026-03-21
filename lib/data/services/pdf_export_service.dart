@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'dart:ui';
 
-import 'package:catering_receipt_recorder/core/utils/date_formatter.dart';
-import 'package:catering_receipt_recorder/data/models/invoice.dart';
-import 'package:catering_receipt_recorder/data/models/order.dart';
+import 'package:receipt_tamer/core/utils/date_formatter.dart';
+import 'package:receipt_tamer/data/models/invoice.dart';
+import 'package:receipt_tamer/data/models/order.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 
 /// PDF export service for generating order and invoice PDF documents

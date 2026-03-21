@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:catering_receipt_recorder/core/constants/app_constants.dart';
-import 'package:catering_receipt_recorder/core/utils/date_formatter.dart';
-import 'package:catering_receipt_recorder/data/models/invoice.dart';
-import 'package:catering_receipt_recorder/data/models/order.dart';
-import 'package:catering_receipt_recorder/presentation/providers/invoice_provider.dart';
-import 'package:catering_receipt_recorder/presentation/providers/order_provider.dart';
-import 'package:catering_receipt_recorder/presentation/widgets/invoice/invoice_image_preview.dart';
+import 'package:receipt_tamer/core/constants/app_constants.dart';
+import 'package:receipt_tamer/core/utils/date_formatter.dart';
+import 'package:receipt_tamer/data/models/invoice.dart';
+import 'package:receipt_tamer/data/models/order.dart';
+import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
+import 'package:receipt_tamer/presentation/providers/order_provider.dart';
+import 'package:receipt_tamer/presentation/widgets/invoice/invoice_image_preview.dart';
 
 /// Invoice detail screen
 class InvoiceDetailScreen extends ConsumerStatefulWidget {

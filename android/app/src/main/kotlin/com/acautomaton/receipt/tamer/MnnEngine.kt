@@ -1,4 +1,4 @@
-package com.acautomaton.catering_receipt_recorder
+package com.acautomaton.receipt.tamer
 
 import android.os.Handler
 import android.os.Looper

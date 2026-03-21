@@ -197,7 +197,7 @@ flutter build ipa
 | 字段 | 格式要求 | 示例 |
 |------|---------|------|
 | tag_name | `v` + 版本号 | `v1.0.0` |
-| name | 版本标题 | `餐饮发票报销助手 v1.0.0` |
+| name | 版本标题 | `ReceiptTamer v1.0.0` |
 | body | 更新说明（Markdown格式） | 见下方示例 |
 | assets | APK安装包 | `app-release.apk` |
 
@@ -251,7 +251,7 @@ GitHub 仓库配置位于 `lib/core/constants/app_constants.dart`：
 ```dart
 // GitHub Release Configuration
 static const String githubOwner = 'AccAutomaton';  // GitHub 用户名
-static const String githubRepo = 'catering_receipt_recorder';  // 仓库名
+static const String githubRepo = 'receipt_tamer';  // 仓库名
 ```
 
 ### 注意事项

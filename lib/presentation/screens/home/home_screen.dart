@@ -1,10 +1,10 @@
-import 'package:catering_receipt_recorder/core/constants/app_constants.dart';
-import 'package:catering_receipt_recorder/core/utils/date_formatter.dart';
-import 'package:catering_receipt_recorder/presentation/providers/order_provider.dart';
-import 'package:catering_receipt_recorder/presentation/providers/invoice_provider.dart';
-import 'package:catering_receipt_recorder/presentation/providers/ocr_provider.dart';
-import 'package:catering_receipt_recorder/presentation/widgets/common/app_button.dart';
-import 'package:catering_receipt_recorder/presentation/widgets/common/app_card.dart';
+import 'package:receipt_tamer/core/constants/app_constants.dart';
+import 'package:receipt_tamer/core/utils/date_formatter.dart';
+import 'package:receipt_tamer/presentation/providers/order_provider.dart';
+import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
+import 'package:receipt_tamer/presentation/providers/ocr_provider.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
 import 'package:easy_refresh/easy_refresh.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'package:catering_receipt_recorder/core/utils/date_formatter.dart';
-import 'package:catering_receipt_recorder/data/models/invoice.dart';
-import 'package:catering_receipt_recorder/presentation/widgets/common/app_card.dart';
+import 'package:receipt_tamer/core/utils/date_formatter.dart';
+import 'package:receipt_tamer/data/models/invoice.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
 
 /// Invoice card widget for displaying invoice information in the list
 class InvoiceCard extends StatelessWidget {

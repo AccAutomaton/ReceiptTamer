@@ -1,5 +1,5 @@
-import 'package:catering_receipt_recorder/data/models/invoice.dart';
-import 'package:catering_receipt_recorder/data/models/order.dart';
+import 'package:receipt_tamer/data/models/invoice.dart';
+import 'package:receipt_tamer/data/models/order.dart';
 
 /// Invoice amount proration result for a single order
 class ProratedOrderAmount {

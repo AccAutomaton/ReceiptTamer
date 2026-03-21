@@ -12,7 +12,7 @@ import 'llm_service.dart';
 ///
 /// 流程：OCR识别 → LLM结构化提取
 class OcrService {
-  static const MethodChannel _channel = MethodChannel('com.example.catering_receipt_recorder/ocr');
+  static const MethodChannel _channel = MethodChannel('com.acautomaton.receipt.tamer/ocr');
 
   bool _isInitialized = false;
   bool _isModelAvailable = false;

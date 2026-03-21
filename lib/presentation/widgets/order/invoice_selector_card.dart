@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:catering_receipt_recorder/core/utils/date_formatter.dart';
-import 'package:catering_receipt_recorder/data/models/invoice.dart';
+import 'package:receipt_tamer/core/utils/date_formatter.dart';
+import 'package:receipt_tamer/data/models/invoice.dart';
 
 /// Invoice selector card widget for displaying invoice info
 /// Used in the InvoiceSelectorScreen for selecting an invoice to link with an order

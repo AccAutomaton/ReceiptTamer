@@ -11,7 +11,7 @@ import '../models/ocr_result.dart';
 /// 使用端侧 Qwen3.5-0.8B MNN 模型进行结构化数据提取
 /// 模型文件: assets/models/qwen3.5-0.8b.mnn/
 class LlmService {
-  static const MethodChannel _channel = MethodChannel('com.example.catering_receipt_recorder/llm');
+  static const MethodChannel _channel = MethodChannel('com.acautomaton.receipt.tamer/llm');
 
   bool _isInitialized = false;
   bool _isLoading = false;

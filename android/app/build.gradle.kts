@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.acautomaton.catering_receipt_recorder"
+    namespace = "com.acautomaton.receipt.tamer"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -21,7 +21,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.acautomaton.catering_receipt_recorder"
+        applicationId = "com.acautomaton.receipt.tamer"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

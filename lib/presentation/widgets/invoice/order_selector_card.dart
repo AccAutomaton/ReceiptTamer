@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:catering_receipt_recorder/core/utils/date_formatter.dart';
-import 'package:catering_receipt_recorder/data/models/order.dart';
+import 'package:receipt_tamer/core/utils/date_formatter.dart';
+import 'package:receipt_tamer/data/models/order.dart';
 
 /// Order selector card widget for displaying order info with checkbox
 /// Used in the OrderSelectorScreen for selecting orders to link with invoices

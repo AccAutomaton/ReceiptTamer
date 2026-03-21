@@ -1,4 +1,4 @@
-package com.acautomaton.catering_receipt_recorder
+package com.acautomaton.receipt.tamer
 
 import android.content.res.AssetFileDescriptor
 import android.graphics.Bitmap
@@ -61,9 +61,9 @@ class MainActivity : FlutterActivity() {
     // Native method to disable OpenMP affinity (prevents crash on Xiaomi devices)
     private external fun setOmpAffinityDisabled()
 
-    private val OCR_CHANNEL = "com.example.catering_receipt_recorder/ocr"
-    private val LLM_CHANNEL = "com.example.catering_receipt_recorder/llm"
-    private val STORAGE_CHANNEL = "com.example.catering_receipt_recorder/storage"
+    private val OCR_CHANNEL = "com.acautomaton.receipt.tamer/ocr"
+    private val LLM_CHANNEL = "com.acautomaton.receipt.tamer/llm"
+    private val STORAGE_CHANNEL = "com.acautomaton.receipt.tamer/storage"
     private var ocrEngine: OcrEngine? = null
     private var mnnEngine: MnnEngine? = null
 

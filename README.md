@@ -1,6 +1,6 @@
-# catering_receipt_recorder
+# ReceiptTamer
 
-A Catering Receipt Recorder App
+ReceiptTamer - A Receipt Management App
 
 ## Getting Started
 

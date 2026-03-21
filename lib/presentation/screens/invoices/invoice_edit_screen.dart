@@ -6,17 +6,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
-import 'package:catering_receipt_recorder/core/constants/app_constants.dart';
-import 'package:catering_receipt_recorder/data/models/invoice.dart';
-import 'package:catering_receipt_recorder/data/models/ocr_result.dart';
-import 'package:catering_receipt_recorder/data/services/file_service.dart';
-import 'package:catering_receipt_recorder/data/services/image_service.dart';
-import 'package:catering_receipt_recorder/presentation/providers/invoice_provider.dart';
-import 'package:catering_receipt_recorder/presentation/providers/ocr_provider.dart';
-import 'package:catering_receipt_recorder/presentation/screens/invoices/order_selector_screen.dart';
-import 'package:catering_receipt_recorder/presentation/widgets/common/app_button.dart';
-import 'package:catering_receipt_recorder/presentation/widgets/common/app_text_field.dart';
-import 'package:catering_receipt_recorder/presentation/widgets/invoice/invoice_image_preview.dart';
+import 'package:receipt_tamer/core/constants/app_constants.dart';
+import 'package:receipt_tamer/data/models/invoice.dart';
+import 'package:receipt_tamer/data/models/ocr_result.dart';
+import 'package:receipt_tamer/data/services/file_service.dart';
+import 'package:receipt_tamer/data/services/image_service.dart';
+import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
+import 'package:receipt_tamer/presentation/providers/ocr_provider.dart';
+import 'package:receipt_tamer/presentation/screens/invoices/order_selector_screen.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_text_field.dart';
+import 'package:receipt_tamer/presentation/widgets/invoice/invoice_image_preview.dart';
 
 /// Invoice edit/add screen
 class InvoiceEditScreen extends ConsumerStatefulWidget {

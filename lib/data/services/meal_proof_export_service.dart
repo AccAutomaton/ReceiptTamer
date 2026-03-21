@@ -1,11 +1,11 @@
 import 'dart:io';
 import 'dart:ui';
 
-import 'package:catering_receipt_recorder/core/utils/date_formatter.dart';
-import 'package:catering_receipt_recorder/data/models/invoice.dart';
-import 'package:catering_receipt_recorder/data/models/meal_proof_item.dart';
-import 'package:catering_receipt_recorder/data/models/order.dart';
-import 'package:catering_receipt_recorder/data/services/invoice_proration_util.dart';
+import 'package:receipt_tamer/core/utils/date_formatter.dart';
+import 'package:receipt_tamer/data/models/invoice.dart';
+import 'package:receipt_tamer/data/models/meal_proof_item.dart';
+import 'package:receipt_tamer/data/models/order.dart';
+import 'package:receipt_tamer/data/services/invoice_proration_util.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 
 /// Meal proof export service

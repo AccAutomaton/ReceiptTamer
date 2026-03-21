@@ -1,12 +1,12 @@
-import 'package:catering_receipt_recorder/core/constants/app_constants.dart';
-import 'package:catering_receipt_recorder/data/models/app_version.dart';
-import 'package:catering_receipt_recorder/data/services/file_service.dart';
-import 'package:catering_receipt_recorder/data/services/llm_service.dart';
-import 'package:catering_receipt_recorder/data/services/update_service.dart';
-import 'package:catering_receipt_recorder/presentation/providers/ocr_provider.dart';
-import 'package:catering_receipt_recorder/presentation/screens/settings/info_screen.dart';
-import 'package:catering_receipt_recorder/presentation/widgets/common/app_button.dart';
-import 'package:catering_receipt_recorder/presentation/widgets/common/storage_ring_chart.dart';
+import 'package:receipt_tamer/core/constants/app_constants.dart';
+import 'package:receipt_tamer/data/models/app_version.dart';
+import 'package:receipt_tamer/data/services/file_service.dart';
+import 'package:receipt_tamer/data/services/llm_service.dart';
+import 'package:receipt_tamer/data/services/update_service.dart';
+import 'package:receipt_tamer/presentation/providers/ocr_provider.dart';
+import 'package:receipt_tamer/presentation/screens/settings/info_screen.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
+import 'package:receipt_tamer/presentation/widgets/common/storage_ring_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -285,11 +285,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   static const String _privacyPolicyContent = '''
-餐饮发票报销助手 隐私政策
+ReceiptTamer 隐私政策
 
 更新日期：2026年3月
 
-感谢您使用餐饮发票报销助手（以下简称"本应用"）。我们非常重视您的隐私保护，本隐私政策旨在向您说明我们如何收集、使用和保护您的信息。
+感谢您使用ReceiptTamer（以下简称"本应用"）。我们非常重视您的隐私保护，本隐私政策旨在向您说明我们如何收集、使用和保护您的信息。
 
 一、信息收集
 
@@ -343,7 +343,7 @@ acautomaton@icloud.com
 ''';
 
   static const String _openSourceContent = '''
-餐饮发票报销助手 开源许可证
+ReceiptTamer 开源许可证
 
 本应用使用了以下开源软件包和库：
 

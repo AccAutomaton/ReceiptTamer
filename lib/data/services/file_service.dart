@@ -12,7 +12,7 @@ import '../../core/constants/app_constants.dart';
 /// Handles directory creation, file deletion, and file info retrieval
 class FileService {
   /// MethodChannel for getting Android filesDir path
-  static const MethodChannel _channel = MethodChannel('com.example.catering_receipt_recorder/storage');
+  static const MethodChannel _channel = MethodChannel('com.acautomaton.receipt.tamer/storage');
 
   /// Get the application documents directory
   Future<Directory> getAppDirectory() async {

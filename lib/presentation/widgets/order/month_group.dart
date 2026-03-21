@@ -1,4 +1,4 @@
-import 'package:catering_receipt_recorder/data/models/order.dart';
+import 'package:receipt_tamer/data/models/order.dart';
 
 /// Group orders by year and month
 class MonthGroup {
