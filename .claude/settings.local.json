@@ -28,7 +28,8 @@
       "Bash(sed:*)",
       "Bash(git lfs:*)",
       "Bash(git stash:*)",
-      "Bash(pip list:*)"
+      "Bash(pip list:*)",
+      "Bash(dart format:*)"
     ]
   }
 }

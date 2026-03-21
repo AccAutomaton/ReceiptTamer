@@ -110,17 +110,20 @@ class InvoiceTable {
   }
 
   /// Get invoices by invoice date range
-  /// Uses invoice_date field (stored as 'yyyy-MM-dd' format)
+  /// Uses invoice_date field (stored as ISO8601 format, e.g., '2024-01-15T00:00:00.000')
+  /// Compares only the date portion (YYYY-MM-DD)
   Future<List<Invoice>> getByDateRange(DateTime start, DateTime end) async {
-    // Format dates as 'yyyy-MM-dd' for comparison with invoice_date field
+    // Format dates as 'yyyy-MM-dd' for comparison
     final startDate = _formatDate(start);
     final endDate = _formatDate(end);
 
+    // Use SQLite's date() function to extract date portion from ISO8601 string
+    // Or use substr() to get first 10 characters (YYYY-MM-DD)
     final List<Map<String, dynamic>> maps = await database.query(
       AppConstants.invoicesTable,
-      where: '${AppConstants.colInvoiceDate} >= ? AND ${AppConstants.colInvoiceDate} <= ?',
+      where: 'substr(${AppConstants.colInvoiceDate}, 1, 10) >= ? AND substr(${AppConstants.colInvoiceDate}, 1, 10) <= ?',
       whereArgs: [startDate, endDate],
-      orderBy: '${AppConstants.colInvoiceDate} DESC',
+      orderBy: '${AppConstants.colInvoiceDate} ASC',
     );
 
     return maps.map((map) => Invoice.fromJson(map)).toList();
@@ -132,13 +135,14 @@ class InvoiceTable {
   }
 
   /// Get invoices with invoice date today
+  /// invoice_date is stored as ISO8601, so we extract the date portion for comparison
   Future<List<Invoice>> getTodayInvoices() async {
     final now = DateTime.now();
     final todayStr = _formatDate(now);
 
     final List<Map<String, dynamic>> maps = await database.query(
       AppConstants.invoicesTable,
-      where: '${AppConstants.colInvoiceDate} = ?',
+      where: 'substr(${AppConstants.colInvoiceDate}, 1, 10) = ?',
       whereArgs: [todayStr],
       orderBy: '${AppConstants.colInvoiceDate} DESC',
     );
@@ -183,13 +187,14 @@ class InvoiceTable {
   }
 
   /// Get the total amount for a date range (based on invoice_date)
+  /// invoice_date is stored as ISO8601, so we extract the date portion for comparison
   Future<double> getTotalAmountByDateRange(DateTime start, DateTime end) async {
     final startDate = _formatDate(start);
     final endDate = _formatDate(end);
 
     final result = await database.rawQuery(
       'SELECT SUM(${AppConstants.colTotalAmount}) as total FROM ${AppConstants.invoicesTable} '
-      'WHERE ${AppConstants.colInvoiceDate} >= ? AND ${AppConstants.colInvoiceDate} <= ?',
+      'WHERE substr(${AppConstants.colInvoiceDate}, 1, 10) >= ? AND substr(${AppConstants.colInvoiceDate}, 1, 10) <= ?',
       [startDate, endDate],
     );
 
@@ -263,12 +268,12 @@ class InvoiceTable {
     }
 
     if (startDate != null) {
-      conditions.add('${AppConstants.colInvoiceDate} >= ?');
+      conditions.add('substr(${AppConstants.colInvoiceDate}, 1, 10) >= ?');
       args.add(_formatDate(startDate));
     }
 
     if (endDate != null) {
-      conditions.add('${AppConstants.colInvoiceDate} <= ?');
+      conditions.add('substr(${AppConstants.colInvoiceDate}, 1, 10) <= ?');
       args.add(_formatDate(endDate));
     }
 
