@@ -6,7 +6,7 @@ class AppConstants {
 
   // Database
   static const String databaseName = 'receipt_tamer.db';
-  static const int databaseVersion = 2;
+  static const int databaseVersion = 1;
 
   // Table names
   static const String ordersTable = 'orders';
