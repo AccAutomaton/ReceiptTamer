@@ -2,7 +2,6 @@ import 'package:receipt_tamer/core/constants/app_constants.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
-import 'package:receipt_tamer/presentation/providers/ocr_provider.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
 import 'package:easy_refresh/easy_refresh.dart';
@@ -42,8 +41,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Preload OCR provider to start model initialization at app startup
-    ref.watch(ocrProvider);
+    // 不在首屏预加载OCR，避免阻塞UI渲染
+    // OCR会在用户进入添加订单/发票页面时按需初始化
 
     final orderCountAsync = ref.watch(orderCountProvider);
     final invoiceCountAsync = ref.watch(invoiceCountProvider);

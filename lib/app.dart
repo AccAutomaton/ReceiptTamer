@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'data/services/share_handler_service.dart';
+import 'presentation/providers/ocr_provider.dart';
 
 /// The root widget of the application.
 /// Wraps the app with ProviderScope for Riverpod state management.
@@ -30,16 +31,36 @@ class _AppState extends ConsumerState<App> {
   @override
   void initState() {
     super.initState();
-    // 延迟初始化分享处理器，给 Flutter Engine 更多时间准备
-    _delayedInitialize();
+    // 使用 addPostFrameCallback 确保首帧渲染完成后再初始化
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _delayedInitialize();
+    });
   }
 
   Future<void> _delayedInitialize() async {
-    // 等待第一帧渲染完成
-    await WidgetsBinding.instance.endOfFrame;
-    // 额外延迟，确保 Flutter Engine 完全准备好
-    await Future.delayed(const Duration(milliseconds: 300));
+    // 首帧已渲染完成，现在可以安全地进行后台初始化
+    // 额外延迟，确保UI稳定
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    // 开始后台初始化OCR/LLM模型（不阻塞UI）
+    _startOcrBackgroundInitialization();
+
+    // 初始化分享处理器
+    await Future.delayed(const Duration(milliseconds: 200));
     _initializeShareHandler();
+  }
+
+  /// 在后台初始化OCR，不阻塞UI
+  void _startOcrBackgroundInitialization() {
+    Future.delayed(const Duration(milliseconds: 50), () async {
+      try {
+        debugPrint('App: Starting OCR background initialization...');
+        // 触发OCR初始化，但不等待完成
+        ref.read(ocrProvider.notifier).initialize();
+      } catch (e) {
+        debugPrint('App: OCR background initialization error: $e');
+      }
+    });
   }
 
   Future<void> _initializeShareHandler() async {

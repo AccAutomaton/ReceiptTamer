@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'dart:typed_data';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -89,12 +87,12 @@ class OcrNotifier extends Notifier<OcrState> {
 
   @override
   OcrState build() {
-    // Initialize OCR in background without blocking
-    Future.microtask(() => initialize());
+    // 不在build()中自动初始化，避免阻塞UI
+    // OCR会在用户需要识别时按需初始化
     ref.onDispose(() {
       _progressTimer?.cancel();
     });
-    return const OcrState(isModelLoading: true);
+    return const OcrState();
   }
 
   OcrService get _service => ref.watch(ocrServiceProvider);
@@ -152,53 +150,88 @@ class OcrNotifier extends Notifier<OcrState> {
   Future<void> initialize() async {
     state = state.copyWith(isModelLoading: true);
 
-    try {
-      // Start initialization (non-blocking)
-      await _service.initialize();
+    // 启动后台初始化（不等待）
+    _service.initialize();
 
-      // Update state with initial status
-      state = state.copyWith(
-        isInitialized: _service.isModelAvailable,
-        isModelAvailable: _service.isModelAvailable,
-        isModelLoading: _service.isModelLoading,
-        archNotSupported: _service.archNotSupported,
-        llmService: _service.llmService,
-      );
+    // 轮询检查初始化状态
+    _watchInitializationStatus();
+  }
 
-      // If LLM is still loading in background, wait for it
-      if (_service.isModelLoading) {
-        // Start a background watcher for model loading
-        _watchModelLoading();
+  /// 轮询检查初始化状态，完成后更新 state
+  void _watchInitializationStatus() {
+    Future(() async {
+      try {
+        debugPrint('[OCR] 开始监听初始化状态...');
+
+        // 等待 OCR 服务初始化完成
+        while (_service.isModelLoading && !_service.isModelAvailable) {
+          debugPrint('[OCR] 等待中... isModelLoading=${_service.isModelLoading}, isModelAvailable=${_service.isModelAvailable}');
+          await Future.delayed(const Duration(milliseconds: 200));
+        }
+
+        debugPrint('[OCR] OCR初始化完成，更新状态: isModelAvailable=${_service.isModelAvailable}, isModelLoading=${_service.isModelLoading}');
+
+        // 更新状态
+        state = state.copyWith(
+          isInitialized: _service.isModelAvailable,
+          isModelAvailable: _service.isModelAvailable,
+          isModelLoading: _service.isModelLoading || (_service.llmService?.isModelLoading ?? false),
+          archNotSupported: _service.archNotSupported,
+          llmService: _service.llmService,
+        );
+
+        debugPrint('[OCR] 状态已更新: state.isModelLoading=${state.isModelLoading}, state.isModelAvailable=${state.isModelAvailable}');
+
+        // 如果 LLM 还在加载，继续监听
+        if (_service.llmService?.isModelLoading == true) {
+          debugPrint('[OCR] LLM仍在加载，启动监听...');
+          _watchModelLoading();
+        }
+      } catch (e) {
+        debugPrint('[OCR] 监听初始化状态出错: $e');
+        state = state.copyWith(
+          isInitialized: false,
+          isModelAvailable: false,
+          isModelLoading: false,
+          errorMessage: 'Failed to initialize OCR: ${e.toString()}',
+        );
       }
-    } catch (e) {
-      state = state.copyWith(
-        isInitialized: false,
-        isModelAvailable: false,
-        isModelLoading: false,
-        errorMessage: 'Failed to initialize OCR: ${e.toString()}',
-      );
-    }
+    });
   }
 
   /// Watch model loading status and update state when done
+  /// 使用轮询方式检查状态，避免阻塞主线程
   void _watchModelLoading() {
     Future(() async {
       try {
         final llmService = _service.llmService;
-        if (llmService != null && llmService.isModelLoading) {
-          // Wait for LLM to finish loading
-          await llmService.waitForInitialization();
-
-          // Update state when loading is complete
-          state = state.copyWith(
-            isModelLoading: false,
-            isModelAvailable: _service.isModelAvailable && llmService.isInitialized,
-            archNotSupported: llmService.archNotSupported,
-          );
+        if (llmService == null) {
+          debugPrint('[OCR] LLM服务为空，跳过监听');
+          state = state.copyWith(isModelLoading: false);
+          return;
         }
+
+        debugPrint('[OCR] 开始监听LLM加载状态...');
+
+        // 轮询检查模型加载状态，每200ms检查一次
+        while (llmService.isModelLoading) {
+          await Future.delayed(const Duration(milliseconds: 200));
+          debugPrint('[OCR] LLM加载中... isModelLoading=${llmService.isModelLoading}, isInitialized=${llmService.isInitialized}');
+          if (!llmService.isModelLoading) break;
+        }
+
+        debugPrint('[OCR] LLM加载完成，更新状态: isInitialized=${llmService.isInitialized}');
+
+        // 更新状态
+        state = state.copyWith(
+          isModelLoading: false,
+          isModelAvailable: _service.isModelAvailable && llmService.isInitialized,
+          archNotSupported: llmService.archNotSupported,
+        );
+
+        debugPrint('[OCR] 最终状态: isModelLoading=${state.isModelLoading}, isModelAvailable=${state.isModelAvailable}');
       } catch (e) {
-        debugPrint('Error watching model loading: $e');
-        // Update state to reflect error
+        debugPrint('[OCR] 监听LLM加载出错: $e');
         state = state.copyWith(
           isModelLoading: false,
           errorMessage: 'Model loading failed: ${e.toString()}',
@@ -213,6 +246,24 @@ class OcrNotifier extends Notifier<OcrState> {
     return _service.waitForInitialization();
   }
 
+  /// 轮询等待模型加载完成（不阻塞主线程）
+  Future<bool> _pollWaitForModel() async {
+    // 等待 OCR 服务初始化
+    while (_service.isModelLoading) {
+      await Future.delayed(const Duration(milliseconds: 200));
+    }
+
+    // 等待 LLM 初始化
+    final llmService = _service.llmService;
+    if (llmService != null) {
+      while (llmService.isModelLoading) {
+        await Future.delayed(const Duration(milliseconds: 200));
+      }
+    }
+
+    return _service.isModelAvailable;
+  }
+
   /// Recognize text from an order image path with progress
   Future<OcrResult?> recognizeOrderWithProgress(String imagePath) async {
     state = state.copyWith(
@@ -224,15 +275,24 @@ class OcrNotifier extends Notifier<OcrState> {
     );
 
     try {
-      // Wait for model if loading
-      if (_service.isModelLoading) {
-        await _service.waitForInitialization();
+      // 确保OCR服务已初始化
+      if (!_service.isModelAvailable) {
+        debugPrint('OCR模型未初始化，开始初始化...');
+        await _service.initialize();
+        // 更新状态
+        state = state.copyWith(
+          isInitialized: _service.isModelAvailable,
+          isModelAvailable: _service.isModelAvailable,
+          isModelLoading: _service.isModelLoading,
+          archNotSupported: _service.archNotSupported,
+          llmService: _service.llmService,
+        );
       }
 
+      // Wait for model if loading (使用轮询，不阻塞主线程)
+      await _pollWaitForModel();
+
       final llmService = _service.llmService;
-      if (llmService?.isModelLoading == true) {
-        await llmService!.waitForInitialization();
-      }
 
       // Check architecture support
       if (llmService?.archNotSupported == true) {
@@ -350,15 +410,24 @@ class OcrNotifier extends Notifier<OcrState> {
     );
 
     try {
-      // Wait for model if loading
-      if (_service.isModelLoading) {
-        await _service.waitForInitialization();
+      // 确保OCR服务已初始化
+      if (!_service.isModelAvailable) {
+        debugPrint('OCR模型未初始化，开始初始化...');
+        await _service.initialize();
+        // 更新状态
+        state = state.copyWith(
+          isInitialized: _service.isModelAvailable,
+          isModelAvailable: _service.isModelAvailable,
+          isModelLoading: _service.isModelLoading,
+          archNotSupported: _service.archNotSupported,
+          llmService: _service.llmService,
+        );
       }
 
+      // Wait for model if loading (使用轮询，不阻塞主线程)
+      await _pollWaitForModel();
+
       final llmService = _service.llmService;
-      if (llmService?.isModelLoading == true) {
-        await llmService!.waitForInitialization();
-      }
 
       // Check architecture support
       if (llmService?.archNotSupported == true) {
@@ -478,15 +547,24 @@ class OcrNotifier extends Notifier<OcrState> {
     );
 
     try {
-      // Wait for model if loading
-      if (_service.isModelLoading) {
-        await _service.waitForInitialization();
+      // 确保OCR服务已初始化
+      if (!_service.isModelAvailable) {
+        debugPrint('OCR模型未初始化，开始初始化...');
+        await _service.initialize();
+        // 更新状态
+        state = state.copyWith(
+          isInitialized: _service.isModelAvailable,
+          isModelAvailable: _service.isModelAvailable,
+          isModelLoading: _service.isModelLoading,
+          archNotSupported: _service.archNotSupported,
+          llmService: _service.llmService,
+        );
       }
 
+      // Wait for model if loading (使用轮询，不阻塞主线程)
+      await _pollWaitForModel();
+
       final llmService = _service.llmService;
-      if (llmService?.isModelLoading == true) {
-        await llmService!.waitForInitialization();
-      }
 
       // Check architecture support
       if (llmService?.archNotSupported == true) {

@@ -31,11 +31,33 @@ class MainActivity : FlutterActivity() {
         // 延迟加载 MNN 库，避免在 x86 模拟器上崩溃
         private var mnnLibLoaded = false
         private var mnnLibLoadAttempted = false
+        private val mnnLoadLatch = CountDownLatch(1)
 
         /**
-         * 尝试加载 MNN 库，仅在 arm64-v8a 架构上加载
+         * 检查 MNN 库是否已加载（非阻塞）
          */
-        private fun tryLoadMnnLibrary(): Boolean {
+        private fun isMnnLibLoaded(): Boolean {
+            return mnnLibLoaded
+        }
+
+        /**
+         * 等待 MNN 库加载完成（可阻塞，应在后台线程调用）
+         */
+        private fun waitForMnnLibLoaded(timeoutMs: Long = 10000): Boolean {
+            if (mnnLibLoaded) return true
+            return try {
+                mnnLoadLatch.await(timeoutMs, TimeUnit.MILLISECONDS)
+                mnnLibLoaded
+            } catch (e: InterruptedException) {
+                android.util.Log.w("MainActivity", "等待MNN库加载被中断: ${e.message}")
+                false
+            }
+        }
+
+        /**
+         * 同步加载 MNN 库（应在后台线程调用）
+         */
+        private fun loadMnnLibrarySync(): Boolean {
             if (mnnLibLoadAttempted) return mnnLibLoaded
             mnnLibLoadAttempted = true
 
@@ -43,6 +65,7 @@ class MainActivity : FlutterActivity() {
             val arch = Build.SUPPORTED_ABIS.firstOrNull() ?: "unknown"
             if (arch != "arm64-v8a") {
                 android.util.Log.w("MainActivity", "MNN 仅支持 arm64-v8a 架构，当前架构: $arch，跳过加载")
+                mnnLoadLatch.countDown()
                 return false
             }
 
@@ -50,11 +73,24 @@ class MainActivity : FlutterActivity() {
                 System.loadLibrary("mnn_jni")
                 mnnLibLoaded = true
                 android.util.Log.i("MainActivity", "MNN 库加载成功")
+                mnnLoadLatch.countDown()
                 true
             } catch (e: UnsatisfiedLinkError) {
                 android.util.Log.e("MainActivity", "MNN 库加载失败: ${e.message}")
+                mnnLoadLatch.countDown()
                 false
             }
+        }
+
+        /**
+         * 在后台线程预加载 MNN 库
+         */
+        private fun preloadMnnLibraryAsync() {
+            if (mnnLibLoadAttempted) return
+
+            Thread {
+                loadMnnLibrarySync()
+            }.start()
         }
     }
 
@@ -84,6 +120,10 @@ class MainActivity : FlutterActivity() {
     private var pendingShareIntent: android.content.Intent? = null
 
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        // 在后台线程预加载 MNN 库，不阻塞 UI 渲染
+        // 库会在 Flutter 引擎启动期间加载完成
+        preloadMnnLibraryAsync()
+
         // 保存分享Intent，以便Flutter准备好后处理
         if (intent?.action in listOf(android.content.Intent.ACTION_SEND, android.content.Intent.ACTION_SEND_MULTIPLE)) {
             pendingShareIntent = intent
@@ -515,8 +555,8 @@ class MainActivity : FlutterActivity() {
      * 返回状态Map，包含isLoading、archNotSupported、error等信息
      */
     private fun initializeLlmAsync(modelPath: String): Map<String, Any?> {
-        // 先尝试加载 MNN 库
-        if (!tryLoadMnnLibrary()) {
+        // 架构检查（快速非阻塞检查）
+        if (!isArm64V8()) {
             val arch = getDeviceArch()
             archNotSupported = true
             llmLoadError = "仅支持 arm64-v8a 架构，当前架构: $arch"
@@ -526,19 +566,6 @@ class MainActivity : FlutterActivity() {
                 "archNotSupported" to true,
                 "error" to llmLoadError,
                 "deviceArch" to arch
-            )
-        }
-
-        // 架构检查
-        if (!isArm64V8()) {
-            val arch = getDeviceArch()
-            archNotSupported = true
-            llmLoadError = "仅支持 arm64-v8a 架构，当前架构: $arch"
-            android.util.Log.w("MainActivity", llmLoadError!!)
-            return mapOf(
-                "isLoading" to false,
-                "archNotSupported" to true,
-                "error" to llmLoadError
             )
         }
 
@@ -568,6 +595,13 @@ class MainActivity : FlutterActivity() {
 
         Thread {
             try {
+                // 等待 MNN 库加载完成（在后台线程等待，不阻塞主线程）
+                if (!waitForMnnLibLoaded()) {
+                    llmLoadError = "MNN库加载超时"
+                    android.util.Log.e("MainActivity", llmLoadError!!)
+                    return@Thread
+                }
+
                 // 获取MnnEngine单例
                 if (mnnEngine == null) {
                     mnnEngine = MnnEngine.getInstance()

@@ -44,47 +44,54 @@ class OcrService {
   Future<bool> initialize() async {
     if (_isInitialized && _isModelAvailable) return true;
 
-    // If already initializing, wait for the existing initialization
+    // If already initializing, return immediately (don't wait)
     if (_isLoading && _initCompleter != null) {
-      debugPrint('等待现有的OCR初始化完成...');
-      return _initCompleter!.future;
+      debugPrint('OCR正在初始化中...');
+      return true;
     }
 
     _isLoading = true;
     _initCompleter = Completer<bool>();
 
-    try {
-      // Initialize LLM service first (async, non-blocking)
-      _llmService = LlmService();
-      await _llmService!.initialize();
-      debugPrint('LLM初始化已启动 (后台加载中)');
+    // 在后台执行初始化，不阻塞主线程
+    _initializeInBackground();
 
-      // Initialize native OCR engine
-      final result = await _channel.invokeMethod<bool>('initialize');
+    return true;
+  }
 
-      _isInitialized = true;
-      _isModelAvailable = result ?? false;
+  /// 后台初始化，不阻塞主线程
+  void _initializeInBackground() {
+    Future(() async {
+      try {
+        // Initialize LLM service first (async, non-blocking)
+        _llmService = LlmService();
+        await _llmService!.initialize();
+        debugPrint('LLM初始化已启动 (后台加载中)');
 
-      debugPrint('Paddle-Lite OCR初始化: ${_isModelAvailable ? "成功" : "失败"}');
+        // Initialize native OCR engine
+        final result = await _channel.invokeMethod<bool>('initialize');
 
-      _initCompleter!.complete(_isModelAvailable);
-      _isLoading = false;
-      return _isModelAvailable;
-    } on PlatformException catch (e) {
-      debugPrint('OCR初始化失败: ${e.message}');
-      _isInitialized = true;
-      _isModelAvailable = false;
-      _initCompleter!.complete(false);
-      _isLoading = false;
-      return false;
-    } catch (e) {
-      debugPrint('OCR初始化异常: $e');
-      _isInitialized = true;
-      _isModelAvailable = false;
-      _initCompleter!.complete(false);
-      _isLoading = false;
-      return false;
-    }
+        _isInitialized = true;
+        _isModelAvailable = result ?? false;
+
+        debugPrint('Paddle-Lite OCR初始化: ${_isModelAvailable ? "成功" : "失败"}');
+
+        _initCompleter!.complete(_isModelAvailable);
+        _isLoading = false;
+      } on PlatformException catch (e) {
+        debugPrint('OCR初始化失败: ${e.message}');
+        _isInitialized = true;
+        _isModelAvailable = false;
+        _initCompleter!.complete(false);
+        _isLoading = false;
+      } catch (e) {
+        debugPrint('OCR初始化异常: $e');
+        _isInitialized = true;
+        _isModelAvailable = false;
+        _initCompleter!.complete(false);
+        _isLoading = false;
+      }
+    });
   }
 
   /// Wait for initialization to complete if currently loading

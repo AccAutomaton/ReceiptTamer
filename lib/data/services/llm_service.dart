@@ -54,6 +54,7 @@ class LlmService {
 
   /// Initialize the LLM service (async, non-blocking)
   /// Returns true if initialization started successfully
+  /// 不会阻塞主线程，立即返回，模型在后台加载
   Future<bool> initialize() async {
     if (_isInitialized) return true;
     if (_isLoading) return true;
@@ -61,44 +62,84 @@ class LlmService {
     _isLoading = true;
     _isModelLoading = true;
 
-    try {
-      debugPrint('正在初始化LLM服务...');
+    // 在后台执行初始化，不阻塞主线程
+    _initializeInBackground();
 
-      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('initialize', {
-        'modelPath': _modelPath,
-      });
+    return true;
+  }
 
-      // Parse result
-      _isModelLoading = result?['isLoading'] ?? false;
-      _archNotSupported = result?['archNotSupported'] ?? false;
-      _loadError = result?['error'] as String?;
-      _isInitialized = result?['isInitialized'] ?? false;
+  /// 后台初始化，不阻塞主线程
+  void _initializeInBackground() {
+    Future(() async {
+      try {
+        debugPrint('正在初始化LLM服务...');
 
-      if (_archNotSupported) {
-        debugPrint('LLM不支持当前架构: $_loadError');
+        final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('initialize', {
+          'modelPath': _modelPath,
+        });
+
+        // Parse result
+        _isModelLoading = result?['isLoading'] ?? false;
+        _archNotSupported = result?['archNotSupported'] ?? false;
+        _loadError = result?['error'] as String?;
+        _isInitialized = result?['isInitialized'] ?? false;
+
+        if (_archNotSupported) {
+          debugPrint('LLM不支持当前架构: $_loadError');
+          _isLoading = false;
+          return;
+        }
+
+        // If still loading in background, poll for completion
+        if (_isModelLoading) {
+          debugPrint('LLM模型正在后台加载...');
+          await _pollForLoadingComplete();
+        }
+      } on PlatformException catch (e) {
+        debugPrint('LLM初始化失败: ${e.message}');
+        _loadError = e.message;
         _isLoading = false;
-        return false;
+        _isModelLoading = false;
+      } catch (e) {
+        debugPrint('LLM初始化异常: $e');
+        _loadError = e.toString();
+        _isLoading = false;
+        _isModelLoading = false;
       }
+    });
+  }
 
-      // If still loading in background, we don't wait
-      if (_isModelLoading) {
-        debugPrint('LLM模型正在后台加载...');
+  /// 轮询等待模型加载完成
+  Future<void> _pollForLoadingComplete() async {
+    debugPrint('[LLM] 开始轮询加载状态...');
+    while (_isModelLoading) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      try {
+        final status = await getStatus();
+        _isModelLoading = status['isLoading'] ?? false;
+        _isInitialized = status['isInitialized'] ?? false;
+        _archNotSupported = status['archNotSupported'] ?? false;
+        _loadError = status['error'] as String?;
+
+        debugPrint('[LLM] 轮询状态: isLoading=$_isModelLoading, isInitialized=$_isInitialized');
+
+        if (_isInitialized) {
+          debugPrint('[LLM] 模型加载完成!');
+          _isLoading = false;
+          break;
+        }
+        if (_loadError != null || _archNotSupported) {
+          debugPrint('[LLM] 模型加载失败: $_loadError');
+          _isLoading = false;
+          break;
+        }
+      } catch (e) {
+        debugPrint('[LLM] 轮询状态失败: $e');
       }
-
-      return true;
-    } on PlatformException catch (e) {
-      debugPrint('LLM初始化失败: ${e.message}');
-      _loadError = e.message;
-      _isLoading = false;
-      _isModelLoading = false;
-      return false;
-    } catch (e) {
-      debugPrint('LLM初始化异常: $e');
-      _loadError = e.toString();
-      _isLoading = false;
-      _isModelLoading = false;
-      return false;
     }
+    _isLoading = false;
+    _isModelLoading = false;
+    debugPrint('[LLM] 轮询结束: isInitialized=$_isInitialized');
   }
 
   /// Wait for model initialization to complete
