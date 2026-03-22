@@ -395,14 +395,37 @@ class MainActivity : FlutterActivity() {
 
     /**
      * 检查模型目录是否有效
+     * 必需文件: llm_config.json, llm.mnn, llm.mnn.weight, tokenizer.txt
      */
     private fun isModelDirValid(modelDir: File): Boolean {
-        if (!modelDir.exists() || modelDir.listFiles()?.isEmpty() != false) {
+        if (!modelDir.exists() || !modelDir.isDirectory) {
             return false
         }
-        // 检查关键文件是否存在且大小合理（权重文件约450MB）
+
+        // 检查所有必需文件是否存在
+        val requiredFiles = listOf(
+            "llm_config.json",
+            "llm.mnn",
+            "llm.mnn.weight",
+            "tokenizer.txt"
+        )
+
+        for (fileName in requiredFiles) {
+            val file = File(modelDir, fileName)
+            if (!file.exists()) {
+                android.util.Log.w("MainActivity", "模型文件缺失: $fileName")
+                return false
+            }
+        }
+
+        // 检查权重文件大小合理（约450MB）
         val weightFile = File(modelDir, "llm.mnn.weight")
-        return weightFile.exists() && weightFile.length() > 400_000_000
+        if (weightFile.length() < 400_000_000) {
+            android.util.Log.w("MainActivity", "权重文件大小不足: ${weightFile.length()} bytes")
+            return false
+        }
+
+        return true
     }
 
     /**
@@ -510,7 +533,12 @@ class MainActivity : FlutterActivity() {
                 // 检查模型目录是否已存在且有效
                 if (isModelDirValid(modelDir)) {
                     android.util.Log.i("MainActivity", "模型目录已存在且有效，跳过拷贝: $destModelDir")
-                } else if (!modelDir.exists() || modelDir.listFiles()?.isEmpty() != false) {
+                } else {
+                    // 目录无效，删除旧文件后重新拷贝
+                    if (modelDir.exists()) {
+                        android.util.Log.i("MainActivity", "模型目录不完整，删除旧文件...")
+                        modelDir.deleteRecursively()
+                    }
                     android.util.Log.i("MainActivity", "模型文件不存在或不完整，正在从assets复制...")
                     val assetBasePath = "flutter_assets/$modelPath"
                     android.util.Log.d("MainActivity", "Asset base path: $assetBasePath")
@@ -519,8 +547,6 @@ class MainActivity : FlutterActivity() {
                         android.util.Log.e("MainActivity", llmLoadError!!)
                         return@Thread
                     }
-                } else {
-                    android.util.Log.i("MainActivity", "模型文件已存在: $destModelDir")
                 }
 
                 // 加载模型

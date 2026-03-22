@@ -354,7 +354,7 @@ static std::mutex g_contextMutex;
 extern "C" {
 
 JNIEXPORT jboolean JNICALL
-Java_com_acautomaton_catering_1receipt_1recorder_MnnEngine_loadModel(
+Java_com_acautomaton_receipt_tamer_MnnEngine_loadModel(
         JNIEnv* env,
         jobject thiz,
         jstring modelDir,
@@ -375,7 +375,7 @@ Java_com_acautomaton_catering_1receipt_1recorder_MnnEngine_loadModel(
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_acautomaton_catering_1receipt_1recorder_MnnEngine_generate(
+Java_com_acautomaton_receipt_tamer_MnnEngine_generate(
         JNIEnv* env,
         jobject thiz,
         jstring prompt,
@@ -396,7 +396,7 @@ Java_com_acautomaton_catering_1receipt_1recorder_MnnEngine_generate(
 }
 
 JNIEXPORT void JNICALL
-Java_com_acautomaton_catering_1receipt_1recorder_MnnEngine_dispose(
+Java_com_acautomaton_receipt_tamer_MnnEngine_dispose(
         JNIEnv* env,
         jobject thiz) {
 
@@ -409,7 +409,7 @@ Java_com_acautomaton_catering_1receipt_1recorder_MnnEngine_dispose(
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_acautomaton_catering_1receipt_1recorder_MnnEngine_isInitialized(
+Java_com_acautomaton_receipt_tamer_MnnEngine_isInitialized(
         JNIEnv* env,
         jobject thiz) {
 
@@ -424,7 +424,7 @@ Java_com_acautomaton_catering_1receipt_1recorder_MnnEngine_isInitialized(
  * Must be called BEFORE loading any library that uses OpenMP (e.g., RapidOcr).
  */
 JNIEXPORT void JNICALL
-Java_com_acautomaton_catering_1receipt_1recorder_MainActivity_setOmpAffinityDisabled(
+Java_com_acautomaton_receipt_tamer_MainActivity_setOmpAffinityDisabled(
         JNIEnv* env,
         jobject thiz) {
 
