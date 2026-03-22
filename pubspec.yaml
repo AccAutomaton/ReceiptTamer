@@ -53,6 +53,10 @@ dependencies:
   # File Opening
   open_file: ^3.5.0
 
+  # Share Handling
+  share_handler: ^0.0.19
+  receive_sharing_intent: ^1.8.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

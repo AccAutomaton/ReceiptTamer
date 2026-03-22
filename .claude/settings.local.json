@@ -30,7 +30,13 @@
       "Bash(git stash:*)",
       "Bash(pip list:*)",
       "Bash(dart format:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(flutter --version)",
+      "Read(//e/Projects/Flutter Project/ReceiptTamer/$LOCALAPPDATA/Android/**)",
+      "Read(//e/Projects/Flutter Project/ReceiptTamer/$HOME/AppData/Local/Android/**)",
+      "Read(//c/Program Files/Android/Android Studio/jbr/bin/**)",
+      "Read(//c/Program Files/Android/Android Studio/jre/bin/**)",
+      "Bash(flutter sdk-path:*)"
     ]
   }
 }

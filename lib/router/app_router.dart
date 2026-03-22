@@ -14,7 +14,9 @@ import '../presentation/screens/invoices/order_selector_screen.dart';
 import '../presentation/screens/export/export_screen.dart';
 import '../presentation/screens/export/export_options_screen.dart';
 import '../presentation/screens/settings/settings_screen.dart';
+import '../presentation/screens/share/share_target_screen.dart';
 import '../presentation/widgets/main_shell.dart';
+import '../data/services/share_handler_service.dart';
 
 /// Provider for the app router
 final routerProvider = Provider<GoRouter>((ref) {
@@ -59,7 +61,25 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/orders/new',
         name: 'order_new',
-        builder: (context, state) => const OrderEditScreen(),
+        builder: (context, state) {
+          final sharedPath = state.uri.queryParameters['sharedPath'];
+          final remainingCount = state.uri.queryParameters['remainingCount'] != null
+              ? int.tryParse(state.uri.queryParameters['remainingCount']!)
+              : null;
+          // 安全解码路径
+          String? decodedPath;
+          if (sharedPath != null) {
+            try {
+              decodedPath = Uri.decodeComponent(sharedPath);
+            } catch (e) {
+              decodedPath = sharedPath; // 解码失败则使用原始值
+            }
+          }
+          return OrderEditScreen(
+            initialImagePath: decodedPath,
+            remainingSharedCount: remainingCount ?? 0,
+          );
+        },
       ),
       // Order selector screen must be before /orders/:id to avoid matching "select" as an ID
       GoRoute(
@@ -126,8 +146,23 @@ final routerProvider = Provider<GoRouter>((ref) {
           final orderId = state.uri.queryParameters['orderId'] != null
               ? int.tryParse(state.uri.queryParameters['orderId']!)
               : null;
+          final sharedPath = state.uri.queryParameters['sharedPath'];
+          final remainingCount = state.uri.queryParameters['remainingCount'] != null
+              ? int.tryParse(state.uri.queryParameters['remainingCount']!)
+              : null;
+          // 安全解码路径
+          String? decodedPath;
+          if (sharedPath != null) {
+            try {
+              decodedPath = Uri.decodeComponent(sharedPath);
+            } catch (e) {
+              decodedPath = sharedPath; // 解码失败则使用原始值
+            }
+          }
           return InvoiceEditScreen(
             initialOrderId: orderId,
+            initialFilePath: decodedPath,
+            remainingSharedCount: remainingCount ?? 0,
           );
         },
       ),
@@ -176,6 +211,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             invoiceIds: invoiceIds,
             orderIds: orderIds,
           );
+        },
+      ),
+      // Share target screen
+      GoRoute(
+        path: '/share',
+        name: 'share_target',
+        builder: (context, state) {
+          final service = ShareHandlerService();
+          final items = service.pendingSharedMedia ?? [];
+          return ShareTargetScreen(sharedItems: items);
         },
       ),
     ],

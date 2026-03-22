@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -15,6 +16,7 @@ class MainShell extends ConsumerStatefulWidget {
 class _MainShellState extends ConsumerState<MainShell> {
   int _currentIndex = 0;
   bool _initialized = false;
+  DateTime? _lastPressedTime;
 
   // Navigation destinations (excluding the center FAB)
   static const _destinations = [
@@ -93,6 +95,38 @@ class _MainShellState extends ConsumerState<MainShell> {
     );
   }
 
+  /// 处理返回键：在主页面时将应用移到后台
+  Future<bool> _handleBackPress() async {
+    final now = DateTime.now();
+    // 检查是否在主Tab页面（首页、订单、发票、设置）
+    final state = GoRouterState.of(context);
+    final location = state.matchedLocation;
+    final isMainTab = _destinations.any((d) => d.path == location);
+
+    if (!isMainTab) {
+      // 不在主Tab页面，允许正常返回
+      return true;
+    }
+
+    // 双击返回键退出提示
+    if (_lastPressedTime == null ||
+        now.difference(_lastPressedTime!) > const Duration(seconds: 2)) {
+      _lastPressedTime = now;
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('再次返回回到桌面'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return false;
+    }
+
+    // 将应用移到后台
+    SystemNavigator.pop();
+    return false;
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -132,67 +166,77 @@ class _MainShellState extends ConsumerState<MainShell> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Stack(
-      children: [
-        Scaffold(
-          body: widget.child,
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _currentIndex,
-            onDestinationSelected: _onDestinationSelected,
-            destinations: [
-              // 首页
-              NavigationDestination(
-                icon: Icon(_destinations[0].icon),
-                selectedIcon: Icon(_destinations[0].selectedIcon),
-                label: _destinations[0].label,
-              ),
-              // 订单
-              NavigationDestination(
-                icon: Icon(_destinations[1].icon),
-                selectedIcon: Icon(_destinations[1].selectedIcon),
-                label: _destinations[1].label,
-              ),
-              // 中间的加号占位
-              NavigationDestination(
-                icon: const SizedBox.shrink(),
-                label: '',
-                enabled: false,
-              ),
-              // 发票
-              NavigationDestination(
-                icon: Icon(_destinations[2].icon),
-                selectedIcon: Icon(_destinations[2].selectedIcon),
-                label: _destinations[2].label,
-              ),
-              // 关于
-              NavigationDestination(
-                icon: Icon(_destinations[3].icon),
-                selectedIcon: Icon(_destinations[3].selectedIcon),
-                label: _destinations[3].label,
-              ),
-            ],
-          ),
-        ),
-        // FAB positioned outside Scaffold to prevent animation on rebuild
-        Positioned(
-          bottom: 35,
-          left: 0,
-          right: 0,
-          child: Center(
-            child: FloatingActionButton(
-              key: const ValueKey('main_fab'),
-              heroTag: null,
-              onPressed: _onAddPressed,
-              elevation: 8,
-              highlightElevation: 12,
-              backgroundColor: colorScheme.primary,
-              foregroundColor: colorScheme.onPrimary,
-              shape: const CircleBorder(),
-              child: const Icon(Icons.add, size: 32),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldPop = await _handleBackPress();
+        if (shouldPop && mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Stack(
+        children: [
+          Scaffold(
+            body: widget.child,
+            bottomNavigationBar: NavigationBar(
+              selectedIndex: _currentIndex,
+              onDestinationSelected: _onDestinationSelected,
+              destinations: [
+                // 首页
+                NavigationDestination(
+                  icon: Icon(_destinations[0].icon),
+                  selectedIcon: Icon(_destinations[0].selectedIcon),
+                  label: _destinations[0].label,
+                ),
+                // 订单
+                NavigationDestination(
+                  icon: Icon(_destinations[1].icon),
+                  selectedIcon: Icon(_destinations[1].selectedIcon),
+                  label: _destinations[1].label,
+                ),
+                // 中间的加号占位
+                NavigationDestination(
+                  icon: const SizedBox.shrink(),
+                  label: '',
+                  enabled: false,
+                ),
+                // 发票
+                NavigationDestination(
+                  icon: Icon(_destinations[2].icon),
+                  selectedIcon: Icon(_destinations[2].selectedIcon),
+                  label: _destinations[2].label,
+                ),
+                // 关于
+                NavigationDestination(
+                  icon: Icon(_destinations[3].icon),
+                  selectedIcon: Icon(_destinations[3].selectedIcon),
+                  label: _destinations[3].label,
+                ),
+              ],
             ),
           ),
-        ),
-      ],
+          // FAB positioned outside Scaffold to prevent animation on rebuild
+          Positioned(
+            bottom: 35,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: FloatingActionButton(
+                key: const ValueKey('main_fab'),
+                heroTag: null,
+                onPressed: _onAddPressed,
+                elevation: 8,
+                highlightElevation: 12,
+                backgroundColor: colorScheme.primary,
+                foregroundColor: colorScheme.onPrimary,
+                shape: const CircleBorder(),
+                child: const Icon(Icons.add, size: 32),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

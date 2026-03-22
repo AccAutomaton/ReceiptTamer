@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -11,6 +12,7 @@ import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/data/models/ocr_result.dart';
 import 'package:receipt_tamer/data/services/file_service.dart';
 import 'package:receipt_tamer/data/services/image_service.dart';
+import 'package:receipt_tamer/data/services/share_handler_service.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
 import 'package:receipt_tamer/presentation/providers/ocr_provider.dart';
 import 'package:receipt_tamer/presentation/screens/invoices/order_selector_screen.dart';
@@ -22,11 +24,15 @@ import 'package:receipt_tamer/presentation/widgets/invoice/invoice_image_preview
 class InvoiceEditScreen extends ConsumerStatefulWidget {
   final int? invoiceId; // If null, creating new invoice
   final int? initialOrderId; // Optional initial order ID
+  final String? initialFilePath; // Optional initial file path (image or PDF)
+  final int remainingSharedCount; // Remaining shared files to process
 
   const InvoiceEditScreen({
     super.key,
     this.invoiceId,
     this.initialOrderId,
+    this.initialFilePath,
+    this.remainingSharedCount = 0,
   });
 
   @override
@@ -58,6 +64,42 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
     if (widget.initialOrderId != null) {
       _selectedOrderIds = [widget.initialOrderId!];
     }
+    // Handle initial file path from share
+    if (widget.initialFilePath != null) {
+      _filePath = widget.initialFilePath;
+      _isPdf = widget.initialFilePath!.toLowerCase().endsWith('.pdf');
+    }
+    if (widget.invoiceId != null) {
+      _loadInvoice();
+    }
+  }
+
+  @override
+  void didUpdateWidget(InvoiceEditScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 当导航到新的发票时（例如继续添加下一个），重置所有状态
+    if (oldWidget.initialFilePath != widget.initialFilePath ||
+        oldWidget.invoiceId != widget.invoiceId) {
+      _resetState();
+    }
+  }
+
+  void _resetState() {
+    // 清空输入框
+    _invoiceNumberController.clear();
+    _amountController.clear();
+    _sellerNameController.clear();
+
+    // 重置状态
+    setState(() {
+      _invoiceDate = null;
+      _selectedOrderIds = widget.initialOrderId != null ? [widget.initialOrderId!] : [];
+      _filePath = widget.initialFilePath;
+      _isPdf = widget.initialFilePath?.toLowerCase().endsWith('.pdf') ?? false;
+      _hasOcrResult = false;
+    });
+
+    // 如果是编辑模式，加载数据
     if (widget.invoiceId != null) {
       _loadInvoice();
     }
@@ -320,10 +362,27 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
 
       if (mounted) {
         if (success) {
-          context.pop(true);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text(AppConstants.successSaved)),
           );
+
+          // 判断是否从分享进入
+          final isFromShare = widget.initialFilePath != null;
+
+          if (isFromShare) {
+            // 从分享进入
+            if (widget.remainingSharedCount > 0) {
+              // 还有待处理的文件，显示继续对话框
+              _showContinueDialog();
+            } else {
+              // 没有待处理的文件，清除分享数据并移到后台
+              ShareHandlerService().clearPendingSharedMedia();
+              SystemNavigator.pop();
+            }
+          } else {
+            // 不是从分享进入，正常返回上一级
+            context.pop(true);
+          }
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text(AppConstants.errorSavingData)),
@@ -414,6 +473,55 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showContinueDialog() {
+    final service = ShareHandlerService();
+    final items = service.pendingSharedMedia;
+
+    if (items == null || items.isEmpty) {
+      // 没有待处理的文件，移到后台
+      service.clearPendingSharedMedia();
+      SystemNavigator.pop();
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('继续添加'),
+        content: Text('还有 ${items.length} 个待处理的文件。\n\n是否继续添加下一个发票？'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              service.clearPendingSharedMedia();
+              // 移到后台，让用户返回相册
+              SystemNavigator.pop();
+            },
+            child: const Text('稍后处理'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              // 获取下一个待处理的文件
+              final nextItem = items.first;
+              final remainingItems = items.skip(1).toList();
+
+              // 更新剩余列表
+              service.sharedMediaNotifier.value = remainingItems.isNotEmpty ? remainingItems : null;
+
+              // 导航到下一个发票编辑页面
+              context.go(
+                '/invoices/new?sharedPath=${Uri.encodeComponent(nextItem.path)}&remainingCount=${remainingItems.length}',
+              );
+            },
+            child: const Text('继续添加'),
+          ),
+        ],
       ),
     );
   }

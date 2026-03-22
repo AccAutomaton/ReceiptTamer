@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,6 +11,7 @@ import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/order.dart';
 import 'package:receipt_tamer/data/models/ocr_result.dart';
 import 'package:receipt_tamer/data/services/image_service.dart';
+import 'package:receipt_tamer/data/services/share_handler_service.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/providers/ocr_provider.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
@@ -20,11 +22,13 @@ import 'package:receipt_tamer/presentation/widgets/order/order_image_preview.dar
 class OrderEditScreen extends ConsumerStatefulWidget {
   final int? orderId; // If null, creating new order
   final String? initialImagePath; // Optional initial image path
+  final int remainingSharedCount; // Remaining shared files to process
 
   const OrderEditScreen({
     super.key,
     this.orderId,
     this.initialImagePath,
+    this.remainingSharedCount = 0,
   });
 
   @override
@@ -51,6 +55,36 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
     super.initState();
     _imagePath = widget.initialImagePath;
     _loadShopNames();
+    if (widget.orderId != null) {
+      _loadOrder();
+    }
+  }
+
+  @override
+  void didUpdateWidget(OrderEditScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 当导航到新的订单时（例如继续添加下一个），重置所有状态
+    if (oldWidget.initialImagePath != widget.initialImagePath ||
+        oldWidget.orderId != widget.orderId) {
+      _resetState();
+    }
+  }
+
+  void _resetState() {
+    // 清空输入框
+    _shopNameController.clear();
+    _amountController.clear();
+    _orderNumberController.clear();
+
+    // 重置状态
+    setState(() {
+      _orderDate = null;
+      _mealTime = null;
+      _imagePath = widget.initialImagePath;
+      _hasOcrResult = false;
+    });
+
+    // 如果是编辑模式，加载数据
     if (widget.orderId != null) {
       _loadOrder();
     }
@@ -249,6 +283,55 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
     );
   }
 
+  void _showContinueDialog() {
+    final service = ShareHandlerService();
+    final items = service.pendingSharedMedia;
+
+    if (items == null || items.isEmpty) {
+      // 没有待处理的图片，移到后台
+      service.clearPendingSharedMedia();
+      SystemNavigator.pop();
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('继续添加'),
+        content: Text('还有 ${items.length} 个待处理的图片。\n\n是否继续添加下一个订单？'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              service.clearPendingSharedMedia();
+              // 移到后台，让用户返回相册
+              SystemNavigator.pop();
+            },
+            child: const Text('稍后处理'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              // 获取下一个待处理的图片
+              final nextItem = items.first;
+              final remainingItems = items.skip(1).toList();
+
+              // 更新剩余列表
+              service.sharedMediaNotifier.value = remainingItems.isNotEmpty ? remainingItems : null;
+
+              // 导航到下一个订单编辑页面
+              context.go(
+                '/orders/new?sharedPath=${Uri.encodeComponent(nextItem.path)}&remainingCount=${remainingItems.length}',
+              );
+            },
+            child: const Text('继续添加'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _handleSave() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -322,10 +405,27 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
 
       if (mounted) {
         if (success) {
-          context.pop(true);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text(AppConstants.successSaved)),
           );
+
+          // 判断是否从分享进入
+          final isFromShare = widget.initialImagePath != null;
+
+          if (isFromShare) {
+            // 从分享进入
+            if (widget.remainingSharedCount > 0) {
+              // 还有待处理的图片，显示继续对话框
+              _showContinueDialog();
+            } else {
+              // 没有待处理的图片，清除分享数据并移到后台
+              ShareHandlerService().clearPendingSharedMedia();
+              SystemNavigator.pop();
+            }
+          } else {
+            // 不是从分享进入，正常返回上一级
+            context.pop(true);
+          }
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text(AppConstants.errorSavingData)),

@@ -80,6 +80,55 @@ class MainActivity : FlutterActivity() {
     private val ocrExecutor = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    // 处理分享Intent的标志
+    private var pendingShareIntent: android.content.Intent? = null
+
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        // 保存分享Intent，以便Flutter准备好后处理
+        if (intent?.action in listOf(android.content.Intent.ACTION_SEND, android.content.Intent.ACTION_SEND_MULTIPLE)) {
+            pendingShareIntent = intent
+            android.util.Log.d("MainActivity", "onCreate: 保存分享Intent: ${intent?.action}")
+        }
+        super.onCreate(savedInstanceState)
+        android.util.Log.d("MainActivity", "onCreate: Activity创建")
+    }
+
+    override fun onStart() {
+        super.onStart()
+        android.util.Log.d("MainActivity", "onStart: Activity启动")
+    }
+
+    override fun onResume() {
+        super.onResume()
+        android.util.Log.d("MainActivity", "onResume: Activity恢复")
+    }
+
+    override fun onPause() {
+        super.onPause()
+        android.util.Log.d("MainActivity", "onPause: Activity暂停")
+    }
+
+    override fun onStop() {
+        super.onStop()
+        android.util.Log.d("MainActivity", "onStop: Activity停止")
+    }
+
+    override fun onDestroy() {
+        android.util.Log.d("MainActivity", "onDestroy: Activity销毁")
+        super.onDestroy()
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        // 保存分享Intent，以便Flutter准备好后处理
+        if (intent.action in listOf(android.content.Intent.ACTION_SEND, android.content.Intent.ACTION_SEND_MULTIPLE)) {
+            pendingShareIntent = intent
+            android.util.Log.d("MainActivity", "onNewIntent: 保存分享Intent: ${intent.action}")
+        }
+        super.onNewIntent(intent)
+        // 更新当前Activity的intent，让插件能够访问新的Intent数据
+        setIntent(intent)
+    }
+
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
