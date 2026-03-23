@@ -10,7 +10,9 @@ import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/storage_ring_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// About screen
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -467,6 +469,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     );
   }
 
+  Future<void> _launchGitHubUrl(BuildContext context) async {
+    final uri = Uri.parse('https://github.com/AccAutomaton/ReceiptTamer');
+    try {
+      // 先尝试用外部应用（如 GitHub App）打开
+      if (await canLaunchUrl(uri)) {
+        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        // 如果外部应用打开失败，回退到浏览器
+        if (!launched) {
+          await launchUrl(uri, mode: LaunchMode.platformDefault);
+        }
+      } else {
+        // 无法用外部应用打开，直接用浏览器
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('打开链接失败: $e')),
+        );
+      }
+    }
+  }
+
   static const String _privacyPolicyContent = '''
 ReceiptTamer 隐私政策
 
@@ -766,6 +791,31 @@ Licensed under the Apache License 2.0
                     color: colorScheme.onSurfaceVariant,
                   ),
                   textAlign: TextAlign.center,
+                ),
+                // GitHub 链接按钮
+                InkWell(
+                  onTap: () => _launchGitHubUrl(context),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          FontAwesomeIcons.github,
+                          size: 20,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'View on GitHub',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
