@@ -46,9 +46,13 @@ dependencies:
 
   # Network
   http: ^1.2.0
+  connectivity_plus: ^6.0.0
 
   # App Info
   package_info_plus: ^8.0.0
+
+  # Preferences
+  shared_preferences: ^2.3.0
 
   # File Opening
   open_file: ^3.5.0

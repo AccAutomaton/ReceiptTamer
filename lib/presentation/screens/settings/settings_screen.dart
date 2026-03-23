@@ -2,6 +2,7 @@ import 'package:receipt_tamer/core/constants/app_constants.dart';
 import 'package:receipt_tamer/data/models/app_version.dart';
 import 'package:receipt_tamer/data/services/file_service.dart';
 import 'package:receipt_tamer/data/services/llm_service.dart';
+import 'package:receipt_tamer/data/services/update_preferences.dart';
 import 'package:receipt_tamer/data/services/update_service.dart';
 import 'package:receipt_tamer/presentation/providers/ocr_provider.dart';
 import 'package:receipt_tamer/presentation/screens/settings/info_screen.dart';
@@ -19,7 +20,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+class _SettingsScreenState extends ConsumerState<SettingsScreen>
+    with WidgetsBindingObserver {
   final FileService _fileService = FileService();
   final UpdateService _updateService = UpdateService();
   Map<String, int> _storageUsage = {};
@@ -28,12 +30,39 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   LlmService? _llmService;
   String _currentVersion = '';
 
+  /// Path of the downloaded APK file (for cleanup after install)
+  String? _downloadedApkPath;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadStorageUsage();
     _initLlmService();
     _loadCurrentVersion();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _updateService.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Clean up APK file after returning from installation
+      _cleanupApkAfterInstall();
+    }
+  }
+
+  /// Clean up downloaded APK file after installation
+  Future<void> _cleanupApkAfterInstall() async {
+    if (_downloadedApkPath != null) {
+      await _updateService.deleteApk(_downloadedApkPath);
+      _downloadedApkPath = null;
+    }
   }
 
   Future<void> _loadCurrentVersion() async {
@@ -104,20 +133,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     try {
       final response = await _updateService.checkForUpdates();
 
+      // Update last check time
+      await UpdatePreferences.setLastCheckTime(DateTime.now());
+
       if (!mounted) return;
 
       if (response.result == UpdateCheckResult.available &&
           response.latestVersion != null) {
+        // Clear ignored version when manually checking
+        await UpdatePreferences.clearIgnoredVersion();
         _showUpdateDialog(response.latestVersion!);
       } else if (response.result == UpdateCheckResult.notAvailable) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('当前已是最新版本')),
         );
       } else {
+        // Handle rate limit error specifically
+        String errorMessage;
+        if (response.errorMessage == 'RATE_LIMITED') {
+          errorMessage = '检查更新请求因 GitHub 限流被拒绝，请前往 GitHub 仓库查看最新版本。';
+        } else {
+          errorMessage = '检查更新失败: ${response.errorMessage ?? "未知错误"}';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('检查更新失败: ${response.errorMessage ?? "未知错误"}'),
-          ),
+          SnackBar(content: Text(errorMessage)),
         );
       }
     } finally {
@@ -135,7 +174,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           children: [
             const Icon(Icons.system_update, color: Colors.blue),
             const SizedBox(width: 8),
-            Text('发现新版本 ${latestVersion.version}'),
+            Expanded(child: Text('发现新版本 ${latestVersion.version}')),
           ],
         ),
         content: SingleChildScrollView(
@@ -174,15 +213,64 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         actions: [
           TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await UpdatePreferences.setIgnoredVersion(latestVersion.version);
+            },
+            child: const Text('忽略此版本'),
+          ),
+          TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('稍后提醒'),
           ),
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              _downloadAndInstall(latestVersion);
+              // Clear ignored version when user chooses to update
+              await UpdatePreferences.clearIgnoredVersion();
+              // Check network before downloading
+              final isWifi = await _updateService.isWifiConnection();
+              if (!isWifi && mounted) {
+                _showMobileDataWarning(latestVersion);
+              } else {
+                _downloadAndInstall(latestVersion);
+              }
             },
             child: const Text('立即更新'),
+          ),
+        ],
+        actionsAlignment: MainAxisAlignment.end,
+      ),
+    );
+  }
+
+  /// Show warning when not on WiFi
+  void _showMobileDataWarning(AppVersion version) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber, color: Colors.orange[700]),
+            const SizedBox(width: 8),
+            const Text('网络提示'),
+          ],
+        ),
+        content: Text(
+          '当前未连接WiFi，继续下载将使用移动数据流量。\n'
+          '安装包大小: ${version.formattedFileSize ?? "未知"}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _downloadAndInstall(version);
+            },
+            child: const Text('继续下载'),
           ),
         ],
       ),
@@ -197,66 +285,161 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       return;
     }
 
-    double progress = 0;
-    bool downloadCancelled = false;
+    // Start download with retry support
+    await _downloadWithRetry(version);
+  }
 
-    // Show download progress dialog
-    showDialog(
+  /// Download APK with retry dialog support
+  Future<void> _downloadWithRetry(AppVersion version) async {
+    DownloadProgress? progressInfo;
+    bool downloadCancelled = false;
+    bool shouldRetry = true;
+
+    // Reference to StatefulBuilder's setState for updating dialog
+    void Function(void Function())? dialogSetState;
+
+    while (shouldRetry && mounted) {
+      shouldRetry = false;
+      downloadCancelled = false;
+      progressInfo = null;
+
+      // Check for existing partial download
+      final existingSize = await _updateService.getExistingDownloadSize(version.downloadUrl!);
+      final hasPartialDownload = existingSize > 0;
+
+      if (!mounted) return;
+
+      // Show download progress dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (context, setDialogState) {
+            dialogSetState = setDialogState;
+            return AlertDialog(
+              title: Row(
+                children: [
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(hasPartialDownload ? '继续下载' : '正在下载'),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  LinearProgressIndicator(value: progressInfo?.progress ?? 0),
+                  const SizedBox(height: 16),
+                  Text(
+                    '${((progressInfo?.progress ?? 0) * 100).toStringAsFixed(1)}%',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  if (progressInfo != null) ...[
+                    Text(
+                      '${progressInfo!.formattedDownloaded} / ${progressInfo!.formattedTotal}',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '下载速度: ${progressInfo!.formattedSpeed}/s',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    downloadCancelled = true;
+                    Navigator.pop(dialogContext);
+                  },
+                  child: const Text('取消'),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+
+      // Download APK with resume support
+      final result = await _updateService.downloadApkWithResume(
+        version.downloadUrl!,
+        onProgress: (p) {
+          if (mounted && !downloadCancelled && dialogSetState != null) {
+            dialogSetState!(() {
+              progressInfo = p;
+            });
+          }
+        },
+      );
+
+      if (!mounted) return;
+
+      // Close progress dialog
+      Navigator.of(context, rootNavigator: true).pop();
+
+      if (result.success && result.filePath != null && !downloadCancelled) {
+        // Save APK path for cleanup after install
+        _downloadedApkPath = result.filePath;
+
+        // Install APK
+        final installed = await _updateService.installApk(result.filePath!);
+        if (!installed && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('安装失败，请手动打开下载的文件')),
+          );
+        }
+      } else if (!downloadCancelled && mounted) {
+        // Show error dialog with retry option
+        final retry = await _showDownloadErrorDialog(result.errorMessage);
+        if (retry == true) {
+          shouldRetry = true;
+        }
+      }
+    }
+  }
+
+  /// Show download error dialog with retry option
+  Future<bool?> _showDownloadErrorDialog(String? errorMessage) {
+    return showDialog<bool>(
       context: context,
-      barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('正在下载'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              LinearProgressIndicator(value: progress),
-              const SizedBox(height: 16),
-              Text('${(progress * 100).toStringAsFixed(1)}%'),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                downloadCancelled = true;
-                Navigator.pop(context);
-              },
-              child: const Text('取消'),
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.red[400]),
+            const SizedBox(width: 8),
+            const Text('下载失败'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(errorMessage ?? '未知错误'),
+            const SizedBox(height: 12),
+            Text(
+              '已下载的部分将保留，重试时将从断点继续下载。',
+              style: TextStyle(color: Colors.grey[600], fontSize: 13),
             ),
           ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('重试'),
+          ),
+        ],
       ),
     );
-
-    // Download APK
-    final filePath = await _updateService.downloadApk(
-      version.downloadUrl!,
-      onProgress: (p) {
-        if (mounted && !downloadCancelled) {
-          setState(() => progress = p);
-        }
-      },
-    );
-
-    if (!mounted) return;
-
-    // Close progress dialog if still open
-    if (filePath != null && !downloadCancelled) {
-      Navigator.of(context, rootNavigator: true).pop();
-
-      // Install APK
-      final installed = await _updateService.installApk(filePath);
-      if (!installed && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('安装失败，请手动打开下载的文件')),
-        );
-      }
-    } else if (mounted && !downloadCancelled) {
-      Navigator.of(context, rootNavigator: true).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('下载失败，请稍后重试')),
-      );
-    }
   }
 
   void _navigateToInfo(BuildContext context, String type) {

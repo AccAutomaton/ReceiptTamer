@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:receipt_tamer/data/models/app_version.dart';
+import 'package:receipt_tamer/data/services/update_preferences.dart';
+import 'package:receipt_tamer/data/services/update_service.dart';
 
 /// Shell widget that provides bottom navigation bar
 class MainShell extends ConsumerStatefulWidget {
@@ -17,6 +20,9 @@ class _MainShellState extends ConsumerState<MainShell> {
   int _currentIndex = 0;
   bool _initialized = false;
   DateTime? _lastPressedTime;
+  bool _updateChecked = false;
+
+  final UpdateService _updateService = UpdateService();
 
   // Navigation destinations (excluding the center FAB)
   static const _destinations = [
@@ -132,6 +138,121 @@ class _MainShellState extends ConsumerState<MainShell> {
     super.didChangeDependencies();
     // Use SchedulerBinding to defer state update to after build
     _updateCurrentIndex();
+    // Auto check for updates once
+    _autoCheckForUpdates();
+  }
+
+  /// Auto check for updates silently (once per 12 hours)
+  Future<void> _autoCheckForUpdates() async {
+    if (_updateChecked) return;
+    _updateChecked = true;
+
+    try {
+      // Check if enough time has passed
+      final shouldCheck = await UpdatePreferences.shouldCheckForUpdate();
+      if (!shouldCheck) return;
+
+      // Check for updates
+      final response = await _updateService.checkForUpdates();
+
+      // Update last check time
+      await UpdatePreferences.setLastCheckTime(DateTime.now());
+
+      if (!mounted) return;
+
+      // If update available and not ignored, show dialog
+      if (response.result == UpdateCheckResult.available &&
+          response.latestVersion != null) {
+        final isIgnored = await UpdatePreferences.isVersionIgnored(
+          response.latestVersion!.version,
+        );
+        if (!isIgnored && mounted) {
+          _showAutoUpdateDialog(response.latestVersion!);
+        }
+      }
+      // All other cases (no update, error, rate limited) are silent
+    } catch (e) {
+      // Silently ignore any errors during auto update check
+      // User will not be notified of any errors
+    }
+  }
+
+  /// Show auto update dialog with ignore options
+  void _showAutoUpdateDialog(AppVersion latestVersion) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.system_update, color: Colors.blue),
+            const SizedBox(width: 8),
+            Expanded(child: Text('发现新版本 ${latestVersion.version}')),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (latestVersion.formattedFileSize != null)
+                Text(
+                  '安装包大小: ${latestVersion.formattedFileSize}',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 13,
+                  ),
+                ),
+              const SizedBox(height: 12),
+              if (latestVersion.changelog != null &&
+                  latestVersion.changelog!.isNotEmpty) ...[
+                const Text(
+                  '更新内容:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 200),
+                  child: SingleChildScrollView(
+                    child: Text(
+                      latestVersion.changelog!,
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await UpdatePreferences.setIgnoredVersion(latestVersion.version);
+            },
+            child: const Text('忽略此版本'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('稍后提醒'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              context.push('/settings');
+            },
+            child: const Text('立即更新'),
+          ),
+        ],
+        actionsAlignment: MainAxisAlignment.end,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _updateService.dispose();
+    super.dispose();
   }
 
   void _updateCurrentIndex() {
