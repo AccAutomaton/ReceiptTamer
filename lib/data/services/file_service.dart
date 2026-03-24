@@ -236,6 +236,24 @@ class FileService {
     return deletedCount;
   }
 
+  /// Delete a file if it's in the temporary directory
+  /// Returns true if file was deleted, false otherwise
+  Future<bool> deleteTempFile(String filePath) async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final file = File(filePath);
+
+      // Only delete if file exists and is in temp directory
+      if (await file.exists() && filePath.startsWith(tempDir.path)) {
+        await file.delete();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
   /// Get app storage usage info
   /// Returns a map with storage sizes for: images, pdfs, data, model, cache
   Future<Map<String, int>> getStorageUsage() async {

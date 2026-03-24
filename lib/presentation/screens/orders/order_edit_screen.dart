@@ -10,6 +10,7 @@ import 'package:receipt_tamer/core/constants/app_constants.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/order.dart';
 import 'package:receipt_tamer/data/models/ocr_result.dart';
+import 'package:receipt_tamer/data/services/file_service.dart';
 import 'package:receipt_tamer/data/services/image_service.dart';
 import 'package:receipt_tamer/data/services/share_handler_service.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
@@ -45,6 +46,7 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
   MealTime? _mealTime;
   String? _imagePath;
   final ImageService _imageService = ImageService();
+  final FileService _fileService = FileService();
 
   bool _isLoading = false;
   bool _hasOcrResult = false; // 是否有OCR识别结果
@@ -405,6 +407,11 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
 
       if (mounted) {
         if (success) {
+          // Clean up temp file after successful save
+          if (_imagePath != null) {
+            _fileService.deleteTempFile(_imagePath!);
+          }
+
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text(AppConstants.successSaved)),
           );
@@ -648,6 +655,8 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
               keyboardType: TextInputType.text,
               prefixIcon: const Icon(Icons.receipt),
             ),
+
+            const SizedBox(height: 16),
 
             const SizedBox(height: 24),
 

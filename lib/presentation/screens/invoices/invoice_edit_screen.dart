@@ -362,6 +362,11 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
 
       if (mounted) {
         if (success) {
+          // Clean up temp file after successful save
+          if (_filePath != null) {
+            _fileService.deleteTempFile(_filePath!);
+          }
+
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text(AppConstants.successSaved)),
           );
