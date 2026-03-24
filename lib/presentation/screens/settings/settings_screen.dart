@@ -7,6 +7,7 @@ import 'package:receipt_tamer/data/services/update_service.dart';
 import 'package:receipt_tamer/presentation/providers/ocr_provider.dart';
 import 'package:receipt_tamer/presentation/screens/settings/info_screen.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
+import 'package:receipt_tamer/presentation/widgets/common/receipt_icon.dart';
 import 'package:receipt_tamer/presentation/widgets/common/storage_ring_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -831,17 +832,12 @@ Licensed under the Apache License 2.0
     ColorScheme colorScheme,
   ) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 0),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // 应用图标
-          Icon(
-            Icons.receipt_long,
-            size: 48,
-            color: colorScheme.primary,
-          ),
-          const SizedBox(height: 16),
+          ReceiptIcon(size: 96),
           // 应用名称
           Text(
             AppConstants.appName,
