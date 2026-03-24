@@ -253,7 +253,7 @@ OCR识别采用两阶段流程：
 ### Android原生集成
 
 - **OCR引擎**: RapidOcrAndroidOnnx (基于ONNX Runtime)
-- **LLM推理**: MNN (阿里开源移动端推理框架)
+- **LLM推理**: MNN 3.4.1 (阿里开源移动端推理框架)
 - **代码位置**:
   - `android/app/src/main/cpp/` - Native C++代码
   - `android/app/src/main/jniLibs/` - MNN预编译库
@@ -265,6 +265,8 @@ OCR识别采用两阶段流程：
 - **性能优化**: 专为移动端设计，ARM NEON优化
 - **模型压缩**: 支持4-bit量化，模型体积小
 - **内存效率**: 低内存占用，适合移动设备
+- **Qwen3.5支持**: 3.4.1新增Linear Attention算子，支持Qwen3.5系列模型
+- **资源管理**: 内置Executor，自动管理计算资源
 - **预期性能**: 5-15 tokens/sec (相比llama.cpp的1.27 tokens/sec提升5-10倍)
 
 ### LLM Prompt模板
