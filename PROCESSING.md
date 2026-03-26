@@ -277,26 +277,6 @@ OCR识别采用两阶段流程：
 - **资源管理**: 内置Executor，自动管理计算资源
 - **预期性能**: 5-15 tokens/sec (相比llama.cpp的1.27 tokens/sec提升5-10倍)
 
-### LLM Prompt模板
-
-**订单提取:**
-```
-从以下OCR文本中提取订单信息，以JSON格式返回：
-{shopName, amount, orderTime, orderNumber}
-
-OCR文本：
-[识别结果]
-```
-
-**发票提取:**
-```
-从以下OCR文本中提取发票信息，以JSON格式返回：
-{invoiceNumber, invoiceDate, totalAmount}
-
-OCR文本：
-[识别结果]
-```
-
 ---
 
 ## 构建与运行
@@ -426,8 +406,7 @@ backup.zip
 - 适用于数据迁移或设备更换
 
 **增量还原**：
-- 保留现有数据，与备份数据合并
-- ID冲突时可选择：覆盖本地数据 或 跳过备份记录
+- 保留现有数据，与备份数据叠加
 
 ### 版本兼容性
 
