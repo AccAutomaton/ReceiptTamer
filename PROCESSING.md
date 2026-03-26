@@ -156,6 +156,9 @@ assets/models/
     ├── llm.mnn                     # 模型结构
     ├── llm.mnn.weight              # 模型权重 (~450MB)
     └── tokenizer.txt               # 分词器
+
+tools/
+└── generate_icons.py               # 从SVG生成各分辨率PNG图标
 ```
 
 ---

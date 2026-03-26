@@ -40,61 +40,62 @@ class _ReceiptIconPainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round;
 
     final scale = size.width / 512;
-    final strokeWidth = 16 * scale;
+    final strokeWidth = 24 * scale;
     paint.strokeWidth = strokeWidth;
 
     final path = Path();
 
-    // Receipt body with zigzag bottom
-    path.moveTo(160 * scale, 100 * scale);
-    path.lineTo(352 * scale, 100 * scale);
-    path.lineTo(352 * scale, 380 * scale);
-    path.lineTo(320 * scale, 360 * scale);
-    path.lineTo(288 * scale, 380 * scale);
-    path.lineTo(256 * scale, 360 * scale);
-    path.lineTo(224 * scale, 380 * scale);
-    path.lineTo(192 * scale, 360 * scale);
-    path.lineTo(160 * scale, 380 * scale);
+    // Receipt body with zigzag bottom (updated proportions)
+    path.moveTo(136 * scale, 88 * scale);
+    path.lineTo(376 * scale, 88 * scale);
+    path.lineTo(376 * scale, 420 * scale);
+    path.lineTo(336 * scale, 398 * scale);
+    path.lineTo(304 * scale, 420 * scale);
+    path.lineTo(272 * scale, 398 * scale);
+    path.lineTo(240 * scale, 420 * scale);
+    path.lineTo(208 * scale, 398 * scale);
+    path.lineTo(176 * scale, 420 * scale);
+    path.lineTo(136 * scale, 398 * scale);
     path.close();
 
     canvas.drawPath(path, paint);
 
     // Top decorative line
-    paint.strokeWidth = 12 * scale;
+    paint.strokeWidth = 18 * scale;
     canvas.drawLine(
-      Offset(200 * scale, 160 * scale),
-      Offset(312 * scale, 160 * scale),
+      Offset(172 * scale, 170 * scale),
+      Offset(302 * scale, 170 * scale),
       paint,
     );
 
     // Text lines (lighter opacity)
-    paint.strokeWidth = 8 * scale;
     final lightPaint = Paint()
       ..color = color.withValues(alpha: 0.5)
       ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 12 * scale;
 
     canvas.drawLine(
-      Offset(200 * scale, 210 * scale),
-      Offset(300 * scale, 210 * scale),
+      Offset(172 * scale, 212 * scale),
+      Offset(278 * scale, 212 * scale),
       lightPaint,
     );
     canvas.drawLine(
-      Offset(200 * scale, 245 * scale),
-      Offset(280 * scale, 245 * scale),
+      Offset(172 * scale, 244 * scale),
+      Offset(252 * scale, 244 * scale),
       lightPaint,
     );
     canvas.drawLine(
-      Offset(200 * scale, 280 * scale),
-      Offset(260 * scale, 280 * scale),
+      Offset(172 * scale, 276 * scale),
+      Offset(226 * scale, 276 * scale),
       lightPaint,
     );
 
     // Total amount line (emphasized)
-    paint.strokeWidth = 10 * scale;
+    paint.strokeWidth = 15 * scale;
     canvas.drawLine(
-      Offset(200 * scale, 330 * scale),
-      Offset(312 * scale, 330 * scale),
+      Offset(172 * scale, 320 * scale),
+      Offset(302 * scale, 320 * scale),
       paint,
     );
   }
