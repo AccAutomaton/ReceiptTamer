@@ -58,6 +58,9 @@ dependencies:
   # File Opening
   open_file: ^3.5.0
 
+  # Archive (zip compression)
+  archive: ^3.6.1
+
   # URL Launcher
   url_launcher: ^6.3.0
 

@@ -130,4 +130,64 @@ class DatabaseHelper {
     }
     return 0;
   }
+
+  /// Get database file path
+  Future<String> getDatabasePath() async {
+    final dbPath = await getDatabasesPath();
+    return join(dbPath, AppConstants.databaseName);
+  }
+
+  /// Export database to a file
+  /// Returns the exported file path, or null if export failed
+  Future<String?> exportDatabase(String outputPath) async {
+    try {
+      final dbPath = await getDatabasePath();
+      final dbFile = File(dbPath);
+
+      if (!await dbFile.exists()) {
+        return null;
+      }
+
+      // Close database before copying
+      await close();
+
+      // Copy database file
+      await dbFile.copy(outputPath);
+
+      return outputPath;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Replace database with a new database file
+  /// This will close the current database, replace the file, and reopen
+  Future<bool> replaceDatabase(File newDbFile) async {
+    try {
+      if (!await newDbFile.exists()) {
+        return false;
+      }
+
+      final dbPath = await getDatabasePath();
+
+      // Close current database
+      await close();
+
+      // Delete old database file if exists
+      final oldDbFile = File(dbPath);
+      if (await oldDbFile.exists()) {
+        await oldDbFile.delete();
+      }
+
+      // Copy new database to the database path
+      await newDbFile.copy(dbPath);
+
+      // Reopen database (this will trigger onUpgrade if needed)
+      await database;
+
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
 }

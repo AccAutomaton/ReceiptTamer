@@ -212,20 +212,62 @@ class FileService {
   }
 
   /// Clean up temporary files
+  /// Includes: temp directory, file_picker cache, backup temp files
   Future<int> cleanTempFiles() async {
     int deletedCount = 0;
 
     try {
       final tempDir = await getTemporaryDirectory();
-      final entities = await tempDir.list().toList();
 
-      for (final entity in entities) {
+      // Clean temp directory recursively
+      deletedCount += await _cleanDirectoryRecursively(tempDir);
+
+      // Also clean any backup temp files in app documents directory
+      final appDir = await getAppDirectory();
+      final backupTempFile = File(path.join(appDir.path, 'temp_restore.db'));
+      if (await backupTempFile.exists()) {
+        try {
+          await backupTempFile.delete();
+          deletedCount++;
+        } catch (e) {
+          // Ignore
+        }
+      }
+    } catch (e) {
+      // Ignore errors
+    }
+
+    return deletedCount;
+  }
+
+  /// Clean a directory recursively, including all subdirectories
+  Future<int> _cleanDirectoryRecursively(Directory dir) async {
+    int deletedCount = 0;
+
+    try {
+      if (!await dir.exists()) return 0;
+
+      await for (final entity in dir.list()) {
         if (entity is File) {
           try {
             await entity.delete();
             deletedCount++;
           } catch (e) {
-            // Skip files that can't be deleted
+            // Skip files that can't be deleted (may be in use)
+          }
+        } else if (entity is Directory) {
+          // Recursively clean subdirectories
+          deletedCount += await _cleanDirectoryRecursively(entity);
+          // Try to delete empty directory
+          try {
+            if (await entity.exists()) {
+              final contents = await entity.list().toList();
+              if (contents.isEmpty) {
+                await entity.delete();
+              }
+            }
+          } catch (e) {
+            // Ignore
           }
         }
       }

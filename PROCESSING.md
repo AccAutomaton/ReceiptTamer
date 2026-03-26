@@ -37,6 +37,7 @@
 | LLM推理     | ✅  | MNN框架集成 (阿里开源)                                          |
 | OCR+LLM识别 | ✅  | RapidOcr ONNX + Qwen3.5-0.8B-MNN 结构化提取                  |
 | 应用更新      | ✅  | 基于 GitHub Release 的检查更新与下载安装                            |
+| 数据备份与还原  | ✅  | 备份所有数据到zip包、覆盖/增量还原、版本兼容性检查                      |
 
 ### 待完善功能
 
@@ -66,7 +67,8 @@ lib/
 │   │   ├── invoice_order_relation.dart  # 发票-订单关联模型
 │   │   ├── daily_meal_details.dart      # 每日用餐明细模型
 │   │   ├── meal_proof_item.dart         # 用餐证明项模型
-│   │   └── app_version.dart             # 应用版本模型
+│   │   ├── app_version.dart             # 应用版本模型
+│   │   └── backup_metadata.dart         # 备份元数据模型
 │   ├── repositories/
 │   │   ├── order_repository.dart
 │   │   └── invoice_repository.dart
@@ -85,7 +87,8 @@ lib/
 │       ├── meal_proof_export_service.dart # 用餐证明PDF导出
 │       ├── meal_details_export_service.dart # 用餐明细Excel导出
 │       ├── invoice_proration_util.dart   # 发票金额分摊工具
-│       └── update_service.dart          # 应用更新服务
+│       ├── update_service.dart          # 应用更新服务
+│       └── backup_service.dart          # 备份服务
 ├── presentation/
 │   ├── providers/
 │   │   ├── order_provider.dart
@@ -130,6 +133,8 @@ lib/
 │       │   ├── order_selector_card.dart
 │       │   ├── invoice_month_group.dart
 │       │   └── invoice_month_section_header.dart
+│       ├── settings/               # 设置相关组件
+│       │   └── backup_dialog.dart  # 备份对话框
 │       └── main_shell.dart         # 主导航外壳
 └── router/
     └── app_router.dart
@@ -379,3 +384,56 @@ static const String githubRepo = 'ReceiptTamer';  // 仓库名
 2. **APK文件**: Release 中必须包含 `.apk` 文件，否则应用无法下载更新
 3. **更新说明**: `body` 字段会在更新对话框中显示，建议填写清晰的更新内容
 4. **API限制**: GitHub API 未认证请求限制 60次/小时/IP，一般足够使用
+
+---
+
+## 备份功能说明
+
+### 备份包结构
+
+备份文件为zip格式，包含以下内容：
+
+```
+backup.zip
+├── manifest.json          # 备份元数据
+├── database/
+│   └── receipt_tamer.db   # 数据库文件
+├── images/                # 图片目录
+│   └── *.jpg, *.png...
+└── pdfs/                  # PDF目录
+    └── *.pdf
+```
+
+### manifest.json 结构
+
+```json
+{
+  "version": "1.0",
+  "app_version": "0.1.2",
+  "database_version": 1,
+  "backup_time": "2026-03-27T10:30:00Z",
+  "order_count": 50,
+  "invoice_count": 30,
+  "image_count": 80,
+  "pdf_count": 30
+}
+```
+
+### 还原模式
+
+**覆盖还原**：
+- 清除所有现有数据后还原备份
+- 适用于数据迁移或设备更换
+
+**增量还原**：
+- 保留现有数据，与备份数据合并
+- ID冲突时可选择：覆盖本地数据 或 跳过备份记录
+
+### 版本兼容性
+
+| 情况 | 处理方式 |
+|------|---------|
+| 备份数据库版本 > 当前版本 | 拒绝还原，提示更新应用 |
+| 备份数据库版本 < 当前版本，应用版本相同 | 执行数据库升级后还原 |
+| 备份数据库版本 < 当前版本，应用版本不同 | 警告后执行数据库升级再还原 |
+| 备份数据库版本 == 当前版本，应用版本不同 | 警告后允许还原 |

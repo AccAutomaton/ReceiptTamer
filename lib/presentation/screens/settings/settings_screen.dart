@@ -9,6 +9,7 @@ import 'package:receipt_tamer/presentation/screens/settings/info_screen.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/receipt_icon.dart';
 import 'package:receipt_tamer/presentation/widgets/common/storage_ring_chart.dart';
+import 'package:receipt_tamer/presentation/widgets/settings/backup_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -767,6 +768,13 @@ Licensed under the Apache License 2.0
                 title: '开源信息',
                 subtitle: '查看开源许可证',
                 onTap: () => _navigateToInfo(context, 'opensource'),
+              ),
+              _buildListTile(
+                context,
+                icon: Icons.backup_outlined,
+                title: '备份与还原',
+                subtitle: '导出或恢复应用数据',
+                onTap: () => showBackupDialog(context),
               ),
             ],
           ),
