@@ -13,6 +13,70 @@ import '../../core/constants/app_constants.dart';
 import '../datasources/database/database_helper.dart';
 import '../models/backup_metadata.dart';
 
+/// Helper class for passing archive data to isolate
+class _ArchiveData {
+  final String manifestJson;
+  final List<int> dbBytes;
+  final String dbName;
+  final List<_FileData> images;
+  final List<_FileData> pdfs;
+
+  _ArchiveData({
+    required this.manifestJson,
+    required this.dbBytes,
+    required this.dbName,
+    required this.images,
+    required this.pdfs,
+  });
+
+  Map<String, dynamic> toMap() => {
+    'manifestJson': manifestJson,
+    'dbBytes': dbBytes,
+    'dbName': dbName,
+    'images': images.map((f) => f.toMap()).toList(),
+    'pdfs': pdfs.map((f) => f.toMap()).toList(),
+  };
+}
+
+/// Helper class for file data
+class _FileData {
+  final String relativePath;
+  final List<int> bytes;
+
+  _FileData({required this.relativePath, required this.bytes});
+
+  Map<String, dynamic> toMap() => {
+    'relativePath': relativePath,
+    'bytes': bytes,
+  };
+
+  static _FileData fromMap(Map<String, dynamic> map) => _FileData(
+    relativePath: map['relativePath'] as String,
+    bytes: map['bytes'] as List<int>,
+  );
+}
+
+/// Top-level function for zip encoding in isolate
+List<int>? _encodeArchiveInIsolate(Map<String, dynamic> data) {
+  final archive = Archive();
+  final dbBytes = data['dbBytes'] as List<int>;
+
+  archive.addFile(ArchiveFile.string('manifest.json', data['manifestJson'] as String));
+  archive.addFile(ArchiveFile(data['dbName'] as String, dbBytes.length, dbBytes));
+
+  _addFilesToArchive(archive, data['images'] as List);
+  _addFilesToArchive(archive, data['pdfs'] as List);
+
+  return ZipEncoder().encode(archive);
+}
+
+void _addFilesToArchive(Archive archive, List files) {
+  for (final item in files) {
+    final fileData = _FileData.fromMap(item as Map<String, dynamic>);
+    archive.addFile(ArchiveFile(fileData.relativePath, fileData.bytes.length, fileData.bytes));
+  }
+}
+
 /// Restore mode for backup restoration
 enum RestoreMode {
   /// Clear all existing data before restoring
@@ -75,6 +139,30 @@ class BackupService {
   /// Get current database version
   int get databaseVersion => AppConstants.databaseVersion;
 
+  /// Collect files from a directory, returning file data and count
+  Future<(List<_FileData>, int)> _collectFiles(
+    Directory dir,
+    String prefix, {
+    void Function(double progress)? onProgress,
+  }) async {
+    final files = <_FileData>[];
+    if (!await dir.exists()) return (files, 0);
+
+    final entities = await dir.list().toList();
+    final fileEntities = entities.whereType<File>().toList();
+    final totalFiles = fileEntities.length;
+
+    for (var i = 0; i < totalFiles; i++) {
+      final entity = fileEntities[i];
+      final bytes = await entity.readAsBytes();
+      final relativePath = '$prefix/${path.basename(entity.path)}';
+      files.add(_FileData(relativePath: relativePath, bytes: bytes));
+      onProgress?.call((i + 1) / totalFiles);
+    }
+
+    return (files, totalFiles);
+  }
+
   /// Create a backup of all data
   /// [outputPath] - The path where the backup zip file will be saved
   /// [onProgress] - Optional callback for progress updates (0.0 to 1.0)
@@ -104,17 +192,6 @@ class BackupService {
         );
       }
 
-      // Count files
-      int imageCount = 0;
-      int pdfCount = 0;
-
-      if (await imagesDir.exists()) {
-        imageCount = await imagesDir.list().where((e) => e is File).length;
-      }
-      if (await pdfsDir.exists()) {
-        pdfCount = await pdfsDir.list().where((e) => e is File).length;
-      }
-
       // Get data counts from database
       final db = await _dbHelper.database;
       final orderResult = await db.rawQuery(
@@ -130,6 +207,25 @@ class BackupService {
           ? (invoiceResult.first['count'] as int?) ?? 0
           : 0;
 
+      // Close database before copying
+      await _dbHelper.close();
+
+      final dbBytes = await dbFile.readAsBytes();
+
+      onProgress?.call(0.1);
+
+      final (images, imageCount) = await _collectFiles(
+        imagesDir,
+        'images',
+        onProgress: (fileProgress) => onProgress?.call(0.1 + fileProgress * 0.4),
+      );
+
+      final (pdfs, pdfCount) = await _collectFiles(
+        pdfsDir,
+        'pdfs',
+        onProgress: (fileProgress) => onProgress?.call(0.5 + fileProgress * 0.4),
+      );
+
       // Create metadata
       final metadata = BackupMetadata(
         appVersion: _currentAppVersion,
@@ -141,48 +237,22 @@ class BackupService {
         pdfCount: pdfCount,
       );
 
-      // Close database before copying
-      await _dbHelper.close();
-
-      // Create archive
-      final archive = Archive();
-
-      // Add manifest.json
       final manifestJson = metadata.toJson();
       final manifestString = _encodeJson(manifestJson);
-      archive.addFile(ArchiveFile.string('manifest.json', manifestString));
 
-      // Add database file
-      final dbBytes = await dbFile.readAsBytes();
-      archive.addFile(ArchiveFile('database/${AppConstants.databaseName}', dbBytes.length, dbBytes));
-
-      // Add images
-      if (await imagesDir.exists()) {
-        await for (final entity in imagesDir.list()) {
-          if (entity is File) {
-            final bytes = await entity.readAsBytes();
-            final relativePath = 'images/${path.basename(entity.path)}';
-            archive.addFile(ArchiveFile(relativePath, bytes.length, bytes));
-          }
-        }
-      }
-
-      // Add PDFs
-      if (await pdfsDir.exists()) {
-        await for (final entity in pdfsDir.list()) {
-          if (entity is File) {
-            final bytes = await entity.readAsBytes();
-            final relativePath = 'pdfs/${path.basename(entity.path)}';
-            archive.addFile(ArchiveFile(relativePath, bytes.length, bytes));
-          }
-        }
-      }
-
-      // Notify progress
       onProgress?.call(0.9);
 
-      // Write zip file
-      final zipBytes = ZipEncoder().encode(archive);
+      // Create archive data for isolate
+      final archiveData = _ArchiveData(
+        manifestJson: manifestString,
+        dbBytes: dbBytes,
+        dbName: 'database/${AppConstants.databaseName}',
+        images: images,
+        pdfs: pdfs,
+      );
+
+      // Encode zip in background isolate to avoid UI freeze
+      final zipBytes = await compute(_encodeArchiveInIsolate, archiveData.toMap());
       if (zipBytes == null) {
         return BackupResult(
           success: false,
