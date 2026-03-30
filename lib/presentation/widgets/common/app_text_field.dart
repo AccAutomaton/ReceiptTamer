@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 
 /// App Text Field - Unified text field widget with consistent styling
-class AppTextField extends StatelessWidget {
+class AppTextField extends StatefulWidget {
   final String? label;
   final String? hint;
   final String? initialValue;
@@ -65,29 +65,62 @@ class AppTextField extends StatelessWidget {
   });
 
   @override
+  State<AppTextField> createState() => _AppTextFieldState();
+}
+
+class _AppTextFieldState extends State<AppTextField> {
+  TextEditingController? _internalController;
+
+  TextEditingController get _effectiveController =>
+      widget.controller ?? _internalController!;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.controller == null) {
+      _internalController = TextEditingController(text: widget.initialValue ?? '');
+    }
+  }
+
+  @override
+  void didUpdateWidget(AppTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.controller == null && widget.initialValue != oldWidget.initialValue) {
+      _internalController!.text = widget.initialValue ?? '';
+    }
+    if (widget.controller != null && oldWidget.controller == null) {
+      _internalController?.dispose();
+      _internalController = null;
+    } else if (widget.controller == null && oldWidget.controller != null) {
+      _internalController = TextEditingController(text: widget.initialValue ?? '');
+    }
+  }
+
+  @override
+  void dispose() {
+    _internalController?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    final effectiveHint = hint;
-    final effectivePadding = contentPadding ??
-        const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        );
-    final effectiveBorderRadius = borderRadius ?? 8.0;
+    final effectivePadding = widget.contentPadding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 14);
+    final effectiveBorderRadius = widget.borderRadius ?? 8.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (label != null) ...[
-          required
+        if (widget.label != null) ...[
+          widget.required
               ? RichText(
                   text: TextSpan(
                     children: [
                       TextSpan(
-                        text: label,
+                        text: widget.label!,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                           fontWeight: FontWeight.w500,
@@ -104,7 +137,7 @@ class AppTextField extends StatelessWidget {
                   ),
                 )
               : Text(
-                  label!,
+                  widget.label!,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w500,
@@ -113,77 +146,61 @@ class AppTextField extends StatelessWidget {
           const SizedBox(height: 6),
         ],
         TextField(
-          controller: controller ?? TextEditingController(text: initialValue ?? ''),
-          onChanged: onChanged,
-          onTap: onTap,
-          readOnly: readOnly,
-          obscureText: obscureText,
-          maxLines: maxLines,
-          minLines: minLines,
-          maxLength: maxLength,
-          keyboardType: keyboardType,
-          inputFormatters: inputFormatters,
-          textInputAction: textInputAction,
-          enabled: enabled,
-          focusNode: focusNode,
-          textCapitalization: textCapitalization,
-          onEditingComplete: onEditingComplete,
-          onSubmitted: onSubmitted,
-          style: theme.textTheme.bodyLarge?.copyWith(
-            color: colorScheme.onSurface,
-          ),
+          controller: _effectiveController,
+          onChanged: widget.onChanged,
+          onTap: widget.onTap,
+          readOnly: widget.readOnly,
+          obscureText: widget.obscureText,
+          maxLines: widget.maxLines,
+          minLines: widget.minLines,
+          maxLength: widget.maxLength,
+          keyboardType: widget.keyboardType,
+          inputFormatters: widget.inputFormatters,
+          textInputAction: widget.textInputAction,
+          enabled: widget.enabled,
+          focusNode: widget.focusNode,
+          textCapitalization: widget.textCapitalization,
+          onEditingComplete: widget.onEditingComplete,
+          onSubmitted: widget.onSubmitted,
+          style: theme.textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface),
           decoration: InputDecoration(
-            hintText: effectiveHint,
+            hintText: widget.hint,
             hintStyle: theme.textTheme.bodyLarge?.copyWith(
               color: colorScheme.onSurfaceVariant.withOpacity(0.6),
             ),
-            errorText: errorText,
-            helperText: helperText,
-            counterText: counterText,
+            errorText: widget.errorText,
+            helperText: widget.helperText,
+            counterText: widget.counterText,
             filled: true,
-            fillColor: enabled
+            fillColor: widget.enabled
                 ? colorScheme.surfaceContainerHighest
                 : colorScheme.surfaceContainerHighest.withOpacity(0.3),
-            prefixIcon: prefixIcon,
-            suffixIcon: suffixIcon,
+            prefixIcon: widget.prefixIcon,
+            suffixIcon: widget.suffixIcon,
             contentPadding: effectivePadding,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(effectiveBorderRadius),
-              borderSide: BorderSide(
-                color: colorScheme.outline.withOpacity(0.3),
-              ),
+              borderSide: BorderSide(color: colorScheme.outline.withOpacity(0.3)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(effectiveBorderRadius),
-              borderSide: BorderSide(
-                color: colorScheme.outline.withOpacity(0.3),
-              ),
+              borderSide: BorderSide(color: colorScheme.outline.withOpacity(0.3)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(effectiveBorderRadius),
-              borderSide: BorderSide(
-                color: colorScheme.primary,
-                width: 2,
-              ),
+              borderSide: BorderSide(color: colorScheme.primary, width: 2),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(effectiveBorderRadius),
-              borderSide: const BorderSide(
-                color: Colors.red,
-              ),
+              borderSide: const BorderSide(color: Colors.red),
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(effectiveBorderRadius),
-              borderSide: const BorderSide(
-                color: Colors.red,
-                width: 2,
-              ),
+              borderSide: const BorderSide(color: Colors.red, width: 2),
             ),
             disabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(effectiveBorderRadius),
-              borderSide: BorderSide(
-                color: colorScheme.outline.withOpacity(0.2),
-              ),
+              borderSide: BorderSide(color: colorScheme.outline.withOpacity(0.2)),
             ),
           ),
         ),
@@ -193,7 +210,7 @@ class AppTextField extends StatelessWidget {
 }
 
 /// App Amount Field - specialized text field for monetary amounts
-class AppAmountField extends StatelessWidget {
+class AppAmountField extends StatefulWidget {
   final String? label;
   final String? hint;
   final double? initialValue;
@@ -220,15 +237,53 @@ class AppAmountField extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final textEditingController = controller ?? TextEditingController(
-      text: initialValue?.toStringAsFixed(2) ?? '',
-    );
+  State<AppAmountField> createState() => _AppAmountFieldState();
+}
 
+class _AppAmountFieldState extends State<AppAmountField> {
+  TextEditingController? _internalController;
+
+  TextEditingController get _effectiveController =>
+      widget.controller ?? _internalController!;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.controller == null) {
+      _internalController = TextEditingController(
+        text: widget.initialValue?.toStringAsFixed(2) ?? '',
+      );
+    }
+  }
+
+  @override
+  void didUpdateWidget(AppAmountField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.controller == null && widget.initialValue != oldWidget.initialValue) {
+      _internalController!.text = widget.initialValue?.toStringAsFixed(2) ?? '';
+    }
+    if (widget.controller != null && oldWidget.controller == null) {
+      _internalController?.dispose();
+      _internalController = null;
+    } else if (widget.controller == null && oldWidget.controller != null) {
+      _internalController = TextEditingController(
+        text: widget.initialValue?.toStringAsFixed(2) ?? '',
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _internalController?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return AppTextField(
-      label: label,
-      hint: hint ?? '0.00',
-      controller: textEditingController,
+      label: widget.label,
+      hint: widget.hint ?? '0.00',
+      controller: _effectiveController,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       prefixIcon: const Padding(
         padding: EdgeInsets.only(left: 16, right: 8),
@@ -237,18 +292,18 @@ class AppAmountField extends StatelessWidget {
           child: Text('¥', style: TextStyle(fontSize: 18)),
         ),
       ),
-      errorText: errorText,
-      helperText: helperText,
-      enabled: enabled,
-      required: required,
-      focusNode: focusNode,
+      errorText: widget.errorText,
+      helperText: widget.helperText,
+      enabled: widget.enabled,
+      required: widget.required,
+      focusNode: widget.focusNode,
       inputFormatters: [
         FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
       ],
       onChanged: (value) {
         final amount = double.tryParse(value);
-        if (amount != null && onChanged != null) {
-          onChanged!(amount);
+        if (amount != null && widget.onChanged != null) {
+          widget.onChanged!(amount);
         }
       },
     );
@@ -256,7 +311,7 @@ class AppAmountField extends StatelessWidget {
 }
 
 /// App Date Field - specialized text field for date selection
-class AppDateField extends StatelessWidget {
+class AppDateField extends StatefulWidget {
   final String? label;
   final String? hint;
   final DateTime? initialValue;
@@ -287,39 +342,86 @@ class AppDateField extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final textEditingController = controller ?? TextEditingController(
-      text: initialValue != null
-          ? DateFormatter.formatDisplayWithWeekday(initialValue!)
-          : '',
-    );
+  State<AppDateField> createState() => _AppDateFieldState();
+}
 
+class _AppDateFieldState extends State<AppDateField> {
+  TextEditingController? _internalController;
+  DateTime? _selectedDate;
+
+  TextEditingController get _effectiveController =>
+      widget.controller ?? _internalController!;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDate = widget.initialValue;
+    if (widget.controller == null) {
+      _internalController = TextEditingController(
+        text: widget.initialValue != null
+            ? DateFormatter.formatDisplayWithWeekday(widget.initialValue!)
+            : '',
+      );
+    }
+  }
+
+  @override
+  void didUpdateWidget(AppDateField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.controller == null && widget.initialValue != oldWidget.initialValue) {
+      _selectedDate = widget.initialValue;
+      _internalController!.text = widget.initialValue != null
+          ? DateFormatter.formatDisplayWithWeekday(widget.initialValue!)
+          : '';
+    }
+    if (widget.controller != null && oldWidget.controller == null) {
+      _internalController?.dispose();
+      _internalController = null;
+    } else if (widget.controller == null && oldWidget.controller != null) {
+      _selectedDate = widget.initialValue;
+      _internalController = TextEditingController(
+        text: widget.initialValue != null
+            ? DateFormatter.formatDisplayWithWeekday(widget.initialValue!)
+            : '',
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _internalController?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? now,
+      firstDate: widget.firstDate ?? DateTime(now.year - 10),
+      lastDate: widget.lastDate ?? DateTime(now.year + 10),
+    );
+    if (picked != null && mounted) {
+      _selectedDate = picked;
+      _effectiveController.text = DateFormatter.formatDisplayWithWeekday(picked);
+      widget.onChanged?.call(picked);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return AppTextField(
-      label: label,
-      hint: hint ?? '选择日期',
-      controller: textEditingController,
+      label: widget.label,
+      hint: widget.hint ?? '选择日期',
+      controller: _effectiveController,
       readOnly: true,
-      onTap: enabled
-          ? () async {
-              final now = DateTime.now();
-              final picked = await showDatePicker(
-                context: context,
-                initialDate: initialValue ?? now,
-                firstDate: firstDate ?? DateTime(now.year - 10),
-                lastDate: lastDate ?? DateTime(now.year + 10),
-              );
-              if (picked != null && onChanged != null) {
-                onChanged!(picked);
-                textEditingController.text = DateFormatter.formatDisplayWithWeekday(picked);
-              }
-            }
-          : null,
+      onTap: widget.enabled ? _pickDate : null,
       prefixIcon: const Icon(Icons.calendar_today_outlined),
-      errorText: errorText,
-      helperText: helperText,
-      enabled: enabled,
-      required: required,
-      focusNode: focusNode,
+      errorText: widget.errorText,
+      helperText: widget.helperText,
+      enabled: widget.enabled,
+      required: widget.required,
+      focusNode: widget.focusNode,
     );
   }
 }
@@ -359,7 +461,6 @@ class AppSelectField<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final effectiveHint = hint;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -371,7 +472,7 @@ class AppSelectField<T> extends StatelessWidget {
                   text: TextSpan(
                     children: [
                       TextSpan(
-                        text: label,
+                        text: label!,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                           fontWeight: FontWeight.w500,
@@ -411,7 +512,7 @@ class AppSelectField<T> extends StatelessWidget {
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButtonFormField<T>(
-              initialValue: value,
+              value: value,
               items: options.map((option) {
                 return DropdownMenuItem<T>(
                   value: option,
@@ -424,7 +525,7 @@ class AppSelectField<T> extends StatelessWidget {
               }).toList(),
               onChanged: enabled ? onChanged : null,
               hint: Text(
-                effectiveHint ?? '请选择',
+                hint ?? '请选择',
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: colorScheme.onSurfaceVariant.withOpacity(0.6),
                 ),
@@ -432,10 +533,7 @@ class AppSelectField<T> extends StatelessWidget {
               decoration: InputDecoration(
                 errorText: errorText,
                 helperText: helperText,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
