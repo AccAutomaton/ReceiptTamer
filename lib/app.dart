@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -135,6 +136,18 @@ class _AppState extends ConsumerState<App> {
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
       routerConfig: router,
+      // 本地化配置 - 支持中文
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('zh', 'CN'), // 中文（简体）
+        Locale('zh', 'TW'), // 中文（繁体）
+        Locale('en', 'US'), // 英文（备用）
+      ],
+      locale: const Locale('zh', 'CN'), // 默认中文
     );
   }
 }

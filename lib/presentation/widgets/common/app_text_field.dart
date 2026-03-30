@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:receipt_tamer/core/utils/date_formatter.dart';
+
 /// App Text Field - Unified text field widget with consistent styling
 class AppTextField extends StatelessWidget {
   final String? label;
@@ -288,7 +290,7 @@ class AppDateField extends StatelessWidget {
   Widget build(BuildContext context) {
     final textEditingController = controller ?? TextEditingController(
       text: initialValue != null
-          ? '${initialValue!.year}-${initialValue!.month.toString().padLeft(2, '0')}-${initialValue!.day.toString().padLeft(2, '0')}'
+          ? DateFormatter.formatDisplayWithWeekday(initialValue!)
           : '',
     );
 
@@ -308,8 +310,7 @@ class AppDateField extends StatelessWidget {
               );
               if (picked != null && onChanged != null) {
                 onChanged!(picked);
-                textEditingController.text =
-                    '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+                textEditingController.text = DateFormatter.formatDisplayWithWeekday(picked);
               }
             }
           : null,

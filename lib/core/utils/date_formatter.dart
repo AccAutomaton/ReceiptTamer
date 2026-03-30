@@ -16,6 +16,13 @@ class DateFormatter {
     return DateFormat(AppConstants.dateFormatDisplay).format(date);
   }
 
+  /// Format date with weekday for display (e.g., 2024年01月15日 星期一)
+  static String formatDisplayWithWeekday(DateTime? date) {
+    if (date == null) return '-';
+    const weekdays = ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'];
+    return '${formatDisplay(date)} ${weekdays[date.weekday - 1]}';
+  }
+
   /// Format year and month for display (e.g., 2024年01月)
   static String formatYearMonth(DateTime date) {
     return '${date.year}年${date.month.toString().padLeft(2, '0')}月';
