@@ -17,6 +17,9 @@ abstract class Order with _$Order {
     @JsonKey(name: 'order_number') @Default('') String orderNumber,
     @JsonKey(name: 'created_at') @Default('') String createdAt,
     @JsonKey(name: 'updated_at') @Default('') String updatedAt,
+    // UI-only field, not stored in database
+    // Used to display invoice relation status in order list
+    @JsonKey(includeFromJson: false, includeToJson: false) @Default(false) bool hasInvoice,
   }) = _Order;
 
   factory Order.fromJson(Map<String, dynamic> json) => _$OrderFromJson(json);

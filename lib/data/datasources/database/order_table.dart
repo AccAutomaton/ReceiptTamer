@@ -10,6 +10,31 @@ class OrderTable {
 
   OrderTable({required this.database});
 
+  /// SQL fragment for LEFT JOIN with invoice relations to check if order has linked invoice
+  static const String _invoiceJoinClause =
+      'LEFT JOIN (SELECT DISTINCT ${AppConstants.colOrderId} FROM ${AppConstants.invoiceOrderRelationsTable}) r '
+      'ON o.${AppConstants.colId} = r.${AppConstants.colOrderId}';
+
+  /// SQL fragment for has_invoice computed column
+  static const String _hasInvoiceColumn =
+      'CASE WHEN r.${AppConstants.colOrderId} IS NOT NULL THEN 1 ELSE 0 END as has_invoice';
+
+  /// SQL fragment for ordering orders by date (newest first) then meal time (dinner > lunch > breakfast)
+  static const String _orderByClause =
+      "ORDER BY o.${AppConstants.colOrderDate} DESC, "
+      "CASE o.${AppConstants.colMealTime} "
+      "WHEN 'dinner' THEN 1 "
+      "WHEN 'lunch' THEN 2 "
+      "WHEN 'breakfast' THEN 3 "
+      'ELSE 4 END ASC';
+
+  /// Parse order from query result with has_invoice field
+  Order _parseOrderWithInvoice(Map<String, dynamic> map) {
+    return Order.fromJson(map).copyWith(
+      hasInvoice: (map['has_invoice'] as int?) == 1,
+    );
+  }
+
   /// Insert a new order into the database
   Future<int> insert(Order order) async {
     return await database.insert(
@@ -60,19 +85,18 @@ class OrderTable {
 
   /// Get all orders, ordered by order date (newest first), then by meal time (dinner > lunch > breakfast)
   Future<List<Order>> getAll({int? limit, int? offset}) async {
-    final List<Map<String, dynamic>> maps = await database.query(
-      AppConstants.ordersTable,
-      orderBy: '${AppConstants.colOrderDate} DESC, '
-          'CASE ${AppConstants.colMealTime} '
-          "WHEN 'dinner' THEN 1 "
-          "WHEN 'lunch' THEN 2 "
-          "WHEN 'breakfast' THEN 3 "
-          'ELSE 4 END ASC',
-      limit: limit,
-      offset: offset,
+    final limitClause = limit != null ? 'LIMIT $limit' : '';
+    final offsetClause = offset != null ? 'OFFSET $offset' : '';
+
+    final List<Map<String, dynamic>> maps = await database.rawQuery(
+      'SELECT o.*, $_hasInvoiceColumn '
+      'FROM ${AppConstants.ordersTable} o '
+      '$_invoiceJoinClause '
+      '$_orderByClause '
+      '$limitClause $offsetClause',
     );
 
-    return maps.map((map) => Order.fromJson(map)).toList();
+    return maps.map(_parseOrderWithInvoice).toList();
   }
 
   /// Get orders by shop name (partial match)
@@ -112,23 +136,19 @@ class OrderTable {
   /// Get orders by order date range
   /// Uses order_date field (stored as 'yyyy-MM-dd' format)
   Future<List<Order>> getByDateRange(DateTime start, DateTime end) async {
-    // Format dates as 'yyyy-MM-dd' for comparison with order_date field
     final startDate = _formatDate(start);
     final endDate = _formatDate(end);
 
-    final List<Map<String, dynamic>> maps = await database.query(
-      AppConstants.ordersTable,
-      where: '${AppConstants.colOrderDate} >= ? AND ${AppConstants.colOrderDate} <= ?',
-      whereArgs: [startDate, endDate],
-      orderBy: '${AppConstants.colOrderDate} DESC, '
-          'CASE ${AppConstants.colMealTime} '
-          "WHEN 'dinner' THEN 1 "
-          "WHEN 'lunch' THEN 2 "
-          "WHEN 'breakfast' THEN 3 "
-          'ELSE 4 END ASC',
+    final List<Map<String, dynamic>> maps = await database.rawQuery(
+      'SELECT o.*, $_hasInvoiceColumn '
+      'FROM ${AppConstants.ordersTable} o '
+      '$_invoiceJoinClause '
+      'WHERE o.${AppConstants.colOrderDate} >= ? AND o.${AppConstants.colOrderDate} <= ? '
+      '$_orderByClause',
+      [startDate, endDate],
     );
 
-    return maps.map((map) => Order.fromJson(map)).toList();
+    return maps.map(_parseOrderWithInvoice).toList();
   }
 
   /// Format DateTime to 'yyyy-MM-dd' string
@@ -138,22 +158,18 @@ class OrderTable {
 
   /// Get orders with order date today
   Future<List<Order>> getTodayOrders() async {
-    final now = DateTime.now();
-    final todayStr = _formatDate(now);
+    final todayStr = _formatDate(DateTime.now());
 
-    final List<Map<String, dynamic>> maps = await database.query(
-      AppConstants.ordersTable,
-      where: '${AppConstants.colOrderDate} = ?',
-      whereArgs: [todayStr],
-      orderBy: '${AppConstants.colOrderDate} DESC, '
-          'CASE ${AppConstants.colMealTime} '
-          "WHEN 'dinner' THEN 1 "
-          "WHEN 'lunch' THEN 2 "
-          "WHEN 'breakfast' THEN 3 "
-          'ELSE 4 END ASC',
+    final List<Map<String, dynamic>> maps = await database.rawQuery(
+      'SELECT o.*, $_hasInvoiceColumn '
+      'FROM ${AppConstants.ordersTable} o '
+      '$_invoiceJoinClause '
+      'WHERE o.${AppConstants.colOrderDate} = ? '
+      '$_orderByClause',
+      [todayStr],
     );
 
-    return maps.map((map) => Order.fromJson(map)).toList();
+    return maps.map(_parseOrderWithInvoice).toList();
   }
 
   /// Get orders with order date in this month
@@ -245,59 +261,56 @@ class OrderTable {
         orderNumber != null &&
         orderNumber.isNotEmpty &&
         shopName == orderNumber) {
-      conditions.add('(${AppConstants.colShopName} LIKE ? OR ${AppConstants.colOrderNumber} LIKE ?)');
+      conditions.add('(o.${AppConstants.colShopName} LIKE ? OR o.${AppConstants.colOrderNumber} LIKE ?)');
       args.add('%$shopName%');
       args.add('%$orderNumber%');
     } else {
       // Separate criteria search - use AND logic
       if (shopName != null && shopName.isNotEmpty) {
-        conditions.add('${AppConstants.colShopName} LIKE ?');
+        conditions.add('o.${AppConstants.colShopName} LIKE ?');
         args.add('%$shopName%');
       }
 
       if (orderNumber != null && orderNumber.isNotEmpty) {
-        conditions.add('${AppConstants.colOrderNumber} LIKE ?');
+        conditions.add('o.${AppConstants.colOrderNumber} LIKE ?');
         args.add('%$orderNumber%');
       }
     }
 
     if (minAmount != null) {
-      conditions.add('${AppConstants.colAmount} >= ?');
+      conditions.add('o.${AppConstants.colAmount} >= ?');
       args.add(minAmount);
     }
 
     if (maxAmount != null) {
-      conditions.add('${AppConstants.colAmount} <= ?');
+      conditions.add('o.${AppConstants.colAmount} <= ?');
       args.add(maxAmount);
     }
 
     if (startDate != null) {
-      conditions.add('${AppConstants.colOrderDate} >= ?');
+      conditions.add('o.${AppConstants.colOrderDate} >= ?');
       args.add(_formatDate(startDate));
     }
 
     if (endDate != null) {
-      conditions.add('${AppConstants.colOrderDate} <= ?');
+      conditions.add('o.${AppConstants.colOrderDate} <= ?');
       args.add(_formatDate(endDate));
     }
 
     final whereClause = conditions.isNotEmpty
-        ? conditions.join(' AND ')
-        : '1=1';
+        ? 'WHERE ${conditions.join(' AND ')}'
+        : '';
 
-    final List<Map<String, dynamic>> maps = await database.query(
-      AppConstants.ordersTable,
-      where: whereClause,
-      whereArgs: args.isEmpty ? null : args,
-      orderBy: '${AppConstants.colOrderDate} DESC, '
-          'CASE ${AppConstants.colMealTime} '
-          "WHEN 'dinner' THEN 1 "
-          "WHEN 'lunch' THEN 2 "
-          "WHEN 'breakfast' THEN 3 "
-          'ELSE 4 END ASC',
+    final List<Map<String, dynamic>> maps = await database.rawQuery(
+      'SELECT o.*, $_hasInvoiceColumn '
+      'FROM ${AppConstants.ordersTable} o '
+      '$_invoiceJoinClause '
+      '$whereClause '
+      '$_orderByClause',
+      args,
     );
 
-    return maps.map((map) => Order.fromJson(map)).toList();
+    return maps.map(_parseOrderWithInvoice).toList();
   }
 
   /// Search orders with invoice relation filter

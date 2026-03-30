@@ -15,7 +15,9 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Order {
 
-@JsonKey(includeIfNull: false) int? get id;@JsonKey(name: 'image_path') String get imagePath;@JsonKey(name: 'shop_name') String get shopName; double get amount;@JsonKey(name: 'order_date', includeIfNull: false) String? get orderDate;@JsonKey(name: 'meal_time', includeIfNull: false) String? get mealTime;@JsonKey(name: 'order_number') String get orderNumber;@JsonKey(name: 'created_at') String get createdAt;@JsonKey(name: 'updated_at') String get updatedAt;
+@JsonKey(includeIfNull: false) int? get id;@JsonKey(name: 'image_path') String get imagePath;@JsonKey(name: 'shop_name') String get shopName; double get amount;@JsonKey(name: 'order_date', includeIfNull: false) String? get orderDate;@JsonKey(name: 'meal_time', includeIfNull: false) String? get mealTime;@JsonKey(name: 'order_number') String get orderNumber;@JsonKey(name: 'created_at') String get createdAt;@JsonKey(name: 'updated_at') String get updatedAt;// UI-only field, not stored in database
+// Used to display invoice relation status in order list
+@JsonKey(includeFromJson: false, includeToJson: false) bool get hasInvoice;
 /// Create a copy of Order
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +30,16 @@ $OrderCopyWith<Order> get copyWith => _$OrderCopyWithImpl<Order>(this as Order, 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Order&&(identical(other.id, id) || other.id == id)&&(identical(other.imagePath, imagePath) || other.imagePath == imagePath)&&(identical(other.shopName, shopName) || other.shopName == shopName)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.orderDate, orderDate) || other.orderDate == orderDate)&&(identical(other.mealTime, mealTime) || other.mealTime == mealTime)&&(identical(other.orderNumber, orderNumber) || other.orderNumber == orderNumber)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Order&&(identical(other.id, id) || other.id == id)&&(identical(other.imagePath, imagePath) || other.imagePath == imagePath)&&(identical(other.shopName, shopName) || other.shopName == shopName)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.orderDate, orderDate) || other.orderDate == orderDate)&&(identical(other.mealTime, mealTime) || other.mealTime == mealTime)&&(identical(other.orderNumber, orderNumber) || other.orderNumber == orderNumber)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.hasInvoice, hasInvoice) || other.hasInvoice == hasInvoice));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,imagePath,shopName,amount,orderDate,mealTime,orderNumber,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,imagePath,shopName,amount,orderDate,mealTime,orderNumber,createdAt,updatedAt,hasInvoice);
 
 @override
 String toString() {
-  return 'Order(id: $id, imagePath: $imagePath, shopName: $shopName, amount: $amount, orderDate: $orderDate, mealTime: $mealTime, orderNumber: $orderNumber, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'Order(id: $id, imagePath: $imagePath, shopName: $shopName, amount: $amount, orderDate: $orderDate, mealTime: $mealTime, orderNumber: $orderNumber, createdAt: $createdAt, updatedAt: $updatedAt, hasInvoice: $hasInvoice)';
 }
 
 
@@ -48,7 +50,7 @@ abstract mixin class $OrderCopyWith<$Res>  {
   factory $OrderCopyWith(Order value, $Res Function(Order) _then) = _$OrderCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(includeIfNull: false) int? id,@JsonKey(name: 'image_path') String imagePath,@JsonKey(name: 'shop_name') String shopName, double amount,@JsonKey(name: 'order_date', includeIfNull: false) String? orderDate,@JsonKey(name: 'meal_time', includeIfNull: false) String? mealTime,@JsonKey(name: 'order_number') String orderNumber,@JsonKey(name: 'created_at') String createdAt,@JsonKey(name: 'updated_at') String updatedAt
+@JsonKey(includeIfNull: false) int? id,@JsonKey(name: 'image_path') String imagePath,@JsonKey(name: 'shop_name') String shopName, double amount,@JsonKey(name: 'order_date', includeIfNull: false) String? orderDate,@JsonKey(name: 'meal_time', includeIfNull: false) String? mealTime,@JsonKey(name: 'order_number') String orderNumber,@JsonKey(name: 'created_at') String createdAt,@JsonKey(name: 'updated_at') String updatedAt,@JsonKey(includeFromJson: false, includeToJson: false) bool hasInvoice
 });
 
 
@@ -65,7 +67,7 @@ class _$OrderCopyWithImpl<$Res>
 
 /// Create a copy of Order
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? imagePath = null,Object? shopName = null,Object? amount = null,Object? orderDate = freezed,Object? mealTime = freezed,Object? orderNumber = null,Object? createdAt = null,Object? updatedAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? imagePath = null,Object? shopName = null,Object? amount = null,Object? orderDate = freezed,Object? mealTime = freezed,Object? orderNumber = null,Object? createdAt = null,Object? updatedAt = null,Object? hasInvoice = null,}) {
   return _then(_self.copyWith(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int?,imagePath: null == imagePath ? _self.imagePath : imagePath // ignore: cast_nullable_to_non_nullable
@@ -76,7 +78,8 @@ as String?,mealTime: freezed == mealTime ? _self.mealTime : mealTime // ignore: 
 as String?,orderNumber: null == orderNumber ? _self.orderNumber : orderNumber // ignore: cast_nullable_to_non_nullable
 as String,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
-as String,
+as String,hasInvoice: null == hasInvoice ? _self.hasInvoice : hasInvoice // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -161,10 +164,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(includeIfNull: false)  int? id, @JsonKey(name: 'image_path')  String imagePath, @JsonKey(name: 'shop_name')  String shopName,  double amount, @JsonKey(name: 'order_date', includeIfNull: false)  String? orderDate, @JsonKey(name: 'meal_time', includeIfNull: false)  String? mealTime, @JsonKey(name: 'order_number')  String orderNumber, @JsonKey(name: 'created_at')  String createdAt, @JsonKey(name: 'updated_at')  String updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(includeIfNull: false)  int? id, @JsonKey(name: 'image_path')  String imagePath, @JsonKey(name: 'shop_name')  String shopName,  double amount, @JsonKey(name: 'order_date', includeIfNull: false)  String? orderDate, @JsonKey(name: 'meal_time', includeIfNull: false)  String? mealTime, @JsonKey(name: 'order_number')  String orderNumber, @JsonKey(name: 'created_at')  String createdAt, @JsonKey(name: 'updated_at')  String updatedAt, @JsonKey(includeFromJson: false, includeToJson: false)  bool hasInvoice)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Order() when $default != null:
-return $default(_that.id,_that.imagePath,_that.shopName,_that.amount,_that.orderDate,_that.mealTime,_that.orderNumber,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.imagePath,_that.shopName,_that.amount,_that.orderDate,_that.mealTime,_that.orderNumber,_that.createdAt,_that.updatedAt,_that.hasInvoice);case _:
   return orElse();
 
 }
@@ -182,10 +185,10 @@ return $default(_that.id,_that.imagePath,_that.shopName,_that.amount,_that.order
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(includeIfNull: false)  int? id, @JsonKey(name: 'image_path')  String imagePath, @JsonKey(name: 'shop_name')  String shopName,  double amount, @JsonKey(name: 'order_date', includeIfNull: false)  String? orderDate, @JsonKey(name: 'meal_time', includeIfNull: false)  String? mealTime, @JsonKey(name: 'order_number')  String orderNumber, @JsonKey(name: 'created_at')  String createdAt, @JsonKey(name: 'updated_at')  String updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(includeIfNull: false)  int? id, @JsonKey(name: 'image_path')  String imagePath, @JsonKey(name: 'shop_name')  String shopName,  double amount, @JsonKey(name: 'order_date', includeIfNull: false)  String? orderDate, @JsonKey(name: 'meal_time', includeIfNull: false)  String? mealTime, @JsonKey(name: 'order_number')  String orderNumber, @JsonKey(name: 'created_at')  String createdAt, @JsonKey(name: 'updated_at')  String updatedAt, @JsonKey(includeFromJson: false, includeToJson: false)  bool hasInvoice)  $default,) {final _that = this;
 switch (_that) {
 case _Order():
-return $default(_that.id,_that.imagePath,_that.shopName,_that.amount,_that.orderDate,_that.mealTime,_that.orderNumber,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.imagePath,_that.shopName,_that.amount,_that.orderDate,_that.mealTime,_that.orderNumber,_that.createdAt,_that.updatedAt,_that.hasInvoice);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -202,10 +205,10 @@ return $default(_that.id,_that.imagePath,_that.shopName,_that.amount,_that.order
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(includeIfNull: false)  int? id, @JsonKey(name: 'image_path')  String imagePath, @JsonKey(name: 'shop_name')  String shopName,  double amount, @JsonKey(name: 'order_date', includeIfNull: false)  String? orderDate, @JsonKey(name: 'meal_time', includeIfNull: false)  String? mealTime, @JsonKey(name: 'order_number')  String orderNumber, @JsonKey(name: 'created_at')  String createdAt, @JsonKey(name: 'updated_at')  String updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(includeIfNull: false)  int? id, @JsonKey(name: 'image_path')  String imagePath, @JsonKey(name: 'shop_name')  String shopName,  double amount, @JsonKey(name: 'order_date', includeIfNull: false)  String? orderDate, @JsonKey(name: 'meal_time', includeIfNull: false)  String? mealTime, @JsonKey(name: 'order_number')  String orderNumber, @JsonKey(name: 'created_at')  String createdAt, @JsonKey(name: 'updated_at')  String updatedAt, @JsonKey(includeFromJson: false, includeToJson: false)  bool hasInvoice)?  $default,) {final _that = this;
 switch (_that) {
 case _Order() when $default != null:
-return $default(_that.id,_that.imagePath,_that.shopName,_that.amount,_that.orderDate,_that.mealTime,_that.orderNumber,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.imagePath,_that.shopName,_that.amount,_that.orderDate,_that.mealTime,_that.orderNumber,_that.createdAt,_that.updatedAt,_that.hasInvoice);case _:
   return null;
 
 }
@@ -217,7 +220,7 @@ return $default(_that.id,_that.imagePath,_that.shopName,_that.amount,_that.order
 @JsonSerializable()
 
 class _Order implements Order {
-  const _Order({@JsonKey(includeIfNull: false) this.id, @JsonKey(name: 'image_path') this.imagePath = '', @JsonKey(name: 'shop_name') this.shopName = '', this.amount = 0.0, @JsonKey(name: 'order_date', includeIfNull: false) this.orderDate, @JsonKey(name: 'meal_time', includeIfNull: false) this.mealTime, @JsonKey(name: 'order_number') this.orderNumber = '', @JsonKey(name: 'created_at') this.createdAt = '', @JsonKey(name: 'updated_at') this.updatedAt = ''});
+  const _Order({@JsonKey(includeIfNull: false) this.id, @JsonKey(name: 'image_path') this.imagePath = '', @JsonKey(name: 'shop_name') this.shopName = '', this.amount = 0.0, @JsonKey(name: 'order_date', includeIfNull: false) this.orderDate, @JsonKey(name: 'meal_time', includeIfNull: false) this.mealTime, @JsonKey(name: 'order_number') this.orderNumber = '', @JsonKey(name: 'created_at') this.createdAt = '', @JsonKey(name: 'updated_at') this.updatedAt = '', @JsonKey(includeFromJson: false, includeToJson: false) this.hasInvoice = false});
   factory _Order.fromJson(Map<String, dynamic> json) => _$OrderFromJson(json);
 
 @override@JsonKey(includeIfNull: false) final  int? id;
@@ -229,6 +232,9 @@ class _Order implements Order {
 @override@JsonKey(name: 'order_number') final  String orderNumber;
 @override@JsonKey(name: 'created_at') final  String createdAt;
 @override@JsonKey(name: 'updated_at') final  String updatedAt;
+// UI-only field, not stored in database
+// Used to display invoice relation status in order list
+@override@JsonKey(includeFromJson: false, includeToJson: false) final  bool hasInvoice;
 
 /// Create a copy of Order
 /// with the given fields replaced by the non-null parameter values.
@@ -243,16 +249,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Order&&(identical(other.id, id) || other.id == id)&&(identical(other.imagePath, imagePath) || other.imagePath == imagePath)&&(identical(other.shopName, shopName) || other.shopName == shopName)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.orderDate, orderDate) || other.orderDate == orderDate)&&(identical(other.mealTime, mealTime) || other.mealTime == mealTime)&&(identical(other.orderNumber, orderNumber) || other.orderNumber == orderNumber)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Order&&(identical(other.id, id) || other.id == id)&&(identical(other.imagePath, imagePath) || other.imagePath == imagePath)&&(identical(other.shopName, shopName) || other.shopName == shopName)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.orderDate, orderDate) || other.orderDate == orderDate)&&(identical(other.mealTime, mealTime) || other.mealTime == mealTime)&&(identical(other.orderNumber, orderNumber) || other.orderNumber == orderNumber)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.hasInvoice, hasInvoice) || other.hasInvoice == hasInvoice));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,imagePath,shopName,amount,orderDate,mealTime,orderNumber,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,imagePath,shopName,amount,orderDate,mealTime,orderNumber,createdAt,updatedAt,hasInvoice);
 
 @override
 String toString() {
-  return 'Order(id: $id, imagePath: $imagePath, shopName: $shopName, amount: $amount, orderDate: $orderDate, mealTime: $mealTime, orderNumber: $orderNumber, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'Order(id: $id, imagePath: $imagePath, shopName: $shopName, amount: $amount, orderDate: $orderDate, mealTime: $mealTime, orderNumber: $orderNumber, createdAt: $createdAt, updatedAt: $updatedAt, hasInvoice: $hasInvoice)';
 }
 
 
@@ -263,7 +269,7 @@ abstract mixin class _$OrderCopyWith<$Res> implements $OrderCopyWith<$Res> {
   factory _$OrderCopyWith(_Order value, $Res Function(_Order) _then) = __$OrderCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(includeIfNull: false) int? id,@JsonKey(name: 'image_path') String imagePath,@JsonKey(name: 'shop_name') String shopName, double amount,@JsonKey(name: 'order_date', includeIfNull: false) String? orderDate,@JsonKey(name: 'meal_time', includeIfNull: false) String? mealTime,@JsonKey(name: 'order_number') String orderNumber,@JsonKey(name: 'created_at') String createdAt,@JsonKey(name: 'updated_at') String updatedAt
+@JsonKey(includeIfNull: false) int? id,@JsonKey(name: 'image_path') String imagePath,@JsonKey(name: 'shop_name') String shopName, double amount,@JsonKey(name: 'order_date', includeIfNull: false) String? orderDate,@JsonKey(name: 'meal_time', includeIfNull: false) String? mealTime,@JsonKey(name: 'order_number') String orderNumber,@JsonKey(name: 'created_at') String createdAt,@JsonKey(name: 'updated_at') String updatedAt,@JsonKey(includeFromJson: false, includeToJson: false) bool hasInvoice
 });
 
 
@@ -280,7 +286,7 @@ class __$OrderCopyWithImpl<$Res>
 
 /// Create a copy of Order
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? imagePath = null,Object? shopName = null,Object? amount = null,Object? orderDate = freezed,Object? mealTime = freezed,Object? orderNumber = null,Object? createdAt = null,Object? updatedAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? imagePath = null,Object? shopName = null,Object? amount = null,Object? orderDate = freezed,Object? mealTime = freezed,Object? orderNumber = null,Object? createdAt = null,Object? updatedAt = null,Object? hasInvoice = null,}) {
   return _then(_Order(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int?,imagePath: null == imagePath ? _self.imagePath : imagePath // ignore: cast_nullable_to_non_nullable
@@ -291,7 +297,8 @@ as String?,mealTime: freezed == mealTime ? _self.mealTime : mealTime // ignore: 
 as String?,orderNumber: null == orderNumber ? _self.orderNumber : orderNumber // ignore: cast_nullable_to_non_nullable
 as String,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
-as String,
+as String,hasInvoice: null == hasInvoice ? _self.hasInvoice : hasInvoice // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

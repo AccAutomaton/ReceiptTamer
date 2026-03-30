@@ -86,12 +86,27 @@ class OrderCard extends StatelessWidget {
           ),
 
           // Amount
-          Text(
-            DateFormatter.formatAmount(order.amount),
-            style: theme.textTheme.titleLarge?.copyWith(
-              color: colorScheme.primary,
-              fontWeight: FontWeight.bold,
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                DateFormatter.formatAmount(order.amount),
+                style: theme.textTheme.titleLarge?.copyWith(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                order.hasInvoice ? '已关联发票' : '未关联发票',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: order.hasInvoice
+                      ? const Color(0xFF4CAF50).withValues(alpha: 0.7) // Low saturation green
+                      : const Color(0xFFE57373).withValues(alpha: 0.7), // Low saturation red
+                ),
+              ),
+            ],
           ),
         ],
       ),
