@@ -241,6 +241,7 @@ class OrderTable {
   }
 
   /// Search orders by multiple criteria
+  /// [hasLinkedInvoice] - null: all orders, true: only orders with invoices, false: only orders without invoices
   /// When both shopName and orderNumber are provided with the same value (keyword search),
   /// it performs an OR search on both fields.
   Future<List<Order>> search({
@@ -250,6 +251,7 @@ class OrderTable {
     double? maxAmount,
     DateTime? startDate,
     DateTime? endDate,
+    bool? hasLinkedInvoice,
   }) async {
     final conditions = <String>[];
     final args = <dynamic>[];
@@ -295,6 +297,13 @@ class OrderTable {
     if (endDate != null) {
       conditions.add('o.${AppConstants.colOrderDate} <= ?');
       args.add(_formatDate(endDate));
+    }
+
+    // Filter by invoice relation status
+    if (hasLinkedInvoice == true) {
+      conditions.add('r.${AppConstants.colOrderId} IS NOT NULL');
+    } else if (hasLinkedInvoice == false) {
+      conditions.add('r.${AppConstants.colOrderId} IS NULL');
     }
 
     final whereClause = conditions.isNotEmpty

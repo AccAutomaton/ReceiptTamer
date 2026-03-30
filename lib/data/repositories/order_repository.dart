@@ -108,6 +108,7 @@ class OrderRepository {
   }
 
   /// Search orders by multiple criteria
+  /// [hasLinkedInvoice] - null: all orders, true: only orders with invoices, false: only orders without invoices
   Future<List<Order>> search({
     String? shopName,
     String? orderNumber,
@@ -115,6 +116,7 @@ class OrderRepository {
     double? maxAmount,
     DateTime? startDate,
     DateTime? endDate,
+    bool? hasLinkedInvoice,
   }) async {
     final table = await _orderTable;
     return await table.search(
@@ -124,6 +126,7 @@ class OrderRepository {
       maxAmount: maxAmount,
       startDate: startDate,
       endDate: endDate,
+      hasLinkedInvoice: hasLinkedInvoice,
     );
   }
 

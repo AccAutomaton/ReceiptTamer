@@ -183,6 +183,7 @@ class OrderNotifier extends Notifier<OrderState> {
     double? maxAmount,
     DateTime? startDate,
     DateTime? endDate,
+    bool? hasLinkedInvoice,
   }) async {
     state = state.copyWith(isLoading: true);
 
@@ -194,6 +195,7 @@ class OrderNotifier extends Notifier<OrderState> {
         maxAmount: maxAmount,
         startDate: startDate,
         endDate: endDate,
+        hasLinkedInvoice: hasLinkedInvoice,
       );
 
       state = state.copyWith(

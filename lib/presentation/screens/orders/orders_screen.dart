@@ -278,6 +278,26 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                   }
                 },
               ),
+              ListTile(
+                leading: const Icon(Icons.link_off),
+                title: const Text('未关联发票'),
+                onTap: () {
+                  ref.read(orderProvider.notifier).searchOrders(
+                        hasLinkedInvoice: false,
+                      );
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.link),
+                title: const Text('已关联发票'),
+                onTap: () {
+                  ref.read(orderProvider.notifier).searchOrders(
+                        hasLinkedInvoice: true,
+                      );
+                  Navigator.pop(context);
+                },
+              ),
             ],
           ),
         ),
