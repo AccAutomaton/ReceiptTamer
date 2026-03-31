@@ -307,6 +307,68 @@ class MainActivity : FlutterActivity() {
                 "getFilesDirPath" -> {
                     result.success(filesDir.absolutePath)
                 }
+                "saveToDownloadDirectory" -> {
+                    val fileName = call.argument<String>("fileName")
+                    val bytes = call.argument<ByteArray>("bytes")
+                    val subDir = call.argument<String>("subDir") ?: ""
+                    if (fileName != null && bytes != null) {
+                        val saveResult = DownloadHelper.saveToDownloadDirectory(
+                            applicationContext,
+                            fileName,
+                            bytes,
+                            subDir
+                        )
+                        result.success(saveResult)
+                    } else {
+                        result.error("INVALID_ARGUMENT", "fileName or bytes is null", null)
+                    }
+                }
+                "copyToDownloadDirectory" -> {
+                    val sourcePath = call.argument<String>("sourcePath")
+                    val customFileName = call.argument<String>("customFileName")
+                    val subDir = call.argument<String>("subDir") ?: ""
+                    if (sourcePath != null) {
+                        val saveResult = DownloadHelper.copyToDownloadDirectory(
+                            applicationContext,
+                            sourcePath,
+                            customFileName,
+                            subDir
+                        )
+                        result.success(saveResult)
+                    } else {
+                        result.error("INVALID_ARGUMENT", "sourcePath is null", null)
+                    }
+                }
+                "getDownloadDirectoryPath" -> {
+                    val subDir = call.argument<String>("subDir") ?: ""
+                    result.success(DownloadHelper.getDownloadDirectoryPath(subDir))
+                }
+                "openFileManager" -> {
+                    val subDir = call.argument<String>("subDir") ?: ""
+                    val success = DownloadHelper.openFileManager(applicationContext, subDir)
+                    result.success(success)
+                }
+                "listFilesInDirectory" -> {
+                    val subDir = call.argument<String>("subDir") ?: ""
+                    val files = DownloadHelper.listFilesInDirectory(applicationContext, subDir)
+                    result.success(files)
+                }
+                "listSubDirectories" -> {
+                    val parentDir = call.argument<String>("parentDir") ?: ""
+                    val dirs = DownloadHelper.listSubDirectories(applicationContext, parentDir)
+                    result.success(dirs)
+                }
+                "shareFile" -> {
+                    val fileUri = call.argument<String>("fileUri")
+                    val fileName = call.argument<String>("fileName")
+                    val mimeType = call.argument<String>("mimeType") ?: "application/octet-stream"
+                    if (fileUri != null && fileName != null) {
+                        val success = DownloadHelper.shareFile(applicationContext, fileUri, fileName, mimeType)
+                        result.success(success)
+                    } else {
+                        result.error("INVALID_ARGUMENT", "fileUri or fileName is null", null)
+                    }
+                }
                 else -> result.notImplemented()
             }
         }

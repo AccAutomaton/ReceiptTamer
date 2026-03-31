@@ -25,9 +25,9 @@
 | 订单管理      | ✅  | 列表、详情、编辑页面、月份分组、快速滚动                                    |
 | 发票管理      | ✅  | 列表、详情、编辑页面、月份分组                                         |
 | 发票-订单关联   | ✅  | 一对多关系（一张发票关联多个订单）、双向选择器、关联计数显示                          |
-| 用餐证明导出    | ✅  | PDF格式、订单截图2x2排版、金额分摊                                    |
-| 发票导出      | ✅  | PDF格式、2张/页、自动旋转、时间标签选项                                  |
-| 用餐明细导出    | ✅  | Excel格式、按日期/餐时分类、金额分摊、汇总行                               |
+| 用餐证明导出    | ✅  | PDF格式、订单截图2x2排版、金额分摊、自动保存到Download/ReceiptTamer |
+| 发票导出      | ✅  | PDF格式、2张/页、自动旋转、时间标签选项、自动保存到Download/ReceiptTamer |
+| 用餐明细导出    | ✅  | Excel格式、按日期/餐时分类、金额分摊、汇总行、自动保存到Download/ReceiptTamer |
 | 发票金额分摊    | ✅  | 按订单金额比例分摊、精确无舍入误差                                       |
 | 首页统计      | ✅  | 数据概览页面                                                  |
 | 分享功能      | ✅  | 图片、PDF、导出文件分享                                           |
@@ -36,8 +36,8 @@
 | OCR引擎     | ✅  | RapidOcrAndroidOnnx (ONNX格式，内置模型)                       |
 | LLM推理     | ✅  | MNN框架集成 (阿里开源)                                          |
 | OCR+LLM识别 | ✅  | RapidOcr ONNX + Qwen3.5-0.8B-MNN 结构化提取                  |
-| 应用更新      | ✅  | 基于 GitHub Release 的检查更新与下载安装                            |
-| 数据备份与还原  | ✅  | 备份所有数据到zip包、覆盖/增量还原、版本兼容性检查                      |
+| 应用更新      | ✅  | 基于 GitHub Release 的检查更新与下载安装、APK保存到Download/ReceiptTamer |
+| 数据备份与还原  | ✅  | 备份所有数据到zip包、覆盖/增量还原、版本兼容性检查、自动保存到Download/ReceiptTamer |
 
 ### 待完善功能
 
@@ -151,7 +151,8 @@ android/app/src/main/
 │   └── libc++_shared.so            # C++运行时
 ├── kotlin/.../
 │   ├── MainActivity.kt             # Flutter MethodChannel处理
-│   └── MnnEngine.kt                # MNN LLM引擎封装
+│   ├── MnnEngine.kt                # MNN LLM引擎封装
+│   └── DownloadHelper.kt           # 下载目录文件保存工具
 └── libs/
     └── OcrLibrary-1.3.0-release.aar # OCR库 (含内置模型)
 
@@ -237,6 +238,47 @@ tools/
 - **分组**：按日期、餐时分类
 - **金额**：支持发票金额分摊
 - **选项**：可忽略无用餐记录的日期
+
+---
+
+## 文件存储说明
+
+### 自动保存目录
+
+导出的报销材料、备份数据会自动保存到系统的公共下载目录，并按日期分类：
+
+```
+/storage/emulated/0/Download/ReceiptTamer/
+├── materials/                    # 报销材料
+│   └── YYYYMMDD/                 # 按日期分类
+│       ├── 用餐证明_YYYYMMDD_HHMM.pdf
+│       ├── 发票_YYYYMMDD_HHMM.pdf
+│       └── 用餐明细_YYYYMMDD_HHMM.xlsx
+└── backup/                       # 备份数据
+    └── YYYYMMDD/                 # 按日期分类
+        └── ReceiptTamer_Backup_YYYY-MM-DD.zip
+```
+
+### 存储策略
+
+| Android 版本 | 存储方式 | 权限需求 |
+|-------------|---------|---------|
+| Android 10+ | MediaStore API | 无需权限 |
+| Android 9及以下 | 传统文件操作 | WRITE_EXTERNAL_STORAGE |
+
+### 保存的文件类型
+
+| 文件类型 | 文件名格式 | 保存位置 |
+|---------|-----------|---------|
+| 用餐证明PDF | `用餐证明_YYYYMMDD_HHMM.pdf` | `materials/YYYYMMDD/` |
+| 发票PDF | `发票_YYYYMMDD_HHMM.pdf` | `materials/YYYYMMDD/` |
+| 用餐明细Excel | `用餐明细_YYYYMMDD_HHMM.xlsx` | `materials/YYYYMMDD/` |
+| 备份文件 | `ReceiptTamer_Backup_YYYY-MM-DD.zip` | `backup/YYYYMMDD/` |
+
+**特点**：
+- 文件按日期自动分类存储
+- 文件可在系统文件管理器中直接查看
+- 成功导出后自动跳转到文件管理器的目标目录，点击"查看"按钮可再次跳转
 
 ---
 

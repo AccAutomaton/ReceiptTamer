@@ -1,14 +1,17 @@
+import 'dart:io';
+
 import 'package:receipt_tamer/data/models/invoice.dart';
+import 'package:receipt_tamer/data/services/file_service.dart';
 import 'package:receipt_tamer/data/services/invoice_export_service.dart';
 import 'package:receipt_tamer/data/services/meal_details_export_service.dart';
 import 'package:receipt_tamer/data/services/meal_proof_export_service.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
+import 'package:receipt_tamer/presentation/screens/export/saved_files_screen.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 /// Export options screen - choose what to export
 class ExportOptionsScreen extends ConsumerStatefulWidget {
@@ -360,8 +363,14 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
       _isExporting = true;
     });
 
+    final fileService = FileService();
+
     try {
-      final timestamp = _formatTimestamp(DateTime.now());
+      final now = DateTime.now();
+      final timestamp = _formatTimestamp(now);
+      final dateDir = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+      final subDir = 'materials/$dateDir';
+
       int successCount = 0;
       List<String> errors = [];
 
@@ -370,6 +379,7 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
 
       // Export meal proof
       if (_exportMealProof && invoices.isNotEmpty) {
+        String? tempPath;
         try {
           final fileName = '用餐证明_$timestamp.pdf';
 
@@ -385,9 +395,9 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
           if (items.isEmpty) {
             errors.add('用餐证明：没有可导出的订单');
           } else {
-            // Save to app temp directory first (avoids Android permission issues)
+            // Generate to temp directory first
             final tempDir = await getTemporaryDirectory();
-            final tempPath = '${tempDir.path}/$fileName';
+            tempPath = '${tempDir.path}/$fileName';
 
             await MealProofExportService.generatePdf(
               items: items,
@@ -395,22 +405,35 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
               getImagePath: (p) => p, // Image path is already absolute
             );
 
-            // Share the file using share_plus
-            await SharePlus.instance.share(
-              ShareParams(
-                files: [XFile(tempPath)],
-                subject: fileName,
-              ),
+            // Copy to Download/ReceiptTamer/materials/YYYYMMDD
+            final savedPath = await fileService.copyToDownloadDirectory(
+              tempPath,
+              customFileName: fileName,
+              subDir: subDir,
             );
-            successCount++;
+
+            if (savedPath != null) {
+              successCount++;
+            } else {
+              errors.add('用餐证明：保存到下载目录失败');
+            }
           }
         } catch (e) {
           errors.add('用餐证明导出失败: $e');
+        } finally {
+          // Clean up temp file
+          if (tempPath != null) {
+            final tempFile = File(tempPath);
+            if (await tempFile.exists()) {
+              await tempFile.delete();
+            }
+          }
         }
       }
 
       // Export invoice
       if (_exportInvoice && invoices.isNotEmpty) {
+        String? tempPath;
         try {
           final fileName = '发票_$timestamp.pdf';
 
@@ -426,9 +449,9 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
           if (items.isEmpty) {
             errors.add('发票：没有可导出的发票');
           } else {
-            // Save to app temp directory first (avoids Android permission issues)
+            // Generate to temp directory first
             final tempDir = await getTemporaryDirectory();
-            final tempPath = '${tempDir.path}/$fileName';
+            tempPath = '${tempDir.path}/$fileName';
 
             await InvoiceExportService.generateInvoicePdf(
               items: items,
@@ -437,27 +460,39 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
               showTimeLabel: _showInvoiceTimeLabel,
             );
 
-            // Share the file using share_plus
-            await SharePlus.instance.share(
-              ShareParams(
-                files: [XFile(tempPath)],
-                subject: fileName,
-              ),
+            // Copy to Download/ReceiptTamer/materials/YYYYMMDD
+            final savedPath = await fileService.copyToDownloadDirectory(
+              tempPath,
+              customFileName: fileName,
+              subDir: subDir,
             );
-            successCount++;
+
+            if (savedPath != null) {
+              successCount++;
+            } else {
+              errors.add('发票：保存到下载目录失败');
+            }
           }
         } catch (e) {
           errors.add('发票导出失败: $e');
+        } finally {
+          // Clean up temp file
+          if (tempPath != null) {
+            final tempFile = File(tempPath);
+            if (await tempFile.exists()) {
+              await tempFile.delete();
+            }
+          }
         }
       }
 
       // Export meal details
       if (_exportMealDetails && invoices.isNotEmpty) {
+        String? tempPath;
         try {
           final fileName = '用餐明细_$timestamp.xlsx';
 
           // Prepare daily meal details
-          // When skipEmptyDays is false, fill missing dates between first and last order date
           final items = await MealDetailsExportService.prepareDailyMealDetails(
             invoices: invoices,
             getOrderIdsForInvoice: (id) =>
@@ -470,9 +505,9 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
           if (items.isEmpty) {
             errors.add('用餐明细：没有可导出的订单');
           } else {
-            // Save to app temp directory first (avoids Android permission issues)
+            // Generate to temp directory first
             final tempDir = await getTemporaryDirectory();
-            final tempPath = '${tempDir.path}/$fileName';
+            tempPath = '${tempDir.path}/$fileName';
 
             await MealDetailsExportService.generateExcel(
               items: items,
@@ -480,26 +515,37 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
               skipEmptyDays: _skipEmptyDays,
             );
 
-            // Share the file using share_plus
-            await SharePlus.instance.share(
-              ShareParams(
-                files: [XFile(tempPath)],
-                subject: fileName,
-              ),
+            // Copy to Download/ReceiptTamer/materials/YYYYMMDD
+            final savedPath = await fileService.copyToDownloadDirectory(
+              tempPath,
+              customFileName: fileName,
+              subDir: subDir,
             );
-            successCount++;
+
+            if (savedPath != null) {
+              successCount++;
+            } else {
+              errors.add('用餐明细：保存到下载目录失败');
+            }
           }
         } catch (e) {
           errors.add('用餐明细导出失败: $e');
+        } finally {
+          // Clean up temp file
+          if (tempPath != null) {
+            final tempFile = File(tempPath);
+            if (await tempFile.exists()) {
+              await tempFile.delete();
+            }
+          }
         }
       }
 
       if (mounted) {
         if (successCount > 0) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('成功导出 $successCount 个文件')),
-          );
+          // Navigate to saved files screen to show exported files
           Navigator.pop(context);
+          await showSavedFilesScreen(context, initialSubDir: subDir);
         }
         if (errors.isNotEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(

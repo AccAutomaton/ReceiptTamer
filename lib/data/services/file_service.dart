@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -13,6 +15,189 @@ import '../../core/constants/app_constants.dart';
 class FileService {
   /// MethodChannel for getting Android filesDir path
   static const MethodChannel _channel = MethodChannel('com.acautomaton.receipt.tamer/storage');
+
+  /// Save bytes to Download/ReceiptTamer/[subDir] directory
+  /// [subDir] example: "materials/20260331" or "backup/20260331"
+  /// Returns the saved file path, or null if failed
+  Future<String?> saveToDownloadDirectory({
+    required String fileName,
+    required List<int> bytes,
+    String subDir = '',
+  }) async {
+    try {
+      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>(
+        'saveToDownloadDirectory',
+        {
+          'fileName': fileName,
+          'bytes': Uint8List.fromList(bytes),
+          'subDir': subDir,
+        },
+      );
+
+      if (result != null && result['success'] == true) {
+        return result['path'] as String?;
+      } else {
+        debugPrint('Failed to save file: ${result?['error']}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('Error saving to download directory: $e');
+      return null;
+    }
+  }
+
+  /// Copy file to Download/ReceiptTamer/[subDir] directory
+  /// [subDir] example: "materials/20260331" or "backup/20260331"
+  /// Returns the destination path, or null if failed
+  Future<String?> copyToDownloadDirectory(
+    String sourcePath, {
+    String? customFileName,
+    String subDir = '',
+  }) async {
+    try {
+      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>(
+        'copyToDownloadDirectory',
+        {
+          'sourcePath': sourcePath,
+          'customFileName': customFileName,
+          'subDir': subDir,
+        },
+      );
+
+      if (result != null && result['success'] == true) {
+        return result['path'] as String?;
+      } else {
+        debugPrint('Failed to copy file: ${result?['error']}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('Error copying to download directory: $e');
+      return null;
+    }
+  }
+
+  /// Get the Download/ReceiptTamer/[subDir] directory path for display
+  /// Returns the path string (e.g., "/storage/emulated/0/Download/ReceiptTamer/materials/20260331")
+  Future<String?> getDownloadDirectoryPath({String subDir = ''}) async {
+    try {
+      final path = await _channel.invokeMethod<String>(
+        'getDownloadDirectoryPath',
+        {'subDir': subDir},
+      );
+      return path;
+    } catch (e) {
+      debugPrint('Error getting download directory path: $e');
+      return null;
+    }
+  }
+
+  /// Open file with system default application
+  /// Returns true if successful, false otherwise
+  Future<bool> openFile(String filePath) async {
+    try {
+      final result = await OpenFile.open(filePath);
+      return result.type == ResultType.done;
+    } catch (e) {
+      debugPrint('Error opening file: $e');
+      return false;
+    }
+  }
+
+  /// Open file manager and navigate to the specified directory
+  /// [subDir] example: "materials/20260331" or "backup/20260331"
+  /// Returns true if successful, false otherwise
+  Future<bool> openFileManager({String subDir = ''}) async {
+    try {
+      final success = await _channel.invokeMethod<bool>(
+        'openFileManager',
+        {'subDir': subDir},
+      );
+      return success ?? false;
+    } catch (e) {
+      debugPrint('Error opening file manager: $e');
+      return false;
+    }
+  }
+
+  /// List files in Download/ReceiptTamer/[subDir] directory
+  /// [subDir] example: "materials/20260331" or "backup/20260331"
+  /// Returns list of files with name, path, size, date, uri fields
+  Future<List<Map<String, dynamic>>> listFilesInDirectory({String subDir = ''}) async {
+    try {
+      final result = await _channel.invokeMethod<List<dynamic>>(
+        'listFilesInDirectory',
+        {'subDir': subDir},
+      );
+      if (result == null) return [];
+      return result.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+    } catch (e) {
+      debugPrint('Error listing files: $e');
+      return [];
+    }
+  }
+
+  /// List sub-directories under Download/ReceiptTamer/[parentDir]
+  /// [parentDir] example: "materials" or "backup"
+  /// Returns list of directories with name, path fields
+  Future<List<Map<String, dynamic>>> listSubDirectories({String parentDir = ''}) async {
+    try {
+      final result = await _channel.invokeMethod<List<dynamic>>(
+        'listSubDirectories',
+        {'parentDir': parentDir},
+      );
+      if (result == null) return [];
+      return result.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+    } catch (e) {
+      debugPrint('Error listing sub-directories: $e');
+      return [];
+    }
+  }
+
+  /// Share a file using system share dialog
+  /// [fileUri] the content URI or file path
+  /// [fileName] the file name to display
+  /// [mimeType] the MIME type of the file
+  /// Returns true if successful, false otherwise
+  Future<bool> shareFile(String fileUri, String fileName, String mimeType) async {
+    try {
+      final success = await _channel.invokeMethod<bool>(
+        'shareFile',
+        {'fileUri': fileUri, 'fileName': fileName, 'mimeType': mimeType},
+      );
+      return success ?? false;
+    } catch (e) {
+      debugPrint('Error sharing file: $e');
+      return false;
+    }
+  }
+
+  /// Get MIME type from file name
+  String getMimeType(String fileName) {
+    final extension = fileName.split('.').last.toLowerCase();
+    switch (extension) {
+      case 'pdf':
+        return 'application/pdf';
+      case 'xlsx':
+        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case 'xls':
+        return 'application/vnd.ms-excel';
+      case 'zip':
+        return 'application/zip';
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'txt':
+        return 'text/plain';
+      case 'json':
+        return 'application/json';
+      case 'apk':
+        return 'application/vnd.android.package-archive';
+      default:
+        return 'application/octet-stream';
+    }
+  }
 
   /// Get the application documents directory
   Future<Directory> getAppDirectory() async {
@@ -361,7 +546,7 @@ class FileService {
     try {
       // Use sqflite's getDatabasesPath
       final databasesPath = await getDatabasesPath();
-      return path.join(databasesPath, 'catering_receipts.db');
+      return path.join(databasesPath, AppConstants.databaseName);
     } catch (e) {
       return null;
     }

@@ -396,14 +396,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
           return;
         }
 
-        // Save APK path for cleanup after install
+        // Save APK path for cleanup after install (clean up temp file)
         _downloadedApkPath = result.filePath;
 
-        // Install APK
+        // Install APK from temp directory (app has full access)
         final installed = await _updateService.installApk(result.filePath!);
         if (!installed && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('安装失败，请手动打开下载的文件')),
+            const SnackBar(content: Text('安装失败，请重试')),
           );
         }
       } else if (!downloadCancelled && mounted) {

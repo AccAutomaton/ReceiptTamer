@@ -11,6 +11,7 @@ import '../../../data/services/backup_service.dart';
 import '../../../data/services/file_service.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/order_provider.dart';
+import '../../screens/export/saved_files_screen.dart';
 import '../common/app_button.dart';
 
 /// Backup dialog for creating and restoring backups
@@ -44,6 +45,9 @@ class _BackupDialogState extends ConsumerState<BackupDialog> {
   }
 
   Future<void> _createBackup() async {
+    final fileService = FileService();
+    String? tempPath;
+
     try {
       setState(() {
         _isLoading = true;
@@ -51,10 +55,14 @@ class _BackupDialogState extends ConsumerState<BackupDialog> {
         _statusMessage = '正在创建备份...';
       });
 
+      final now = DateTime.now();
+      final dateDir = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+      final subDir = 'backup/$dateDir';
+
       // Create backup in temp directory first
       final tempDir = await getTemporaryDirectory();
-      final fileName = 'ReceiptTamer_Backup_${DateTime.now().toString().substring(0, 10)}.zip';
-      final tempPath = '${tempDir.path}/$fileName';
+      final fileName = 'ReceiptTamer_Backup_${now.toString().substring(0, 10)}.zip';
+      tempPath = '${tempDir.path}/$fileName';
 
       final result = await _backupService.createBackup(
         tempPath,
@@ -72,44 +80,30 @@ class _BackupDialogState extends ConsumerState<BackupDialog> {
       if (!result.success) {
         setState(() => _isLoading = false);
         _showErrorDialog('备份失败', result.errorMessage ?? '未知错误');
-        // Clean up temp file
-        final tempFile = File(tempPath);
-        if (await tempFile.exists()) {
-          await tempFile.delete();
-        }
         return;
       }
 
-      // Read the backup file bytes
+      // Copy to Download/ReceiptTamer/backup/YYYYMMDD
       setState(() {
         _statusMessage = '正在保存文件...';
       });
 
-      final tempFile = File(tempPath);
-      final bytes = await tempFile.readAsBytes();
-
-      // Let user choose save location (Android/iOS require bytes)
-      final outputPath = await FilePicker.platform.saveFile(
-        dialogTitle: '保存备份文件',
-        fileName: fileName,
-        type: FileType.custom,
-        allowedExtensions: ['zip'],
-        bytes: bytes,
+      final savedPath = await fileService.copyToDownloadDirectory(
+        tempPath,
+        customFileName: fileName,
+        subDir: subDir,
       );
-
-      // Clean up temp file
-      if (await tempFile.exists()) {
-        await tempFile.delete();
-      }
 
       if (mounted) {
         setState(() => _isLoading = false);
 
-        if (outputPath != null) {
-          _showSnackBar('备份创建成功');
+        if (savedPath != null) {
+          // Navigate to saved files screen to show backup files
           Navigator.pop(context);
+          await showSavedFilesScreen(context, initialSubDir: subDir);
+        } else {
+          _showErrorDialog('备份失败', '保存到下载目录失败');
         }
-        // If outputPath is null, user cancelled, no error message needed
       }
     } catch (e) {
       if (mounted) {
@@ -117,6 +111,14 @@ class _BackupDialogState extends ConsumerState<BackupDialog> {
           _isLoading = false;
         });
         _showErrorDialog('备份失败', e.toString());
+      }
+    } finally {
+      // Clean up temp file
+      if (tempPath != null) {
+        final tempFile = File(tempPath);
+        if (await tempFile.exists()) {
+          await tempFile.delete();
+        }
       }
     }
   }
