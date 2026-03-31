@@ -60,6 +60,9 @@ dependencies:
   # File Opening
   open_file: ^3.5.0
 
+  # Permissions
+  permission_handler: ^11.0.0
+
   # Archive (zip compression)
   archive: ^3.6.1
 

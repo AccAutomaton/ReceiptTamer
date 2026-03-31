@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// About screen
@@ -388,6 +389,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
       Navigator.of(context, rootNavigator: true).pop();
 
       if (result.success && result.filePath != null && !downloadCancelled) {
+        // Request install permission (request() returns current status if already granted)
+        final permissionResult = await Permission.requestInstallPackages.request();
+        if (!permissionResult.isGranted && mounted) {
+          _showInstallPermissionDialog();
+          return;
+        }
+
         // Save APK path for cleanup after install
         _downloadedApkPath = result.filePath;
 
@@ -440,6 +448,43 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text('重试'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Show dialog to guide user to settings for install permission
+  void _showInstallPermissionDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.settings, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 8),
+            const Text('需要安装权限'),
+          ],
+        ),
+        content: const Text(
+          '为了安装应用更新，需要允许安装未知应用。请在设置中开启此权限后重试。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('安装失败，请手动打开下载的文件')),
+              );
+            },
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await openAppSettings();
+            },
+            child: const Text('去设置'),
           ),
         ],
       ),
