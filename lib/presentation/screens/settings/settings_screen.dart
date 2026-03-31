@@ -11,6 +11,7 @@ import 'package:receipt_tamer/presentation/widgets/common/receipt_icon.dart';
 import 'package:receipt_tamer/presentation/widgets/common/storage_ring_chart.dart';
 import 'package:receipt_tamer/presentation/widgets/settings/backup_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -182,6 +183,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
             Expanded(child: Text('发现新版本 ${latestVersion.version}')),
           ],
         ),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 40),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -206,9 +208,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                 Container(
                   constraints: const BoxConstraints(maxHeight: 200),
                   child: SingleChildScrollView(
-                    child: Text(
-                      latestVersion.changelog!,
-                      style: const TextStyle(fontSize: 14),
+                    child: MarkdownBody(
+                      data: latestVersion.changelog!,
+                      selectable: true,
+                      styleSheet: MarkdownStyleSheet(
+                        p: const TextStyle(fontSize: 14),
+                        h2: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        h3: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                        listBullet: const TextStyle(fontSize: 14),
+                        code: TextStyle(
+                          fontSize: 12,
+                          backgroundColor: Colors.grey[200],
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -217,34 +229,36 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await UpdatePreferences.setIgnoredVersion(latestVersion.version);
-            },
-            child: const Text('忽略此版本'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('稍后提醒'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              // Clear ignored version when user chooses to update
-              await UpdatePreferences.clearIgnoredVersion();
-              // Check network before downloading
-              final isWifi = await _updateService.isWifiConnection();
-              if (!isWifi && mounted) {
-                _showMobileDataWarning(latestVersion);
-              } else {
-                _downloadAndInstall(latestVersion);
-              }
-            },
-            child: const Text('立即更新'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await UpdatePreferences.setIgnoredVersion(latestVersion.version);
+                },
+                child: const Text('忽略此版本'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('稍后提醒'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await UpdatePreferences.clearIgnoredVersion();
+                  final isWifi = await _updateService.isWifiConnection();
+                  if (!isWifi && mounted) {
+                    _showMobileDataWarning(latestVersion);
+                  } else {
+                    _downloadAndInstall(latestVersion);
+                  }
+                },
+                child: const Text('立即更新'),
+              ),
+            ],
           ),
         ],
-        actionsAlignment: MainAxisAlignment.end,
       ),
     );
   }
