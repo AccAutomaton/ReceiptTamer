@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:receipt_tamer/core/constants/app_constants.dart';
+import 'package:receipt_tamer/core/services/log_service.dart';
+import 'package:receipt_tamer/core/services/log_config.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/order.dart';
 import 'package:receipt_tamer/data/models/ocr_result.dart';
@@ -110,18 +112,22 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
   }
 
   Future<void> _loadOrder() async {
-    final order = await ref.read(orderProvider.notifier).getOrderById(widget.orderId!);
-    if (order != null && mounted) {
-      setState(() {
-        _shopNameController.text = order.shopName;
-        _amountController.text = order.amount.toStringAsFixed(2);
-        _orderNumberController.text = order.orderNumber;
-        _imagePath = order.imagePath;
-        if (order.orderDate != null && order.orderDate!.isNotEmpty) {
-          _orderDate = DateTime.tryParse(order.orderDate!);
-        }
-        _mealTime = DateFormatter.mealTimeFromString(order.mealTime);
-      });
+    try {
+      final order = await ref.read(orderProvider.notifier).getOrderById(widget.orderId!);
+      if (order != null && mounted) {
+        setState(() {
+          _shopNameController.text = order.shopName;
+          _amountController.text = order.amount.toStringAsFixed(2);
+          _orderNumberController.text = order.orderNumber;
+          _imagePath = order.imagePath;
+          if (order.orderDate != null && order.orderDate!.isNotEmpty) {
+            _orderDate = DateTime.tryParse(order.orderDate!);
+          }
+          _mealTime = DateFormatter.mealTimeFromString(order.mealTime);
+        });
+      }
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleUi, '加载订单失败', e, stackTrace);
     }
   }
 
@@ -168,6 +174,8 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
       return;
     }
 
+    logService.i(LogConfig.moduleUi, '开始OCR识别');
+
     // Show progress dialog
     if (mounted) {
       showDialog(
@@ -197,6 +205,7 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
                   _mealTime = mealTime;
                 }
               });
+              logService.i(LogConfig.moduleUi, 'OCR识别成功');
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('OCR识别成功')),
               );
@@ -407,6 +416,7 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
 
       if (mounted) {
         if (success) {
+          logService.i(LogConfig.moduleUi, '订单保存成功: id=${widget.orderId ?? order.id}');
           // Clean up temp file after successful save
           if (_imagePath != null) {
             _fileService.deleteTempFile(_imagePath!);

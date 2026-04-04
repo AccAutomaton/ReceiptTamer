@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:open_file/open_file.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -11,6 +10,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 
 import '../../core/constants/app_constants.dart';
+import '../../core/services/log_service.dart';
+import '../../core/services/log_config.dart';
 import '../models/app_version.dart';
 
 /// Update check result
@@ -123,11 +124,13 @@ class UpdateService {
   /// Returns UpdateCheckResponse with the latest version info
   Future<UpdateCheckResponse> checkForUpdates() async {
     try {
+      logService.i(LogConfig.moduleUpdate, '========== 开始检查更新 ==========');
       // Get current version
       final currentVersion = await getCurrentVersion();
+      logService.diag(LogConfig.moduleUpdate, 'Current version', currentVersion);
 
       // Fetch latest release from GitHub
-      debugPrint('UpdateService: Requesting $_latestReleaseUrl');
+      logService.i(LogConfig.moduleUpdate, '请求 $_latestReleaseUrl');
       final response = await _httpClient.get(
         Uri.parse(_latestReleaseUrl),
         headers: {
@@ -136,8 +139,7 @@ class UpdateService {
         },
       );
 
-      debugPrint('UpdateService: Response status ${response.statusCode}');
-      debugPrint('UpdateService: Response body: ${response.body}');
+      logService.i(LogConfig.moduleUpdate, '响应状态 ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final json = _parseJson(response.body);
@@ -150,16 +152,20 @@ class UpdateService {
         }
 
         final latestVersion = AppVersion.fromGitHubRelease(json);
-        debugPrint('UpdateService: Latest version: ${latestVersion.version}, Current: $currentVersion');
+        logService.i(LogConfig.moduleUpdate, '最新版本: ${latestVersion.version}，当前版本: $currentVersion');
 
         // Check if update is available
         if (latestVersion.isNewerThan(currentVersion)) {
+          logService.i(LogConfig.moduleUpdate, '发现新版本: ${latestVersion.version}');
+          logService.i(LogConfig.moduleUpdate, '========== 检查更新完成 (有更新) ==========');
           return UpdateCheckResponse(
             result: UpdateCheckResult.available,
             latestVersion: latestVersion,
             currentVersion: currentVersion,
           );
         } else {
+          logService.i(LogConfig.moduleUpdate, '已是最新版本');
+          logService.i(LogConfig.moduleUpdate, '========== 检查更新完成 (无更新) ==========');
           return UpdateCheckResponse(
             result: UpdateCheckResult.notAvailable,
             latestVersion: latestVersion,
@@ -168,7 +174,7 @@ class UpdateService {
         }
       } else if (response.statusCode == 403) {
         // Rate limited by GitHub API
-        debugPrint('UpdateService: Rate limited by GitHub API');
+        logService.w(LogConfig.moduleUpdate, 'GitHub API 请求限流');
         return UpdateCheckResponse(
           result: UpdateCheckResult.error,
           errorMessage: 'RATE_LIMITED',
@@ -187,8 +193,8 @@ class UpdateService {
           currentVersion: currentVersion,
         );
       }
-    } catch (e) {
-      debugPrint('UpdateService: Error checking for updates: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleUpdate, '检查更新失败', e, stackTrace);
       return UpdateCheckResponse(
         result: UpdateCheckResult.error,
         errorMessage: e.toString(),
@@ -210,8 +216,8 @@ class UpdateService {
       if (await file.exists()) {
         return await file.length();
       }
-    } catch (e) {
-      debugPrint('Error checking existing download: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleUpdate, '检查已下载文件失败', e, stackTrace);
     }
     return 0;
   }
@@ -223,10 +229,10 @@ class UpdateService {
       final file = File(filePath);
       if (await file.exists()) {
         await file.delete();
-        debugPrint('Cleared partial download: $filePath');
+        logService.i(LogConfig.moduleUpdate, '已清除部分下载: $filePath');
       }
-    } catch (e) {
-      debugPrint('Error clearing partial download: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleUpdate, '清除部分下载失败', e, stackTrace);
     }
   }
 
@@ -239,6 +245,10 @@ class UpdateService {
     bool forceRestart = false,
   }) async {
     try {
+      logService.i(LogConfig.moduleUpdate, '========== 开始下载 APK ==========');
+      logService.diag(LogConfig.moduleUpdate, 'URL', url);
+      logService.diag(LogConfig.moduleUpdate, 'Force restart', forceRestart);
+
       final filePath = await getApkFilePath();
       final file = File(filePath);
 
@@ -250,7 +260,7 @@ class UpdateService {
         existingSize = await file.length();
         if (existingSize > 0) {
           wasResumed = true;
-          debugPrint('Resuming download from byte $existingSize');
+          logService.i(LogConfig.moduleUpdate, '从 $existingSize 字节处继续下载');
         }
       } else if (forceRestart && await file.exists()) {
         await file.delete();
@@ -267,7 +277,7 @@ class UpdateService {
       // Check response status
       // 200 = full download, 206 = partial download (resume)
       if (response.statusCode != 200 && response.statusCode != 206) {
-        debugPrint('Download failed: ${response.statusCode}');
+        logService.e(LogConfig.moduleUpdate, '下载失败: ${response.statusCode}');
         return DownloadResult(
           success: false,
           errorMessage: 'Server returned ${response.statusCode}',
@@ -311,23 +321,25 @@ class UpdateService {
         await sink.flush();
         await sink.close();
 
-        debugPrint('Download complete: $filePath');
+        logService.diag(LogConfig.moduleUpdate, 'Total size', '$downloadedBytes bytes');
+        logService.i(LogConfig.moduleUpdate, '========== 下载完成 ==========');
+        logService.i(LogConfig.moduleUpdate, '下载完成: $filePath');
         return DownloadResult(
           filePath: filePath,
           success: true,
           wasResumed: wasResumed,
         );
-      } catch (e) {
+      } catch (e, stackTrace) {
         await sink.close();
-        debugPrint('Download error: $e');
+        logService.e(LogConfig.moduleUpdate, '下载错误', e, stackTrace);
         // Keep partial file for resume
         return DownloadResult(
           success: false,
           errorMessage: e.toString(),
         );
       }
-    } catch (e) {
-      debugPrint('Download error: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleUpdate, '下载错误', e, stackTrace);
       return DownloadResult(
         success: false,
         errorMessage: e.toString(),
@@ -354,18 +366,22 @@ class UpdateService {
   /// Returns true if installation was initiated successfully
   Future<bool> installApk(String filePath) async {
     try {
+      logService.i(LogConfig.moduleUpdate, '========== 开始安装 APK ==========');
+      logService.diag(LogConfig.moduleUpdate, 'APK path', filePath);
+
       final file = File(filePath);
       if (!await file.exists()) {
-        debugPrint('APK file not found: $filePath');
+        logService.w(LogConfig.moduleUpdate, 'APK 文件不存在: $filePath');
         return false;
       }
 
       final result = await OpenFile.open(filePath);
-      debugPrint('OpenFile result: ${result.type} - ${result.message}');
+      logService.i(LogConfig.moduleUpdate, 'OpenFile 结果: ${result.type} - ${result.message}');
 
+      logService.i(LogConfig.moduleUpdate, '========== 安装请求已发送 ==========');
       return result.type == ResultType.done;
-    } catch (e) {
-      debugPrint('Install error: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleUpdate, '安装错误', e, stackTrace);
       return false;
     }
   }
@@ -378,10 +394,10 @@ class UpdateService {
       final file = File(filePath);
       if (await file.exists()) {
         await file.delete();
-        debugPrint('Deleted APK: $filePath');
+        logService.i(LogConfig.moduleUpdate, '已删除 APK: $filePath');
       }
-    } catch (e) {
-      debugPrint('Error deleting APK: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleUpdate, '删除 APK 失败', e, stackTrace);
     }
   }
 
@@ -389,8 +405,8 @@ class UpdateService {
   Map<String, dynamic>? _parseJson(String body) {
     try {
       return json.decode(body) as Map<String, dynamic>?;
-    } catch (e) {
-      debugPrint('JSON parse error: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleUpdate, 'JSON 解析错误', e, stackTrace);
       return null;
     }
   }

@@ -20,7 +20,6 @@ import java.io.OutputStream
  * - Android 9及以下: 使用传统文件操作，需要 WRITE_EXTERNAL_STORAGE 权限
  */
 object DownloadHelper {
-    private const val TAG = "DownloadHelper"
     private const val BASE_DIR = "ReceiptTamer"
 
     // 保存最后一次成功保存的文件 Uri，用于打开文件管理器
@@ -51,7 +50,7 @@ object DownloadHelper {
                 saveWithTraditionalMethod(context, fileName, bytes, subDir)
             }
         } catch (e: Exception) {
-            android.util.Log.e(TAG, "保存文件失败: ${e.message}", e)
+            LogHelper.e("FILE", "保存文件失败: ${e.message}", e)
             mapOf(
                 "success" to false,
                 "error" to e.message
@@ -92,7 +91,7 @@ object DownloadHelper {
                 saveWithTraditionalMethod(context, fileName, bytes, subDir)
             }
         } catch (e: Exception) {
-            android.util.Log.e(TAG, "复制文件失败: ${e.message}", e)
+            LogHelper.e("FILE", "复制文件失败: ${e.message}", e)
             mapOf(
                 "success" to false,
                 "error" to e.message
@@ -127,13 +126,13 @@ object DownloadHelper {
      */
     fun openFileManager(context: Context, subDir: String = ""): Boolean {
         val targetPath = getDownloadDirectoryPath(subDir)
-        android.util.Log.i(TAG, "目标目录: $targetPath")
+        LogHelper.i("FILE", "目标目录: $targetPath")
 
         return try {
             // 方式1: 尝试打开厂商文件管理器（部分厂商支持路径参数）
             val fmSuccess = tryOpenFileManagerWithPath(context, targetPath)
             if (fmSuccess) {
-                android.util.Log.i(TAG, "使用厂商文件管理器打开成功")
+                LogHelper.i("FILE", "使用厂商文件管理器打开成功")
                 return true
             }
 
@@ -145,14 +144,14 @@ object DownloadHelper {
 
             if (downloadsIntent.resolveActivity(context.packageManager) != null) {
                 context.startActivity(downloadsIntent)
-                android.util.Log.i(TAG, "打开 Downloads 应用成功")
+                LogHelper.i("FILE", "打开 Downloads 应用成功")
                 return true
             }
 
-            android.util.Log.w(TAG, "无法打开文件管理器")
+            LogHelper.w("FILE", "无法打开文件管理器")
             false
         } catch (e: Exception) {
-            android.util.Log.e(TAG, "打开文件管理器失败: ${e.message}", e)
+            LogHelper.e("FILE", "打开文件管理器失败: ${e.message}", e)
             false
         }
     }
@@ -179,11 +178,11 @@ object DownloadHelper {
                     intent.putExtra(fm.second, targetPath)
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     context.startActivity(intent)
-                    android.util.Log.i(TAG, "启动 ${fm.first} 成功，路径: $targetPath")
+                    LogHelper.i("FILE", "启动 ${fm.first} 成功，路径: $targetPath")
                     return true
                 }
             } catch (e: Exception) {
-                android.util.Log.d(TAG, "${fm.first} 不可用")
+                LogHelper.d("FILE", "${fm.first} 不可用")
             }
         }
         return false
@@ -248,7 +247,7 @@ object DownloadHelper {
             resolver.update(uri, contentValues, null, null)
 
             val savedPath = getDownloadDirectoryPath(subDir) + "/" + fileName
-            android.util.Log.i(TAG, "文件保存成功: $savedPath")
+            LogHelper.i("FILE", "文件保存成功: $savedPath")
 
             // 保存 Uri 用于后续打开文件管理器
             lastSavedFileUri = uri
@@ -259,7 +258,7 @@ object DownloadHelper {
                 "path" to savedPath
             )
         } catch (e: Exception) {
-            android.util.Log.e(TAG, "写入文件失败: ${e.message}", e)
+            LogHelper.e("FILE", "写入文件失败: ${e.message}", e)
             // 删除失败的文件记录
             resolver.delete(uri, null, null)
             return mapOf(
@@ -317,7 +316,7 @@ object DownloadHelper {
         // 写入文件
         try {
             targetFile.writeBytes(bytes)
-            android.util.Log.i(TAG, "文件保存成功: ${targetFile.absolutePath}")
+            LogHelper.i("FILE", "文件保存成功: ${targetFile.absolutePath}")
 
             // 保存路径用于后续打开文件管理器
             lastSavedFilePath = targetFile.absolutePath
@@ -327,7 +326,7 @@ object DownloadHelper {
                 "path" to targetFile.absolutePath
             )
         } catch (e: Exception) {
-            android.util.Log.e(TAG, "写入文件失败: ${e.message}", e)
+            LogHelper.e("FILE", "写入文件失败: ${e.message}", e)
             return mapOf(
                 "success" to false,
                 "error" to e.message
@@ -370,7 +369,7 @@ object DownloadHelper {
                 listFilesWithTraditionalMethod(subDir)
             }
         } catch (e: Exception) {
-            android.util.Log.e(TAG, "列出文件失败: ${e.message}", e)
+            LogHelper.e("FILE", "列出文件失败: ${e.message}", e)
             emptyList()
         }
     }
@@ -436,7 +435,7 @@ object DownloadHelper {
             }
         }
 
-        android.util.Log.i(TAG, "查询到 ${files.size} 个文件")
+        LogHelper.i("FILE", "查询到 ${files.size} 个文件")
         return files
     }
 
@@ -497,7 +496,7 @@ object DownloadHelper {
                 listSubDirsTraditional(basePath)
             }
         } catch (e: Exception) {
-            android.util.Log.e(TAG, "列出子目录失败: ${e.message}", e)
+            LogHelper.e("FILE", "列出子目录失败: ${e.message}", e)
             emptyList()
         }
     }
@@ -608,14 +607,14 @@ object DownloadHelper {
 
             if (chooser.resolveActivity(context.packageManager) != null) {
                 context.startActivity(chooser)
-                android.util.Log.i(TAG, "分享文件成功: $fileUri")
+                LogHelper.i("FILE", "分享文件成功: $fileUri")
                 true
             } else {
-                android.util.Log.w(TAG, "无法分享文件")
+                LogHelper.w("FILE", "无法分享文件")
                 false
             }
         } catch (e: Exception) {
-            android.util.Log.e(TAG, "分享文件失败: ${e.message}", e)
+            LogHelper.e("FILE", "分享文件失败: ${e.message}", e)
             false
         }
     }

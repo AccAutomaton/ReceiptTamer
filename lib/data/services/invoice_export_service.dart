@@ -7,6 +7,9 @@ import 'package:receipt_tamer/data/models/order.dart';
 import 'package:image/image.dart' as img;
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 
+import '../../core/services/log_service.dart';
+import '../../core/services/log_config.dart';
+
 /// Invoice export item for PDF generation
 /// Represents a single invoice with its associated orders
 class InvoiceExportItem {
@@ -301,9 +304,9 @@ class InvoiceExportService {
           margin: labelMargin,
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       // Ignore errors for individual invoices
-      debugPrint('Error drawing invoice: $e');
+      logService.e(LogConfig.moduleFile, '绘制发票失败', e, stackTrace);
     }
   }
 
@@ -454,8 +457,8 @@ class InvoiceExportService {
       }
 
       sourceDoc.dispose();
-    } catch (e) {
-      debugPrint('Error processing PDF invoice: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleFile, '处理 PDF 发票失败', e, stackTrace);
     }
   }
 

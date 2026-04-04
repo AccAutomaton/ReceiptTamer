@@ -17,9 +17,12 @@ import '../presentation/screens/settings/settings_screen.dart';
 import '../presentation/screens/share/share_target_screen.dart';
 import '../presentation/widgets/main_shell.dart';
 import '../data/services/share_handler_service.dart';
+import '../core/services/log_service.dart';
+import '../core/services/log_config.dart';
 
 /// Provider for the app router
 final routerProvider = Provider<GoRouter>((ref) {
+  logService.d(LogConfig.moduleApp, 'Router 初始化');
   return GoRouter(
     debugLogDiagnostics: true,
     initialLocation: '/',
@@ -224,9 +227,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
     ],
-    errorBuilder: (context, state) => _ErrorScreen(
-      message: state.error?.toString() ?? 'Page not found',
-    ),
+    errorBuilder: (context, state) {
+      logService.e(LogConfig.moduleApp, '路由错误: ${state.error?.toString() ?? "Page not found"}');
+      return _ErrorScreen(
+        message: state.error?.toString() ?? 'Page not found',
+      );
+    },
   );
 });
 

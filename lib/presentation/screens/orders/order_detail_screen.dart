@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:receipt_tamer/core/constants/app_constants.dart';
+import 'package:receipt_tamer/core/services/log_service.dart';
+import 'package:receipt_tamer/core/services/log_config.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/order.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
@@ -35,11 +37,15 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   }
 
   Future<void> _loadOrder() async {
-    final order = await ref.read(orderProvider.notifier).getOrderById(widget.orderId);
-    if (mounted) {
-      setState(() {
-        _order = order;
-      });
+    try {
+      final order = await ref.read(orderProvider.notifier).getOrderById(widget.orderId);
+      if (mounted) {
+        setState(() {
+          _order = order;
+        });
+      }
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleUi, '加载订单失败', e, stackTrace);
     }
   }
 
@@ -76,6 +82,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       final success = await ref.read(orderProvider.notifier).deleteOrder(widget.orderId);
       if (mounted) {
         if (success) {
+          logService.i(LogConfig.moduleUi, '订单已删除: id=${widget.orderId}');
           context.pop();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text(AppConstants.successDeleted)),

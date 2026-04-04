@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:receipt_tamer/core/constants/app_constants.dart';
+import 'package:receipt_tamer/core/services/log_service.dart';
+import 'package:receipt_tamer/core/services/log_config.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/data/models/order.dart';
@@ -37,23 +39,27 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
   }
 
   Future<void> _loadInvoice() async {
-    final invoice =
-        await ref.read(invoiceProvider.notifier).getInvoiceById(widget.invoiceId);
-    if (mounted && invoice != null) {
-      // Load related orders
-      final orderIds = await ref.read(invoiceProvider.notifier).getOrderIdsForInvoice(widget.invoiceId);
-      final orders = <Order>[];
-      for (final orderId in orderIds) {
-        final order = await ref.read(orderProvider.notifier).getOrderById(orderId);
-        if (order != null) {
-          orders.add(order);
+    try {
+      final invoice =
+          await ref.read(invoiceProvider.notifier).getInvoiceById(widget.invoiceId);
+      if (mounted && invoice != null) {
+        // Load related orders
+        final orderIds = await ref.read(invoiceProvider.notifier).getOrderIdsForInvoice(widget.invoiceId);
+        final orders = <Order>[];
+        for (final orderId in orderIds) {
+          final order = await ref.read(orderProvider.notifier).getOrderById(orderId);
+          if (order != null) {
+            orders.add(order);
+          }
         }
-      }
 
-      setState(() {
-        _invoice = invoice;
-        _relatedOrders = orders;
-      });
+        setState(() {
+          _invoice = invoice;
+          _relatedOrders = orders;
+        });
+      }
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleUi, '加载发票失败', e, stackTrace);
     }
   }
 
@@ -91,6 +97,7 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
           await ref.read(invoiceProvider.notifier).deleteInvoice(widget.invoiceId);
       if (mounted) {
         if (success) {
+          logService.i(LogConfig.moduleUi, '发票已删除: id=${widget.invoiceId}');
           context.pop();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text(AppConstants.successDeleted)),

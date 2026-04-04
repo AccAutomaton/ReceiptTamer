@@ -1,4 +1,6 @@
 import 'package:receipt_tamer/core/constants/app_constants.dart';
+import 'package:receipt_tamer/core/services/log_service.dart';
+import 'package:receipt_tamer/core/services/log_config.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
@@ -22,6 +24,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     controlFinishRefresh: true,
   );
 
+  bool _initialized = false;
+  bool _dataLoaded = false;
+
   @override
   void dispose() {
     _refreshController.dispose();
@@ -31,24 +36,56 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Load orders when screen initializes
-    Future.microtask(() {
-      ref.read(orderProvider.notifier).loadOrders();
-    });
+  }
+
+  /// 刷新所有数据
+  Future<void> _refreshData() async {
+    await Future.wait([
+      ref.refresh(orderCountProvider.future),
+      ref.refresh(invoiceCountProvider.future),
+    ]);
+    await ref.read(orderProvider.notifier).loadOrders();
+    if (mounted) {
+      setState(() {
+        _dataLoaded = true;
+      });
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 确保数据只加载一次
+    if (!_initialized) {
+      _initialized = true;
+      // 首帧后加载数据，确保 UI 已经构建完成
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _refreshData();
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
-    // 不在首屏预加载OCR，避免阻塞UI渲染
-    // OCR会在用户进入添加订单/发票页面时按需初始化
+    // 数据未加载完成时显示加载界面
+    if (!_dataLoaded) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text(AppConstants.titleHome),
+          elevation: 0,
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
 
     final orderCountAsync = ref.watch(orderCountProvider);
     final invoiceCountAsync = ref.watch(invoiceCountProvider);
-
     final orderState = ref.watch(orderProvider);
-    final colorScheme = theme.colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -58,8 +95,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       body: EasyRefresh(
         controller: _refreshController,
         onRefresh: () async {
-          await ref.read(orderProvider.notifier).loadOrders();
-          _refreshController.finishRefresh(IndicatorResult.success);
+          try {
+            await _refreshData();
+            _refreshController.finishRefresh(IndicatorResult.success);
+          } catch (e, stackTrace) {
+            _refreshController.finishRefresh(IndicatorResult.fail);
+            logService.e(LogConfig.moduleUi, '刷新数据失败', e, stackTrace);
+          }
         },
         header: ClassicHeader(
           dragText: '下拉刷新',

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../data/services/file_service.dart';
+import '../../../core/services/log_service.dart';
+import '../../../core/services/log_config.dart';
 
 /// Saved file item model
 class SavedFile {
@@ -91,8 +93,8 @@ class _SavedFilesScreenState extends State<SavedFilesScreen> {
 
       // Update display path
       _currentDisplayPath = await _fileService.getDownloadDirectoryPath(subDir: _currentPath) ?? '';
-    } catch (e) {
-      debugPrint('Error loading content: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleUi, '加载内容失败', e, stackTrace);
     }
 
     setState(() {

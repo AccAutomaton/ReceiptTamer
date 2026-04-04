@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive.dart';
@@ -10,6 +11,8 @@ import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/services/log_service.dart';
+import '../../core/services/log_config.dart';
 import '../datasources/database/database_helper.dart';
 import '../models/backup_metadata.dart';
 
@@ -129,8 +132,10 @@ class BackupService {
 
   /// Initialize the service
   Future<void> initialize() async {
+    logService.i(LogConfig.moduleBackup, '初始化备份服务...');
     final packageInfo = await PackageInfo.fromPlatform();
     _currentAppVersion = packageInfo.version;
+    logService.i(LogConfig.moduleBackup, '备份服务初始化完成, 应用版本: $_currentAppVersion');
   }
 
   /// Get current app version
@@ -171,6 +176,9 @@ class BackupService {
     void Function(double progress)? onProgress,
   }) async {
     try {
+      logService.i(LogConfig.moduleBackup, '========== 开始备份 ==========');
+      logService.diag(LogConfig.moduleBackup, 'Output path', outputPath);
+
       // Ensure initialized
       if (_currentAppVersion.isEmpty) {
         await initialize();
@@ -238,7 +246,7 @@ class BackupService {
       );
 
       final manifestJson = metadata.toJson();
-      final manifestString = _encodeJson(manifestJson);
+      final manifestString = jsonEncode(manifestJson);
 
       onProgress?.call(0.9);
 
@@ -265,13 +273,20 @@ class BackupService {
 
       onProgress?.call(1.0);
 
+      logService.diag(LogConfig.moduleBackup, 'Orders', orderCount);
+      logService.diag(LogConfig.moduleBackup, 'Invoices', invoiceCount);
+      logService.diag(LogConfig.moduleBackup, 'Images', imageCount);
+      logService.diag(LogConfig.moduleBackup, 'PDFs', pdfCount);
+      logService.i(LogConfig.moduleBackup, '========== 备份完成 ==========');
+      logService.i(LogConfig.moduleBackup, '备份文件已保存: $outputPath');
+
       return BackupResult(
         success: true,
         filePath: outputPath,
         metadata: metadata,
       );
-    } catch (e) {
-      debugPrint('Backup failed: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleBackup, '备份失败', e, stackTrace);
       return BackupResult(
         success: false,
         errorMessage: '备份失败: $e',
@@ -317,7 +332,9 @@ class BackupService {
 
       // Parse metadata
       final manifestContent = String.fromCharCodes(manifestFile.content as List<int>);
-      final metadata = BackupMetadata.fromJson(_decodeJson(manifestContent));
+      final metadata = BackupMetadata.fromJson(
+        jsonDecode(manifestContent) as Map<String, dynamic>,
+      );
 
       // Check version compatibility
       bool needsVersionWarning = false;
@@ -345,8 +362,8 @@ class BackupService {
         isDatabaseVersionHigher: isDatabaseVersionHigher,
         canRestore: canRestore,
       );
-    } catch (e) {
-      debugPrint('Validate backup failed: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleBackup, '验证备份失败', e, stackTrace);
       return BackupValidationResult(
         isValid: false,
         errorMessage: '验证备份文件失败: $e',
@@ -364,9 +381,14 @@ class BackupService {
     void Function(double progress)? onProgress,
   }) async {
     try {
+      logService.i(LogConfig.moduleBackup, '========== 开始还原 ==========');
+      logService.diag(LogConfig.moduleBackup, 'Backup path', zipPath);
+      logService.diag(LogConfig.moduleBackup, 'Mode', mode == RestoreMode.overwrite ? '覆盖' : '增量');
+
       // Validate first
       final validation = await validateBackup(zipPath);
       if (!validation.isValid || !validation.canRestore) {
+        logService.w(LogConfig.moduleBackup, '备份验证失败: ${validation.errorMessage}');
         return BackupResult(
           success: false,
           errorMessage: validation.errorMessage ?? '备份文件无效或无法还原',
@@ -383,8 +405,8 @@ class BackupService {
       } else {
         return await _restoreIncremental(archive, onProgress);
       }
-    } catch (e) {
-      debugPrint('Restore failed: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleBackup, '还原失败', e, stackTrace);
       return BackupResult(
         success: false,
         errorMessage: '还原失败: $e',
@@ -472,13 +494,14 @@ class BackupService {
 
       onProgress?.call(1.0);
 
+      logService.i(LogConfig.moduleBackup, '========== 覆盖还原完成 ==========');
       return BackupResult(
         success: true,
         filePath: null,
         metadata: null,
       );
-    } catch (e) {
-      debugPrint('Overwrite restore failed: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleBackup, '覆盖还原失败', e, stackTrace);
       return BackupResult(
         success: false,
         errorMessage: '覆盖还原失败: $e',
@@ -570,13 +593,14 @@ class BackupService {
 
       onProgress?.call(1.0);
 
+      logService.i(LogConfig.moduleBackup, '========== 增量还原完成 ==========');
       return BackupResult(
         success: true,
         filePath: null,
         metadata: null,
       );
-    } catch (e) {
-      debugPrint('Incremental restore failed: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleBackup, '增量还原失败', e, stackTrace);
       return BackupResult(
         success: false,
         errorMessage: '增量还原失败: $e',
@@ -671,130 +695,5 @@ class BackupService {
         );
       }
     }
-  }
-
-  /// Helper method to encode JSON
-  String _encodeJson(Map<String, dynamic> json) {
-    final buffer = StringBuffer();
-    buffer.write('{');
-    bool first = true;
-    json.forEach((key, value) {
-      if (!first) buffer.write(',');
-      first = false;
-      buffer.write('"$key":');
-      if (value is String) {
-        buffer.write('"${_escapeString(value)}"');
-      } else if (value is num || value is bool) {
-        buffer.write(value);
-      } else if (value == null) {
-        buffer.write('null');
-      }
-    });
-    buffer.write('}');
-    return buffer.toString();
-  }
-
-  /// Helper method to decode JSON
-  Map<String, dynamic> _decodeJson(String jsonString) {
-    // Simple JSON decoder for manifest.json
-    final result = <String, dynamic>{};
-    final content = jsonString.trim();
-
-    if (!content.startsWith('{') || !content.endsWith('}')) {
-      throw FormatException('Invalid JSON format');
-    }
-
-    final inner = content.substring(1, content.length - 1);
-    final pairs = _splitJsonPairs(inner);
-
-    for (final pair in pairs) {
-      final colonIndex = pair.indexOf(':');
-      if (colonIndex == -1) continue;
-
-      final key = pair.substring(0, colonIndex).trim();
-      final value = pair.substring(colonIndex + 1).trim();
-
-      if (key.startsWith('"') && key.endsWith('"')) {
-        final keyName = key.substring(1, key.length - 1);
-
-        if (value.startsWith('"') && value.endsWith('"')) {
-          result[keyName] = value.substring(1, value.length - 1);
-        } else if (value == 'true') {
-          result[keyName] = true;
-        } else if (value == 'false') {
-          result[keyName] = false;
-        } else if (value == 'null') {
-          result[keyName] = null;
-        } else {
-          result[keyName] = num.tryParse(value) ?? value;
-        }
-      }
-    }
-
-    return result;
-  }
-
-  /// Split JSON pairs
-  List<String> _splitJsonPairs(String content) {
-    final pairs = <String>[];
-    var current = StringBuffer();
-    var inString = false;
-    var escape = false;
-    var depth = 0;
-
-    for (var i = 0; i < content.length; i++) {
-      final char = content[i];
-
-      if (escape) {
-        current.write(char);
-        escape = false;
-        continue;
-      }
-
-      if (char == '\\') {
-        current.write(char);
-        escape = true;
-        continue;
-      }
-
-      if (char == '"') {
-        inString = !inString;
-        current.write(char);
-        continue;
-      }
-
-      if (!inString) {
-        if (char == '{' || char == '[') {
-          depth++;
-          current.write(char);
-        } else if (char == '}' || char == ']') {
-          depth--;
-          current.write(char);
-        } else if (char == ',' && depth == 0) {
-          pairs.add(current.toString().trim());
-          current = StringBuffer();
-        } else {
-          current.write(char);
-        }
-      } else {
-        current.write(char);
-      }
-    }
-
-    if (current.toString().trim().isNotEmpty) {
-      pairs.add(current.toString().trim());
-    }
-
-    return pairs;
-  }
-
-  /// Escape string for JSON
-  String _escapeString(String s) {
-    return s
-        .replaceAll('\\', '\\\\')
-        .replaceAll('"', '\\"')
-        .replaceAll('\n', '\\n')
-        .replaceAll('\r', '\\r')
-        .replaceAll('\t', '\\t');
   }
 }

@@ -1,7 +1,9 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
+
+import '../../core/services/log_service.dart';
+import '../../core/services/log_config.dart';
 
 /// PDF service for extracting text from PDF files
 class PdfService {
@@ -11,7 +13,7 @@ class PdfService {
     try {
       final file = File(pdfPath);
       if (!await file.exists()) {
-        debugPrint('PDF file not found: $pdfPath');
+        logService.w(LogConfig.moduleFile, 'PDF 文件不存在: $pdfPath');
         return '';
       }
 
@@ -23,10 +25,10 @@ class PdfService {
 
       document.dispose();
 
-      debugPrint('Extracted ${text.length} characters from PDF');
+      logService.i(LogConfig.moduleFile, '从 PDF 提取了 ${text.length} 个字符');
       return text;
-    } catch (e) {
-      debugPrint('Error extracting text from PDF: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleFile, '从 PDF 提取文本失败', e, stackTrace);
       return '';
     }
   }
@@ -39,8 +41,8 @@ class PdfService {
       // Clean up whitespace and check length
       final cleanText = text.replaceAll(RegExp(r'\s+'), ' ').trim();
       return cleanText.length >= minTextLength;
-    } catch (e) {
-      debugPrint('Error checking PDF type: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleFile, '检查 PDF 类型失败', e, stackTrace);
       return false;
     }
   }
@@ -59,8 +61,8 @@ class PdfService {
       document.dispose();
 
       return count;
-    } catch (e) {
-      debugPrint('Error getting PDF page count: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleFile, '获取 PDF 页数失败', e, stackTrace);
       return 0;
     }
   }

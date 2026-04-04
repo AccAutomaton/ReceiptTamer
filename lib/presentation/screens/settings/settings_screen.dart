@@ -1,10 +1,13 @@
 import 'package:receipt_tamer/core/constants/app_constants.dart';
+import 'package:receipt_tamer/core/services/log_service.dart';
+import 'package:receipt_tamer/core/services/log_config.dart';
 import 'package:receipt_tamer/data/models/app_version.dart';
 import 'package:receipt_tamer/data/services/file_service.dart';
 import 'package:receipt_tamer/data/services/llm_service.dart';
 import 'package:receipt_tamer/data/services/update_preferences.dart';
 import 'package:receipt_tamer/data/services/update_service.dart';
 import 'package:receipt_tamer/presentation/providers/ocr_provider.dart';
+import 'package:receipt_tamer/presentation/screens/export/saved_files_screen.dart';
 import 'package:receipt_tamer/presentation/screens/settings/info_screen.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/receipt_icon.dart';
@@ -39,6 +42,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   /// Path of the downloaded APK file (for cleanup after install)
   String? _downloadedApkPath;
 
+  /// Logo tap tracking for log export
+  int _logoTapCount = 0;
+  DateTime? _lastLogoTapTime;
+  bool _isExportingLogs = false;
+
   @override
   void initState() {
     super.initState();
@@ -68,6 +76,63 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     if (_downloadedApkPath != null) {
       await _updateService.deleteApk(_downloadedApkPath);
       _downloadedApkPath = null;
+    }
+  }
+
+  /// Handle logo tap for log export (tap 10 times within 500ms each)
+  void _handleLogoTap() {
+    final now = DateTime.now();
+
+    // Reset if too long since last tap
+    if (_lastLogoTapTime != null &&
+        now.difference(_lastLogoTapTime!).inMilliseconds > LogConfig.tapTimeoutMs) {
+      _logoTapCount = 0;
+    }
+
+    _lastLogoTapTime = now;
+    _logoTapCount++;
+
+    if (_logoTapCount >= LogConfig.tapCountToTrigger) {
+      _logoTapCount = 0;
+      _exportLogs();
+    }
+  }
+
+  /// Export logs to Download directory
+  Future<void> _exportLogs() async {
+    if (_isExportingLogs) return;
+
+    setState(() => _isExportingLogs = true);
+
+    try {
+      logService.i(LogConfig.moduleUi, '用户触发导出日志');
+
+      final exportedPath = await logService.exportLogs();
+
+      if (!mounted) return;
+
+      if (exportedPath != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('日志已导出到: $exportedPath'),
+            action: SnackBarAction(
+              label: '查看',
+              onPressed: () {
+                // Open saved files screen in logs directory
+                showSavedFilesScreen(context, initialSubDir: LogConfig.logDirName);
+              },
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('日志导出失败')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isExportingLogs = false);
+      }
     }
   }
 
@@ -903,8 +968,11 @@ Licensed under the Apache License 2.0
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // 应用图标
-          ReceiptIcon(size: 96),
+          // 应用图标（连点10次导出日志）
+          GestureDetector(
+            onTap: _handleLogoTap,
+            child: ReceiptIcon(size: 96),
+          ),
           // 应用名称
           Text(
             AppConstants.appName,

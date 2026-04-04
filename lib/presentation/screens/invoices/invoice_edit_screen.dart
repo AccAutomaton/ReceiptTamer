@@ -8,6 +8,8 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:receipt_tamer/core/constants/app_constants.dart';
+import 'package:receipt_tamer/core/services/log_service.dart';
+import 'package:receipt_tamer/core/services/log_config.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/data/models/ocr_result.dart';
 import 'package:receipt_tamer/data/services/file_service.dart';
@@ -123,22 +125,26 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
   }
 
   Future<void> _loadInvoice() async {
-    final invoice =
-        await ref.read(invoiceProvider.notifier).getInvoiceById(widget.invoiceId!);
-    if (invoice != null && mounted) {
-      // Load order relations
-      final orderIds = await ref.read(invoiceProvider.notifier).getOrderIdsForInvoice(widget.invoiceId!);
-      setState(() {
-        _invoiceNumberController.text = invoice.invoiceNumber;
-        _amountController.text = invoice.totalAmount.toStringAsFixed(2);
-        _sellerNameController.text = invoice.sellerName;
-        _filePath = invoice.imagePath;
-        _isPdf = invoice.imagePath.toLowerCase().endsWith('.pdf');
-        _selectedOrderIds = orderIds;
-        if (invoice.invoiceDate != null && invoice.invoiceDate!.isNotEmpty) {
-          _invoiceDate = DateTime.tryParse(invoice.invoiceDate!);
-        }
-      });
+    try {
+      final invoice =
+          await ref.read(invoiceProvider.notifier).getInvoiceById(widget.invoiceId!);
+      if (invoice != null && mounted) {
+        // Load order relations
+        final orderIds = await ref.read(invoiceProvider.notifier).getOrderIdsForInvoice(widget.invoiceId!);
+        setState(() {
+          _invoiceNumberController.text = invoice.invoiceNumber;
+          _amountController.text = invoice.totalAmount.toStringAsFixed(2);
+          _sellerNameController.text = invoice.sellerName;
+          _filePath = invoice.imagePath;
+          _isPdf = invoice.imagePath.toLowerCase().endsWith('.pdf');
+          _selectedOrderIds = orderIds;
+          if (invoice.invoiceDate != null && invoice.invoiceDate!.isNotEmpty) {
+            _invoiceDate = DateTime.tryParse(invoice.invoiceDate!);
+          }
+        });
+      }
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleUi, '加载发票失败', e, stackTrace);
     }
   }
 
@@ -206,6 +212,8 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
       return;
     }
 
+    logService.i(LogConfig.moduleUi, '开始OCR识别');
+
     // Show progress dialog (handles both image and PDF)
     if (mounted) {
       showDialog(
@@ -232,6 +240,7 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
                   _sellerNameController.text = ocrResult.sellerName!;
                 }
               });
+              logService.i(LogConfig.moduleUi, 'OCR识别成功');
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('OCR识别成功')),
               );
@@ -362,6 +371,7 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
 
       if (mounted) {
         if (success) {
+          logService.i(LogConfig.moduleUi, '发票保存成功: id=${widget.invoiceId ?? invoice.id}');
           // Clean up temp file after successful save
           if (_filePath != null) {
             _fileService.deleteTempFile(_filePath!);

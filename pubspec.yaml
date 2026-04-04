@@ -66,6 +66,9 @@ dependencies:
   # Archive (zip compression)
   archive: ^3.6.1
 
+  # Logging
+  logger: ^2.5.0
+
   # URL Launcher
   url_launcher: ^6.3.0
 

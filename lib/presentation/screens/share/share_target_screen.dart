@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
+import 'package:receipt_tamer/core/services/log_service.dart';
+import 'package:receipt_tamer/core/services/log_config.dart';
 import 'package:receipt_tamer/data/services/share_handler_service.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 
@@ -135,6 +137,7 @@ class ShareTargetScreen extends ConsumerWidget {
   }
 
   void _navigateToOrderEdit(BuildContext context, List<SharedMediaItem> items) {
+    logService.i(LogConfig.moduleUi, '导航到订单编辑页面: ${items.length} 个图片');
     // Navigate to order edit with the first image
     // Pass remaining items as pending
     final firstItem = items.first;
@@ -152,6 +155,7 @@ class ShareTargetScreen extends ConsumerWidget {
   }
 
   void _navigateToInvoiceEdit(BuildContext context, List<SharedMediaItem> items) {
+    logService.i(LogConfig.moduleUi, '导航到发票编辑页面: ${items.length} 个文件');
     // Navigate to invoice edit with the first file
     // Pass remaining items as pending
     final firstItem = items.first;

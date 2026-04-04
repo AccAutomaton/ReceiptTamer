@@ -1,4 +1,6 @@
 import 'package:receipt_tamer/core/constants/app_constants.dart';
+import 'package:receipt_tamer/core/services/log_service.dart';
+import 'package:receipt_tamer/core/services/log_config.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
@@ -472,11 +474,12 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
 
       // Update selected orders
       _updateSelectedOrders();
-    } catch (e) {
+    } catch (e, stackTrace) {
       setState(() {
         _isLoadingInvoices = false;
       });
       if (mounted) {
+        logService.e(LogConfig.moduleUi, '加载发票失败', e, stackTrace);
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('加载发票失败: $e')));

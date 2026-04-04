@@ -5,6 +5,8 @@ import 'package:receipt_tamer/data/services/file_service.dart';
 import 'package:receipt_tamer/data/services/invoice_export_service.dart';
 import 'package:receipt_tamer/data/services/meal_details_export_service.dart';
 import 'package:receipt_tamer/data/services/meal_proof_export_service.dart';
+import 'package:receipt_tamer/core/services/log_service.dart';
+import 'package:receipt_tamer/core/services/log_config.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/screens/export/saved_files_screen.dart';
@@ -363,6 +365,8 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
       _isExporting = true;
     });
 
+    logService.i(LogConfig.moduleUi, '开始导出报销材料');
+
     final fileService = FileService();
 
     try {
@@ -543,6 +547,7 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
 
       if (mounted) {
         if (successCount > 0) {
+          logService.i(LogConfig.moduleUi, '报销材料导出成功');
           // Navigate to saved files screen to show exported files
           Navigator.pop(context);
           await showSavedFilesScreen(context, initialSubDir: subDir);
@@ -556,8 +561,9 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
           );
         }
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (mounted) {
+        logService.e(LogConfig.moduleUi, '导出失败', e, stackTrace);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('导出失败: $e')),
         );

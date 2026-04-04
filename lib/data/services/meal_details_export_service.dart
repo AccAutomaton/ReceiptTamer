@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:receipt_tamer/core/services/log_config.dart';
+import 'package:receipt_tamer/core/services/log_service.dart';
 import 'package:receipt_tamer/data/models/daily_meal_details.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/data/models/order.dart';
@@ -121,6 +123,8 @@ class MealDetailsExportService {
       throw ArgumentError('Items list cannot be empty');
     }
 
+    logService.i(LogConfig.moduleFile, '开始生成用餐明细Excel，共 ${items.length} 项');
+
     // Filter out empty days if requested
     final displayItems = skipEmptyDays
         ? items.where((item) => item.hasAnyMeal).toList()
@@ -130,80 +134,88 @@ class MealDetailsExportService {
       throw ArgumentError('No items to export after filtering');
     }
 
-    // Create Excel document
-    final excel = Excel.createExcel();
-    final sheetName = '用餐明细';
+    try {
+      // Create Excel document
+      final excel = Excel.createExcel();
+      final sheetName = '用餐明细';
 
-    // Access the new sheet first (this creates it), then delete Sheet1
-    final sheet = excel[sheetName];
-    excel.delete('Sheet1');
+      // Access the new sheet first (this creates it), then delete Sheet1
+      final sheet = excel[sheetName];
+      excel.delete('Sheet1');
 
-    // Set column widths
-    sheet.setColumnWidth(0, 18);  // 日期
-    sheet.setColumnWidth(1, 12);  // 早餐实付
-    sheet.setColumnWidth(2, 12);  // 早餐发票
-    sheet.setColumnWidth(3, 12);  // 午餐实付
-    sheet.setColumnWidth(4, 12);  // 午餐发票
-    sheet.setColumnWidth(5, 12);  // 晚餐实付
-    sheet.setColumnWidth(6, 12);  // 晚餐发票
-    sheet.setColumnWidth(7, 12);  // 实付总额
-    sheet.setColumnWidth(8, 12);  // 发票总额
+      // Set column widths
+      sheet.setColumnWidth(0, 18);  // 日期
+      sheet.setColumnWidth(1, 12);  // 早餐实付
+      sheet.setColumnWidth(2, 12);  // 早餐发票
+      sheet.setColumnWidth(3, 12);  // 午餐实付
+      sheet.setColumnWidth(4, 12);  // 午餐发票
+      sheet.setColumnWidth(5, 12);  // 晚餐实付
+      sheet.setColumnWidth(6, 12);  // 晚餐发票
+      sheet.setColumnWidth(7, 12);  // 实付总额
+      sheet.setColumnWidth(8, 12);  // 发票总额
 
-    // Create header row
-    _setHeaderValue(sheet, 0, 0, '日期');
-    _setHeaderValue(sheet, 0, 1, '早餐实付');
-    _setHeaderValue(sheet, 0, 2, '早餐发票');
-    _setHeaderValue(sheet, 0, 3, '午餐实付');
-    _setHeaderValue(sheet, 0, 4, '午餐发票');
-    _setHeaderValue(sheet, 0, 5, '晚餐实付');
-    _setHeaderValue(sheet, 0, 6, '晚餐发票');
-    _setHeaderValue(sheet, 0, 7, '实付总额');
-    _setHeaderValue(sheet, 0, 8, '发票总额');
+      // Create header row
+      _setHeaderValue(sheet, 0, 0, '日期');
+      _setHeaderValue(sheet, 0, 1, '早餐实付');
+      _setHeaderValue(sheet, 0, 2, '早餐发票');
+      _setHeaderValue(sheet, 0, 3, '午餐实付');
+      _setHeaderValue(sheet, 0, 4, '午餐发票');
+      _setHeaderValue(sheet, 0, 5, '晚餐实付');
+      _setHeaderValue(sheet, 0, 6, '晚餐发票');
+      _setHeaderValue(sheet, 0, 7, '实付总额');
+      _setHeaderValue(sheet, 0, 8, '发票总额');
 
-    // Add data rows
-    for (var i = 0; i < displayItems.length; i++) {
-      final item = displayItems[i];
-      final rowIndex = i + 1;
+      // Add data rows
+      for (var i = 0; i < displayItems.length; i++) {
+        final item = displayItems[i];
+        final rowIndex = i + 1;
 
-      _setCellValue(sheet, rowIndex, 0, item.dateDisplay);
-      _setAmountValue(sheet, rowIndex, 1, item.breakfastPaid);
-      _setAmountValue(sheet, rowIndex, 2, item.breakfastInvoice);
-      _setAmountValue(sheet, rowIndex, 3, item.lunchPaid);
-      _setAmountValue(sheet, rowIndex, 4, item.lunchInvoice);
-      _setAmountValue(sheet, rowIndex, 5, item.dinnerPaid);
-      _setAmountValue(sheet, rowIndex, 6, item.dinnerInvoice);
-      _setAmountValue(sheet, rowIndex, 7, item.totalPaid);
-      _setAmountValue(sheet, rowIndex, 8, item.totalInvoice);
+        _setCellValue(sheet, rowIndex, 0, item.dateDisplay);
+        _setAmountValue(sheet, rowIndex, 1, item.breakfastPaid);
+        _setAmountValue(sheet, rowIndex, 2, item.breakfastInvoice);
+        _setAmountValue(sheet, rowIndex, 3, item.lunchPaid);
+        _setAmountValue(sheet, rowIndex, 4, item.lunchInvoice);
+        _setAmountValue(sheet, rowIndex, 5, item.dinnerPaid);
+        _setAmountValue(sheet, rowIndex, 6, item.dinnerInvoice);
+        _setAmountValue(sheet, rowIndex, 7, item.totalPaid);
+        _setAmountValue(sheet, rowIndex, 8, item.totalInvoice);
+      }
+
+      // Add summary row
+      final summaryRowIndex = displayItems.length + 1;
+      _setCellValue(sheet, summaryRowIndex, 0, '总计');
+      _setAmountValue(sheet, summaryRowIndex, 1,
+          displayItems.fold(0.0, (sum, item) => sum + item.breakfastPaid));
+      _setAmountValue(sheet, summaryRowIndex, 2,
+          displayItems.fold(0.0, (sum, item) => sum + item.breakfastInvoice));
+      _setAmountValue(sheet, summaryRowIndex, 3,
+          displayItems.fold(0.0, (sum, item) => sum + item.lunchPaid));
+      _setAmountValue(sheet, summaryRowIndex, 4,
+          displayItems.fold(0.0, (sum, item) => sum + item.lunchInvoice));
+      _setAmountValue(sheet, summaryRowIndex, 5,
+          displayItems.fold(0.0, (sum, item) => sum + item.dinnerPaid));
+      _setAmountValue(sheet, summaryRowIndex, 6,
+          displayItems.fold(0.0, (sum, item) => sum + item.dinnerInvoice));
+      _setAmountValue(sheet, summaryRowIndex, 7,
+          displayItems.fold(0.0, (sum, item) => sum + item.totalPaid));
+      _setAmountValue(sheet, summaryRowIndex, 8,
+          displayItems.fold(0.0, (sum, item) => sum + item.totalInvoice));
+
+      // Save file
+      final bytes = excel.encode();
+      if (bytes == null) {
+        throw Exception('Failed to encode Excel file');
+      }
+
+      final file = File(outputPath);
+      await file.writeAsBytes(bytes);
+
+      logService.diag(LogConfig.moduleFile, '文件大小', '${bytes.length} bytes');
+      logService.i(LogConfig.moduleFile, '用餐明细Excel已导出: $outputPath');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleFile, '用餐明细Excel导出失败', e, stackTrace);
+      rethrow;
     }
-
-    // Add summary row
-    final summaryRowIndex = displayItems.length + 1;
-    _setCellValue(sheet, summaryRowIndex, 0, '总计');
-    _setAmountValue(sheet, summaryRowIndex, 1,
-        displayItems.fold(0.0, (sum, item) => sum + item.breakfastPaid));
-    _setAmountValue(sheet, summaryRowIndex, 2,
-        displayItems.fold(0.0, (sum, item) => sum + item.breakfastInvoice));
-    _setAmountValue(sheet, summaryRowIndex, 3,
-        displayItems.fold(0.0, (sum, item) => sum + item.lunchPaid));
-    _setAmountValue(sheet, summaryRowIndex, 4,
-        displayItems.fold(0.0, (sum, item) => sum + item.lunchInvoice));
-    _setAmountValue(sheet, summaryRowIndex, 5,
-        displayItems.fold(0.0, (sum, item) => sum + item.dinnerPaid));
-    _setAmountValue(sheet, summaryRowIndex, 6,
-        displayItems.fold(0.0, (sum, item) => sum + item.dinnerInvoice));
-    _setAmountValue(sheet, summaryRowIndex, 7,
-        displayItems.fold(0.0, (sum, item) => sum + item.totalPaid));
-    _setAmountValue(sheet, summaryRowIndex, 8,
-        displayItems.fold(0.0, (sum, item) => sum + item.totalInvoice));
-
-    // Save file
-    final bytes = excel.encode();
-    if (bytes == null) {
-      throw Exception('Failed to encode Excel file');
-    }
-
-    final file = File(outputPath);
-    await file.writeAsBytes(bytes);
   }
 
   /// Set header cell value with bold style

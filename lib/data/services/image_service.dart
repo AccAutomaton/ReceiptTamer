@@ -6,6 +6,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 
 import '../../core/constants/app_constants.dart';
+import '../../core/services/log_config.dart';
+import '../../core/services/log_service.dart';
 
 /// Image service for handling image operations
 /// Supports saving, loading, and deleting images from device storage
@@ -59,26 +61,39 @@ class ImageService {
 
   /// Save image to app directory with a unique filename
   Future<String> saveImage(File imageFile) async {
-    final imagesDir = await _getAppDirectory();
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final extension = path.extension(imageFile.path);
-    final filename = 'img_$timestamp$extension';
-    final savedPath = path.join(imagesDir.path, filename);
+    try {
+      final imagesDir = await _getAppDirectory();
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final extension = path.extension(imageFile.path);
+      final filename = 'img_$timestamp$extension';
+      final savedPath = path.join(imagesDir.path, filename);
 
-    final savedFile = await imageFile.copy(savedPath);
-    return savedFile.path;
+      final savedFile = await imageFile.copy(savedPath);
+      logService.i(LogConfig.moduleFile, '图片已保存: ${savedFile.path}');
+      return savedFile.path;
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleFile, '图片保存失败', e, stackTrace);
+      rethrow;
+    }
   }
 
   /// Save image bytes to app directory
   Future<String> saveImageBytes(Uint8List imageBytes, String extension) async {
-    final imagesDir = await _getAppDirectory();
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final filename = 'img_$timestamp$extension';
-    final savedPath = path.join(imagesDir.path, filename);
+    try {
+      final imagesDir = await _getAppDirectory();
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final filename = 'img_$timestamp$extension';
+      final savedPath = path.join(imagesDir.path, filename);
 
-    final file = File(savedPath);
-    await file.writeAsBytes(imageBytes);
-    return savedPath;
+      final file = File(savedPath);
+      await file.writeAsBytes(imageBytes);
+      logService.diag(LogConfig.moduleFile, '图片大小', '${imageBytes.length} bytes');
+      logService.i(LogConfig.moduleFile, '图片字节已保存: $savedPath');
+      return savedPath;
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleFile, '图片字节保存失败', e, stackTrace);
+      rethrow;
+    }
   }
 
   /// Load an image from the given path
@@ -96,10 +111,12 @@ class ImageService {
       final file = File(imagePath);
       if (await file.exists()) {
         await file.delete();
+        logService.i(LogConfig.moduleFile, '图片已删除: $imagePath');
         return true;
       }
       return false;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleFile, '图片删除失败: $imagePath', e, stackTrace);
       return false;
     }
   }
@@ -189,6 +206,7 @@ class ImageService {
   /// Clear all unused images (images not referenced in database)
   /// This requires passing a set of used image paths
   Future<int> clearUnusedImages(Set<String> usedPaths) async {
+    logService.i(LogConfig.moduleFile, '开始清理未使用图片，已使用图片数: ${usedPaths.length}');
     final allImages = await getAllImages();
     int deletedCount = 0;
 
@@ -200,6 +218,7 @@ class ImageService {
       }
     }
 
+    logService.i(LogConfig.moduleFile, '未使用图片清理完成，已删除: $deletedCount 张');
     return deletedCount;
   }
 }

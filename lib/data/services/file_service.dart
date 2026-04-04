@@ -9,6 +9,8 @@ import 'package:path/path.dart' as path;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/services/log_service.dart';
+import '../../core/services/log_config.dart';
 
 /// File service for file management operations
 /// Handles directory creation, file deletion, and file info retrieval
@@ -37,11 +39,11 @@ class FileService {
       if (result != null && result['success'] == true) {
         return result['path'] as String?;
       } else {
-        debugPrint('Failed to save file: ${result?['error']}');
+        logService.e(LogConfig.moduleFile, '保存文件失败: ${result?['error']}');
         return null;
       }
-    } catch (e) {
-      debugPrint('Error saving to download directory: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleFile, '保存到下载目录失败', e, stackTrace);
       return null;
     }
   }
@@ -67,11 +69,11 @@ class FileService {
       if (result != null && result['success'] == true) {
         return result['path'] as String?;
       } else {
-        debugPrint('Failed to copy file: ${result?['error']}');
+        logService.e(LogConfig.moduleFile, '复制文件失败: ${result?['error']}');
         return null;
       }
-    } catch (e) {
-      debugPrint('Error copying to download directory: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleFile, '复制到下载目录失败', e, stackTrace);
       return null;
     }
   }
@@ -85,8 +87,8 @@ class FileService {
         {'subDir': subDir},
       );
       return path;
-    } catch (e) {
-      debugPrint('Error getting download directory path: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleFile, '获取下载目录路径失败', e, stackTrace);
       return null;
     }
   }
@@ -97,8 +99,8 @@ class FileService {
     try {
       final result = await OpenFile.open(filePath);
       return result.type == ResultType.done;
-    } catch (e) {
-      debugPrint('Error opening file: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleFile, '打开文件失败', e, stackTrace);
       return false;
     }
   }
@@ -113,8 +115,8 @@ class FileService {
         {'subDir': subDir},
       );
       return success ?? false;
-    } catch (e) {
-      debugPrint('Error opening file manager: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleFile, '打开文件管理器失败', e, stackTrace);
       return false;
     }
   }
@@ -130,8 +132,8 @@ class FileService {
       );
       if (result == null) return [];
       return result.map((item) => Map<String, dynamic>.from(item as Map)).toList();
-    } catch (e) {
-      debugPrint('Error listing files: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleFile, '列出文件失败', e, stackTrace);
       return [];
     }
   }
@@ -147,8 +149,8 @@ class FileService {
       );
       if (result == null) return [];
       return result.map((item) => Map<String, dynamic>.from(item as Map)).toList();
-    } catch (e) {
-      debugPrint('Error listing sub-directories: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleFile, '列出子目录失败', e, stackTrace);
       return [];
     }
   }
@@ -165,8 +167,8 @@ class FileService {
         {'fileUri': fileUri, 'fileName': fileName, 'mimeType': mimeType},
       );
       return success ?? false;
-    } catch (e) {
-      debugPrint('Error sharing file: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleFile, '分享文件失败', e, stackTrace);
       return false;
     }
   }
@@ -527,16 +529,16 @@ class FileService {
       // Get filesDir path directly from Android via MethodChannel
       final filesDirPath = await _channel.invokeMethod<String>('getFilesDirPath');
       if (filesDirPath == null) {
-        debugPrint('Failed to get filesDir path from Android');
+        logService.w(LogConfig.moduleFile, '从 Android 获取 filesDir 路径失败');
         return 0;
       }
 
       final modelDirPath = path.join(filesDirPath, 'qwen3.5-0.8b');
-      debugPrint('Model directory path: $modelDirPath');
+      logService.d(LogConfig.moduleFile, '模型目录路径: $modelDirPath');
 
       return await getDirectorySize(modelDirPath);
-    } catch (e) {
-      debugPrint('Error getting model size: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleFile, '获取模型大小失败', e, stackTrace);
       return 0;
     }
   }

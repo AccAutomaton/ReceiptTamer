@@ -3,6 +3,9 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
+import '../../core/services/log_service.dart';
+import '../../core/services/log_config.dart';
+
 /// Shared media item representing a single shared file
 class SharedMediaItem {
   final String path;
@@ -29,16 +32,16 @@ class ShareHandlerService {
   /// Initialize the share handler and listen for shared content
   Future<void> initialize() async {
     try {
-      debugPrint('ShareHandlerService: 开始初始化...');
+      logService.i(LogConfig.moduleShare, '开始初始化...');
 
       // Listen for shared media while app is running
       ReceiveSharingIntent.instance.getMediaStream().listen(
         (sharedFiles) {
-          debugPrint('ShareHandlerService: Received ${sharedFiles.length} files from stream');
+          logService.i(LogConfig.moduleShare, '从流中接收到 ${sharedFiles.length} 个文件');
           _processSharedMedia(sharedFiles);
         },
         onError: (error) {
-          debugPrint('Share handler stream error: $error');
+          logService.e(LogConfig.moduleShare, '分享处理流错误', error);
         },
       );
 
@@ -48,13 +51,13 @@ class ShareHandlerService {
       // Check for shared media when app is launched from share
       final initialFiles = await ReceiveSharingIntent.instance.getInitialMedia();
       if (initialFiles.isNotEmpty) {
-        debugPrint('ShareHandlerService: Found ${initialFiles.length} initial files');
+        logService.i(LogConfig.moduleShare, '发现 ${initialFiles.length} 个初始文件');
         _processSharedMedia(initialFiles);
       }
 
-      debugPrint('ShareHandlerService: 初始化完成');
-    } catch (e) {
-      debugPrint('Error initializing share handler: $e');
+      logService.i(LogConfig.moduleShare, '初始化完成');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleShare, '初始化分享处理器失败', e, stackTrace);
       rethrow;
     }
   }
@@ -74,10 +77,10 @@ class ShareHandlerService {
     }
 
     if (items.isNotEmpty) {
-      debugPrint('Processed ${items.length} shared items');
+      logService.i(LogConfig.moduleShare, '处理了 ${items.length} 个分享项');
       sharedMediaNotifier.value = items;
     } else {
-      debugPrint('No valid items found in shared media');
+      logService.w(LogConfig.moduleShare, '分享内容中没有有效项');
     }
   }
 
@@ -119,6 +122,10 @@ class ShareHandlerService {
     List<SharedMediaItem> items,
     String appDir,
   ) async {
+    logService.i(LogConfig.moduleShare, '开始复制分享文件到应用目录...');
+    logService.diag(LogConfig.moduleShare, 'Items count', items.length);
+    logService.diag(LogConfig.moduleShare, 'Target dir', appDir);
+
     final copiedPaths = <String>[];
     final timestamp = DateTime.now().millisecondsSinceEpoch;
 
@@ -131,11 +138,16 @@ class ShareHandlerService {
         final filename = 'shared_${timestamp}_$i$extension';
         final destPath = '$appDir/$filename';
 
+        logService.d(LogConfig.moduleShare, '复制文件: ${item.path} -> $destPath');
         await sourceFile.copy(destPath);
         copiedPaths.add(destPath);
+        logService.i(LogConfig.moduleShare, '文件已复制: $destPath');
+      } else {
+        logService.w(LogConfig.moduleShare, '源文件不存在: ${item.path}');
       }
     }
 
+    logService.i(LogConfig.moduleShare, '复制完成，共 ${copiedPaths.length} 个文件');
     return copiedPaths;
   }
 

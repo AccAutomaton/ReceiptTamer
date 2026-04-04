@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:receipt_tamer/core/services/log_config.dart';
+import 'package:receipt_tamer/core/services/log_service.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/data/models/meal_proof_item.dart';
@@ -87,6 +89,8 @@ class MealProofExportService {
       throw ArgumentError('Items list cannot be empty');
     }
 
+    logService.i(LogConfig.moduleFile, '开始生成用餐证明PDF，共 ${items.length} 项');
+
     final document = PdfDocument();
     document.pageSettings.size = PdfPageSize.a4;
     document.pageSettings.margins.all = 36; // Narrow margins (~1.27cm / 0.5 inch)
@@ -167,8 +171,12 @@ class MealProofExportService {
 
       final file = File(outputPath);
       await file.writeAsBytes(bytes);
-    } catch (e) {
+
+      logService.diag(LogConfig.moduleFile, '文件大小', '${bytes.length} bytes');
+      logService.i(LogConfig.moduleFile, '用餐证明PDF已导出: $outputPath');
+    } catch (e, stackTrace) {
       document.dispose();
+      logService.e(LogConfig.moduleFile, '用餐证明PDF导出失败', e, stackTrace);
       rethrow;
     }
   }

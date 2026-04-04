@@ -49,7 +49,7 @@ class MainActivity : FlutterActivity() {
                 mnnLoadLatch.await(timeoutMs, TimeUnit.MILLISECONDS)
                 mnnLibLoaded
             } catch (e: InterruptedException) {
-                android.util.Log.w("MainActivity", "等待MNN库加载被中断: ${e.message}")
+                LogHelper.w("APP", "等待MNN库加载被中断: ${e.message}")
                 false
             }
         }
@@ -64,7 +64,7 @@ class MainActivity : FlutterActivity() {
             // 检查是否为 arm64-v8a 架构
             val arch = Build.SUPPORTED_ABIS.firstOrNull() ?: "unknown"
             if (arch != "arm64-v8a") {
-                android.util.Log.w("MainActivity", "MNN 仅支持 arm64-v8a 架构，当前架构: $arch，跳过加载")
+                LogHelper.w("LLM", "MNN 仅支持 arm64-v8a 架构，当前架构: $arch，跳过加载")
                 mnnLoadLatch.countDown()
                 return false
             }
@@ -72,11 +72,11 @@ class MainActivity : FlutterActivity() {
             return try {
                 System.loadLibrary("mnn_jni")
                 mnnLibLoaded = true
-                android.util.Log.i("MainActivity", "MNN 库加载成功")
+                LogHelper.i("LLM", "MNN 库加载成功")
                 mnnLoadLatch.countDown()
                 true
             } catch (e: UnsatisfiedLinkError) {
-                android.util.Log.e("MainActivity", "MNN 库加载失败: ${e.message}")
+                LogHelper.e("LLM", "MNN 库加载失败: ${e.message}")
                 mnnLoadLatch.countDown()
                 false
             }
@@ -96,10 +96,14 @@ class MainActivity : FlutterActivity() {
 
     // Native method to disable OpenMP affinity (prevents crash on Xiaomi devices)
     private external fun setOmpAffinityDisabled()
+    // Native methods for C++ log bridge
+    private external fun initCppLogBridge()
+    private external fun shutdownCppLogBridge()
 
     private val OCR_CHANNEL = "com.acautomaton.receipt.tamer/ocr"
     private val LLM_CHANNEL = "com.acautomaton.receipt.tamer/llm"
     private val STORAGE_CHANNEL = "com.acautomaton.receipt.tamer/storage"
+    private val LOG_CHANNEL = "com.acautomaton.receipt.tamer/log"
     private var ocrEngine: OcrEngine? = null
     private var mnnEngine: MnnEngine? = null
 
@@ -127,34 +131,43 @@ class MainActivity : FlutterActivity() {
         // 保存分享Intent，以便Flutter准备好后处理
         if (intent?.action in listOf(android.content.Intent.ACTION_SEND, android.content.Intent.ACTION_SEND_MULTIPLE)) {
             pendingShareIntent = intent
-            android.util.Log.d("MainActivity", "onCreate: 保存分享Intent: ${intent?.action}")
+            LogHelper.d("APP", "onCreate: 保存分享Intent: ${intent?.action}")
         }
         super.onCreate(savedInstanceState)
-        android.util.Log.d("MainActivity", "onCreate: Activity创建")
+        LogHelper.d("APP", "onCreate: Activity创建")
     }
 
     override fun onStart() {
         super.onStart()
-        android.util.Log.d("MainActivity", "onStart: Activity启动")
+        LogHelper.d("APP", "onStart: Activity启动")
     }
 
     override fun onResume() {
         super.onResume()
-        android.util.Log.d("MainActivity", "onResume: Activity恢复")
+        LogHelper.d("APP", "onResume: Activity恢复")
     }
 
     override fun onPause() {
         super.onPause()
-        android.util.Log.d("MainActivity", "onPause: Activity暂停")
+        LogHelper.d("APP", "onPause: Activity暂停")
     }
 
     override fun onStop() {
         super.onStop()
-        android.util.Log.d("MainActivity", "onStop: Activity停止")
+        LogHelper.d("APP", "onStop: Activity停止")
     }
 
     override fun onDestroy() {
-        android.util.Log.d("MainActivity", "onDestroy: Activity销毁")
+        LogHelper.d("APP", "onDestroy: Activity销毁")
+        // 关闭C++层日志桥接
+        if (mnnLibLoaded) {
+            try {
+                shutdownCppLogBridge()
+                LogHelper.i("APP", "C++ log bridge 已关闭")
+            } catch (e: UnsatisfiedLinkError) {
+                LogHelper.w("APP", "shutdownCppLogBridge 调用失败: ${e.message}")
+            }
+        }
         super.onDestroy()
     }
 
@@ -162,7 +175,7 @@ class MainActivity : FlutterActivity() {
         // 保存分享Intent，以便Flutter准备好后处理
         if (intent.action in listOf(android.content.Intent.ACTION_SEND, android.content.Intent.ACTION_SEND_MULTIPLE)) {
             pendingShareIntent = intent
-            android.util.Log.d("MainActivity", "onNewIntent: 保存分享Intent: ${intent.action}")
+            LogHelper.d("APP", "onNewIntent: 保存分享Intent: ${intent.action}")
         }
         super.onNewIntent(intent)
         // 更新当前Activity的intent，让插件能够访问新的Intent数据
@@ -171,6 +184,21 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        // 初始化日志MethodChannel
+        val logChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, LOG_CHANNEL)
+        LogHelper.setMethodChannel(logChannel)
+        LogHelper.i("APP", "日志 MethodChannel 初始化完成")
+
+        // 初始化C++层日志桥接（将C++日志转发到Flutter）
+        if (mnnLibLoaded) {
+            try {
+                initCppLogBridge()
+                LogHelper.i("APP", "C++ log bridge 初始化完成")
+            } catch (e: UnsatisfiedLinkError) {
+                LogHelper.w("APP", "initCppLogBridge 调用失败: ${e.message}")
+            }
+        }
 
         // OCR MethodChannel
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, OCR_CHANNEL).setMethodCallHandler { call, result ->
@@ -388,17 +416,17 @@ class MainActivity : FlutterActivity() {
                     try {
                         setOmpAffinityDisabled()
                     } catch (e: UnsatisfiedLinkError) {
-                        android.util.Log.w("MainActivity", "setOmpAffinityDisabled 调用失败: ${e.message}")
+                        LogHelper.w("APP", "setOmpAffinityDisabled 调用失败: ${e.message}")
                     }
                 }
 
                 if (ocrEngine == null) {
                     ocrEngine = OcrEngine(applicationContext)
                 }
-                android.util.Log.d("MainActivity", "OCR引擎初始化成功 (RapidOcrAndroidOnnx)")
+                LogHelper.d("APP", "OCR引擎初始化成功 (RapidOcrAndroidOnnx)")
                 mainHandler.post { callback(true) }
             } catch (e: Exception) {
-                android.util.Log.e("MainActivity", "OCR初始化失败: ${e.message}")
+                LogHelper.e("APP", "OCR初始化失败: ${e.message}")
                 mainHandler.post { callback(false) }
             }
         }
@@ -417,17 +445,17 @@ class MainActivity : FlutterActivity() {
                 try {
                     setOmpAffinityDisabled()
                 } catch (e: UnsatisfiedLinkError) {
-                    android.util.Log.w("MainActivity", "setOmpAffinityDisabled 调用失败: ${e.message}")
+                    LogHelper.w("APP", "setOmpAffinityDisabled 调用失败: ${e.message}")
                 }
             }
 
             if (ocrEngine == null) {
                 ocrEngine = OcrEngine(applicationContext)
             }
-            android.util.Log.d("MainActivity", "OCR引擎初始化成功 (RapidOcrAndroidOnnx)")
+            LogHelper.d("APP", "OCR引擎初始化成功 (RapidOcrAndroidOnnx)")
             true
         } catch (e: Exception) {
-            android.util.Log.e("MainActivity", "OCR初始化失败: ${e.message}")
+            LogHelper.e("APP", "OCR初始化失败: ${e.message}")
             false
         }
     }
@@ -440,6 +468,7 @@ class MainActivity : FlutterActivity() {
             try {
                 val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
                 if (bitmap == null) {
+                    LogHelper.w("OCR", "无法解码图片")
                     mainHandler.post { callback(null, "无法解码图片") }
                     return@execute
                 }
@@ -453,12 +482,14 @@ class MainActivity : FlutterActivity() {
                 if (ocrResult != null) {
                     mainHandler.post { callback(ocrResult.strRes, null) }
                 } else {
+                    LogHelper.e("OCR", "OCR引擎未初始化")
                     mainHandler.post { callback(null, "OCR引擎未初始化") }
                 }
 
                 outputBitmap.recycle()
 
             } catch (e: Exception) {
+                LogHelper.e("OCR", "OCR识别异常", e)
                 mainHandler.post { callback(null, "OCR识别异常: ${e.message}") }
             }
         }
@@ -473,6 +504,7 @@ class MainActivity : FlutterActivity() {
             try {
                 val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
                 if (bitmap == null) {
+                    LogHelper.w("OCR", "无法解码图片")
                     mainHandler.post { callback(null, "无法解码图片") }
                     return@execute
                 }
@@ -506,15 +538,17 @@ class MainActivity : FlutterActivity() {
                         ))
                     }
 
-                    android.util.Log.d("MainActivity", "OCR识别完成，耗时: ${System.currentTimeMillis() - startTime}ms，识别到 ${textBlocks.size} 个文本块")
+                    LogHelper.d("APP", "OCR识别完成，耗时: ${System.currentTimeMillis() - startTime}ms，识别到 ${textBlocks.size} 个文本块")
                     mainHandler.post { callback(textBlocks, null) }
                 } else {
+                    LogHelper.e("OCR", "OCR引擎未初始化")
                     mainHandler.post { callback(null, "OCR引擎未初始化") }
                 }
 
                 outputBitmap.recycle()
 
             } catch (e: Exception) {
+                LogHelper.e("OCR", "OCR识别异常", e)
                 mainHandler.post { callback(null, "OCR识别异常: ${e.message}") }
             }
         }
@@ -526,6 +560,7 @@ class MainActivity : FlutterActivity() {
     private fun disposeOcr() {
         ocrEngine = null
         ocrExecutor.shutdown()
+        LogHelper.i("APP", "OCR资源释放完成")
     }
 
     // ==================== LLM 相关方法 ====================
@@ -564,7 +599,7 @@ class MainActivity : FlutterActivity() {
         for (fileName in requiredFiles) {
             val file = File(modelDir, fileName)
             if (!file.exists()) {
-                android.util.Log.w("MainActivity", "模型文件缺失: $fileName")
+                LogHelper.w("APP", "模型文件缺失: $fileName")
                 return false
             }
         }
@@ -572,7 +607,7 @@ class MainActivity : FlutterActivity() {
         // 检查权重文件大小合理（约450MB）
         val weightFile = File(modelDir, "llm.mnn.weight")
         if (weightFile.length() < 400_000_000) {
-            android.util.Log.w("MainActivity", "权重文件大小不足: ${weightFile.length()} bytes")
+            LogHelper.w("APP", "权重文件大小不足: ${weightFile.length()} bytes")
             return false
         }
 
@@ -606,7 +641,7 @@ class MainActivity : FlutterActivity() {
             llmLoadLatch.await(timeoutMs, TimeUnit.MILLISECONDS)
             mnnEngine?.isInitialized() ?: false
         } catch (e: InterruptedException) {
-            android.util.Log.e("MainActivity", "等待LLM加载被中断: ${e.message}")
+            LogHelper.e("APP", "等待LLM加载被中断: ${e.message}")
             false
         }
     }
@@ -622,7 +657,7 @@ class MainActivity : FlutterActivity() {
             val arch = getDeviceArch()
             archNotSupported = true
             llmLoadError = "仅支持 arm64-v8a 架构，当前架构: $arch"
-            android.util.Log.w("MainActivity", llmLoadError!!)
+            LogHelper.w("APP", llmLoadError!!)
             return mapOf(
                 "isLoading" to false,
                 "archNotSupported" to true,
@@ -633,7 +668,7 @@ class MainActivity : FlutterActivity() {
 
         // 已加载检查
         if (mnnEngine?.isInitialized() == true) {
-            android.util.Log.i("MainActivity", "LLM已初始化，跳过重复加载")
+            LogHelper.i("APP", "LLM已初始化，跳过重复加载")
             return mapOf(
                 "isLoading" to false,
                 "isInitialized" to true,
@@ -643,7 +678,7 @@ class MainActivity : FlutterActivity() {
 
         // 正在加载检查
         if (isLlmLoading) {
-            android.util.Log.i("MainActivity", "LLM正在加载中...")
+            LogHelper.i("APP", "LLM正在加载中...")
             return mapOf(
                 "isLoading" to true,
                 "archNotSupported" to false
@@ -660,7 +695,7 @@ class MainActivity : FlutterActivity() {
                 // 等待 MNN 库加载完成（在后台线程等待，不阻塞主线程）
                 if (!waitForMnnLibLoaded()) {
                     llmLoadError = "MNN库加载超时"
-                    android.util.Log.e("MainActivity", llmLoadError!!)
+                    LogHelper.e("APP", llmLoadError!!)
                     return@Thread
                 }
 
@@ -677,36 +712,36 @@ class MainActivity : FlutterActivity() {
 
                 // 检查模型目录是否已存在且有效
                 if (isModelDirValid(modelDir)) {
-                    android.util.Log.i("MainActivity", "模型目录已存在且有效，跳过拷贝: $destModelDir")
+                    LogHelper.i("APP", "模型目录已存在且有效，跳过拷贝: $destModelDir")
                 } else {
                     // 目录无效，删除旧文件后重新拷贝
                     if (modelDir.exists()) {
-                        android.util.Log.i("MainActivity", "模型目录不完整，删除旧文件...")
+                        LogHelper.i("APP", "模型目录不完整，删除旧文件...")
                         modelDir.deleteRecursively()
                     }
-                    android.util.Log.i("MainActivity", "模型文件不存在或不完整，正在从assets复制...")
+                    LogHelper.i("APP", "模型文件不存在或不完整，正在从assets复制...")
                     val assetBasePath = "flutter_assets/$modelPath"
-                    android.util.Log.d("MainActivity", "Asset base path: $assetBasePath")
+                    LogHelper.d("APP", "Asset基础路径: $assetBasePath")
                     if (!copyModelDirFromAssets(assetBasePath, destModelDir)) {
                         llmLoadError = "模型复制失败"
-                        android.util.Log.e("MainActivity", llmLoadError!!)
+                        LogHelper.e("APP", llmLoadError!!)
                         return@Thread
                     }
                 }
 
                 // 加载模型
-                android.util.Log.i("MainActivity", "开始在后台线程加载MNN模型...")
+                LogHelper.i("APP", "开始在后台线程加载MNN模型...")
                 val loadSuccess = mnnEngine?.loadModel(destModelDir, 4) ?: false
 
                 if (loadSuccess) {
-                    android.util.Log.i("MainActivity", "LLM引擎初始化成功 (MNN)")
+                    LogHelper.i("APP", "LLM引擎初始化成功 (MNN)")
                 } else {
                     llmLoadError = "MNN模型加载失败"
-                    android.util.Log.e("MainActivity", llmLoadError!!)
+                    LogHelper.e("APP", llmLoadError!!)
                 }
             } catch (e: Exception) {
                 llmLoadError = "LLM初始化异常: ${e.message}"
-                android.util.Log.e("MainActivity", llmLoadError!!)
+                LogHelper.e("APP", llmLoadError!!)
             } finally {
                 isLlmLoading = false
                 llmLoadLatch.countDown()
@@ -724,6 +759,7 @@ class MainActivity : FlutterActivity() {
      */
     private fun extractOrderInfo(ocrText: String, callback: (String?, String?) -> Unit) {
         if (mnnEngine == null || !mnnEngine!!.isInitialized()) {
+            LogHelper.w("LLM", "LLM引擎未初始化")
             callback(null, "LLM引擎未初始化")
             return
         }
@@ -738,6 +774,7 @@ class MainActivity : FlutterActivity() {
      */
     private fun extractInvoiceInfo(ocrText: String, callback: (String?, String?) -> Unit) {
         if (mnnEngine == null || !mnnEngine!!.isInitialized()) {
+            LogHelper.w("LLM", "LLM引擎未初始化")
             callback(null, "LLM引擎未初始化")
             return
         }
@@ -752,7 +789,7 @@ class MainActivity : FlutterActivity() {
      */
     private fun disposeLlm() {
         mnnEngine?.disposeAsync {
-            android.util.Log.i("MainActivity", "LLM资源释放完成")
+            LogHelper.i("APP", "LLM资源释放完成")
         }
     }
 
@@ -774,7 +811,7 @@ class MainActivity : FlutterActivity() {
             // 获取目录下的所有文件
             val assetFiles = assets.list(assetPath)
             if (assetFiles.isNullOrEmpty()) {
-                android.util.Log.e("MainActivity", "No files found in asset path: $assetPath")
+                LogHelper.e("APP", "Asset路径下未找到文件: $assetPath")
                 return false
             }
 
@@ -793,10 +830,10 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
-            android.util.Log.i("MainActivity", "模型目录复制成功: $destPath (${assetFiles.size} files)")
+            LogHelper.i("APP", "模型目录复制成功: $destPath (${assetFiles.size} 个文件)")
             true
         } catch (e: IOException) {
-            android.util.Log.e("MainActivity", "模型目录复制失败: ${e.message}")
+            LogHelper.e("APP", "模型目录复制失败: ${e.message}")
             false
         }
     }
@@ -825,7 +862,7 @@ class MainActivity : FlutterActivity() {
 
             true
         } catch (e: IOException) {
-            android.util.Log.e("MainActivity", "文件复制失败: ${e.message}")
+            LogHelper.e("APP", "文件复制失败: ${e.message}")
             false
         }
     }

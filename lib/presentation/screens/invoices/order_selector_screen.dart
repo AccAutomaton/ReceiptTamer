@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receipt_tamer/core/services/log_service.dart';
+import 'package:receipt_tamer/core/services/log_config.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/order.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
@@ -88,9 +90,10 @@ class _OrderSelectorScreenState extends ConsumerState<OrderSelectorScreen> {
           _isLoading = false;
         });
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (mounted) {
         setState(() => _isLoading = false);
+        logService.e(LogConfig.moduleUi, '加载订单失败', e, stackTrace);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('加载订单失败: $e')),
         );

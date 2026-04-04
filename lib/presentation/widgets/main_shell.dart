@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:receipt_tamer/data/models/app_version.dart';
 import 'package:receipt_tamer/data/services/update_preferences.dart';
 import 'package:receipt_tamer/data/services/update_service.dart';
+import 'package:receipt_tamer/core/services/log_service.dart';
+import 'package:receipt_tamer/core/services/log_config.dart';
 
 /// Shell widget that provides bottom navigation bar
 class MainShell extends ConsumerStatefulWidget {
@@ -278,7 +280,7 @@ class _MainShellState extends ConsumerState<MainShell> {
     } catch (e) {
       // Ignore errors during route state access
       // This can happen during initial build before router is fully initialized
-      debugPrint('Error updating current index: $e');
+      logService.e(LogConfig.moduleUi, '更新当前索引失败', e);
     }
   }
 

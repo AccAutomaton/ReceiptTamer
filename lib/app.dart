@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import 'router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'core/services/log_service.dart';
+import 'core/services/log_config.dart';
 import 'data/services/share_handler_service.dart';
 import 'presentation/providers/ocr_provider.dart';
 
@@ -32,7 +33,9 @@ class _AppState extends ConsumerState<App> {
   @override
   void initState() {
     super.initState();
-    // 使用 addPostFrameCallback 确保首帧渲染完成后再初始化
+    logService.d(LogConfig.moduleApp, 'App initState');
+    // LogService 已在 main.dart 中初始化
+    // 使用 addPostFrameCallback 确保首帧渲染完成后再初始化其他服务
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _delayedInitialize();
     });
@@ -40,7 +43,6 @@ class _AppState extends ConsumerState<App> {
 
   Future<void> _delayedInitialize() async {
     // 首帧已渲染完成，现在可以安全地进行后台初始化
-    // 额外延迟，确保UI稳定
     await Future.delayed(const Duration(milliseconds: 100));
 
     // 开始后台初始化OCR/LLM模型（不阻塞UI）
@@ -55,11 +57,11 @@ class _AppState extends ConsumerState<App> {
   void _startOcrBackgroundInitialization() {
     Future.delayed(const Duration(milliseconds: 50), () async {
       try {
-        debugPrint('App: Starting OCR background initialization...');
+        logService.i(LogConfig.moduleApp, '开始 OCR 后台初始化...');
         // 触发OCR初始化，但不等待完成
         ref.read(ocrProvider.notifier).initialize();
-      } catch (e) {
-        debugPrint('App: OCR background initialization error: $e');
+      } catch (e, stackTrace) {
+        logService.e(LogConfig.moduleApp, 'OCR 后台初始化错误', e, stackTrace);
       }
     });
   }
@@ -68,7 +70,7 @@ class _AppState extends ConsumerState<App> {
     if (_initialized) return;
 
     try {
-      debugPrint('App: Initializing share handler...');
+      logService.i(LogConfig.moduleApp, '初始化分享处理器...');
       await _shareHandlerService.initialize();
       _initialized = true;
 
@@ -77,10 +79,9 @@ class _AppState extends ConsumerState<App> {
 
       // Check if there's already pending shared media (app launched via share)
       _onSharedMedia();
-      debugPrint('App: Share handler initialized');
+      logService.i(LogConfig.moduleApp, '分享处理器初始化完成');
     } catch (e, stackTrace) {
-      debugPrint('Error initializing share handler: $e');
-      debugPrint('Stack trace: $stackTrace');
+      logService.e(LogConfig.moduleApp, '初始化分享处理器失败', e, stackTrace);
     }
   }
 
@@ -88,17 +89,17 @@ class _AppState extends ConsumerState<App> {
     if (!mounted || _navigating) return;
 
     final sharedMedia = _shareHandlerService.sharedMediaNotifier.value;
-    debugPrint('App: onSharedMedia called, hasMedia: ${sharedMedia != null && sharedMedia.isNotEmpty}');
+    logService.i(LogConfig.moduleApp, 'onSharedMedia 调用，hasMedia: ${sharedMedia != null && sharedMedia.isNotEmpty}');
 
     if (sharedMedia != null && sharedMedia.isNotEmpty) {
       // 检查当前路由是否需要跳过自动导航
       final router = ref.read(routerProvider);
       final currentLocation = router.routerDelegate.currentConfiguration.uri.toString();
-      debugPrint('App: Current location: $currentLocation');
+      logService.i(LogConfig.moduleApp, '当前位置: $currentLocation');
 
       // 如果当前已经在分享相关页面，不自动导航
       if (_skipAutoNavigateRoutes.any((route) => currentLocation.startsWith(route))) {
-        debugPrint('App: Skipping auto-navigate, already on $currentLocation');
+        logService.i(LogConfig.moduleApp, '跳过自动导航，已在 $currentLocation');
         return;
       }
 
@@ -107,11 +108,10 @@ class _AppState extends ConsumerState<App> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         try {
-          debugPrint('App: Navigating to /share with ${sharedMedia.length} items');
+          logService.i(LogConfig.moduleApp, '导航到 /share，共 ${sharedMedia.length} 项');
           router.go('/share');
         } catch (e, stackTrace) {
-          debugPrint('Error navigating to share screen: $e');
-          debugPrint('Stack trace: $stackTrace');
+          logService.e(LogConfig.moduleApp, '导航到分享页面失败', e, stackTrace);
         } finally {
           _navigating = false;
         }
@@ -121,6 +121,7 @@ class _AppState extends ConsumerState<App> {
 
   @override
   void dispose() {
+    logService.d(LogConfig.moduleApp, 'App dispose');
     _shareHandlerService.sharedMediaNotifier.removeListener(_onSharedMedia);
     super.dispose();
   }

@@ -2,7 +2,6 @@ package com.acautomaton.receipt.tamer
 
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import java.io.File
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
@@ -16,8 +15,6 @@ import java.util.concurrent.Future
 class MnnEngine private constructor() {
 
     companion object {
-        private const val TAG = "MnnEngine"
-
         // 加载 native 库
         init {
             System.loadLibrary("mnn_jni")
@@ -62,24 +59,24 @@ class MnnEngine private constructor() {
             try {
                 // 检查是否已初始化
                 if (isInitialized()) {
-                    Log.i(TAG, "模型已加载，跳过重复加载")
+                    LogHelper.i("LLM", "模型已加载，跳过重复加载")
                     mainHandler.post { callback(true, null) }
                     return@submit
                 }
 
-                Log.i(TAG, "开始加载MNN模型: $modelDir")
+                LogHelper.i("LLM", "开始加载MNN模型: $modelDir")
                 val success = loadModel(modelDir, nThreads)
                 mainHandler.post {
                     if (success) {
-                        Log.i(TAG, "MNN模型加载成功")
+                        LogHelper.i("LLM", "MNN模型加载成功")
                         callback(true, null)
                     } else {
-                        Log.e(TAG, "MNN模型加载失败")
+                        LogHelper.e("LLM", "MNN模型加载失败")
                         callback(false, "模型加载失败")
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "MNN模型加载异常: ${e.message}")
+                LogHelper.e("LLM", "MNN模型加载异常", e)
                 mainHandler.post { callback(false, e.message) }
             }
         }
@@ -102,9 +99,9 @@ class MnnEngine private constructor() {
                     return@submit
                 }
 
-                Log.i(TAG, "========== MNN LLM Pipeline Start ==========")
-                Log.i(TAG, "Prompt: ${prompt.take(100)}${if (prompt.length > 100) "..." else ""}")
-                Log.i(TAG, "Max tokens: $maxTokens, Temperature: $temperature, Top-P: $topP")
+                LogHelper.i("LLM", "========== MNN LLM Pipeline 开始 ==========")
+                LogHelper.i("LLM", "Prompt: ${prompt.take(100)}${if (prompt.length > 100) "..." else ""}")
+                LogHelper.i("LLM", "Max tokens: $maxTokens, Temperature: $temperature, Top-P: $topP")
 
                 val pipelineStart = System.currentTimeMillis()
 
@@ -113,10 +110,10 @@ class MnnEngine private constructor() {
                 val pipelineEnd = System.currentTimeMillis()
                 val pipelineMs = pipelineEnd - pipelineStart
 
-                Log.i(TAG, "========== MNN LLM Pipeline Complete ==========")
-                Log.i(TAG, "[DIAG] Total pipeline time: ${pipelineMs}ms")
-                Log.i(TAG, "[DIAG] Result length: ${result.length} chars")
-                Log.i(TAG, "[DIAG] Result: ${result.take(200)}${if (result.length > 200) "..." else ""}")
+                LogHelper.i("LLM", "========== MNN LLM Pipeline 完成 ==========")
+                LogHelper.diag("LLM", "Pipeline总耗时", "${pipelineMs}ms")
+                LogHelper.diag("LLM", "结果长度", "${result.length} chars")
+                LogHelper.diag("LLM", "结果", "${result.take(200)}${if (result.length > 200) "..." else ""}")
 
                 mainHandler.post {
                     if (result.isNotEmpty()) {
@@ -126,7 +123,7 @@ class MnnEngine private constructor() {
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "MNN生成异常: ${e.message}")
+                LogHelper.e("LLM", "MNN生成异常", e)
                 e.printStackTrace()
                 mainHandler.post { callback(null, e.message) }
             }
@@ -140,13 +137,13 @@ class MnnEngine private constructor() {
         ocrText: String,
         callback: (String?, String?) -> Unit
     ): Future<*> {
-        Log.i(TAG, "========== Extract Order Info ==========")
-        Log.i(TAG, "[DIAG] OCR text length: ${ocrText.length} chars")
-        Log.i(TAG, "[DIAG] OCR text preview: ${ocrText.take(200)}${if (ocrText.length > 200) "..." else ""}")
+        LogHelper.i("LLM", "========== 提取订单信息 ==========")
+        LogHelper.diag("LLM", "OCR文本长度", "${ocrText.length} chars")
+        LogHelper.diag("LLM", "OCR文本预览", "${ocrText.take(200)}${if (ocrText.length > 200) "..." else ""}")
 
         val prompt = buildOrderExtractionPrompt(ocrText)
-        Log.i(TAG, "[DIAG] Full prompt length: ${prompt.length} chars")
-        Log.i(TAG, "[DIAG] Full prompt: $prompt")
+        LogHelper.diag("LLM", "完整Prompt长度", "${prompt.length} chars")
+        LogHelper.diag("LLM", "完整Prompt", prompt)
 
         // 减少maxTokens，强制模型输出简洁JSON
         return generateAsync(prompt, maxTokens = 128, callback = callback)
@@ -159,13 +156,13 @@ class MnnEngine private constructor() {
         ocrText: String,
         callback: (String?, String?) -> Unit
     ): Future<*> {
-        Log.i(TAG, "========== Extract Invoice Info ==========")
-        Log.i(TAG, "[DIAG] OCR text length: ${ocrText.length} chars")
-        Log.i(TAG, "[DIAG] OCR text preview: ${ocrText.take(200)}${if (ocrText.length > 200) "..." else ""}")
+        LogHelper.i("LLM", "========== 提取发票信息 ==========")
+        LogHelper.diag("LLM", "OCR文本长度", "${ocrText.length} chars")
+        LogHelper.diag("LLM", "OCR文本预览", "${ocrText.take(200)}${if (ocrText.length > 200) "..." else ""}")
 
         val prompt = buildInvoiceExtractionPrompt(ocrText)
-        Log.i(TAG, "[DIAG] Full prompt length: ${prompt.length} chars")
-        Log.i(TAG, "[DIAG] Full prompt: $prompt")
+        LogHelper.diag("LLM", "完整Prompt长度", "${prompt.length} chars")
+        LogHelper.diag("LLM", "完整Prompt", prompt)
 
         // 减少maxTokens，强制模型输出简洁JSON
         return generateAsync(prompt, maxTokens = 128, callback = callback)
@@ -218,9 +215,9 @@ $ocrText"""
         executor.submit {
             try {
                 dispose()
-                Log.i(TAG, "MNN资源释放完成")
+                LogHelper.i("LLM", "MNN资源释放完成")
             } catch (e: Exception) {
-                Log.e(TAG, "MNN资源释放异常: ${e.message}")
+                LogHelper.e("LLM", "MNN资源释放异常", e)
             }
             callback?.let { mainHandler.post(it) }
         }

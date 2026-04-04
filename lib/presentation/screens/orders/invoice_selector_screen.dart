@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:receipt_tamer/core/services/log_service.dart';
+import 'package:receipt_tamer/core/services/log_config.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
@@ -96,9 +98,10 @@ class _InvoiceSelectorScreenState extends ConsumerState<InvoiceSelectorScreen> {
           _isLoading = false;
         });
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (mounted) {
         setState(() => _isLoading = false);
+        logService.e(LogConfig.moduleUi, '加载发票失败', e, stackTrace);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('加载发票失败: $e')),
         );
