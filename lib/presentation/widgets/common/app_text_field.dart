@@ -166,7 +166,7 @@ class _AppTextFieldState extends State<AppTextField> {
           decoration: InputDecoration(
             hintText: widget.hint,
             hintStyle: theme.textTheme.bodyLarge?.copyWith(
-              color: colorScheme.onSurfaceVariant.withOpacity(0.6),
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
             ),
             errorText: widget.errorText,
             helperText: widget.helperText,
@@ -174,17 +174,17 @@ class _AppTextFieldState extends State<AppTextField> {
             filled: true,
             fillColor: widget.enabled
                 ? colorScheme.surfaceContainerHighest
-                : colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
             prefixIcon: widget.prefixIcon,
             suffixIcon: widget.suffixIcon,
             contentPadding: effectivePadding,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(effectiveBorderRadius),
-              borderSide: BorderSide(color: colorScheme.outline.withOpacity(0.3)),
+              borderSide: BorderSide(color: colorScheme.outline.withValues(alpha: 0.3)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(effectiveBorderRadius),
-              borderSide: BorderSide(color: colorScheme.outline.withOpacity(0.3)),
+              borderSide: BorderSide(color: colorScheme.outline.withValues(alpha: 0.3)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(effectiveBorderRadius),
@@ -200,7 +200,7 @@ class _AppTextFieldState extends State<AppTextField> {
             ),
             disabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(effectiveBorderRadius),
-              borderSide: BorderSide(color: colorScheme.outline.withOpacity(0.2)),
+              borderSide: BorderSide(color: colorScheme.outline.withValues(alpha: 0.2)),
             ),
           ),
         ),
@@ -501,18 +501,18 @@ class AppSelectField<T> extends StatelessWidget {
           decoration: BoxDecoration(
             color: enabled
                 ? colorScheme.surfaceContainerHighest
-                : colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: errorText != null
                   ? Colors.red
-                  : colorScheme.outline.withOpacity(0.3),
+                  : colorScheme.outline.withValues(alpha: 0.3),
               width: errorText != null ? 1 : 1,
             ),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButtonFormField<T>(
-              value: value,
+              initialValue: value,
               items: options.map((option) {
                 return DropdownMenuItem<T>(
                   value: option,
@@ -527,7 +527,7 @@ class AppSelectField<T> extends StatelessWidget {
               hint: Text(
                 hint ?? '请选择',
                 style: theme.textTheme.bodyLarge?.copyWith(
-                  color: colorScheme.onSurfaceVariant.withOpacity(0.6),
+                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
                 ),
               ),
               decoration: InputDecoration(

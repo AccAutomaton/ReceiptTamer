@@ -122,7 +122,7 @@ class OrderCard extends StatelessWidget {
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         child: Icon(
           Icons.receipt_long,
-          color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.3),
+          color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
         ),
       ),
     );
@@ -161,7 +161,7 @@ class OrderCardCompact extends StatelessWidget {
           color: colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: colorScheme.outlineVariant.withOpacity(0.3),
+            color: colorScheme.outlineVariant.withValues(alpha: 0.3),
           ),
         ),
         child: Row(

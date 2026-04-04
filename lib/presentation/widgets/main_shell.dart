@@ -20,7 +20,6 @@ class MainShell extends ConsumerStatefulWidget {
 
 class _MainShellState extends ConsumerState<MainShell> {
   int _currentIndex = 0;
-  bool _initialized = false;
   DateTime? _lastPressedTime;
   bool _updateChecked = false;
 
@@ -275,7 +274,6 @@ class _MainShellState extends ConsumerState<MainShell> {
             }
           });
         }
-        _initialized = true;
       }
     } catch (e) {
       // Ignore errors during route state access

@@ -1,0 +1,18 @@
+{
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true,
+    "commit-commands@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "ralph-loop@claude-plugins-official": true,
+    "skill-creator@claude-plugins-official": true,
+    "simplify@claude-plugins-official": true,
+    "loop@claude-plugins-official": true,
+    "update-config@claude-plugins-official": true,
+    "keybindings-help@claude-plugins-official": true
+  }
+}

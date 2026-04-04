@@ -171,7 +171,7 @@ class _MonthRangePickerState extends State<MonthRangePicker> {
             Expanded(
               flex: 2,
               child: DropdownButtonFormField<int>(
-                value: year,
+                initialValue: year,
                 decoration: const InputDecoration(
                   labelText: '年份',
                   border: OutlineInputBorder(),
@@ -196,7 +196,7 @@ class _MonthRangePickerState extends State<MonthRangePicker> {
             Expanded(
               flex: 3,
               child: DropdownButtonFormField<int>(
-                value: month,
+                initialValue: month,
                 decoration: const InputDecoration(
                   labelText: '月份',
                   border: OutlineInputBorder(),

@@ -235,13 +235,13 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            colorScheme.primary.withOpacity(0.1),
-            colorScheme.primary.withOpacity(0.05),
+            colorScheme.primary.withValues(alpha: 0.1),
+            colorScheme.primary.withValues(alpha: 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: colorScheme.primary.withOpacity(0.2),
+          color: colorScheme.primary.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
@@ -403,7 +403,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                         Icon(
                           Icons.description_outlined,
                           size: 48,
-                          color: colorScheme.onSurfaceVariant.withOpacity(0.3),
+                          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
                         ),
                         const SizedBox(height: 8),
                         Text(

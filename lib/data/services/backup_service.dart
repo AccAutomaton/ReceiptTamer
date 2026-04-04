@@ -552,8 +552,8 @@ class BackupService {
       final tempDb = await openDatabase(
         tempDbPath,
         version: AppConstants.databaseVersion,
-        onCreate: (_, __) {},
-        onUpgrade: (_, __, ___) {},
+        onCreate: (db, version) {},
+        onUpgrade: (db, oldVersion, newVersion) {},
       );
 
       // Get current database

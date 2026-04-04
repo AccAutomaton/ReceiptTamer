@@ -243,10 +243,10 @@ class FullScreenImagePreview extends StatelessWidget {
             icon: const Icon(Icons.share),
             onPressed: () async {
               try {
-                await Share.shareXFiles(
-                  [XFile(imagePath)],
-                  text: '分享订单图片',
-                );
+                await SharePlus.instance.share(ShareParams(
+                  files: [XFile(imagePath)],
+                  subject: '分享订单图片',
+                ));
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(

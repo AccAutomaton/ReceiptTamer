@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../models/ocr_result.dart';
@@ -23,7 +22,7 @@ class OcrService {
   LlmService? _llmService;
 
   /// 深度转换 Map 类型（递归处理嵌套结构）
-  /// 用于解决 Platform Channel 返回的 _Map<Object?, Object?> 类型转换问题
+  /// 用于解决 Platform Channel 返回的 `_Map<Object?, Object?>` 类型转换问题
   static Map<String, dynamic> _deepConvertMap(Map<dynamic, dynamic> map) {
     return map.map((key, value) => MapEntry(
       key.toString(),

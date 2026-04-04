@@ -41,11 +41,11 @@ class OrderSelectorCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: isSelected
-              ? colorScheme.primaryContainer.withOpacity(0.3)
+              ? colorScheme.primaryContainer.withValues(alpha: 0.3)
               : null,
           border: Border(
             bottom: BorderSide(
-              color: colorScheme.outlineVariant.withOpacity(0.3),
+              color: colorScheme.outlineVariant.withValues(alpha: 0.3),
               width: 0.5,
             ),
           ),

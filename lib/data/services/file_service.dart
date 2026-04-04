@@ -1,7 +1,5 @@
 import 'dart:io';
-import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
@@ -566,7 +564,6 @@ class FileService {
       final sourceFile = File(sourcePath);
       if (!await sourceFile.exists()) return false;
 
-      final destFile = File(destinationPath);
       await sourceFile.copy(destinationPath);
       return true;
     } catch (e) {
@@ -580,7 +577,6 @@ class FileService {
       final sourceFile = File(sourcePath);
       if (!await sourceFile.exists()) return false;
 
-      final destFile = File(destinationPath);
       await sourceFile.rename(destinationPath);
       return true;
     } catch (e) {

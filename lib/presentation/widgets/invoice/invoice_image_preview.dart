@@ -288,10 +288,10 @@ class FullScreenImagePreview extends StatelessWidget {
             icon: const Icon(Icons.share),
             onPressed: () async {
               try {
-                await Share.shareXFiles(
-                  [XFile(imagePath)],
-                  text: '分享图片',
-                );
+                await SharePlus.instance.share(ShareParams(
+                  files: [XFile(imagePath)],
+                  subject: '分享图片',
+                ));
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -354,10 +354,10 @@ class FullScreenPdfPreview extends StatelessWidget {
             icon: const Icon(Icons.share),
             onPressed: () async {
               try {
-                await Share.shareXFiles(
-                  [XFile(filePath)],
-                  text: '分享PDF文档',
-                );
+                await SharePlus.instance.share(ShareParams(
+                  files: [XFile(filePath)],
+                  subject: '分享PDF文档',
+                ));
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(

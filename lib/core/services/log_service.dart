@@ -134,7 +134,7 @@ class FileLogOutput extends LogOutput {
     }
 
     // 写入文件
-    final content = _buffer.join('\n') + '\n';
+    final content = '${_buffer.join('\n')}\n';
     await _currentFile!.writeAsString(
       content,
       mode: FileMode.append,

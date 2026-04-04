@@ -552,7 +552,7 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
           Navigator.pop(context);
           await showSavedFilesScreen(context, initialSubDir: subDir);
         }
-        if (errors.isNotEmpty) {
+        if (errors.isNotEmpty && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(errors.join('\n')),

@@ -35,7 +35,6 @@ class AppCard extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     final effectiveBackgroundColor = backgroundColor ?? colorScheme.surface;
-    final effectiveForegroundColor = foregroundColor ?? colorScheme.onSurface;
     final effectivePadding = padding ??
         const EdgeInsets.symmetric(
           horizontal: 16,
@@ -72,7 +71,7 @@ class AppCard extends StatelessWidget {
             boxShadow: elevation != null && elevation! > 0
                 ? [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: elevation! * 2,
                       offset: Offset(0, elevation!),
                     ),
@@ -93,7 +92,7 @@ class AppCard extends StatelessWidget {
         boxShadow: elevation != null && elevation! > 0
             ? [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: elevation! * 2,
                   offset: Offset(0, elevation!),
                 ),
@@ -154,7 +153,7 @@ class AppCardWithHeader extends StatelessWidget {
               vertical: 12,
             ),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),

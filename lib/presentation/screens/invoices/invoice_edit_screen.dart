@@ -590,7 +590,7 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
                             color: Theme.of(context)
                                 .colorScheme
                                 .outlineVariant
-                                .withOpacity(0.5),
+                                .withValues(alpha: 0.5),
                             style: BorderStyle.solid,
                           ),
                         ),
@@ -604,7 +604,7 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
                                 color: Theme.of(context)
                                     .colorScheme
                                     .onSurfaceVariant
-                                    .withOpacity(0.5),
+                                    .withValues(alpha: 0.5),
                               ),
                               const SizedBox(height: 8),
                               Text(
@@ -939,7 +939,7 @@ class _InvoiceOcrProgressDialogState extends ConsumerState<_InvoiceOcrProgressDi
         color: isActive
             ? Theme.of(context).colorScheme.primaryContainer
             : isCompleted
-                ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5)
+                ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5)
                 : Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(16),
       ),

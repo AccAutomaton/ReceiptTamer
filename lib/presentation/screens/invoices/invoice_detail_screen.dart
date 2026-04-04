@@ -209,13 +209,13 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            colorScheme.secondaryContainer.withOpacity(0.5),
-            colorScheme.secondaryContainer.withOpacity(0.2),
+            colorScheme.secondaryContainer.withValues(alpha: 0.5),
+            colorScheme.secondaryContainer.withValues(alpha: 0.2),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: colorScheme.secondary.withOpacity(0.3),
+          color: colorScheme.secondary.withValues(alpha: 0.3),
         ),
       ),
       child: Column(
