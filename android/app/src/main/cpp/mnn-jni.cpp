@@ -284,10 +284,11 @@ public:
         LOGI("[DIAG] 格式化后提示词长度: %zu", formattedPrompt.length());
 
         // Use string stream to capture output
+        // 注意: response() 返回 void，输出写入 ostream 参数
         std::stringstream ss;
 
         // Call MNN LLM for inference
-        std::string retVal = llm_->response(formattedPrompt, &ss, nullptr, maxTokens);
+        llm_->response(formattedPrompt, &ss, nullptr, maxTokens);
 
         auto genEnd = std::chrono::high_resolution_clock::now();
         auto genMs = std::chrono::duration_cast<std::chrono::milliseconds>(genEnd - genStart).count();

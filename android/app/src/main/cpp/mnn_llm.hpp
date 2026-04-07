@@ -2,14 +2,18 @@
 #define MNN_LLM_HPP
 
 // MNN LLM API based on libllm.so symbols
-// This header defines the minimal interface needed for MNN LLM inference
+// This header defines the interface matching the actual MNN LLM library
 
 #include <string>
 #include <vector>
 #include <memory>
-#include <functional>
+#include <ostream>
 
 namespace MNN {
+namespace Express {
+class VARP;
+}
+
 namespace Transformer {
 
 // Forward declarations
@@ -17,7 +21,9 @@ class LlmConfig;
 
 /**
  * Llm - MNN Transformer LLM class
- * Based on exported symbols from libllm.so
+ *
+ * 重要: response() 方法返回 void，生成的文本写入 ostream 参数
+ *       这是与 libllm.so 实际 API 的关键区别
  */
 class Llm {
 public:
@@ -28,11 +34,12 @@ public:
     bool load();
 
     // Generate response from text prompt
-    // Returns generated text
-    std::string response(const std::string& prompt,
-                         std::ostream* output = nullptr,
-                         const char* systemPrompt = nullptr,
-                         int maxTokens = 256);
+    // 输出写入 output ostream，无返回值
+    // 参数: prompt, output stream, system prompt, max tokens
+    void response(const std::string& prompt,
+                  std::ostream* output = nullptr,
+                  const char* systemPrompt = nullptr,
+                  int maxTokens = 256);
 
     // Tokenizer
     std::vector<int> tokenizer_encode(const std::string& text);
@@ -43,7 +50,6 @@ public:
 
     // Check if generation stopped
     bool stoped();
-    bool is_stop(int tokenId);
 
     // Destroy instance
     static void destroy(Llm* llm);
