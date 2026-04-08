@@ -14,6 +14,9 @@ import '../presentation/screens/invoices/order_selector_screen.dart';
 import '../presentation/screens/export/export_screen.dart';
 import '../presentation/screens/export/export_options_screen.dart';
 import '../presentation/screens/settings/settings_screen.dart';
+import '../presentation/screens/settings/data_cleanup_screen.dart';
+import '../presentation/screens/cleanup/order_cleanup_screen.dart';
+import '../presentation/screens/cleanup/invoice_cleanup_screen.dart';
 import '../presentation/screens/share/share_target_screen.dart';
 import '../presentation/widgets/main_shell.dart';
 import '../data/services/share_handler_service.dart';
@@ -215,6 +218,22 @@ final routerProvider = Provider<GoRouter>((ref) {
             orderIds: orderIds,
           );
         },
+      ),
+      // Data cleanup routes
+      GoRoute(
+        path: '/settings/cleanup',
+        name: 'data_cleanup',
+        builder: (context, state) => const DataCleanupScreen(),
+      ),
+      GoRoute(
+        path: '/settings/cleanup/orders',
+        name: 'order_cleanup',
+        builder: (context, state) => const OrderCleanupScreen(),
+      ),
+      GoRoute(
+        path: '/settings/cleanup/invoices',
+        name: 'invoice_cleanup',
+        builder: (context, state) => const InvoiceCleanupScreen(),
       ),
       // Share target screen
       GoRoute(

@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -862,11 +863,28 @@ Licensed under the Apache License 2.0
               ],
               Padding(
                 padding: const EdgeInsets.all(16),
-                child: AppButton(
-                  text: '清理缓存',
-                  onPressed: _clearCache,
-                  type: AppButtonType.outlined,
-                  isFullWidth: true,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: AppButton(
+                        text: '清理数据',
+                        onPressed: () => context.push('/settings/cleanup'),
+                        type: AppButtonType.outlined,
+                        foregroundColor: Theme.of(context).colorScheme.error,
+                        borderSide: BorderSide(
+                          color: Theme.of(context).colorScheme.error.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: AppButton(
+                        text: '清理缓存',
+                        onPressed: _clearCache,
+                        type: AppButtonType.outlined,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

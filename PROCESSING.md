@@ -33,6 +33,7 @@
 | 分享功能      | ✅  | 图片、PDF、导出文件分享                                           |
 | PDF预览     | ✅  | syncfusion_flutter_pdfviewer                            |
 | 设置页面      | ✅  | 应用信息、存储统计、缓存清理、OCR状态                                    |
+| 数据清理      | ✅  | 根据订单/发票清理数据、级联选择删除关联、文件清理                        |
 | OCR引擎     | ✅  | RapidOcrAndroidOnnx (ONNX格式，内置模型)                       |
 | LLM推理     | ✅  | MNN框架集成 (阿里开源)                                          |
 | OCR+LLM识别 | ✅  | RapidOcr ONNX + Qwen3.5-0.8B-MNN 结构化提取                  |
@@ -88,12 +89,14 @@ lib/
 │       ├── meal_details_export_service.dart # 用餐明细Excel导出
 │       ├── invoice_proration_util.dart   # 发票金额分摊工具
 │       ├── update_service.dart          # 应用更新服务
-│       └── backup_service.dart          # 备份服务
+│       ├── backup_service.dart          # 备份服务
+│       └── cleanup_service.dart         # 数据清理服务
 ├── presentation/
 │   ├── providers/
 │   │   ├── order_provider.dart
 │   │   ├── invoice_provider.dart
-│   │   └── ocr_provider.dart
+│   │   ├── ocr_provider.dart
+│   │   └── cleanup_provider.dart        # 清理状态管理
 │   ├── screens/
 │   │   ├── home/home_screen.dart
 │   │   ├── orders/
@@ -111,7 +114,11 @@ lib/
 │   │   │   └── export_options_screen.dart    # 导出选项页面
 │   │   └── settings/
 │   │       ├── settings_screen.dart
-│   │       └── info_screen.dart
+│   │       ├── info_screen.dart
+│   │       └── data_cleanup_screen.dart # 清理模式选择页面
+│   │   └── cleanup/
+│   │       ├── order_cleanup_screen.dart  # 订单清理页面
+│   │       └── invoice_cleanup_screen.dart # 发票清理页面
 │   └── widgets/
 │       ├── common/                 # 通用组件
 │       │   ├── app_button.dart

@@ -109,11 +109,14 @@ class ImageService {
   Future<bool> deleteImage(String imagePath) async {
     try {
       final file = File(imagePath);
-      if (await file.exists()) {
+      final exists = await file.exists();
+      logService.diag(LogConfig.moduleFile, '图片文件是否存在', exists.toString());
+      if (exists) {
         await file.delete();
         logService.i(LogConfig.moduleFile, '图片已删除: $imagePath');
         return true;
       }
+      logService.w(LogConfig.moduleFile, '图片文件不存在: $imagePath');
       return false;
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleFile, '图片删除失败: $imagePath', e, stackTrace);
@@ -126,10 +129,14 @@ class ImageService {
     try {
       final file = File(imagePath);
       if (await file.exists()) {
-        return await file.length();
+        final size = await file.length();
+        logService.diag(LogConfig.moduleFile, '图片文件大小', '$size bytes');
+        return size;
       }
+      logService.diag(LogConfig.moduleFile, '图片文件不存在(获取大小)', imagePath);
       return 0;
     } catch (e) {
+      logService.e(LogConfig.moduleFile, '获取图片大小失败: $imagePath', e, null);
       return 0;
     }
   }
