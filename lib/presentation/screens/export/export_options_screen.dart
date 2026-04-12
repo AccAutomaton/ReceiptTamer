@@ -38,6 +38,8 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
 
   // Invoice export options
   bool _showInvoiceTimeLabel = true; // Show time labels on invoices
+  bool _addInvoiceRemark = false; // Whether to add remark
+  String? _invoiceRemarkContent; // Remark content
 
   // Meal details export options
   bool _skipEmptyDays = true; // Skip days without meal records
@@ -144,57 +146,8 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
             ),
           ),
 
-          // Time label option for invoice export
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: InkWell(
-              onTap: _exportInvoice
-                  ? () => setState(() => _showInvoiceTimeLabel = !_showInvoiceTimeLabel)
-                  : null,
-              borderRadius: BorderRadius.circular(20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  // Circular checkbox
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _exportInvoice && _showInvoiceTimeLabel
-                          ? colorScheme.primary
-                          : Colors.transparent,
-                      border: Border.all(
-                        color: _exportInvoice
-                            ? (_showInvoiceTimeLabel
-                                ? colorScheme.primary
-                                : colorScheme.outline)
-                            : colorScheme.outline.withValues(alpha: 0.5),
-                        width: 2,
-                      ),
-                    ),
-                    child: _exportInvoice && _showInvoiceTimeLabel
-                        ? Icon(
-                            Icons.check,
-                            size: 14,
-                            color: colorScheme.onPrimary,
-                          )
-                        : null,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '发票中标注订单时间',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: _exportInvoice
-                          ? colorScheme.onSurface
-                          : colorScheme.onSurface.withValues(alpha: 0.5),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          // Invoice export options group (only visible when invoice export is enabled)
+          _buildInvoiceExportOptions(context),
 
           // Skip empty days option for meal details export
           Padding(
@@ -360,6 +313,211 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
     );
   }
 
+  /// Show dialog for inputting invoice remark
+  Future<void> _showInvoiceRemarkDialog() async {
+    final controller = TextEditingController(text: _invoiceRemarkContent ?? '');
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('发票备注'),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            hintText: '请输入备注内容',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          maxLength: 50,
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _invoiceRemarkContent = result.trim();
+        if (_invoiceRemarkContent!.isEmpty) {
+          _addInvoiceRemark = false;
+          _invoiceRemarkContent = null;
+        }
+      });
+    }
+
+    controller.dispose();
+  }
+
+  /// Build invoice export options group
+  Widget _buildInvoiceExportOptions(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    if (!_exportInvoice) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Card(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '发票导出选项',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildInvoiceOptionRow(
+                context: context,
+                label: '标注订单时间',
+                value: _showInvoiceTimeLabel,
+                onToggle: (v) => setState(() => _showInvoiceTimeLabel = v),
+              ),
+              const SizedBox(height: 8),
+              _buildInvoiceRemarkOptionRow(context),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Build single invoice option row
+  Widget _buildInvoiceOptionRow({
+    required BuildContext context,
+    required String label,
+    required bool value,
+    required ValueChanged<bool> onToggle,
+  }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return InkWell(
+      onTap: () => onToggle(!value),
+      borderRadius: BorderRadius.circular(20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: value ? colorScheme.primary : Colors.transparent,
+              border: Border.all(
+                color: value ? colorScheme.primary : colorScheme.outline,
+                width: 2,
+              ),
+            ),
+            child: value
+                ? Icon(
+                    Icons.check,
+                    size: 14,
+                    color: colorScheme.onPrimary,
+                  )
+                : null,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurface,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build invoice remark option row (with clickable remark content)
+  Widget _buildInvoiceRemarkOptionRow(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return InkWell(
+      onTap: () {
+        if (_addInvoiceRemark) {
+          // Already enabled, click to edit remark
+          _showInvoiceRemarkDialog();
+        } else {
+          // Enable and show dialog
+          setState(() => _addInvoiceRemark = true);
+          _showInvoiceRemarkDialog();
+        }
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _addInvoiceRemark ? colorScheme.primary : Colors.transparent,
+              border: Border.all(
+                color: _addInvoiceRemark ? colorScheme.primary : colorScheme.outline,
+                width: 2,
+              ),
+            ),
+            child: _addInvoiceRemark
+                ? Icon(
+                    Icons.check,
+                    size: 14,
+                    color: colorScheme.onPrimary,
+                  )
+                : null,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '添加备注',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurface,
+            ),
+          ),
+          if (_addInvoiceRemark && _invoiceRemarkContent != null) ...[
+            const SizedBox(width: 8),
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _invoiceRemarkContent!,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onPrimaryContainer,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Future<void> _handleExport() async {
     setState(() {
       _isExporting = true;
@@ -448,6 +606,7 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
                 ref.read(invoiceProvider.notifier).getOrderIdsForInvoice(id),
             getOrderById: (id) =>
                 ref.read(orderProvider.notifier).getOrderById(id),
+            remark: _addInvoiceRemark ? _invoiceRemarkContent : null,
           );
 
           if (items.isEmpty) {
@@ -462,6 +621,7 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
               outputPath: tempPath,
               getFilePath: (p) => p, // File path is already absolute
               showTimeLabel: _showInvoiceTimeLabel,
+              showRemark: _addInvoiceRemark,
             );
 
             // Copy to Download/ReceiptTamer/materials/YYYYMMDD
