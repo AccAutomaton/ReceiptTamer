@@ -188,8 +188,6 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
         }
       });
     }
-
-    controller.dispose();
   }
 
   Future<void> _confirmAndExport() async {

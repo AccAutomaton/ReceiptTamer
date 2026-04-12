@@ -354,8 +354,6 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
         }
       });
     }
-
-    controller.dispose();
   }
 
   /// Build invoice export options group
