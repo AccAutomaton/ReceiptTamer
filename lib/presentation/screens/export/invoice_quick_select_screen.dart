@@ -13,7 +13,7 @@ import 'package:receipt_tamer/data/services/file_service.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/widgets/common/empty_state.dart';
-import 'package:receipt_tamer/presentation/widgets/common/month_range_picker.dart';
+import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/screens/export/saved_files_screen.dart';
 
@@ -116,11 +116,11 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
     });
   }
 
-  void _showMonthRangePicker() async {
-    final result = await MonthRangePicker.show(
+  void _showDateRangePicker() async {
+    final result = await SyncfusionDateRangePicker.show(
       context,
-      initialStartMonth: _startDate,
-      initialEndMonth: _endDate,
+      initialStartDate: _startDate,
+      initialEndDate: _endDate,
     );
 
     if (result != null) {
@@ -352,7 +352,7 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
 
               // Date filter button
               IconButton.outlined(
-                onPressed: _showMonthRangePicker,
+                onPressed: _showDateRangePicker,
                 icon: const Icon(Icons.date_range),
                 tooltip: '日期筛选',
               ),
@@ -364,8 +364,8 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
   }
 
   Widget _buildDateFilterChip(BuildContext context) {
-    final startStr = _startDate != null ? DateFormatter.formatYearMonth(_startDate!) : '';
-    final endStr = _endDate != null ? DateFormatter.formatYearMonth(_endDate!) : '';
+    final startStr = _startDate != null ? DateFormatter.formatDisplay(_startDate!) : '';
+    final endStr = _endDate != null ? DateFormatter.formatDisplay(_endDate!) : '';
     final dateRangeStr = startStr == endStr ? startStr : '$startStr - $endStr';
 
     return Container(
