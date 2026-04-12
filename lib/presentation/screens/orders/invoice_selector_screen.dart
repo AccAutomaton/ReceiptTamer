@@ -7,7 +7,7 @@ import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
 import 'package:receipt_tamer/presentation/widgets/common/empty_state.dart';
-import 'package:receipt_tamer/presentation/widgets/common/month_range_picker.dart';
+import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart';
 import 'package:receipt_tamer/presentation/widgets/order/invoice_selector_card.dart';
 enum OrderRelationFilter {
   all, // 全部
@@ -109,11 +109,11 @@ class _InvoiceSelectorScreenState extends ConsumerState<InvoiceSelectorScreen> {
     }
   }
 
-  void _showMonthRangePicker() async {
-    final result = await MonthRangePicker.show(
+  void _showDateRangePicker() async {
+    final result = await SyncfusionDateRangePicker.show(
       context,
-      initialStartMonth: _startDate,
-      initialEndMonth: _endDate,
+      initialStartDate: _startDate,
+      initialEndDate: _endDate,
     );
 
     if (result != null) {
@@ -265,7 +265,7 @@ class _InvoiceSelectorScreenState extends ConsumerState<InvoiceSelectorScreen> {
 
               // Date filter button
               IconButton.outlined(
-                onPressed: _showMonthRangePicker,
+                onPressed: _showDateRangePicker,
                 icon: const Icon(Icons.date_range),
                 tooltip: '日期筛选',
               ),
@@ -277,8 +277,8 @@ class _InvoiceSelectorScreenState extends ConsumerState<InvoiceSelectorScreen> {
   }
 
   Widget _buildDateFilterChip(BuildContext context) {
-    final startStr = _startDate != null ? DateFormatter.formatYearMonth(_startDate!) : '';
-    final endStr = _endDate != null ? DateFormatter.formatYearMonth(_endDate!) : '';
+    final startStr = _startDate != null ? DateFormatter.formatDisplay(_startDate!) : '';
+    final endStr = _endDate != null ? DateFormatter.formatDisplay(_endDate!) : '';
     final dateRangeStr = startStr == endStr ? startStr : '$startStr - $endStr';
 
     return Container(
