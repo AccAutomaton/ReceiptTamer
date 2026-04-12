@@ -334,7 +334,7 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context), // 取消不返回值
             child: const Text('取消'),
           ),
           FilledButton(
@@ -345,10 +345,14 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
       ),
     );
 
-    if (result != null && mounted) {
+    if (mounted) {
       setState(() {
-        _invoiceRemarkContent = result.trim();
-        if (_invoiceRemarkContent!.isEmpty) {
+        if (result != null && result.trim().isNotEmpty) {
+          // 用户点击确定并输入了内容
+          _addInvoiceRemark = true;
+          _invoiceRemarkContent = result.trim();
+        } else {
+          // 用户点击取消或输入了空内容
           _addInvoiceRemark = false;
           _invoiceRemarkContent = null;
         }
@@ -452,14 +456,8 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
 
     return InkWell(
       onTap: () {
-        if (_addInvoiceRemark) {
-          // Already enabled, click to edit remark
-          _showInvoiceRemarkDialog();
-        } else {
-          // Enable and show dialog
-          setState(() => _addInvoiceRemark = true);
-          _showInvoiceRemarkDialog();
-        }
+        // 点击时弹出对话框，由对话框决定最终勾选状态
+        _showInvoiceRemarkDialog();
       },
       borderRadius: BorderRadius.circular(20),
       child: Row(

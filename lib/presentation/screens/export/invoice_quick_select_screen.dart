@@ -168,7 +168,7 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context), // 取消不返回值
             child: const Text('取消'),
           ),
           FilledButton(
@@ -179,10 +179,14 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
       ),
     );
 
-    if (result != null && mounted) {
+    if (mounted) {
       setState(() {
-        _remarkContent = result.trim();
-        if (_remarkContent!.isEmpty) {
+        if (result != null && result.trim().isNotEmpty) {
+          // 用户点击确定并输入了内容
+          _addRemark = true;
+          _remarkContent = result.trim();
+        } else {
+          // 用户点击取消或输入了空内容
           _addRemark = false;
           _remarkContent = null;
         }
@@ -388,7 +392,7 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
                       child: GestureDetector(
                         onTap: () => setState(() => _showTimeLabel = !_showTimeLabel),
                         child: Text(
-                          '显示订单时间标签',
+                          '标注订单时间',
                           style: theme.textTheme.bodyMedium,
                         ),
                       ),
@@ -415,9 +419,10 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
                 value: _addRemark,
                 onChanged: (value) {
                   if (value == true) {
-                    setState(() => _addRemark = true);
+                    // 点击勾选时弹出对话框，由对话框决定最终勾选状态
                     _showRemarkDialog();
                   } else {
+                    // 点击取消勾选时直接清空
                     setState(() {
                       _addRemark = false;
                       _remarkContent = null;
