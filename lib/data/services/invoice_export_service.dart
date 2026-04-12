@@ -10,38 +10,65 @@ import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../../core/services/log_service.dart';
 import '../../core/services/log_config.dart';
 
+/// Meal entry helper class for time label generation
+class _MealEntry {
+  final String date;
+  final String mealTime;
+  _MealEntry({required this.date, required this.mealTime});
+}
+
 /// Invoice export item for PDF generation
 /// Represents a single invoice with its associated orders
 class InvoiceExportItem {
   final Invoice invoice;
   final List<Order> orders;
+  final String? remark; // 发票备注
 
   const InvoiceExportItem({
     required this.invoice,
     required this.orders,
+    this.remark,
   });
 
-  /// Generate time label for the invoice
+  /// Generate truncated time label for the invoice
   /// Format: "yyyy年MM月dd日早/中/晚餐"
   /// Same day meals are combined with "、" (e.g., "中、晚餐")
   /// Different days are separated with "|" (e.g., "早餐|午餐")
-  String get timeLabel {
+  /// When more than 5 orders, show first 5 then "...等共计x个订单"
+  String get truncatedTimeLabel {
     if (orders.isEmpty) return '';
 
-    // Group orders by date
-    final Map<String, List<String>> dateMealMap = {};
+    // Collect all meal entries with date and meal time
+    final mealEntries = <_MealEntry>[];
     for (final order in orders) {
       final date = order.orderDate ?? '';
       final mealTime = order.mealTime ?? '';
-      if (date.isEmpty) continue;
-
-      dateMealMap.putIfAbsent(date, () => []);
-      if (mealTime.isNotEmpty && !dateMealMap[date]!.contains(mealTime)) {
-        dateMealMap[date]!.add(mealTime);
-      }
+      if (date.isEmpty || mealTime.isEmpty) continue;
+      mealEntries.add(_MealEntry(date: date, mealTime: mealTime));
     }
 
-    if (dateMealMap.isEmpty) return '';
+    if (mealEntries.isEmpty) return '';
+
+    // Sort by date and meal time
+    mealEntries.sort((a, b) {
+      final dateCompare = a.date.compareTo(b.date);
+      if (dateCompare != 0) return dateCompare;
+      return _mealTimeOrder(a.mealTime).compareTo(_mealTimeOrder(b.mealTime));
+    });
+
+    // Determine truncation
+    final totalCount = mealEntries.length;
+    final displayCount = totalCount > 5 ? 5 : totalCount;
+    final displayEntries = mealEntries.take(displayCount).toList();
+
+    // Group by date
+    final Map<String, List<String>> dateMealMap = {};
+    for (final entry in displayEntries) {
+      dateMealMap.putIfAbsent(entry.date, () => []);
+      if (!dateMealMap[entry.date]!.contains(entry.mealTime)) {
+        dateMealMap[entry.date]!.add(entry.mealTime);
+      }
+    }
 
     // Sort dates
     final sortedDates = dateMealMap.keys.toList()..sort();
@@ -50,26 +77,43 @@ class InvoiceExportItem {
     final parts = <String>[];
     for (final date in sortedDates) {
       final mealTimes = dateMealMap[date]!;
-      if (mealTimes.isEmpty) continue;
+      mealTimes.sort((a, b) => _mealTimeOrder(a).compareTo(_mealTimeOrder(b)));
 
-      // Sort meal times: breakfast, lunch, dinner
-      mealTimes.sort((a, b) {
-        final indexA = _mealTimeOrder(a);
-        final indexB = _mealTimeOrder(b);
-        return indexA.compareTo(indexB);
-      });
-
-      // Format date
       final datePart = _formatDate(date);
-
-      // Format meal times
       final mealPart = mealTimes.map(_mealTimeDisplayName).join('、');
-
       parts.add('$datePart$mealPart');
+    }
+
+    // Add truncation suffix if needed
+    if (totalCount > 5) {
+      parts.add('...等共计$totalCount个订单');
     }
 
     return parts.join('|');
   }
+
+  /// Generate full label combining remark and time label
+  /// Format: "备注内容|时间标签" or "备注内容" or "时间标签"
+  String get fullLabel {
+    final parts = <String>[];
+
+    // Add remark if present
+    if (remark != null && remark!.isNotEmpty) {
+      parts.add(remark!);
+    }
+
+    // Add truncated time label
+    final timeLabel = truncatedTimeLabel;
+    if (timeLabel.isNotEmpty) {
+      parts.add(timeLabel);
+    }
+
+    return parts.join('|');
+  }
+
+  /// Original timeLabel getter for backward compatibility
+  /// Now uses truncatedTimeLabel internally
+  String get timeLabel => truncatedTimeLabel;
 
   int _mealTimeOrder(String mealTime) {
     switch (mealTime) {
@@ -120,6 +164,7 @@ class InvoiceExportService {
     required List<Invoice> invoices,
     required Future<List<int>> Function(int) getOrderIdsForInvoice,
     required Future<Order?> Function(int) getOrderById,
+    String? remark, // 统一备注
   }) async {
     final items = <InvoiceExportItem>[];
 
@@ -148,6 +193,7 @@ class InvoiceExportService {
       items.add(InvoiceExportItem(
         invoice: invoice,
         orders: orders,
+        remark: remark,
       ));
     }
 
@@ -160,6 +206,7 @@ class InvoiceExportService {
     required String outputPath,
     required String Function(String) getFilePath,
     bool showTimeLabel = true, // Whether to show time labels on invoices
+    bool showRemark = true, // Whether to show remarks on invoices
   }) async {
     if (items.isEmpty) {
       throw ArgumentError('Items list cannot be empty');
@@ -209,6 +256,7 @@ class InvoiceExportService {
           labelPosition: _LabelPosition.topLeft,
           labelMargin: labelMargin,
           showTimeLabel: showTimeLabel,
+          showRemark: showRemark,
         );
 
         // Draw second invoice (bottom half) if exists
@@ -225,6 +273,7 @@ class InvoiceExportService {
             labelPosition: _LabelPosition.bottomLeft,
             labelMargin: labelMargin,
             showTimeLabel: showTimeLabel,
+            showRemark: showRemark,
           );
         }
       }
@@ -255,6 +304,7 @@ class InvoiceExportService {
     required _LabelPosition labelPosition,
     required double labelMargin,
     bool showTimeLabel = true,
+    bool showRemark = true,
   }) async {
     final imagePath = item.invoice.imagePath;
     if (imagePath.isEmpty) return;
@@ -290,11 +340,12 @@ class InvoiceExportService {
         );
       }
 
-      // Draw time label if enabled
-      if (showTimeLabel) {
+      // Draw label if either remark or time label is enabled
+      if (showRemark || showTimeLabel) {
+        final label = item.fullLabel;
         _drawTimeLabel(
           graphics: graphics,
-          label: item.timeLabel,
+          label: label,
           font: labelFont,
           x: x,
           y: y,
