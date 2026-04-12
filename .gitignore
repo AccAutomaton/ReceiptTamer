@@ -46,3 +46,4 @@ app.*.map.json
 
 # Android signing config (contains sensitive data)
 android/key.properties
+.claude/settings.local.json
