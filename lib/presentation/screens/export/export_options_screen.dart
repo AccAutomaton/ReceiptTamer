@@ -149,57 +149,8 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
           // Invoice export options group (only visible when invoice export is enabled)
           _buildInvoiceExportOptions(context),
 
-          // Skip empty days option for meal details export
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: InkWell(
-              onTap: _exportMealDetails
-                  ? () => setState(() => _skipEmptyDays = !_skipEmptyDays)
-                  : null,
-              borderRadius: BorderRadius.circular(20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  // Circular checkbox
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _exportMealDetails && _skipEmptyDays
-                          ? colorScheme.primary
-                          : Colors.transparent,
-                      border: Border.all(
-                        color: _exportMealDetails
-                            ? (_skipEmptyDays
-                                ? colorScheme.primary
-                                : colorScheme.outline)
-                            : colorScheme.outline.withValues(alpha: 0.5),
-                        width: 2,
-                      ),
-                    ),
-                    child: _exportMealDetails && _skipEmptyDays
-                        ? Icon(
-                            Icons.check,
-                            size: 14,
-                            color: colorScheme.onPrimary,
-                          )
-                        : null,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '用餐明细忽略无用餐记录的日期',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: _exportMealDetails
-                          ? colorScheme.onSurface
-                          : colorScheme.onSurface.withValues(alpha: 0.5),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          // Meal details export options group
+          _buildMealDetailsExportOptions(context),
 
           // Export button
           SafeArea(
@@ -394,6 +345,45 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
               ),
               const SizedBox(height: 8),
               _buildInvoiceRemarkOptionRow(context),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Build meal details export options group
+  Widget _buildMealDetailsExportOptions(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    if (!_exportMealDetails) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Card(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '用餐明细导出选项',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildInvoiceOptionRow(
+                context: context,
+                label: '忽略无用餐记录的日期',
+                value: _skipEmptyDays,
+                onToggle: (v) => setState(() => _skipEmptyDays = v),
+              ),
             ],
           ),
         ),
