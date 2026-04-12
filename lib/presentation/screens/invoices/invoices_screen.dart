@@ -8,7 +8,7 @@ import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
 import 'package:receipt_tamer/presentation/widgets/common/empty_state.dart';
-import 'package:receipt_tamer/presentation/widgets/common/month_range_picker.dart';
+import 'package:receipt_tamer/presentation/widgets/common/syncfusion_month_range_picker.dart';
 import 'package:receipt_tamer/presentation/widgets/invoice/invoice_card.dart';
 import 'package:receipt_tamer/presentation/widgets/invoice/invoice_month_group.dart';
 import 'package:receipt_tamer/presentation/widgets/invoice/invoice_month_section_header.dart';
@@ -333,7 +333,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
                 title: const Text('按月份范围'),
                 onTap: () async {
                   Navigator.pop(context);
-                  final result = await MonthRangePicker.show(context);
+                  final result = await SyncfusionMonthRangePicker.show(context);
                   if (result != null) {
                     ref.read(invoiceProvider.notifier).searchInvoices(
                           startDate: result.startDate,
