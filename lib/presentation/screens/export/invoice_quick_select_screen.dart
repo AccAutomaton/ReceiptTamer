@@ -40,6 +40,8 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
 
   // Export options
   bool _showTimeLabel = true; // Show time label on invoices
+  bool _addRemark = false; // 新增：是否添加备注
+  String? _remarkContent; // 新增：备注内容
 
   @override
   void initState() {
@@ -145,6 +147,51 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
     _loadInvoices();
   }
 
+  /// Show dialog for inputting invoice remark
+  Future<void> _showRemarkDialog() async {
+    final controller = TextEditingController(text: _remarkContent ?? '');
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('发票备注'),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            hintText: '请输入备注内容',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          maxLength: 50,
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _remarkContent = result.trim();
+        if (_remarkContent!.isEmpty) {
+          _addRemark = false;
+          _remarkContent = null;
+        }
+      });
+    }
+
+    controller.dispose();
+  }
+
   Future<void> _confirmAndExport() async {
     if (_selectedInvoiceIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -166,6 +213,7 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
             ref.read(invoiceProvider.notifier).getOrderIdsForInvoice(invoiceId),
         getOrderById: (orderId) =>
             ref.read(orderProvider.notifier).getOrderById(orderId),
+        remark: _addRemark ? _remarkContent : null,
       );
 
       if (items.isEmpty) {
@@ -186,6 +234,7 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
         outputPath: tempPath,
         getFilePath: (path) => path,
         showTimeLabel: _showTimeLabel,
+        showRemark: _addRemark,
       );
 
       // Copy to download directory
@@ -355,6 +404,66 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
                 onPressed: _showDateRangePicker,
                 icon: const Icon(Icons.date_range),
                 tooltip: '日期筛选',
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+
+          // Remark option row
+          Row(
+            children: [
+              Checkbox(
+                value: _addRemark,
+                onChanged: (value) {
+                  if (value == true) {
+                    setState(() => _addRemark = true);
+                    _showRemarkDialog();
+                  } else {
+                    setState(() {
+                      _addRemark = false;
+                      _remarkContent = null;
+                    });
+                  }
+                },
+              ),
+              Expanded(
+                flex: 3,
+                child: GestureDetector(
+                  onTap: _addRemark ? _showRemarkDialog : null,
+                  child: Row(
+                    children: [
+                      Text(
+                        '为发票添加备注',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      if (_remarkContent != null && _remarkContent!.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: GestureDetector(
+                            onTap: _showRemarkDialog,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: colorScheme.primaryContainer,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                _remarkContent!,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onPrimaryContainer,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
