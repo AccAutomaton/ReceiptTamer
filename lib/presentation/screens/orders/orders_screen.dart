@@ -2,7 +2,7 @@ import 'package:receipt_tamer/core/constants/app_constants.dart';
 import 'package:receipt_tamer/data/models/order.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/widgets/common/empty_state.dart';
-import 'package:receipt_tamer/presentation/widgets/common/month_range_picker.dart';
+import 'package:receipt_tamer/presentation/widgets/common/syncfusion_month_range_picker.dart';
 import 'package:receipt_tamer/presentation/widgets/order/month_group.dart';
 import 'package:receipt_tamer/presentation/widgets/order/month_section_header.dart';
 import 'package:receipt_tamer/presentation/widgets/order/month_fast_scroll_bar.dart';
@@ -269,7 +269,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                 title: const Text('按月份范围'),
                 onTap: () async {
                   Navigator.pop(context);
-                  final result = await MonthRangePicker.show(context);
+                  final result = await SyncfusionMonthRangePicker.show(context);
                   if (result != null) {
                     ref.read(orderProvider.notifier).searchOrders(
                           startDate: result.startDate,
