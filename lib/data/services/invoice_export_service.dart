@@ -342,18 +342,36 @@ class InvoiceExportService {
 
       // Draw label if either remark or time label is enabled
       if (showRemark || showTimeLabel) {
-        final label = item.fullLabel;
-        _drawTimeLabel(
-          graphics: graphics,
-          label: label,
-          font: labelFont,
-          x: x,
-          y: y,
-          width: width,
-          height: height,
-          position: labelPosition,
-          margin: labelMargin,
-        );
+        final parts = <String>[];
+
+        // Add remark only if showRemark is enabled
+        if (showRemark && item.remark != null && item.remark!.isNotEmpty) {
+          parts.add(item.remark!);
+        }
+
+        // Add time label only if showTimeLabel is enabled
+        if (showTimeLabel) {
+          final timeLabel = item.truncatedTimeLabel;
+          if (timeLabel.isNotEmpty) {
+            parts.add(timeLabel);
+          }
+        }
+
+        final label = parts.join('|');
+
+        if (label.isNotEmpty) {
+          _drawTimeLabel(
+            graphics: graphics,
+            label: label,
+            font: labelFont,
+            x: x,
+            y: y,
+            width: width,
+            height: height,
+            position: labelPosition,
+            margin: labelMargin,
+          );
+        }
       }
     } catch (e, stackTrace) {
       // Ignore errors for individual invoices
