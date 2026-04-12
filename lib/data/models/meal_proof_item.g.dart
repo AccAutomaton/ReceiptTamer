@@ -9,7 +9,9 @@ part of 'meal_proof_item.dart';
 _MealProofItem _$MealProofItemFromJson(Map<String, dynamic> json) =>
     _MealProofItem(
       order: Order.fromJson(json['order'] as Map<String, dynamic>),
-      invoice: Invoice.fromJson(json['invoice'] as Map<String, dynamic>),
+      invoice: json['invoice'] == null
+          ? null
+          : Invoice.fromJson(json['invoice'] as Map<String, dynamic>),
       proratedInvoiceAmount:
           (json['proratedInvoiceAmount'] as num?)?.toDouble() ?? 0.0,
       totalInvoiceAmount:

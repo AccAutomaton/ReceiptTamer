@@ -2,6 +2,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'invoice.dart';
 import 'order.dart';
+import '../../core/utils/date_formatter.dart';
 
 part 'meal_proof_item.freezed.dart';
 part 'meal_proof_item.g.dart';
@@ -12,7 +13,7 @@ part 'meal_proof_item.g.dart';
 abstract class MealProofItem with _$MealProofItem {
   const factory MealProofItem({
     required Order order,
-    required Invoice invoice,
+    Invoice? invoice,
     @Default(0.0) double proratedInvoiceAmount,
     @Default(0.0) double totalInvoiceAmount,
     @Default(false) bool isProRated,
@@ -26,7 +27,9 @@ abstract class MealProofItem with _$MealProofItem {
 extension MealProofItemX on MealProofItem {
   /// Get the display string for invoice amount
   /// Format: "xx.xx元" or "xx.xx/xx.xx元" (if prorated)
+  /// Returns empty string if no invoice associated
   String get invoiceAmountDisplay {
+    if (invoice == null) return '';
     if (isProRated) {
       return '${proratedInvoiceAmount.toStringAsFixed(2)}/${totalInvoiceAmount.toStringAsFixed(2)}元';
     }
@@ -50,18 +53,8 @@ extension MealProofItemX on MealProofItem {
 
   /// Get the meal time display string (早餐/午餐/晚餐)
   String get mealTimeDisplay {
-    final mealTime = order.mealTime;
-    if (mealTime == null || mealTime.isEmpty) return '-';
-    switch (mealTime) {
-      case 'breakfast':
-        return '早餐';
-      case 'lunch':
-        return '午餐';
-      case 'dinner':
-        return '晚餐';
-      default:
-        return '-';
-    }
+    final mealTime = DateFormatter.mealTimeFromString(order.mealTime);
+    return DateFormatter.mealTimeToDisplayName(mealTime);
   }
 
   /// Get the amount display string (实付xx.xx元)

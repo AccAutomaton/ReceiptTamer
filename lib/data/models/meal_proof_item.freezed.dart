@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$MealProofItem {
 
- Order get order; Invoice get invoice; double get proratedInvoiceAmount; double get totalInvoiceAmount; bool get isProRated;
+ Order get order; Invoice? get invoice; double get proratedInvoiceAmount; double get totalInvoiceAmount; bool get isProRated;
 /// Create a copy of MealProofItem
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,11 +48,11 @@ abstract mixin class $MealProofItemCopyWith<$Res>  {
   factory $MealProofItemCopyWith(MealProofItem value, $Res Function(MealProofItem) _then) = _$MealProofItemCopyWithImpl;
 @useResult
 $Res call({
- Order order, Invoice invoice, double proratedInvoiceAmount, double totalInvoiceAmount, bool isProRated
+ Order order, Invoice? invoice, double proratedInvoiceAmount, double totalInvoiceAmount, bool isProRated
 });
 
 
-$OrderCopyWith<$Res> get order;$InvoiceCopyWith<$Res> get invoice;
+$OrderCopyWith<$Res> get order;$InvoiceCopyWith<$Res>? get invoice;
 
 }
 /// @nodoc
@@ -65,11 +65,11 @@ class _$MealProofItemCopyWithImpl<$Res>
 
 /// Create a copy of MealProofItem
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? order = null,Object? invoice = null,Object? proratedInvoiceAmount = null,Object? totalInvoiceAmount = null,Object? isProRated = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? order = null,Object? invoice = freezed,Object? proratedInvoiceAmount = null,Object? totalInvoiceAmount = null,Object? isProRated = null,}) {
   return _then(_self.copyWith(
 order: null == order ? _self.order : order // ignore: cast_nullable_to_non_nullable
-as Order,invoice: null == invoice ? _self.invoice : invoice // ignore: cast_nullable_to_non_nullable
-as Invoice,proratedInvoiceAmount: null == proratedInvoiceAmount ? _self.proratedInvoiceAmount : proratedInvoiceAmount // ignore: cast_nullable_to_non_nullable
+as Order,invoice: freezed == invoice ? _self.invoice : invoice // ignore: cast_nullable_to_non_nullable
+as Invoice?,proratedInvoiceAmount: null == proratedInvoiceAmount ? _self.proratedInvoiceAmount : proratedInvoiceAmount // ignore: cast_nullable_to_non_nullable
 as double,totalInvoiceAmount: null == totalInvoiceAmount ? _self.totalInvoiceAmount : totalInvoiceAmount // ignore: cast_nullable_to_non_nullable
 as double,isProRated: null == isProRated ? _self.isProRated : isProRated // ignore: cast_nullable_to_non_nullable
 as bool,
@@ -88,9 +88,12 @@ $OrderCopyWith<$Res> get order {
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$InvoiceCopyWith<$Res> get invoice {
-  
-  return $InvoiceCopyWith<$Res>(_self.invoice, (value) {
+$InvoiceCopyWith<$Res>? get invoice {
+    if (_self.invoice == null) {
+    return null;
+  }
+
+  return $InvoiceCopyWith<$Res>(_self.invoice!, (value) {
     return _then(_self.copyWith(invoice: value));
   });
 }
@@ -175,7 +178,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( Order order,  Invoice invoice,  double proratedInvoiceAmount,  double totalInvoiceAmount,  bool isProRated)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( Order order,  Invoice? invoice,  double proratedInvoiceAmount,  double totalInvoiceAmount,  bool isProRated)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _MealProofItem() when $default != null:
 return $default(_that.order,_that.invoice,_that.proratedInvoiceAmount,_that.totalInvoiceAmount,_that.isProRated);case _:
@@ -196,7 +199,7 @@ return $default(_that.order,_that.invoice,_that.proratedInvoiceAmount,_that.tota
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( Order order,  Invoice invoice,  double proratedInvoiceAmount,  double totalInvoiceAmount,  bool isProRated)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( Order order,  Invoice? invoice,  double proratedInvoiceAmount,  double totalInvoiceAmount,  bool isProRated)  $default,) {final _that = this;
 switch (_that) {
 case _MealProofItem():
 return $default(_that.order,_that.invoice,_that.proratedInvoiceAmount,_that.totalInvoiceAmount,_that.isProRated);case _:
@@ -216,7 +219,7 @@ return $default(_that.order,_that.invoice,_that.proratedInvoiceAmount,_that.tota
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( Order order,  Invoice invoice,  double proratedInvoiceAmount,  double totalInvoiceAmount,  bool isProRated)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( Order order,  Invoice? invoice,  double proratedInvoiceAmount,  double totalInvoiceAmount,  bool isProRated)?  $default,) {final _that = this;
 switch (_that) {
 case _MealProofItem() when $default != null:
 return $default(_that.order,_that.invoice,_that.proratedInvoiceAmount,_that.totalInvoiceAmount,_that.isProRated);case _:
@@ -231,11 +234,11 @@ return $default(_that.order,_that.invoice,_that.proratedInvoiceAmount,_that.tota
 @JsonSerializable()
 
 class _MealProofItem implements MealProofItem {
-  const _MealProofItem({required this.order, required this.invoice, this.proratedInvoiceAmount = 0.0, this.totalInvoiceAmount = 0.0, this.isProRated = false});
+  const _MealProofItem({required this.order, this.invoice, this.proratedInvoiceAmount = 0.0, this.totalInvoiceAmount = 0.0, this.isProRated = false});
   factory _MealProofItem.fromJson(Map<String, dynamic> json) => _$MealProofItemFromJson(json);
 
 @override final  Order order;
-@override final  Invoice invoice;
+@override final  Invoice? invoice;
 @override@JsonKey() final  double proratedInvoiceAmount;
 @override@JsonKey() final  double totalInvoiceAmount;
 @override@JsonKey() final  bool isProRated;
@@ -273,11 +276,11 @@ abstract mixin class _$MealProofItemCopyWith<$Res> implements $MealProofItemCopy
   factory _$MealProofItemCopyWith(_MealProofItem value, $Res Function(_MealProofItem) _then) = __$MealProofItemCopyWithImpl;
 @override @useResult
 $Res call({
- Order order, Invoice invoice, double proratedInvoiceAmount, double totalInvoiceAmount, bool isProRated
+ Order order, Invoice? invoice, double proratedInvoiceAmount, double totalInvoiceAmount, bool isProRated
 });
 
 
-@override $OrderCopyWith<$Res> get order;@override $InvoiceCopyWith<$Res> get invoice;
+@override $OrderCopyWith<$Res> get order;@override $InvoiceCopyWith<$Res>? get invoice;
 
 }
 /// @nodoc
@@ -290,11 +293,11 @@ class __$MealProofItemCopyWithImpl<$Res>
 
 /// Create a copy of MealProofItem
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? order = null,Object? invoice = null,Object? proratedInvoiceAmount = null,Object? totalInvoiceAmount = null,Object? isProRated = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? order = null,Object? invoice = freezed,Object? proratedInvoiceAmount = null,Object? totalInvoiceAmount = null,Object? isProRated = null,}) {
   return _then(_MealProofItem(
 order: null == order ? _self.order : order // ignore: cast_nullable_to_non_nullable
-as Order,invoice: null == invoice ? _self.invoice : invoice // ignore: cast_nullable_to_non_nullable
-as Invoice,proratedInvoiceAmount: null == proratedInvoiceAmount ? _self.proratedInvoiceAmount : proratedInvoiceAmount // ignore: cast_nullable_to_non_nullable
+as Order,invoice: freezed == invoice ? _self.invoice : invoice // ignore: cast_nullable_to_non_nullable
+as Invoice?,proratedInvoiceAmount: null == proratedInvoiceAmount ? _self.proratedInvoiceAmount : proratedInvoiceAmount // ignore: cast_nullable_to_non_nullable
 as double,totalInvoiceAmount: null == totalInvoiceAmount ? _self.totalInvoiceAmount : totalInvoiceAmount // ignore: cast_nullable_to_non_nullable
 as double,isProRated: null == isProRated ? _self.isProRated : isProRated // ignore: cast_nullable_to_non_nullable
 as bool,
@@ -314,9 +317,12 @@ $OrderCopyWith<$Res> get order {
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$InvoiceCopyWith<$Res> get invoice {
-  
-  return $InvoiceCopyWith<$Res>(_self.invoice, (value) {
+$InvoiceCopyWith<$Res>? get invoice {
+    if (_self.invoice == null) {
+    return null;
+  }
+
+  return $InvoiceCopyWith<$Res>(_self.invoice!, (value) {
     return _then(_self.copyWith(invoice: value));
   });
 }

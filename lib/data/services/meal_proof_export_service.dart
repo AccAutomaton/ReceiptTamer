@@ -61,6 +61,75 @@ class MealProofExportService {
     return items;
   }
 
+  /// Prepare meal proof items from selected orders (reverse association)
+  /// Used for quick export: user directly selects orders instead of invoices
+  static Future<List<MealProofItem>> prepareMealProofItemsFromOrders({
+    required List<Order> orders,
+    required Future<List<int>> Function(int) getInvoiceIdsForOrder,
+    required Future<Invoice?> Function(int) getInvoiceById,
+  }) async {
+    final items = <MealProofItem>[];
+
+    // Group orders by their associated invoice
+    final invoiceToOrdersMap = <int, List<Order>>{};
+    final ordersWithoutInvoice = <Order>[];
+
+    for (final order in orders) {
+      if (order.id == null) continue;
+
+      final invoiceIds = await getInvoiceIdsForOrder(order.id!);
+      if (invoiceIds.isEmpty) {
+        ordersWithoutInvoice.add(order);
+      } else {
+        // An order should only associate with one invoice, take the first one
+        final invoiceId = invoiceIds.first;
+        invoiceToOrdersMap.putIfAbsent(invoiceId, () => []);
+        invoiceToOrdersMap[invoiceId]!.add(order);
+      }
+    }
+
+    // Process orders with invoice association
+    for (final entry in invoiceToOrdersMap.entries) {
+      final invoiceId = entry.key;
+      final ordersForInvoice = entry.value;
+
+      final invoice = await getInvoiceById(invoiceId);
+      if (invoice == null) continue;
+
+      // Use shared proration utility
+      final prorationResult = InvoiceProrationUtil.calculate(
+        invoice: invoice,
+        orders: ordersForInvoice,
+      );
+
+      for (final proratedOrder in prorationResult.orderAmounts) {
+        items.add(MealProofItem(
+          order: proratedOrder.order,
+          invoice: invoice,
+          proratedInvoiceAmount: proratedOrder.proratedInvoiceAmount,
+          totalInvoiceAmount: invoice.totalAmount,
+          isProRated: prorationResult.needsProration,
+        ));
+      }
+    }
+
+    // Process orders without invoice association
+    for (final order in ordersWithoutInvoice) {
+      items.add(MealProofItem(
+        order: order,
+        invoice: null,
+        proratedInvoiceAmount: 0.0,
+        totalInvoiceAmount: 0.0,
+        isProRated: false,
+      ));
+    }
+
+    // Sort items by date and meal time
+    _sortMealProofItems(items);
+
+    return items;
+  }
+
   /// Sort meal proof items by date (ascending) and meal time (breakfast < lunch < dinner)
   static void _sortMealProofItems(List<MealProofItem> items) {
     items.sort((a, b) {
@@ -195,8 +264,10 @@ class MealProofExportService {
 
     // Line 1: "yyyy年MM月dd日 x餐"
     final line1 = '${item.dateDisplay} ${item.mealTimeDisplay}';
-    // Line 2: "实付xx.xx元|发票金额xx.xx元"
-    final line2 = '${item.amountDisplay}|发票金额${item.invoiceAmountDisplay}';
+    // Line 2: "实付xx.xx元" or "实付xx.xx元|发票金额xx.xx元"
+    final line2 = item.invoice != null
+        ? '${item.amountDisplay}|发票金额${item.invoiceAmountDisplay}'
+        : item.amountDisplay;
 
     // Calculate line heights for centering
     final lineHeight = font.height;

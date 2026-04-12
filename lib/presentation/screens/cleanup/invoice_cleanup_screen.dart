@@ -540,7 +540,7 @@ class _InvoiceCleanupCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          invoice.sellerName.isEmpty ? '未命名销售方' : invoice.sellerName,
+                          invoice.sellerName.isEmpty ? '未命名店铺' : invoice.sellerName,
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w600,
                           ),

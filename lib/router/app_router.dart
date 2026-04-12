@@ -13,6 +13,8 @@ import '../presentation/screens/invoices/invoice_edit_screen.dart';
 import '../presentation/screens/invoices/order_selector_screen.dart';
 import '../presentation/screens/export/export_screen.dart';
 import '../presentation/screens/export/export_options_screen.dart';
+import '../presentation/screens/export/meal_proof_order_select_screen.dart';
+import '../presentation/screens/export/invoice_quick_select_screen.dart';
 import '../presentation/screens/settings/settings_screen.dart';
 import '../presentation/screens/settings/data_cleanup_screen.dart';
 import '../presentation/screens/cleanup/order_cleanup_screen.dart';
@@ -218,6 +220,18 @@ final routerProvider = Provider<GoRouter>((ref) {
             orderIds: orderIds,
           );
         },
+      ),
+      // Meal proof quick export route
+      GoRoute(
+        path: '/export/meal-proof',
+        name: 'meal_proof_export',
+        builder: (context, state) => const MealProofOrderSelectScreen(),
+      ),
+      // Invoice quick export route
+      GoRoute(
+        path: '/export/invoice',
+        name: 'invoice_export',
+        builder: (context, state) => const InvoiceQuickSelectScreen(),
       ),
       // Data cleanup routes
       GoRoute(

@@ -201,15 +201,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildQuickAccessGrid(BuildContext context, ColorScheme colorScheme) {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: _QuickAccessButton(
-            icon: Icons.file_download_outlined,
-            label: '报销材料导出',
-            color: colorScheme.primary,
-            onTap: () => context.push('/export'),
-          ),
+        // 第一行：用餐证明导出 + 发票导出
+        Row(
+          children: [
+            Expanded(
+              child: _QuickAccessButton(
+                icon: Icons.restaurant_menu,
+                label: '用餐证明导出',
+                color: colorScheme.tertiary,
+                onTap: () => context.push('/export/meal-proof'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _QuickAccessButton(
+                icon: Icons.receipt_long,
+                label: '发票导出',
+                color: colorScheme.secondary,
+                onTap: () => context.push('/export/invoice'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // 第二行：报销材料导出
+        Row(
+          children: [
+            Expanded(
+              child: _QuickAccessButton(
+                icon: Icons.file_download_outlined,
+                label: '报销材料导出',
+                color: colorScheme.primary,
+                onTap: () => context.push('/export'),
+              ),
+            ),
+          ],
         ),
       ],
     );
