@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 
 /// 月份范围选择结果
 class MonthRangeResult {
@@ -203,7 +202,7 @@ class _SyncfusionMonthRangePickerState extends State<SyncfusionMonthRangePicker>
   }
 }
 
-/// 单月份选择对话框（年份视图）
+/// 纯Flutter原生实现的月份选择对话框
 class _MonthPickerDialog extends StatefulWidget {
   final DateTime? initialMonth;
 
@@ -214,62 +213,133 @@ class _MonthPickerDialog extends StatefulWidget {
 }
 
 class _MonthPickerDialogState extends State<_MonthPickerDialog> {
+  late int _selectedYear;
+  late int _selectedMonth;
+
+  static const int _minYear = 2020;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initialMonth ?? DateTime.now();
+    _selectedYear = initial.year;
+    _selectedMonth = initial.month;
+  }
+
+  void _changeYear(int delta) {
+    final newYear = _selectedYear + delta;
+    if (newYear >= _minYear) {
+      setState(() {
+        _selectedYear = newYear;
+      });
+    }
+  }
+
+  void _selectMonth(int month) {
+    setState(() {
+      _selectedMonth = month;
+    });
+    // 返回选择的月份第一天
+    Navigator.pop(context, DateTime(_selectedYear, month, 1));
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final now = DateTime.now();
+    final maxYear = now.year + 1;
+
+    // 月份名称列表
+    const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
 
     return AlertDialog(
       title: const Text('选择月份'),
       titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-      contentPadding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-      content: Theme(
-        data: Theme.of(context).copyWith(colorScheme: colorScheme),
-        child: Container(
-          width: 320,
-          height: 350,
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: SfDateRangePicker(
-            view: DateRangePickerView.year,
-            selectionMode: DateRangePickerSelectionMode.single,
-            initialSelectedDate: widget.initialMonth ?? DateTime.now(),
-            minDate: DateTime(2020),
-            maxDate: DateTime.now().add(const Duration(days: 365)),
-            onSelectionChanged: (args) {
-              if (args.value is DateTime) {
-                final selected = args.value as DateTime;
-                // 返回月份第一天
-                Navigator.pop(context, DateTime(selected.year, selected.month, 1));
-              }
-            },
-            backgroundColor: colorScheme.surface,
-            headerStyle: DateRangePickerHeaderStyle(
-              backgroundColor: colorScheme.surface,
-              textStyle: TextStyle(
-                color: colorScheme.onSurface,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+      contentPadding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
+      content: SizedBox(
+        width: 280,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 年份切换器
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  onPressed: _selectedYear > _minYear ? () => _changeYear(-1) : null,
+                  icon: const Icon(Icons.chevron_left),
+                  iconSize: 28,
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '$_selectedYear年',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: _selectedYear < maxYear ? () => _changeYear(1) : null,
+                  icon: const Icon(Icons.chevron_right),
+                  iconSize: 28,
+                ),
+              ],
             ),
-            yearCellStyle: DateRangePickerYearCellStyle(
-              textStyle: TextStyle(color: colorScheme.onSurface),
-              todayTextStyle: TextStyle(
-                color: colorScheme.primary,
-                fontWeight: FontWeight.w600,
-              ),
-              disabledDatesTextStyle: TextStyle(
-                color: colorScheme.onSurface.withValues(alpha: 0.3),
-              ),
+            const SizedBox(height: 16),
+            // 月份网格 - 使用 Wrap 替代 GridView
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: List.generate(12, (index) {
+                final month = index + 1;
+                final isSelected = month == _selectedMonth;
+
+                // 检查月份是否可选（不能选择未来月份）
+                final monthDate = DateTime(_selectedYear, month, 1);
+                final isDisabled = monthDate.year > now.year ||
+                    (monthDate.year == now.year && month > now.month);
+
+                return SizedBox(
+                  width: 56,
+                  height: 36,
+                  child: InkWell(
+                    onTap: isDisabled ? null : () => _selectMonth(month),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? colorScheme.primary
+                            : (isDisabled
+                                ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)
+                                : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: Text(
+                          monthNames[index],
+                          style: TextStyle(
+                            color: isSelected
+                                ? colorScheme.onPrimary
+                                : (isDisabled
+                                    ? colorScheme.onSurface.withValues(alpha: 0.3)
+                                    : colorScheme.onSurface),
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
             ),
-            selectionTextStyle: TextStyle(
-              color: colorScheme.onPrimary,
-              fontWeight: FontWeight.w600,
-            ),
-            selectionColor: colorScheme.primary,
-            todayHighlightColor: colorScheme.primary,
-          ),
+          ],
         ),
       ),
       actions: [

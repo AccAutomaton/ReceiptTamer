@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:receipt_tamer/data/models/app_version.dart';
 import 'package:receipt_tamer/data/services/update_preferences.dart';
 import 'package:receipt_tamer/data/services/update_service.dart';
 import 'package:receipt_tamer/core/services/log_service.dart';
 import 'package:receipt_tamer/core/services/log_config.dart';
+import 'package:receipt_tamer/presentation/widgets/common/update_dialog.dart';
 
 /// Shell widget that provides bottom navigation bar
 class MainShell extends ConsumerStatefulWidget {
@@ -18,12 +18,16 @@ class MainShell extends ConsumerStatefulWidget {
   ConsumerState<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends ConsumerState<MainShell> {
+class _MainShellState extends ConsumerState<MainShell>
+    with WidgetsBindingObserver {
   int _currentIndex = 0;
   DateTime? _lastPressedTime;
   bool _updateChecked = false;
 
   final UpdateService _updateService = UpdateService();
+
+  /// Path of the downloaded APK file (for cleanup after install)
+  String? _downloadedApkPath;
 
   // Navigation destinations (excluding the center FAB)
   static const _destinations = [
@@ -135,6 +139,29 @@ class _MainShellState extends ConsumerState<MainShell> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Clean up APK file after returning from installation
+      _cleanupApkAfterInstall();
+    }
+  }
+
+  /// Clean up downloaded APK file after installation
+  Future<void> _cleanupApkAfterInstall() async {
+    final apkPath = _downloadedApkPath;
+    _downloadedApkPath = null;  // 先清空避免重复清理
+    if (apkPath != null) {
+      await _updateService.deleteApk(apkPath);
+    }
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     // Use SchedulerBinding to defer state update to after build
@@ -168,7 +195,14 @@ class _MainShellState extends ConsumerState<MainShell> {
           response.latestVersion!.version,
         );
         if (!isIgnored && mounted) {
-          _showAutoUpdateDialog(response.latestVersion!);
+          UpdateDialog.show(
+            context,
+            response.latestVersion!,
+            updateService: _updateService,
+            onApkDownloaded: (apkPath) {
+              _downloadedApkPath = apkPath;
+            },
+          );
         }
       }
       // All other cases (no update, error, rate limited) are silent
@@ -178,80 +212,9 @@ class _MainShellState extends ConsumerState<MainShell> {
     }
   }
 
-  /// Show auto update dialog with ignore options
-  void _showAutoUpdateDialog(AppVersion latestVersion) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(Icons.system_update, color: Colors.blue),
-            const SizedBox(width: 8),
-            Expanded(child: Text('发现新版本 ${latestVersion.version}')),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (latestVersion.formattedFileSize != null)
-                Text(
-                  '安装包大小: ${latestVersion.formattedFileSize}',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 13,
-                  ),
-                ),
-              const SizedBox(height: 12),
-              if (latestVersion.changelog != null &&
-                  latestVersion.changelog!.isNotEmpty) ...[
-                const Text(
-                  '更新内容:',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  constraints: const BoxConstraints(maxHeight: 200),
-                  child: SingleChildScrollView(
-                    child: Text(
-                      latestVersion.changelog!,
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await UpdatePreferences.setIgnoredVersion(latestVersion.version);
-            },
-            child: const Text('忽略此版本'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('稍后提醒'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(context);
-              context.push('/settings');
-            },
-            child: const Text('立即更新'),
-          ),
-        ],
-        actionsAlignment: MainAxisAlignment.end,
-      ),
-    );
-  }
-
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _updateService.dispose();
     super.dispose();
   }
@@ -293,7 +256,11 @@ class _MainShellState extends ConsumerState<MainShell> {
         if (didPop) return;
         final shouldPop = await _handleBackPress();
         if (shouldPop && mounted) {
-          Navigator.of(context).pop();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              Navigator.of(context).pop();
+            }
+          });
         }
       },
       child: Stack(
