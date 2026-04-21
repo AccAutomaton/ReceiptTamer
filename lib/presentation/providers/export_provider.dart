@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/order.dart';
 import '../../data/repositories/order_repository.dart';
 import '../../data/repositories/invoice_repository.dart';
+import '../../core/services/log_service.dart';
+import '../../core/services/log_config.dart';
 
 /// Export mode selection
 /// 导出模式选择
@@ -166,7 +168,8 @@ class ExportNotifier extends Notifier<ExportState> {
         selectedIds: {},
         cascadeIds: {},
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleDb, '加载订单失败', e, stackTrace);
       state = state.copyWith(
         isLoading: false,
         errorMessage: e.toString(),
