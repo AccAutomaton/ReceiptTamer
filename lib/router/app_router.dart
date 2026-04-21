@@ -201,22 +201,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/export',
         name: 'export',
-        builder: (context, state) => const ExportScreen(),
-      ),
-      GoRoute(
-        path: '/export/mode',
-        name: 'export_mode',
         builder: (context, state) => const ExportModeScreen(),
       ),
       GoRoute(
-        path: '/export/orders',
-        name: 'order_export',
-        builder: (context, state) => const OrderExportScreen(),
+        path: '/export/invoices',
+        name: 'export_invoices',
+        builder: (context, state) => const ExportScreen(),
       ),
       GoRoute(
-        path: '/export/invoices',
-        name: 'invoice_export_select',
-        builder: (context, state) => const InvoiceQuickSelectScreen(),
+        path: '/export/orders',
+        name: 'export_orders',
+        builder: (context, state) => const OrderExportScreen(),
       ),
       GoRoute(
         path: '/export/options',
