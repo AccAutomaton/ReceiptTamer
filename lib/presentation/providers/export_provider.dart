@@ -109,9 +109,9 @@ class ExportState {
   /// 检查订单是否被联动选中
   bool isCascadeSelected(int id) => cascadeIds.contains(id);
 
-  /// Check if an order is selectable (not cascade selected)
-  /// 检查订单是否可被选择（非联动选中状态）
-  bool isSelectable(int id) => !cascadeIds.contains(id);
+  /// Check if an order is selectable (has linked invoices)
+  /// 检查订单是否可被选择（至少关联一张发票）
+  bool isSelectable(int id) => (orderInvoiceCount[id] ?? 0) > 0;
 
   /// Get all selected IDs (including cascade)
   /// 获取所有选中的ID集合（包含联动选中）
@@ -357,24 +357,28 @@ class ExportNotifier extends Notifier<ExportState> {
     return chainIds;
   }
 
-  /// Select all available orders with cascade
-  /// 全选所有可用订单并处理联动
+  /// Select all selectable orders with cascade
+  /// 全选所有可选订单并处理联动
   Future<String?> selectAll() async {
-    final allIds = state.availableOrders
-        .where((o) => o.id != null)
+    // Only select orders that have invoice relations (selectable orders)
+    // 只选择有发票关联的订单（可选订单）
+    final selectableIds = state.availableOrders
+        .where((o) => o.id != null && state.isSelectable(o.id!))
         .map((o) => o.id!)
         .toSet();
 
-    // Calculate cascade IDs for all orders
-    // 计算所有订单的联动ID
-    final cascadeIds = await _calculateCascadeIds(allIds);
+    if (selectableIds.isEmpty) return null;
 
-    // Filter out already selected IDs (in this case, all IDs)
+    // Calculate cascade IDs for all selectable orders
+    // 计算所有可选订单的联动ID
+    final cascadeIds = await _calculateCascadeIds(selectableIds);
+
+    // Filter out already selected IDs (in this case, all selectable IDs)
     // 过滤掉已直接选中的ID
-    final newCascadeIds = cascadeIds.where((id) => !allIds.contains(id)).toSet();
+    final newCascadeIds = cascadeIds.where((id) => !selectableIds.contains(id)).toSet();
 
     state = state.copyWith(
-      selectedIds: allIds,
+      selectedIds: selectableIds,
       cascadeIds: newCascadeIds,
     );
 
@@ -384,17 +388,21 @@ class ExportNotifier extends Notifier<ExportState> {
     return null;
   }
 
-  /// Invert selection with cascade
-  /// 反选并处理联动
+  /// Invert selection with cascade (only for selectable orders)
+  /// 反选并处理联动（只处理可选订单）
   Future<String?> invertSelection() async {
-    final allIds = state.availableOrders
-        .where((o) => o.id != null)
+    // Only invert orders that have invoice relations (selectable orders)
+    // 只反选有发票关联的订单（可选订单）
+    final selectableIds = state.availableOrders
+        .where((o) => o.id != null && state.isSelectable(o.id!))
         .map((o) => o.id!)
         .toSet();
 
+    if (selectableIds.isEmpty) return null;
+
     // Invert selection: select unselected, unselect selected
     // 反选：选中未选中的，取消已选中的
-    final newSelectedIds = allIds.where((id) => !state.isSelected(id)).toSet();
+    final newSelectedIds = selectableIds.where((id) => !state.isSelected(id)).toSet();
 
     // Calculate cascade IDs for new selection
     // 计算新选中的联动ID
