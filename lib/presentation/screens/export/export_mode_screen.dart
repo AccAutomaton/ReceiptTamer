@@ -1,20 +1,28 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-import '../../providers/export_provider.dart';
+/// Export mode selection
+/// 导出模式选择
+enum ExportMode {
+  /// Export based on invoices
+  /// 根据发票导出
+  invoices,
+  /// Export based on orders
+  /// 根据订单导出
+  orders,
+}
 
 /// Export mode selection screen
 /// 导出模式选择页面
-class ExportModeScreen extends ConsumerStatefulWidget {
+class ExportModeScreen extends StatefulWidget {
   const ExportModeScreen({super.key});
 
   @override
-  ConsumerState<ExportModeScreen> createState() => _ExportModeScreenState();
+  State<ExportModeScreen> createState() => _ExportModeScreenState();
 }
 
-class _ExportModeScreenState extends ConsumerState<ExportModeScreen> {
+class _ExportModeScreenState extends State<ExportModeScreen> {
   ExportMode _selectedMode = ExportMode.invoices;
 
   void _navigateToExportScreen() {

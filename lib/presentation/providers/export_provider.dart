@@ -6,17 +6,6 @@ import '../../data/repositories/invoice_repository.dart';
 import '../../core/services/log_service.dart';
 import '../../core/services/log_config.dart';
 
-/// Export mode selection
-/// 导出模式选择
-enum ExportMode {
-  /// Export based on invoices
-  /// 根据发票导出
-  invoices,
-  /// Export based on orders
-  /// 根据订单导出
-  orders,
-}
-
 /// State for export operations
 /// 导出操作状态
 class ExportState {
