@@ -13,6 +13,8 @@ import '../presentation/screens/invoices/invoice_edit_screen.dart';
 import '../presentation/screens/invoices/order_selector_screen.dart';
 import '../presentation/screens/export/export_screen.dart';
 import '../presentation/screens/export/export_options_screen.dart';
+import '../presentation/screens/export/export_mode_screen.dart';
+import '../presentation/screens/export/order_export_screen.dart';
 import '../presentation/screens/export/meal_proof_order_select_screen.dart';
 import '../presentation/screens/export/invoice_quick_select_screen.dart';
 import '../presentation/screens/settings/settings_screen.dart';
@@ -200,6 +202,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/export',
         name: 'export',
         builder: (context, state) => const ExportScreen(),
+      ),
+      GoRoute(
+        path: '/export/mode',
+        name: 'export_mode',
+        builder: (context, state) => const ExportModeScreen(),
+      ),
+      GoRoute(
+        path: '/export/orders',
+        name: 'order_export',
+        builder: (context, state) => const OrderExportScreen(),
+      ),
+      GoRoute(
+        path: '/export/invoices',
+        name: 'invoice_export_select',
+        builder: (context, state) => const InvoiceQuickSelectScreen(),
       ),
       GoRoute(
         path: '/export/options',
