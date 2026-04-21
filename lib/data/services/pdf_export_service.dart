@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:receipt_tamer/core/services/log_config.dart';
 import 'package:receipt_tamer/core/services/log_service.dart';
+import 'package:receipt_tamer/core/services/pdf_font_service.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/data/models/order.dart';
@@ -25,10 +26,10 @@ class PdfExportService {
       final page = document.pages.add();
       final graphics = page.graphics;
 
-      // Define fonts and brushes
-      final titleFont = PdfStandardFont(PdfFontFamily.helvetica, 18);
-      final headerFont = PdfStandardFont(PdfFontFamily.helvetica, 10, style: PdfFontStyle.bold);
-      final contentFont = PdfStandardFont(PdfFontFamily.helvetica, 9);
+      // Define fonts - use TrueType font for Chinese characters
+      final titleFont = await PdfFontService.instance.getChineseFont(18);
+      final headerFont = await PdfFontService.instance.getChineseFont(10);
+      final contentFont = await PdfFontService.instance.getChineseFont(9);
 
       final blackBrush = PdfSolidBrush(PdfColor(0, 0, 0));
       final grayBrush = PdfSolidBrush(PdfColor(128, 128, 128));
@@ -182,10 +183,10 @@ class PdfExportService {
       final page = document.pages.add();
       final graphics = page.graphics;
 
-      // Define fonts and brushes
-      final titleFont = PdfStandardFont(PdfFontFamily.helvetica, 18);
-      final headerFont = PdfStandardFont(PdfFontFamily.helvetica, 10, style: PdfFontStyle.bold);
-      final contentFont = PdfStandardFont(PdfFontFamily.helvetica, 9);
+      // Define fonts - use TrueType font for Chinese characters
+      final titleFont = await PdfFontService.instance.getChineseFont(18);
+      final headerFont = await PdfFontService.instance.getChineseFont(10);
+      final contentFont = await PdfFontService.instance.getChineseFont(9);
 
       final blackBrush = PdfSolidBrush(PdfColor(0, 0, 0));
       final grayBrush = PdfSolidBrush(PdfColor(128, 128, 128));

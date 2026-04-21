@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:receipt_tamer/core/services/log_config.dart';
 import 'package:receipt_tamer/core/services/log_service.dart';
+import 'package:receipt_tamer/core/services/pdf_font_service.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/data/models/meal_proof_item.dart';
@@ -164,11 +165,8 @@ class MealProofExportService {
     document.pageSettings.size = PdfPageSize.a4;
     document.pageSettings.margins.all = 36; // Narrow margins (~1.27cm / 0.5 inch)
 
-    // Define fonts - use CJK font for Chinese characters
-    final titleFont = PdfCjkStandardFont(
-      PdfCjkFontFamily.heiseiKakuGothicW5,
-      10,
-    );
+    // Define fonts - use TrueType font for Chinese characters
+    final titleFont = await PdfFontService.instance.getChineseFont(10);
 
     try {
       // Process items in groups of 4 (2x2 grid per page)

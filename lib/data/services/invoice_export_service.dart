@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
+import 'package:receipt_tamer/core/services/pdf_font_service.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/data/models/order.dart';
 import 'package:image/image.dart' as img;
@@ -216,11 +217,8 @@ class InvoiceExportService {
     document.pageSettings.size = PdfPageSize.a4;
     document.pageSettings.margins.all = 0; // No margins, we'll handle positioning
 
-    // Define fonts - use CJK font for Chinese characters
-    final labelFont = PdfCjkStandardFont(
-      PdfCjkFontFamily.heiseiKakuGothicW5,
-      9,
-    );
+    // Define fonts - use TrueType font for Chinese characters
+    final labelFont = await PdfFontService.instance.getChineseFont(9);
 
     try {
       // Process items in pairs (2 invoices per page)

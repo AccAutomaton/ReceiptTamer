@@ -241,14 +241,17 @@ class MealDetailsExportService {
     );
   }
 
-  /// Set amount cell value (always shows 2 decimal places)
+  /// Set amount cell value (numeric format with 2 decimal places)
   static void _setAmountValue(Sheet sheet, int rowIndex, int colIndex, double amount) {
     final cell = sheet.cell(
       CellIndex.indexByColumnRow(columnIndex: colIndex, rowIndex: rowIndex),
     );
-    cell.value = TextCellValue(amount.toStringAsFixed(2));
+    // Use DoubleCellValue for numeric format
+    cell.value = DoubleCellValue(amount);
     cell.cellStyle = CellStyle(
       horizontalAlign: HorizontalAlign.Right,
+      // Use custom number format for 2 decimal places
+      numberFormat: NumFormat.custom(formatCode: '0.00'),
     );
   }
 }

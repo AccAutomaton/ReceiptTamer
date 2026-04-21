@@ -100,3 +100,4 @@ flutter:
   assets:
     - assets/models/
     - assets/models/qwen3.5-0.8b.mnn/
+    - assets/fonts/
