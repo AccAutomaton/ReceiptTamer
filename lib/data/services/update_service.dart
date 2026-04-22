@@ -36,6 +36,23 @@ class UpdateCheckResponse {
   });
 }
 
+/// Result of fetching all releases
+class FetchReleasesResult {
+  final bool success;
+  final List<AppVersion> releases;
+  final String? errorMessage;
+  final int? nextPage; // Next page number for pagination, null if no more pages
+  final bool rateLimited;
+
+  const FetchReleasesResult({
+    required this.success,
+    this.releases = const [],
+    this.errorMessage,
+    this.nextPage,
+    this.rateLimited = false,
+  });
+}
+
 /// Download progress info
 class DownloadProgress {
   final int downloadedBytes;
@@ -90,6 +107,10 @@ class UpdateService {
   /// Get the latest release API URL
   String get _latestReleaseUrl =>
       '$_githubApiBaseUrl/repos/${AppConstants.githubOwner}/${AppConstants.githubRepo}/releases/latest';
+
+  /// Get all releases API URL (with pagination)
+  String getAllReleasesUrl({int perPage = 30, int page = 1}) =>
+      '$_githubApiBaseUrl/repos/${AppConstants.githubOwner}/${AppConstants.githubRepo}/releases?per_page=$perPage&page=$page';
 
   /// HTTP client
   final http.Client _httpClient;
@@ -408,6 +429,95 @@ class UpdateService {
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleUpdate, 'JSON 解析错误', e, stackTrace);
       return null;
+    }
+  }
+
+  /// Parse JSON array safely
+  List<Map<String, dynamic>>? _parseJsonList(String body) {
+    try {
+      final list = json.decode(body) as List<dynamic>;
+      return list.map((e) => e as Map<String, dynamic>).toList();
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleUpdate, 'JSON 解析错误', e, stackTrace);
+      return null;
+    }
+  }
+
+  /// Fetch all releases from GitHub (including pre-release)
+  /// Returns FetchReleasesResult with list of AppVersion objects
+  Future<FetchReleasesResult> fetchAllReleases({
+    int perPage = 30,
+    int page = 1,
+  }) async {
+    try {
+      logService.i(LogConfig.moduleUpdate, '========== 开始获取更新历史 ==========');
+      logService.diag(LogConfig.moduleUpdate, 'Page', page);
+      logService.diag(LogConfig.moduleUpdate, 'PerPage', perPage);
+
+      final currentVersion = await getCurrentVersion();
+      final url = getAllReleasesUrl(perPage: perPage, page: page);
+
+      logService.i(LogConfig.moduleUpdate, '请求 $url');
+      final response = await _httpClient.get(
+        Uri.parse(url),
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': '${AppConstants.appName}/$currentVersion',
+        },
+      );
+
+      logService.i(LogConfig.moduleUpdate, '响应状态 ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final jsonList = _parseJsonList(response.body);
+        if (jsonList == null) {
+          return FetchReleasesResult(
+            success: false,
+            errorMessage: 'Failed to parse releases list',
+          );
+        }
+
+        final releases = jsonList
+            .map((json) => AppVersion.fromGitHubRelease(json))
+            .toList();
+
+        // Determine if there are more pages
+        // If returned count equals perPage, there might be more pages
+        final hasMorePages = releases.length >= perPage;
+        final nextPage = hasMorePages ? page + 1 : null;
+
+        logService.i(LogConfig.moduleUpdate, '获取到 ${releases.length} 个版本');
+        logService.i(LogConfig.moduleUpdate, '========== 获取更新历史完成 ==========');
+
+        return FetchReleasesResult(
+          success: true,
+          releases: releases,
+          nextPage: nextPage,
+        );
+      } else if (response.statusCode == 403) {
+        logService.w(LogConfig.moduleUpdate, 'GitHub API 请求限流');
+        return FetchReleasesResult(
+          success: false,
+          errorMessage: 'RATE_LIMITED',
+          rateLimited: true,
+        );
+      } else if (response.statusCode == 404) {
+        return FetchReleasesResult(
+          success: false,
+          errorMessage: 'Repository not found',
+        );
+      } else {
+        return FetchReleasesResult(
+          success: false,
+          errorMessage: 'Server returned ${response.statusCode}',
+        );
+      }
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleUpdate, '获取更新历史失败', e, stackTrace);
+      return FetchReleasesResult(
+        success: false,
+        errorMessage: e.toString(),
+      );
     }
   }
 
