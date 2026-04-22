@@ -21,6 +21,9 @@ class AppVersion {
   /// Release published date
   final DateTime? publishedAt;
 
+  /// Whether this is a pre-release
+  final bool isPreRelease;
+
   const AppVersion({
     required this.version,
     required this.tagName,
@@ -29,6 +32,7 @@ class AppVersion {
     this.downloadUrl,
     this.fileSize,
     this.publishedAt,
+    this.isPreRelease = false,
   });
 
   /// Parse from GitHub API response
@@ -64,6 +68,7 @@ class AppVersion {
       downloadUrl: downloadUrl,
       fileSize: fileSize,
       publishedAt: publishedAt,
+      isPreRelease: json['prerelease'] as bool? ?? false,
     );
   }
 
