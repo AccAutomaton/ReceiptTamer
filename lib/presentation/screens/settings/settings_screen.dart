@@ -8,6 +8,7 @@ import 'package:receipt_tamer/data/services/update_service.dart';
 import 'package:receipt_tamer/presentation/providers/ocr_provider.dart';
 import 'package:receipt_tamer/presentation/screens/export/saved_files_screen.dart';
 import 'package:receipt_tamer/presentation/screens/settings/info_screen.dart';
+import 'package:receipt_tamer/presentation/screens/settings/release_history_screen.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/receipt_icon.dart';
 import 'package:receipt_tamer/presentation/widgets/common/storage_ring_chart.dart';
@@ -584,6 +585,18 @@ Licensed under the Apache License 2.0
                 title: '开源信息',
                 subtitle: '查看开源许可证',
                 onTap: () => _navigateToInfo(context, 'opensource'),
+              ),
+              _buildListTile(
+                context,
+                icon: Icons.history_outlined,
+                title: '更新历史',
+                subtitle: '查看版本发布记录',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ReleaseHistoryScreen(),
+                  ),
+                ),
               ),
               _buildListTile(
                 context,
