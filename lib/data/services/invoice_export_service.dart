@@ -238,8 +238,8 @@ class InvoiceExportService {
         // Calculate half page height for each invoice
         final halfHeight = pageHeight / 2;
 
-        // Small margin for labels
-        const labelMargin = 5.0;
+        // Margin for labels
+        const labelMargin = 16.0;
 
         // Draw first invoice (top half)
         await _drawInvoice(
@@ -569,20 +569,6 @@ class InvoiceExportService {
         labelX = x + margin;
         break;
     }
-
-    // Draw background for better readability (use estimated height)
-    final bgRect = Rect.fromLTWH(
-      labelX - 2,
-      labelY - 2,
-      maxWidth + 4,
-      labelHeight + 4,
-    );
-
-    // Draw semi-transparent white background
-    graphics.drawRectangle(
-      brush: PdfSolidBrush(PdfColor(255, 255, 255, 220)),
-      bounds: bgRect,
-    );
 
     // Draw label text with wrapping
     graphics.drawString(
