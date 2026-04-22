@@ -1,11 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:intl/intl.dart';
+import 'package:markdown/markdown.dart' as md;
 
 import '../../../data/models/app_version.dart';
 import '../../../data/services/release_history_cache.dart';
 import '../../../data/services/update_service.dart';
 import '../../widgets/common/empty_state.dart';
+
+/// Preprocess changelog to convert HTML img tags to Markdown image syntax
+String _preprocessChangelog(String changelog) {
+  // Convert HTML img tags to Markdown image syntax
+  // Pattern: <img src="url" ...> -> ![image](url)
+  final imgRegex = RegExp(
+    r'<img[^>]+src="([^"]+)"[^>]*>',
+    caseSensitive: false,
+  );
+
+  return changelog.replaceAllMapped(imgRegex, (match) {
+    final url = match.group(1) ?? '';
+    return '![image]($url)';
+  });
+}
 
 /// Release history screen showing all GitHub releases
 class ReleaseHistoryScreen extends StatefulWidget {
@@ -271,28 +287,28 @@ class _ReleaseHistoryScreenState extends State<ReleaseHistoryScreen> {
                     color: colorScheme.primary,
                   ),
                 ),
-                // Pre-release badge
-                if (release.isPreRelease) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'Pre-release',
-                      style: TextStyle(
-                        color: Colors.orange,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
+                // Release/Pre-release badge
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: release.isPreRelease
+                        ? Colors.orange.withValues(alpha: 0.2)
+                        : Colors.green.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    release.isPreRelease ? 'Pre-release' : 'Release',
+                    style: TextStyle(
+                      color: release.isPreRelease ? Colors.orange : Colors.green,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                ],
+                ),
                 const Spacer(),
                 // Date
                 Text(
@@ -307,7 +323,8 @@ class _ReleaseHistoryScreenState extends State<ReleaseHistoryScreen> {
             // Changelog
             if (release.changelog != null && release.changelog!.isNotEmpty)
               MarkdownBody(
-                data: release.changelog!,
+                data: _preprocessChangelog(release.changelog!),
+                extensionSet: md.ExtensionSet.gitHubFlavored,
                 styleSheet: MarkdownStyleSheet(
                   p: theme.textTheme.bodyMedium?.copyWith(
                     color: colorScheme.onSurface,
