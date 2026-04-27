@@ -642,8 +642,8 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
           invoice: invoice,
           isSelected: isSelected,
           orderCount: orderCount,
-          onTap: () => _showInvoiceDetail(invoice),
-          onCheckChanged: invoiceId != null ? (_) => _toggleSelection(invoiceId) : null,
+          onTap: invoiceId != null ? () => _toggleSelection(invoiceId) : null,
+          onDoubleTap: () => _showInvoiceDetail(invoice),
         );
       },
     );
@@ -715,20 +715,21 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
   }
 }
 
-/// Invoice select card widget for displaying invoice info with checkbox
+/// Invoice select card widget for displaying invoice info with selection support
+/// 单击选择，双击查看详情
 class _InvoiceSelectCard extends StatelessWidget {
   final Invoice invoice;
   final bool isSelected;
   final int? orderCount;
   final VoidCallback? onTap;
-  final ValueChanged<bool?>? onCheckChanged;
+  final VoidCallback? onDoubleTap;
 
   const _InvoiceSelectCard({
     required this.invoice,
     required this.isSelected,
     this.orderCount,
     this.onTap,
-    this.onCheckChanged,
+    this.onDoubleTap,
   });
 
   @override
@@ -745,147 +746,156 @@ class _InvoiceSelectCard extends StatelessWidget {
 
     final hasLinkedOrders = orderCount != null && orderCount! > 0;
 
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? colorScheme.primaryContainer.withValues(alpha: 0.3)
-              : null,
-          border: Border(
-            bottom: BorderSide(
-              color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-              width: 0.5,
+    return GestureDetector(
+      onDoubleTap: onDoubleTap,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? colorScheme.primaryContainer.withValues(alpha: 0.3)
+                : colorScheme.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected
+                  ? colorScheme.primary
+                  : colorScheme.outlineVariant.withValues(alpha: 0.3),
+              width: isSelected ? 2 : 1,
             ),
           ),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Checkbox
-            Checkbox(
-              value: isSelected,
-              onChanged: onCheckChanged,
-            ),
-            const SizedBox(width: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Checkbox
+              Checkbox(
+                value: isSelected,
+                onChanged: onTap != null ? (_) => onTap!() : null,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(width: 8),
 
-            // Invoice info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Seller name
-                  Text(
-                    invoice.sellerName.isEmpty ? '未命名店铺' : invoice.sellerName,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
+              // Invoice info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Seller name
+                    Text(
+                      invoice.sellerName.isEmpty ? '未命名店铺' : invoice.sellerName,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
+                    const SizedBox(height: 4),
 
-                  // Invoice date
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.calendar_today,
-                        size: 14,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        formattedDate,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                  if (invoice.invoiceNumber.isNotEmpty) ... [
-                    const SizedBox(height: 2),
+                    // Invoice date
                     Row(
                       children: [
                         Icon(
-                          Icons.receipt,
+                          Icons.calendar_today,
                           size: 14,
                           color: colorScheme.onSurfaceVariant,
                         ),
                         const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            invoice.invoiceNumber,
+                        Text(
+                          formattedDate,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                    if (invoice.invoiceNumber.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.receipt,
+                            size: 14,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              invoice.invoiceNumber,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+
+                    // Order relation info
+                    const SizedBox(height: 2),
+                    if (hasLinkedOrders) ...[
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.link,
+                            size: 14,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '已关联${orderCount!}条订单',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: colorScheme.onSurfaceVariant,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ] else ...[
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.link_off,
+                            size: 14,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '未关联订单',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
+                ),
+              ),
 
-                  // Order relation info
-                  const SizedBox(height: 2),
-                  if (hasLinkedOrders) ...[
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.link,
-                          size: 14,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '已关联${orderCount!}条订单',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
+              // Amount
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    DateFormatter.formatAmount(invoice.totalAmount),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: colorScheme.primary,
+                      fontWeight: FontWeight.bold,
                     ),
-                  ] else ...[
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.link_off,
-                          size: 14,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '未关联订单',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                  ),
                 ],
               ),
-            ),
-
-            // Amount
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  DateFormatter.formatAmount(invoice.totalAmount),
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
