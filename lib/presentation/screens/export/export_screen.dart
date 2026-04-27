@@ -3,10 +3,8 @@ import 'package:receipt_tamer/core/services/log_service.dart';
 import 'package:receipt_tamer/core/services/log_config.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
-import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
-import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
-import 'package:receipt_tamer/presentation/widgets/common/empty_state.dart';
+import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -26,7 +24,6 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
   Set<int> _selectedInvoiceIds = {};
   Set<int> _selectedOrderIds = {};
   Map<int, int> _invoiceOrderCounts = {}; // invoiceId -> order count
-  double _orderTotalAmount = 0; // Total amount of selected orders
 
   List<Invoice> _availableInvoices = [];
   bool _isLoadingInvoices = false;
@@ -34,14 +31,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
   @override
   void initState() {
     super.initState();
-    // Default to current month range
-    final now = DateTime.now();
-    _startDate = DateTime(now.year, now.month, 1);
-    _endDate = DateTime(
-      now.year,
-      now.month + 1,
-      0,
-    ); // Last day of current month
+    // Default to no date filter
     // Load invoices after widget is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadInvoices();
@@ -57,85 +47,168 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       appBar: AppBar(title: const Text(AppConstants.titleExport), elevation: 0),
       body: Column(
         children: [
+          // Options and filters section
+          _buildOptionsSection(theme, colorScheme),
+
+          // Statistics card
+          _buildStatisticsCard(theme, colorScheme),
+
+          // Invoice list
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16),
+            child: _isLoadingInvoices
+                ? const Center(child: CircularProgressIndicator())
+                : _availableInvoices.isEmpty
+                    ? _buildEmptyState(colorScheme)
+                    : _buildInvoiceList(colorScheme),
+          ),
+
+          // Fixed export button at bottom
+          _buildBottomBar(theme, colorScheme),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOptionsSection(ThemeData theme, ColorScheme colorScheme) {
+    final selectableInvoices = _availableInvoices
+        .where((i) => i.id != null && (_invoiceOrderCounts[i.id] ?? 0) > 0)
+        .toList();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+          ),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Hint text
+          Text(
+            '选择发票后，关联订单将被自动选中',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Action buttons row
+          Row(
+            children: [
+              TextButton.icon(
+                onPressed: selectableInvoices.isEmpty ? null : _selectAll,
+                icon: const Icon(Icons.select_all, size: 18),
+                label: const Text('全选'),
+              ),
+              const SizedBox(width: 8),
+              TextButton.icon(
+                onPressed: selectableInvoices.isEmpty ? null : _invertSelection,
+                icon: const Icon(Icons.flip, size: 18),
+                label: const Text('反选'),
+              ),
+              const SizedBox(width: 8),
+              TextButton.icon(
+                onPressed: _showDateRangePicker,
+                icon: const Icon(Icons.calendar_month, size: 18),
+                label: const Text('日期筛选'),
+              ),
+            ],
+          ),
+
+          // Date range chip
+          if (_startDate != null && _endDate != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                children: [
+                  Chip(
+                    label: Text(
+                      '${DateFormatter.formatDisplay(_startDate!)} - ${DateFormatter.formatDisplay(_endDate!)}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    deleteIcon: const Icon(Icons.close, size: 16),
+                    onDeleted: _clearDateRange,
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatisticsCard(ThemeData theme, ColorScheme colorScheme) {
+    final selectableInvoices = _availableInvoices
+        .where((i) => i.id != null && (_invoiceOrderCounts[i.id] ?? 0) > 0)
+        .toList();
+    final selectableCount = selectableInvoices.length;
+    final selectedCount = _selectedInvoiceIds.length;
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: selectedCount > 0
+            ? colorScheme.primaryContainer.withValues(alpha: 0.3)
+            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.info_outline,
+            color: selectedCount > 0 ? colorScheme.primary : colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Date range selection
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Start date
-                        Text(
-                          '开始日期',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: () => _selectStartDate(context),
-                            icon: const Icon(Icons.calendar_today, size: 18),
-                            label: Text(
-                              _startDate != null
-                                  ? DateFormatter.formatDisplay(_startDate!)
-                                  : '请选择',
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        // End date
-                        Text(
-                          '截止日期',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: () => _selectEndDate(context),
-                            icon: const Icon(Icons.calendar_today, size: 18),
-                            label: Text(
-                              _endDate != null
-                                  ? DateFormatter.formatDisplay(_endDate!)
-                                  : '请选择',
-                            ),
-                          ),
-                        ),
-                      ],
+                Text(
+                  '共 ${_availableInvoices.length} 张发票，可选 $selectableCount 张，已选 $selectedCount 张',
+                  style: theme.textTheme.bodyMedium,
+                ),
+                if (_selectedOrderIds.isNotEmpty)
+                  Text(
+                    '关联订单 ${_selectedOrderIds.length} 条',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Invoice selection section (always show since dates are initialized)
-                _buildInvoiceSelectionCard(context),
-                const SizedBox(height: 16),
-
-                // Preview section (always show, displays zeros when nothing selected)
-                _buildPreviewCard(context),
-                const SizedBox(height: 24),
               ],
             ),
           ),
-          // Fixed export button at bottom
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: AppButton(
-                text: '导出报销材料',
-                onPressed: _selectedInvoiceIds.isEmpty ? null : _navigateToExportOptions,
-                isFullWidth: true,
-                type: AppButtonType.primary,
-              ),
+          // Quick filter button
+          TextButton.icon(
+            onPressed: selectableInvoices.isEmpty ? null : _showQuickFilterDialog,
+            icon: const Icon(Icons.filter_list, size: 18),
+            label: const Text('快速筛选'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(ColorScheme colorScheme) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.inbox_outlined,
+            size: 64,
+            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            '该日期范围内没有发票',
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              color: colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -143,140 +216,32 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     );
   }
 
-  Widget _buildInvoiceSelectionCard(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final selectableInvoices = _availableInvoices
-        .where((i) => i.id != null && (_invoiceOrderCounts[i.id] ?? 0) > 0)
-        .toList();
-    final selectableCount = selectableInvoices.length;
+  Widget _buildInvoiceList(ColorScheme colorScheme) {
+    return ListView.builder(
+      padding: EdgeInsets.zero,
+      itemCount: _availableInvoices.length,
+      itemBuilder: (context, index) {
+        final invoice = _availableInvoices[index];
+        final isSelected = _selectedInvoiceIds.contains(invoice.id);
+        final orderCount = _invoiceOrderCounts[invoice.id!] ?? 0;
+        final isSelectable = orderCount > 0;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  '发票选择',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Spacer(),
-                // Select all button
-                TextButton(
-                  onPressed: selectableCount == 0
-                      ? null
-                      : () {
-                          setState(() {
-                            // Select all selectable invoices
-                            _selectedInvoiceIds = selectableInvoices
-                                .map((i) => i.id!)
-                                .toSet();
-                            _updateSelectedOrders();
-                          });
-                        },
-                  child: const Text('全选'),
-                ),
-                // Invert selection button
-                TextButton(
-                  onPressed: selectableCount == 0
-                      ? null
-                      : () {
-                          setState(() {
-                            // Invert selection: selected -> unselected, unselected -> selected
-                            final newSelectedIds = <int>{};
-                            for (final invoice in selectableInvoices) {
-                              if (!_selectedInvoiceIds.contains(invoice.id)) {
-                                newSelectedIds.add(invoice.id!);
-                              }
-                            }
-                            _selectedInvoiceIds = newSelectedIds;
-                            _updateSelectedOrders();
-                          });
-                        },
-                  child: const Text('反选'),
-                ),
-                // Quick filter button
-                TextButton.icon(
-                  onPressed: selectableCount == 0
-                      ? null
-                      : _showQuickFilterDialog,
-                  icon: const Icon(Icons.filter_list, size: 18),
-                  label: const Text('快速筛选'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '共 ${_availableInvoices.length} 张发票，可选 $selectableCount 张，已选 ${_selectedInvoiceIds.length} 张',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '双击发票可查看详情',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.outline,
-                fontSize: 11,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Invoice list
-            if (_isLoadingInvoices)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: CircularProgressIndicator(),
-                ),
-              )
-            else if (_availableInvoices.isEmpty)
-              const EmptyState(
-                icon: Icons.description_outlined,
-                title: '该日期范围内没有发票',
-                isCompact: true,
-              )
-            else
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 300),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: _availableInvoices.length,
-                  itemBuilder: (context, index) {
-                    final invoice = _availableInvoices[index];
-                    final isSelected = _selectedInvoiceIds.contains(invoice.id);
-                    final orderCount = _invoiceOrderCounts[invoice.id] ?? 0;
-                    final isSelectable = orderCount > 0;
-
-                    return _InvoiceSelectorCard(
-                      invoice: invoice,
-                      orderCount: orderCount,
-                      isSelected: isSelected,
-                      isSelectable: isSelectable,
-                      onChanged: isSelectable
-                          ? (selected) {
-                              _toggleInvoiceSelection(invoice, selected);
-                            }
-                          : null,
-                    );
-                  },
-                ),
-              ),
-          ],
-        ),
-      ),
+        return _InvoiceSelectorCard(
+          invoice: invoice,
+          orderCount: orderCount,
+          isSelected: isSelected,
+          isSelectable: isSelectable,
+          onChanged: isSelectable
+              ? (selected) {
+                  _toggleInvoiceSelection(invoice, selected);
+                }
+              : null,
+        );
+      },
     );
   }
 
-  Widget _buildPreviewCard(BuildContext context) {
-    final theme = Theme.of(context);
-
-    // Calculate totals
+  Widget _buildBottomBar(ThemeData theme, ColorScheme colorScheme) {
     final selectedInvoices = _availableInvoices
         .where((i) => _selectedInvoiceIds.contains(i.id))
         .toList();
@@ -285,46 +250,43 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       (sum, invoice) => sum + invoice.totalAmount,
     );
 
-    final orderTotal = _selectedOrderIds.length;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
           children: [
-            Text(
-              '导出预览',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '已选择 ${_selectedInvoiceIds.length} 张发票',
+                  style: theme.textTheme.bodyMedium,
+                ),
+                Text(
+                  '合计: ${DateFormatter.formatAmount(invoiceTotal)}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    child: _buildPreviewItem(
-                      context,
-                      '发票',
-                      '${selectedInvoices.length} 张',
-                      DateFormatter.formatAmount(invoiceTotal),
-                      Icons.description,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildPreviewItem(
-                      context,
-                      '关联订单',
-                      '$orderTotal 条',
-                      DateFormatter.formatAmount(_orderTotalAmount),
-                      Icons.receipt_long,
-                    ),
-                  ),
-                ],
-              ),
+            const Spacer(),
+            FilledButton.icon(
+              onPressed: _selectedInvoiceIds.isEmpty ? null : _navigateToExportOptions,
+              icon: const Icon(Icons.file_download),
+              label: const Text('导出'),
             ),
           ],
         ),
@@ -332,93 +294,56 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     );
   }
 
-  Widget _buildPreviewItem(
-    BuildContext context,
-    String label,
-    String count,
-    String amount,
-    IconData icon,
-  ) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+  void _selectAll() {
+    final selectableInvoices = _availableInvoices
+        .where((i) => i.id != null && (_invoiceOrderCounts[i.id] ?? 0) > 0)
+        .toList();
 
-    return Container(
-      constraints: const BoxConstraints(
-        minHeight: 76,
-      ), // Minimum height for consistency
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: colorScheme.primary),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            count,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 2),
-          // Always show amount row for consistent height
-          Text(
-            amount.isNotEmpty ? amount : '-',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: amount.isNotEmpty
-                  ? colorScheme.primary
-                  : colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
+    setState(() {
+      _selectedInvoiceIds = selectableInvoices.map((i) => i.id!).toSet();
+      _updateSelectedOrders();
+    });
   }
 
-  Future<void> _selectStartDate(BuildContext context) async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _startDate ?? now,
-      firstDate: DateTime(now.year - 10),
-      lastDate: DateTime(now.year + 10),
+  void _invertSelection() {
+    final selectableInvoices = _availableInvoices
+        .where((i) => i.id != null && (_invoiceOrderCounts[i.id] ?? 0) > 0)
+        .toList();
+
+    setState(() {
+      final newSelectedIds = <int>{};
+      for (final invoice in selectableInvoices) {
+        if (!_selectedInvoiceIds.contains(invoice.id)) {
+          newSelectedIds.add(invoice.id!);
+        }
+      }
+      _selectedInvoiceIds = newSelectedIds;
+      _updateSelectedOrders();
+    });
+  }
+
+  Future<void> _showDateRangePicker() async {
+    final result = await SyncfusionDateRangePicker.show(
+      context,
+      initialStartDate: _startDate,
+      initialEndDate: _endDate,
     );
-    if (picked != null) {
+
+    if (result != null) {
       setState(() {
-        _startDate = picked;
+        _startDate = result.startDate;
+        _endDate = result.endDate;
       });
       _loadInvoicesIfReady();
     }
   }
 
-  Future<void> _selectEndDate(BuildContext context) async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _endDate ?? now,
-      firstDate: DateTime(now.year - 10),
-      lastDate: DateTime(now.year + 10),
-    );
-    if (picked != null) {
-      setState(() {
-        _endDate = picked;
-      });
-      _loadInvoicesIfReady();
-    }
+  void _clearDateRange() {
+    setState(() {
+      _startDate = null;
+      _endDate = null;
+    });
+    _loadInvoices();
   }
 
   void _loadInvoicesIfReady() {
@@ -429,13 +354,11 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         ).showSnackBar(const SnackBar(content: Text('开始日期不能晚于结束日期')));
         return;
       }
-      _loadInvoices();
     }
+    _loadInvoices();
   }
 
   Future<void> _loadInvoices() async {
-    if (_startDate == null || _endDate == null) return;
-
     setState(() {
       _isLoadingInvoices = true;
       _selectedInvoiceIds.clear();
@@ -444,9 +367,15 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     });
 
     try {
-      final invoices = await ref
-          .read(invoiceProvider.notifier)
-          .getByDateRangeForExport(_startDate!, _endDate!);
+      // Load invoices - use all if no date filter, or by date range
+      List<Invoice> invoices;
+      if (_startDate != null && _endDate != null) {
+        invoices = await ref
+            .read(invoiceProvider.notifier)
+            .getByDateRangeForExport(_startDate!, _endDate!);
+      } else {
+        invoices = await ref.read(invoiceProvider.notifier).getAllForExport();
+      }
 
       // Load order counts for each invoice
       final orderCounts = <int, int>{};
@@ -459,17 +388,21 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         }
       }
 
-      // Auto-select all selectable invoices (those with orders)
-      final selectableIds = invoices
-          .where((i) => i.id != null && (orderCounts[i.id] ?? 0) > 0)
-          .map((i) => i.id!)
-          .toSet();
-
       setState(() {
+        // Sort by date descending
+        invoices.sort((a, b) {
+          final dateA = a.invoiceDate != null && a.invoiceDate!.isNotEmpty
+              ? DateTime.tryParse(a.invoiceDate!) ?? DateTime(1970)
+              : DateTime(1970);
+          final dateB = b.invoiceDate != null && b.invoiceDate!.isNotEmpty
+              ? DateTime.tryParse(b.invoiceDate!) ?? DateTime(1970)
+              : DateTime(1970);
+          return dateB.compareTo(dateA);
+        });
         _availableInvoices = invoices;
         _invoiceOrderCounts = orderCounts;
         _isLoadingInvoices = false;
-        _selectedInvoiceIds = selectableIds;
+        // Don't auto-select, let user choose
       });
 
       // Update selected orders
@@ -507,18 +440,8 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       orderIds.addAll(ids);
     }
 
-    // Calculate total amount of selected orders
-    double totalAmount = 0;
-    for (final orderId in orderIds) {
-      final order = await ref.read(orderProvider.notifier).getOrderById(orderId);
-      if (order != null) {
-        totalAmount += order.amount;
-      }
-    }
-
     setState(() {
       _selectedOrderIds = orderIds;
-      _orderTotalAmount = totalAmount;
     });
   }
 
@@ -684,8 +607,8 @@ class _InvoiceSelectorCard extends StatelessWidget {
           onTap: isSelectable ? () => onChanged?.call(!isSelected) : null,
           borderRadius: BorderRadius.circular(12),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               color: isSelected
                   ? colorScheme.primaryContainer.withValues(alpha: 0.3)
