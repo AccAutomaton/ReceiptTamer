@@ -120,6 +120,13 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
     });
   }
 
+  void _invertSelection() {
+    setState(() {
+      final allIds = _orders.where((o) => o.id != null).map((o) => o.id!).toSet();
+      _selectedOrderIds = allIds.difference(_selectedOrderIds);
+    });
+  }
+
   void _showDateRangePicker() async {
     final result = await SyncfusionDateRangePicker.show(
       context,
@@ -287,27 +294,6 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
       appBar: AppBar(
         title: const Text('用餐证明导出'),
         elevation: 0,
-        actions: [
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'selectAll') {
-                _selectAll();
-              } else if (value == 'clearSelection') {
-                _clearSelection();
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'selectAll',
-                child: Text('全选'),
-              ),
-              const PopupMenuItem(
-                value: 'clearSelection',
-                child: Text('清除选择'),
-              ),
-            ],
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -317,6 +303,9 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
           // Date filter chip
           if (_startDate != null || _endDate != null)
             _buildDateFilterChip(context),
+
+          // Select buttons row
+          _buildSelectButtonsRow(context),
 
           // Order list
           Expanded(
@@ -442,6 +431,43 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
             label: Text(dateRangeStr),
             deleteIcon: const Icon(Icons.close, size: 16),
             onDeleted: _clearDateFilter,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSelectButtonsRow(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final hasSelection = _selectedOrderIds.isNotEmpty;
+    final totalCount = _orders.length;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
+        children: [
+          TextButton.icon(
+            onPressed: _orders.isEmpty ? null : _selectAll,
+            icon: const Icon(Icons.select_all, size: 18),
+            label: const Text('全选'),
+          ),
+          TextButton.icon(
+            onPressed: _orders.isEmpty ? null : _invertSelection,
+            icon: const Icon(Icons.flip, size: 18),
+            label: const Text('反选'),
+          ),
+          const Spacer(),
+          GestureDetector(
+            onTap: hasSelection ? _clearSelection : null,
+            child: Text(
+              hasSelection
+                  ? '已选 ${_selectedOrderIds.length}/$totalCount ✕'
+                  : '已选 ${_selectedOrderIds.length}/$totalCount',
+              style: TextStyle(
+                color: hasSelection ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                fontSize: 14,
+              ),
+            ),
           ),
         ],
       ),
