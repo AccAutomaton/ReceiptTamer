@@ -36,6 +36,7 @@ class MealProofOrderSelectScreen extends ConsumerStatefulWidget {
 class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelectScreen> {
   Set<int> _selectedOrderIds = {};
   List<Order> _orders = [];
+  int _totalOrderCount = 0; // 全部筛选下的订单数量（用于已选计数分母）
   bool _isLoading = true;
   bool _isExporting = false;
 
@@ -70,6 +71,7 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
     setState(() => _isLoading = true);
 
     try {
+      // 获取当前筛选后的订单
       final orders = await ref.read(orderProvider.notifier).searchOrdersWithInvoiceRelation(
             keyword: _searchKeyword.isNotEmpty ? _searchKeyword : null,
             startDate: _startDate,
@@ -81,9 +83,24 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
                     : null,
           );
 
+      // 获取全部筛选下的订单数量（用于已选计数分母）
+      int totalCount;
+      if (_relationFilter == InvoiceRelationFilter.all) {
+        totalCount = orders.length;
+      } else {
+        final allOrders = await ref.read(orderProvider.notifier).searchOrdersWithInvoiceRelation(
+              keyword: _searchKeyword.isNotEmpty ? _searchKeyword : null,
+              startDate: _startDate,
+              endDate: _endDate,
+              hasInvoice: null, // 全部
+            );
+        totalCount = allOrders.length;
+      }
+
       if (mounted) {
         setState(() {
           _orders = orders;
+          _totalOrderCount = totalCount;
           _isLoading = false;
         });
       }
@@ -440,7 +457,6 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
   Widget _buildSelectButtonsRow(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final hasSelection = _selectedOrderIds.isNotEmpty;
-    final totalCount = _orders.length;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -461,8 +477,8 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
             onTap: hasSelection ? _clearSelection : null,
             child: Text(
               hasSelection
-                  ? '已选 ${_selectedOrderIds.length}/$totalCount ✕'
-                  : '已选 ${_selectedOrderIds.length}/$totalCount',
+                  ? '已选 ${_selectedOrderIds.length}/$_totalOrderCount ✕'
+                  : '已选 ${_selectedOrderIds.length}/$_totalOrderCount',
               style: TextStyle(
                 color: hasSelection ? colorScheme.primary : colorScheme.onSurfaceVariant,
                 fontSize: 14,

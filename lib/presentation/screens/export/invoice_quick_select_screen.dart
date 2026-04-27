@@ -37,6 +37,7 @@ class InvoiceQuickSelectScreen extends ConsumerStatefulWidget {
 class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScreen> {
   Set<int> _selectedInvoiceIds = {};
   List<Invoice> _invoices = [];
+  int _totalInvoiceCount = 0; // 全部筛选下的发票数量（用于已选计数分母）
   Map<int, int> _invoiceOrderCounts = {}; // invoiceId -> order count
   bool _isLoading = true;
   bool _isExporting = false;
@@ -99,6 +100,32 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
         }).toList();
       }
 
+      // 获取全部筛选下的发票数量（用于已选计数分母）
+      int totalCount;
+      if (_orderRelationFilter == OrderRelationFilter.all && _searchKeyword.isEmpty) {
+        totalCount = filteredInvoices.length;
+      } else {
+        // 需要额外查询全部筛选的数量
+        await ref.read(invoiceProvider.notifier).searchInvoices(
+          startDate: _startDate,
+          endDate: _endDate,
+          hasLinkedOrder: null, // 全部
+        );
+        final allInvoices = ref.read(invoiceProvider).invoices;
+        // 搜索关键词不影响分母（分母只考虑日期筛选）
+        totalCount = allInvoices.length;
+        // 恢复当前筛选的发票列表
+        await ref.read(invoiceProvider.notifier).searchInvoices(
+          startDate: _startDate,
+          endDate: _endDate,
+          hasLinkedOrder: _orderRelationFilter == OrderRelationFilter.withOrder
+              ? true
+              : _orderRelationFilter == OrderRelationFilter.withoutOrder
+                  ? false
+                  : null,
+        );
+      }
+
       // Load order counts for each invoice
       final invoiceOrderCounts = <int, int>{};
       for (final invoice in filteredInvoices) {
@@ -112,6 +139,7 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
         setState(() {
           _invoices = filteredInvoices;
           _invoiceOrderCounts = invoiceOrderCounts;
+          _totalInvoiceCount = totalCount;
           _isLoading = false;
         });
       }
@@ -468,7 +496,6 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
   Widget _buildSelectButtonsRow(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final hasSelection = _selectedInvoiceIds.isNotEmpty;
-    final totalCount = _invoices.length;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -489,8 +516,8 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
             onTap: hasSelection ? _clearSelection : null,
             child: Text(
               hasSelection
-                  ? '已选 ${_selectedInvoiceIds.length}/$totalCount ✕'
-                  : '已选 ${_selectedInvoiceIds.length}/$totalCount',
+                  ? '已选 ${_selectedInvoiceIds.length}/$_totalInvoiceCount ✕'
+                  : '已选 ${_selectedInvoiceIds.length}/$_totalInvoiceCount',
               style: TextStyle(
                 color: hasSelection ? colorScheme.primary : colorScheme.onSurfaceVariant,
                 fontSize: 14,
