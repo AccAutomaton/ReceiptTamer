@@ -37,6 +37,7 @@ class InvoiceQuickSelectScreen extends ConsumerStatefulWidget {
 class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScreen> {
   Set<int> _selectedInvoiceIds = {};
   List<Invoice> _invoices = [];
+  Map<int, int> _invoiceOrderCounts = {}; // invoiceId -> order count
   bool _isLoading = true;
   bool _isExporting = false;
 
@@ -98,9 +99,19 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
         }).toList();
       }
 
+      // Load order counts for each invoice
+      final invoiceOrderCounts = <int, int>{};
+      for (final invoice in filteredInvoices) {
+        if (invoice.id != null) {
+          final orderIds = await ref.read(invoiceProvider.notifier).getOrderIdsForInvoice(invoice.id!);
+          invoiceOrderCounts[invoice.id!] = orderIds.length;
+        }
+      }
+
       if (mounted) {
         setState(() {
           _invoices = filteredInvoices;
+          _invoiceOrderCounts = invoiceOrderCounts;
           _isLoading = false;
         });
       }
@@ -625,10 +636,12 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
         final invoice = _invoices[index];
         final invoiceId = invoice.id;
         final isSelected = invoiceId != null && _selectedInvoiceIds.contains(invoiceId);
+        final orderCount = invoiceId != null ? _invoiceOrderCounts[invoiceId] : null;
 
         return _InvoiceSelectCard(
           invoice: invoice,
           isSelected: isSelected,
+          orderCount: orderCount,
           onTap: () => _showInvoiceDetail(invoice),
           onCheckChanged: invoiceId != null ? (_) => _toggleSelection(invoiceId) : null,
         );
@@ -706,12 +719,14 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
 class _InvoiceSelectCard extends StatelessWidget {
   final Invoice invoice;
   final bool isSelected;
+  final int? orderCount;
   final VoidCallback? onTap;
   final ValueChanged<bool?>? onCheckChanged;
 
   const _InvoiceSelectCard({
     required this.invoice,
     required this.isSelected,
+    this.orderCount,
     this.onTap,
     this.onCheckChanged,
   });
@@ -727,6 +742,8 @@ class _InvoiceSelectCard extends StatelessWidget {
     final formattedDate = invoiceDate != null
         ? DateFormatter.formatDisplay(invoiceDate)
         : invoice.invoiceDate ?? '-';
+
+    final hasLinkedOrders = orderCount != null && orderCount! > 0;
 
     return InkWell(
       onTap: onTap,
@@ -807,6 +824,44 @@ class _InvoiceSelectCard extends StatelessWidget {
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+
+                  // Order relation info
+                  const SizedBox(height: 2),
+                  if (hasLinkedOrders) ...[
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.link,
+                          size: 14,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '已关联${orderCount!}条订单',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ] else ...[
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.link_off,
+                          size: 14,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '未关联订单',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
