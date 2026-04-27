@@ -47,6 +47,10 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
   String _searchKeyword = '';
   final _searchController = TextEditingController();
 
+  // Remark state
+  bool _addRemark = false;
+  String? _remarkContent;
+
   @override
   void initState() {
     super.initState();
@@ -146,6 +150,53 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
     _loadOrders();
   }
 
+  /// 显示备注输入对话框
+  Future<void> _showRemarkDialog() async {
+    final controller = TextEditingController(text: _remarkContent ?? '');
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('用餐证明备注'),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            hintText: '请输入备注内容',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          maxLength: 50,
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), // 取消不返回值
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+
+    if (mounted) {
+      setState(() {
+        if (result != null && result.trim().isNotEmpty) {
+          // 用户点击确定并输入了内容
+          _addRemark = true;
+          _remarkContent = result.trim();
+        } else {
+          // 用户点击取消或输入了空内容
+          _addRemark = false;
+          _remarkContent = null;
+        }
+      });
+    }
+  }
+
   Future<void> _confirmAndExport() async {
     if (_selectedOrderIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -186,6 +237,7 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
         items: items,
         outputPath: tempPath,
         getImagePath: (path) => path,
+        remark: _addRemark ? _remarkContent : null, // 新增参数
       );
 
       // Copy to download directory
@@ -269,6 +321,9 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
           Expanded(
             child: _buildOrderList(context),
           ),
+
+          // 导出选项卡片
+          _buildExportOptions(context),
 
           // Bottom confirm bar
           _buildBottomBar(context),
@@ -424,6 +479,98 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
           showInvoiceStatus: false, // Hide invoice status for this screen
         );
       },
+    );
+  }
+
+  /// 构建导出选项卡片
+  Widget _buildExportOptions(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Card(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '导出选项',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildRemarkOptionRow(context),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 构建备注选项行
+  Widget _buildRemarkOptionRow(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return InkWell(
+      onTap: _showRemarkDialog,
+      borderRadius: BorderRadius.circular(20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _addRemark ? colorScheme.primary : Colors.transparent,
+              border: Border.all(
+                color: _addRemark ? colorScheme.primary : colorScheme.outline,
+                width: 2,
+              ),
+            ),
+            child: _addRemark
+                ? Icon(
+                    Icons.check,
+                    size: 14,
+                    color: colorScheme.onPrimary,
+                  )
+                : null,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '添加备注',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurface,
+            ),
+          ),
+          if (_addRemark && _remarkContent != null) ...[
+            const SizedBox(width: 8),
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _remarkContent!,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onPrimaryContainer,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
