@@ -430,11 +430,17 @@ class _OrderExportCard extends StatelessWidget {
             ),
           ),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Checkbox or indicator
-              _buildCheckbox(colorScheme, theme),
-              const SizedBox(width: 12),
+              // Checkbox or indicator - wrapped to match Flutter Checkbox size (40x40)
+              SizedBox(
+                width: 40,
+                height: 40,
+                child: Center(
+                  child: _buildCheckbox(colorScheme, theme),
+                ),
+              ),
+              const SizedBox(width: 8),
 
               // Order info
               Expanded(
@@ -484,25 +490,6 @@ class _OrderExportCard extends StatelessWidget {
                                   ),
                                 ),
                               ],
-                            ),
-                          ),
-                        // Unselectable label
-                        if (!isSelectable)
-                          Container(
-                            margin: const EdgeInsets.only(left: 8),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: colorScheme.errorContainer.withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              '未关联发票',
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: colorScheme.onErrorContainer,
-                              ),
                             ),
                           ),
                       ],
@@ -573,13 +560,20 @@ class _OrderExportCard extends StatelessWidget {
   }
 
   Widget _buildCheckbox(ColorScheme colorScheme, ThemeData theme) {
+    const double checkboxSize = 18.0; // Flutter Checkbox native size
+    const double iconSize = 12.0;
+
     if (!isSelectable) {
-      // Unselectable: disabled checkbox
-      return Checkbox(
-        value: false,
-        onChanged: null,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(4),
+      // Unselectable: disabled checkbox with consistent style
+      return Container(
+        width: checkboxSize,
+        height: checkboxSize,
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: colorScheme.outline.withValues(alpha: 0.38),
+            width: 2,
+          ),
+          borderRadius: BorderRadius.circular(2),
         ),
       );
     }
@@ -587,15 +581,15 @@ class _OrderExportCard extends StatelessWidget {
     if (isCascadeSelected) {
       // Cascade selected: orange checkbox with link icon
       return Container(
-        width: 24,
-        height: 24,
+        width: checkboxSize,
+        height: checkboxSize,
         decoration: BoxDecoration(
           color: colorScheme.tertiary,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(2),
         ),
         child: Icon(
           Icons.link,
-          size: 16,
+          size: iconSize,
           color: colorScheme.onTertiary,
         ),
       );
@@ -604,15 +598,15 @@ class _OrderExportCard extends StatelessWidget {
     if (isSelected) {
       // Directly selected: blue checkbox with checkmark
       return Container(
-        width: 24,
-        height: 24,
+        width: checkboxSize,
+        height: checkboxSize,
         decoration: BoxDecoration(
           color: colorScheme.primary,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(2),
         ),
         child: Icon(
           Icons.check,
-          size: 16,
+          size: iconSize,
           color: colorScheme.onPrimary,
         ),
       );
@@ -620,14 +614,14 @@ class _OrderExportCard extends StatelessWidget {
 
     // Unselected: empty checkbox
     return Container(
-      width: 24,
-      height: 24,
+      width: checkboxSize,
+      height: checkboxSize,
       decoration: BoxDecoration(
         border: Border.all(
           color: colorScheme.outline,
           width: 2,
         ),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(2),
       ),
     );
   }
