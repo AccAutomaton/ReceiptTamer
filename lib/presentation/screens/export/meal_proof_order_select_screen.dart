@@ -220,6 +220,8 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
             ref.read(invoiceProvider.notifier).getInvoiceById(invoiceId),
       );
 
+      if (!mounted) return;
+
       if (items.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('没有可导出的用餐证明')),
