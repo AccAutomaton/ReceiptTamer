@@ -41,6 +41,10 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
   bool _addInvoiceRemark = false; // Whether to add remark
   String? _invoiceRemarkContent; // Remark content
 
+  // Meal proof export options
+  bool _addMealProofRemark = false; // Whether to add remark
+  String? _mealProofRemarkContent; // Remark content
+
   // Meal details export options
   bool _skipEmptyDays = true; // Skip days without meal records
 
@@ -145,6 +149,9 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
               ],
             ),
           ),
+
+          // Meal proof export options group (新增)
+          _buildMealProofExportOptions(context),
 
           // Invoice export options group (only visible when invoice export is enabled)
           _buildInvoiceExportOptions(context),
@@ -309,6 +316,152 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
         }
       });
     }
+  }
+
+  /// Show dialog for inputting meal proof remark
+  Future<void> _showMealProofRemarkDialog() async {
+    final controller = TextEditingController(text: _mealProofRemarkContent ?? '');
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('用餐证明备注'),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            hintText: '请输入备注内容',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          maxLength: 50,
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), // 取消不返回值
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+
+    if (mounted) {
+      setState(() {
+        if (result != null && result.trim().isNotEmpty) {
+          // 用户点击确定并输入了内容
+          _addMealProofRemark = true;
+          _mealProofRemarkContent = result.trim();
+        } else {
+          // 用户点击取消或输入了空内容
+          _addMealProofRemark = false;
+          _mealProofRemarkContent = null;
+        }
+      });
+    }
+  }
+
+  /// Build meal proof export options group
+  Widget _buildMealProofExportOptions(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    if (!_exportMealProof) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Card(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '用餐证明导出选项',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildMealProofRemarkOptionRow(context),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Build meal proof remark option row (with clickable remark content)
+  Widget _buildMealProofRemarkOptionRow(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return InkWell(
+      onTap: () {
+        // 点击时弹出对话框，由对话框决定最终勾选状态
+        _showMealProofRemarkDialog();
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _addMealProofRemark ? colorScheme.primary : Colors.transparent,
+              border: Border.all(
+                color: _addMealProofRemark ? colorScheme.primary : colorScheme.outline,
+                width: 2,
+              ),
+            ),
+            child: _addMealProofRemark
+                ? Icon(
+                    Icons.check,
+                    size: 14,
+                    color: colorScheme.onPrimary,
+                  )
+                : null,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '添加备注',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurface,
+            ),
+          ),
+          if (_addMealProofRemark && _mealProofRemarkContent != null) ...[
+            const SizedBox(width: 8),
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _mealProofRemarkContent!,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onPrimaryContainer,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   /// Build invoice export options group
@@ -551,6 +704,7 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
               items: items,
               outputPath: tempPath,
               getImagePath: (p) => p, // Image path is already absolute
+              remark: _addMealProofRemark ? _mealProofRemarkContent : null, // 新增参数
             );
 
             // Copy to Download/ReceiptTamer/materials/YYYYMMDD
