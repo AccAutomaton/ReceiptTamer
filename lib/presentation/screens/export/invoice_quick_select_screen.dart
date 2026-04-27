@@ -17,6 +17,14 @@ import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/screens/export/saved_files_screen.dart';
 
+/// Order relation filter enum for invoice export
+/// 用于发票导出的订单关联筛选
+enum OrderRelationFilter {
+  all, // 全部
+  withOrder, // 已关联订单
+  withoutOrder, // 未关联订单
+}
+
 /// Invoice quick select screen - for quick export of invoice PDF
 /// User directly selects invoices instead of orders
 class InvoiceQuickSelectScreen extends ConsumerStatefulWidget {
@@ -33,13 +41,14 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
   bool _isExporting = false;
 
   // Filter state
+  OrderRelationFilter _orderRelationFilter = OrderRelationFilter.all;
   DateTime? _startDate;
   DateTime? _endDate;
   String _searchKeyword = '';
   final _searchController = TextEditingController();
 
   // Export options
-  bool _showTimeLabel = true; // Show time label on invoices
+  bool _showTimeLabel = false; // Show time label on invoices (默认不标注)
   bool _addRemark = false; // 新增：是否添加备注
   String? _remarkContent; // 新增：备注内容
 
@@ -50,7 +59,8 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
     final now = DateTime.now();
     _startDate = DateTime(now.year, now.month, 1);
     _endDate = DateTime(now.year, now.month + 1, 0);
-    _loadInvoices();
+    // Delay loading to avoid modifying provider during build
+    Future(() => _loadInvoices());
   }
 
   @override
@@ -63,10 +73,19 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
     setState(() => _isLoading = true);
 
     try {
-      final invoices = await ref.read(invoiceProvider.notifier).getByDateRangeForExport(
-            _startDate ?? DateTime(2000),
-            _endDate ?? DateTime.now().add(const Duration(days: 365 * 10)),
-          );
+      // Use searchInvoices to support hasLinkedOrder filter
+      await ref.read(invoiceProvider.notifier).searchInvoices(
+        startDate: _startDate,
+        endDate: _endDate,
+        hasLinkedOrder: _orderRelationFilter == OrderRelationFilter.withOrder
+            ? true
+            : _orderRelationFilter == OrderRelationFilter.withoutOrder
+                ? false
+                : null,
+      );
+
+      // Get invoices from provider state
+      final invoices = ref.read(invoiceProvider).invoices;
 
       // Apply keyword filter if any
       var filteredInvoices = invoices;
@@ -321,6 +340,9 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
             child: _buildInvoiceList(context),
           ),
 
+          // Export options card
+          _buildExportOptions(context),
+
           // Bottom confirm bar
           _buildBottomBar(context),
         ],
@@ -375,98 +397,47 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
 
           const SizedBox(height: 12),
 
-          // Options and date filter row
+          // Filter chips row - 三段式筛选 + 日期筛选按钮
           Row(
             children: [
-              // Time label toggle
+              // Order relation filter - 三段式筛选
               Expanded(
-                child: Row(
-                  children: [
-                    Checkbox(
-                      value: _showTimeLabel,
-                      onChanged: (value) {
-                        setState(() => _showTimeLabel = value ?? true);
-                      },
+                child: SegmentedButton<OrderRelationFilter>(
+                  segments: const [
+                    ButtonSegment(
+                      value: OrderRelationFilter.all,
+                      label: Text('全部'),
                     ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _showTimeLabel = !_showTimeLabel),
-                        child: Text(
-                          '标注订单时间',
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                      ),
+                    ButtonSegment(
+                      value: OrderRelationFilter.withOrder,
+                      label: Text('已关联订单'),
+                    ),
+                    ButtonSegment(
+                      value: OrderRelationFilter.withoutOrder,
+                      label: Text('未关联订单'),
                     ),
                   ],
+                  selected: {_orderRelationFilter},
+                  onSelectionChanged: (Set<OrderRelationFilter> selection) {
+                    setState(() => _orderRelationFilter = selection.first);
+                    _loadInvoices();
+                  },
+                  style: ButtonStyle(
+                    visualDensity: VisualDensity.compact,
+                    textStyle: WidgetStateProperty.all(
+                      const TextStyle(fontSize: 12),
+                    ),
+                  ),
                 ),
               ),
+
+              const SizedBox(width: 8),
 
               // Date filter button
               IconButton.outlined(
                 onPressed: _showDateRangePicker,
                 icon: const Icon(Icons.date_range),
                 tooltip: '日期筛选',
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 8),
-
-          // Remark option row
-          Row(
-            children: [
-              Checkbox(
-                value: _addRemark,
-                onChanged: (value) {
-                  if (value == true) {
-                    // 点击勾选时弹出对话框，由对话框决定最终勾选状态
-                    _showRemarkDialog();
-                  } else {
-                    // 点击取消勾选时直接清空
-                    setState(() {
-                      _addRemark = false;
-                      _remarkContent = null;
-                    });
-                  }
-                },
-              ),
-              Expanded(
-                flex: 3,
-                child: GestureDetector(
-                  onTap: _addRemark ? _showRemarkDialog : null,
-                  child: Row(
-                    children: [
-                      Text(
-                        '为发票添加备注',
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                      if (_remarkContent != null && _remarkContent!.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: GestureDetector(
-                            onTap: _showRemarkDialog,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: colorScheme.primaryContainer,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                _remarkContent!,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: colorScheme.onPrimaryContainer,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
               ),
             ],
           ),
@@ -494,6 +465,143 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
     );
   }
 
+  /// 构建导出选项卡片
+  Widget _buildExportOptions(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Card(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '导出选项',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildTimeLabelOptionRow(context),
+              const SizedBox(height: 8),
+              _buildRemarkOptionRow(context),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 构建时间标注选项行
+  Widget _buildTimeLabelOptionRow(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return InkWell(
+      onTap: () => setState(() => _showTimeLabel = !_showTimeLabel),
+      borderRadius: BorderRadius.circular(20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _showTimeLabel ? colorScheme.primary : Colors.transparent,
+              border: Border.all(
+                color: _showTimeLabel ? colorScheme.primary : colorScheme.outline,
+                width: 2,
+              ),
+            ),
+            child: _showTimeLabel
+                ? Icon(
+                    Icons.check,
+                    size: 14,
+                    color: colorScheme.onPrimary,
+                  )
+                : null,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '标注订单时间',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurface,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 构建备注选项行
+  Widget _buildRemarkOptionRow(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return InkWell(
+      onTap: _showRemarkDialog,
+      borderRadius: BorderRadius.circular(20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _addRemark ? colorScheme.primary : Colors.transparent,
+              border: Border.all(
+                color: _addRemark ? colorScheme.primary : colorScheme.outline,
+                width: 2,
+              ),
+            ),
+            child: _addRemark
+                ? Icon(
+                    Icons.check,
+                    size: 14,
+                    color: colorScheme.onPrimary,
+                  )
+                : null,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '添加备注',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurface,
+            ),
+          ),
+          if (_addRemark && _remarkContent != null) ...[
+            const SizedBox(width: 8),
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _remarkContent!,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onPrimaryContainer,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildInvoiceList(BuildContext context) {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -502,7 +610,9 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
     if (_invoices.isEmpty) {
       return EmptyState(
         icon: Icons.receipt_long,
-        title: _searchKeyword.isNotEmpty || _startDate != null
+        title: _searchKeyword.isNotEmpty ||
+                _startDate != null ||
+                _orderRelationFilter != OrderRelationFilter.all
             ? '没有找到符合条件的发票'
             : '暂无发票',
       );
