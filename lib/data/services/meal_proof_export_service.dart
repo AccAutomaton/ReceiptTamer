@@ -154,6 +154,7 @@ class MealProofExportService {
     required List<MealProofItem> items,
     required String outputPath,
     required String Function(String) getImagePath, // Function to resolve image path
+    String? remark, // Optional remark to draw on each page
   }) async {
     if (items.isEmpty) {
       throw ArgumentError('Items list cannot be empty');
@@ -169,6 +170,9 @@ class MealProofExportService {
     final titleFont = await PdfFontService.instance.getChineseFont(10);
 
     try {
+      // Remark drawing constants
+      const labelMargin = 16.0; // Margin for remark, consistent with invoice export
+      final remarkFont = await PdfFontService.instance.getChineseFont(9); // Font size 9 for remark
       // Process items in groups of 4 (2x2 grid per page)
       for (var pageIndex = 0; pageIndex * 4 < items.length; pageIndex++) {
         final startIndex = pageIndex * 4;
@@ -178,6 +182,16 @@ class MealProofExportService {
         // Add a new page for each iteration
         final page = document.pages.add();
         final graphics = page.graphics;
+
+        // Draw remark if provided (at top-left corner of each page)
+        if (remark != null && remark.isNotEmpty) {
+          _drawRemark(
+            graphics: graphics,
+            remark: remark,
+            font: remarkFont,
+            margin: labelMargin,
+          );
+        }
 
         // Get page dimensions
         final pageSize = page.getClientSize();
@@ -350,5 +364,32 @@ class MealProofExportService {
       // Ignore image loading errors, but could log for debugging
       // print('Error loading image: $e');
     }
+  }
+
+  /// Draw remark text at top-left corner of page
+  static void _drawRemark({
+    required PdfGraphics graphics,
+    required String remark,
+    required PdfFont font,
+    required double margin,
+  }) {
+    if (remark.isEmpty) return;
+
+    final blackBrush = PdfSolidBrush(PdfColor(0, 0, 0));
+    final maxWidth = 200.0; // Max width for text wrapping
+
+    // Calculate text height
+    final singleLineSize = font.measureString(remark);
+    final estimatedLines = (singleLineSize.width / maxWidth).ceil() + 1;
+    final textHeight = font.height * estimatedLines;
+
+    // Draw at top-left corner
+    graphics.drawString(
+      remark,
+      font,
+      brush: blackBrush,
+      bounds: Rect.fromLTWH(margin, margin, maxWidth, textHeight),
+      format: PdfStringFormat(wordWrap: PdfWordWrapType.word),
+    );
   }
 }
