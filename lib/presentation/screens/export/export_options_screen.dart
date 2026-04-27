@@ -37,7 +37,7 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
   bool _exportMealDetails = true;
 
   // Invoice export options
-  bool _showInvoiceTimeLabel = true; // Show time labels on invoices
+  bool _showInvoiceTimeLabel = false; // Show time labels on invoices
   bool _addInvoiceRemark = false; // Whether to add remark
   String? _invoiceRemarkContent; // Remark content
 
