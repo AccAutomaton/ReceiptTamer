@@ -164,7 +164,10 @@ class MealProofExportService {
 
     final document = PdfDocument();
     document.pageSettings.size = PdfPageSize.a4;
-    document.pageSettings.margins.all = 36; // Narrow margins (~1.27cm / 0.5 inch)
+    document.pageSettings.margins.all = 0; // No margins, we'll handle positioning manually
+
+    // Content margin for printer safe area
+    const contentMargin = 36.0;
 
     // Define fonts - use TrueType font for Chinese characters
     final titleFont = await PdfFontService.instance.getChineseFont(10);
@@ -193,18 +196,21 @@ class MealProofExportService {
           );
         }
 
-        // Get page dimensions
-        final pageSize = page.getClientSize();
-        final pageWidth = pageSize.width;
-        final pageHeight = pageSize.height;
+        // Get page dimensions (full page size since margins are 0)
+        final pageWidth = page.size.width;
+        final pageHeight = page.size.height;
+
+        // Calculate available area (excluding content margin)
+        final availableWidth = pageWidth - contentMargin * 2;
+        final availableHeight = pageHeight - contentMargin * 2;
 
         // Calculate cell dimensions
         // Layout: 4 rows * 2 columns
         // Row 1 & 3: text (shorter)
         // Row 2 & 4: image (taller)
-        final cellWidth = pageWidth / 2;
+        final cellWidth = availableWidth / 2;
         final textRowHeight = 40.0; // Height for text rows
-        final imageRowHeight = (pageHeight - textRowHeight * 2) / 2; // Height for image rows
+        final imageRowHeight = (availableHeight - textRowHeight * 2) / 2; // Height for image rows
 
         // Fill content for each cell (max 4 items per page)
         for (var j = 0; j < pageItems.length; j++) {
@@ -212,9 +218,9 @@ class MealProofExportService {
           final col = j % 2; // 0 or 1
           final rowPair = j ~/ 2; // 0 (items 0,1) or 1 (items 2,3)
 
-          // Calculate position
-          final x = col * cellWidth;
-          final textY = rowPair * (textRowHeight + imageRowHeight);
+          // Calculate position (with content margin offset)
+          final x = contentMargin + col * cellWidth;
+          final textY = contentMargin + rowPair * (textRowHeight + imageRowHeight);
           final imageY = textY + textRowHeight;
 
           // Draw text cell
