@@ -403,6 +403,7 @@ Licensed under the MIT License
 
 syncfusion_flutter_pdf
 syncfusion_flutter_pdfviewer
+syncfusion_flutter_xlsio
 Copyright 2001-2024 Syncfusion Inc.
 Licensed under the Syncfusion Commercial License
 
@@ -452,9 +453,9 @@ Licensed under the BSD 3-Clause License
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-excel
-Copyright 2019 Kawaljeet Singh
-Licensed under the BSD 3-Clause License
+pdfrx
+Copyright 2024 Ryoichi Takeshita
+Licensed under the MIT License
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

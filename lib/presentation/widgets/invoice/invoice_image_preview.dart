@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:pdfrx/pdfrx.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 /// Invoice image/PDF preview widget
 class InvoiceImagePreview extends StatelessWidget {
@@ -39,21 +39,16 @@ class InvoiceImagePreview extends StatelessWidget {
 
     final file = File(imagePath);
     if (!file.existsSync()) {
-      return _buildPlaceholder(
-        context,
-        Icons.broken_image,
-        '文件不存在',
-      );
+      return _buildPlaceholder(context, Icons.broken_image, '文件不存在');
     }
 
     return InkWell(
-      onTap: onTap ??
+      onTap:
+          onTap ??
           () {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (context) => FullScreenPdfPreview(
-                  filePath: imagePath,
-                ),
+                builder: (context) => FullScreenPdfPreview(filePath: imagePath),
               ),
             );
           },
@@ -75,11 +70,7 @@ class InvoiceImagePreview extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    Icons.picture_as_pdf,
-                    size: 64,
-                    color: Colors.red,
-                  ),
+                  Icon(Icons.picture_as_pdf, size: 64, color: Colors.red),
                   const SizedBox(height: 12),
                   Text(
                     'PDF 文档',
@@ -131,11 +122,7 @@ class InvoiceImagePreview extends StatelessWidget {
 
     final file = File(imagePath);
     if (!file.existsSync()) {
-      return _buildPlaceholder(
-        context,
-        Icons.broken_image,
-        '图片不存在',
-      );
+      return _buildPlaceholder(context, Icons.broken_image, '图片不存在');
     }
 
     final image = Image.file(
@@ -152,13 +139,13 @@ class InvoiceImagePreview extends StatelessWidget {
     );
 
     return GestureDetector(
-      onTap: onTap ??
+      onTap:
+          onTap ??
           () {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (context) => FullScreenImagePreview(
-                  imagePath: imagePath,
-                ),
+                builder: (context) =>
+                    FullScreenImagePreview(imagePath: imagePath),
               ),
             );
           },
@@ -231,13 +218,17 @@ class InvoiceImagePreview extends StatelessWidget {
             Icon(
               icon,
               size: 48,
-              color: isError ? colorScheme.error : colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+              color: isError
+                  ? colorScheme.error
+                  : colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 8),
             Text(
               message,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: isError ? colorScheme.error : colorScheme.onSurfaceVariant,
+                color: isError
+                    ? colorScheme.error
+                    : colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -251,10 +242,7 @@ class InvoiceImagePreview extends StatelessWidget {
 class FullScreenImagePreview extends StatelessWidget {
   final String imagePath;
 
-  const FullScreenImagePreview({
-    super.key,
-    required this.imagePath,
-  });
+  const FullScreenImagePreview({super.key, required this.imagePath});
 
   @override
   Widget build(BuildContext context) {
@@ -268,10 +256,7 @@ class FullScreenImagePreview extends StatelessWidget {
           iconTheme: const IconThemeData(color: Colors.white),
         ),
         body: const Center(
-          child: Text(
-            '图片不存在',
-            style: TextStyle(color: Colors.white),
-          ),
+          child: Text('图片不存在', style: TextStyle(color: Colors.white)),
         ),
       );
     }
@@ -288,15 +273,14 @@ class FullScreenImagePreview extends StatelessWidget {
             icon: const Icon(Icons.share),
             onPressed: () async {
               try {
-                await SharePlus.instance.share(ShareParams(
-                  files: [XFile(imagePath)],
-                  subject: '分享图片',
-                ));
+                await SharePlus.instance.share(
+                  ShareParams(files: [XFile(imagePath)], subject: '分享图片'),
+                );
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('分享失败: $e')),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('分享失败: $e')));
                 }
               }
             },
@@ -311,10 +295,7 @@ class FullScreenImagePreview extends StatelessWidget {
           child: InteractiveViewer(
             minScale: 0.5,
             maxScale: 5.0,
-            child: Image.file(
-              file,
-              fit: BoxFit.contain,
-            ),
+            child: Image.file(file, fit: BoxFit.contain),
           ),
         ),
       ),
@@ -322,14 +303,11 @@ class FullScreenImagePreview extends StatelessWidget {
   }
 }
 
-/// Full screen PDF preview with SfPdfViewer
+/// Full screen PDF preview with PDFium-based rendering.
 class FullScreenPdfPreview extends StatelessWidget {
   final String filePath;
 
-  const FullScreenPdfPreview({
-    super.key,
-    required this.filePath,
-  });
+  const FullScreenPdfPreview({super.key, required this.filePath});
 
   @override
   Widget build(BuildContext context) {
@@ -337,12 +315,8 @@ class FullScreenPdfPreview extends StatelessWidget {
     if (!file.existsSync()) {
       return Scaffold(
         backgroundColor: Colors.grey[200],
-        appBar: AppBar(
-          title: const Text('PDF 预览'),
-        ),
-        body: const Center(
-          child: Text('PDF文件不存在'),
-        ),
+        appBar: AppBar(title: const Text('PDF 预览')),
+        body: const Center(child: Text('PDF文件不存在')),
       );
     }
 
@@ -354,22 +328,27 @@ class FullScreenPdfPreview extends StatelessWidget {
             icon: const Icon(Icons.share),
             onPressed: () async {
               try {
-                await SharePlus.instance.share(ShareParams(
-                  files: [XFile(filePath)],
-                  subject: '分享PDF文档',
-                ));
+                await SharePlus.instance.share(
+                  ShareParams(files: [XFile(filePath)], subject: '分享PDF文档'),
+                );
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('分享失败: $e')),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('分享失败: $e')));
                 }
               }
             },
           ),
         ],
       ),
-      body: SfPdfViewer.file(file),
+      body: PdfViewer.file(
+        filePath,
+        params: const PdfViewerParams(
+          annotationRenderingMode:
+              PdfAnnotationRenderingMode.annotationAndForms,
+        ),
+      ),
     );
   }
 }

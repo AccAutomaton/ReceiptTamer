@@ -6,6 +6,7 @@ import 'package:receipt_tamer/core/services/pdf_font_service.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/data/models/order.dart';
 import 'package:image/image.dart' as img;
+import 'package:pdfrx/pdfrx.dart' as pdfrx;
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 
 import '../../core/services/log_service.dart';
@@ -160,6 +161,8 @@ class InvoiceExportItem {
 /// Invoice export service
 /// Generates PDF documents from selected invoices
 class InvoiceExportService {
+  static const double _pdfRasterDpi = 200;
+
   /// Prepare invoice export items from selected invoices and their orders
   static Future<List<InvoiceExportItem>> prepareInvoiceExportItems({
     required List<Invoice> invoices,
@@ -191,11 +194,9 @@ class InvoiceExportService {
         }
       }
 
-      items.add(InvoiceExportItem(
-        invoice: invoice,
-        orders: orders,
-        remark: remark,
-      ));
+      items.add(
+        InvoiceExportItem(invoice: invoice, orders: orders, remark: remark),
+      );
     }
 
     return items;
@@ -215,7 +216,8 @@ class InvoiceExportService {
 
     final document = PdfDocument();
     document.pageSettings.size = PdfPageSize.a4;
-    document.pageSettings.margins.all = 0; // No margins, we'll handle positioning
+    document.pageSettings.margins.all =
+        0; // No margins, we'll handle positioning
 
     // Define fonts - use TrueType font for Chinese characters
     final labelFont = await PdfFontService.instance.getChineseFont(9);
@@ -455,77 +457,53 @@ class InvoiceExportService {
     required double height,
   }) async {
     try {
-      // Load the source PDF
-      final sourceDoc = PdfDocument(inputBytes: pdfBytes);
-      if (sourceDoc.pages.count == 0) {
-        sourceDoc.dispose();
-        return;
-      }
+      final renderedPage = await _renderFirstPdfPageToPng(pdfBytes);
+      if (renderedPage == null) return;
 
-      // Get the first page
-      final sourcePage = sourceDoc.pages[0];
-
-      // Get source page dimensions
-      final sourceWidth = sourcePage.size.width;
-      final sourceHeight = sourcePage.size.height;
-
-      // Check if PDF needs rotation (if height > width)
-      bool needsRotation = sourceHeight > sourceWidth;
-
-      // Add small padding
-      const padding = 10.0;
-      final availableWidth = width - padding * 2;
-      final availableHeight = height - padding * 2;
-
-      // Calculate effective dimensions after rotation
-      double effectiveWidth, effectiveHeight;
-      if (needsRotation) {
-        effectiveWidth = sourceHeight;
-        effectiveHeight = sourceWidth;
-      } else {
-        effectiveWidth = sourceWidth;
-        effectiveHeight = sourceHeight;
-      }
-
-      // Calculate scale
-      final scaleX = availableWidth / effectiveWidth;
-      final scaleY = availableHeight / effectiveHeight;
-      final scale = scaleX < scaleY ? scaleX : scaleY;
-
-      final drawWidth = effectiveWidth * scale;
-      final drawHeight = effectiveHeight * scale;
-
-      // Center the content
-      final drawX = x + (width - drawWidth) / 2;
-      final drawY = y + (height - drawHeight) / 2;
-
-      // Create a template from the source page
-      final template = sourcePage.createTemplate();
-
-      // Draw the template
-      if (needsRotation) {
-        // For rotation, we use PdfPageLayer with transform
-        // Draw at the calculated position with rotation
-        graphics.save();
-        graphics.translateTransform(drawX + drawWidth / 2, drawY + drawHeight / 2);
-        graphics.rotateTransform(-90);
-        graphics.drawPdfTemplate(
-          template,
-          Offset(-drawHeight / 2, -drawWidth / 2),
-          Size(drawHeight, drawWidth),
-        );
-        graphics.restore();
-      } else {
-        graphics.drawPdfTemplate(
-          template,
-          Offset(drawX, drawY),
-          Size(drawWidth, drawHeight),
-        );
-      }
-
-      sourceDoc.dispose();
+      await _drawImageInvoice(
+        graphics: graphics,
+        imageBytes: renderedPage,
+        x: x,
+        y: y,
+        width: width,
+        height: height,
+      );
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleFile, '处理 PDF 发票失败', e, stackTrace);
+    }
+  }
+
+  /// Render the first PDF page to a PNG with annotations/forms included.
+  static Future<List<int>?> _renderFirstPdfPageToPng(List<int> pdfBytes) async {
+    final document = await pdfrx.PdfDocument.openData(
+      Uint8List.fromList(pdfBytes),
+    );
+    try {
+      if (document.pages.isEmpty) return null;
+
+      final page = document.pages[0];
+      final scale = _pdfRasterDpi / 72;
+      final pageImage = await page.render(
+        fullWidth: page.width * scale,
+        fullHeight: page.height * scale,
+        annotationRenderingMode:
+            pdfrx.PdfAnnotationRenderingMode.annotationAndForms,
+      );
+      if (pageImage == null) return null;
+
+      try {
+        final image = await pageImage.createImage();
+        try {
+          final byteData = await image.toByteData(format: ImageByteFormat.png);
+          return byteData?.buffer.asUint8List();
+        } finally {
+          image.dispose();
+        }
+      } finally {
+        pageImage.dispose();
+      }
+    } finally {
+      document.dispose();
     }
   }
 
@@ -545,9 +523,7 @@ class InvoiceExportService {
     if (label.isEmpty) return;
 
     // Create string format with word wrap
-    final format = PdfStringFormat(
-      wordWrap: PdfWordWrapType.word,
-    );
+    final format = PdfStringFormat(wordWrap: PdfWordWrapType.word);
 
     // Measure the text size (single line for width estimate)
     final singleLineSize = font.measureString(label);
@@ -582,7 +558,4 @@ class InvoiceExportService {
 }
 
 /// Label position enum
-enum _LabelPosition {
-  topLeft,
-  bottomLeft,
-}
+enum _LabelPosition { topLeft, bottomLeft }

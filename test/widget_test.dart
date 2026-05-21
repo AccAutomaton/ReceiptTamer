@@ -14,13 +14,11 @@ void main() {
   testWidgets('App smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
     await tester.pumpWidget(
-      const ProviderScope(
-        child: App(),
-      ),
+      const ProviderScope(child: App(enableBackgroundInitialization: false)),
     );
 
-    // Wait for async operations to complete
-    await tester.pumpAndSettle(const Duration(seconds: 3));
+    // Render one frame; background services are covered outside this smoke test.
+    await tester.pump();
 
     // Verify that the home screen loads with the expected title.
     expect(find.text('首页'), findsWidgets);

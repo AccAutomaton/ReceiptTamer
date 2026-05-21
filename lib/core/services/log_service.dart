@@ -229,14 +229,18 @@ class FileLogOutput extends LogOutput {
 
     final files = await logDir
         .list()
-        .where((f) =>
-            f is File &&
-            path.basename(f.path).startsWith(LogConfig.logFilePrefix))
+        .where(
+          (f) =>
+              f is File &&
+              path.basename(f.path).startsWith(LogConfig.logFilePrefix),
+        )
         .toList();
 
     if (files.length > maxFiles) {
       // 按修改时间排序，删除最旧的
-      files.sort((a, b) => a.statSync().modified.compareTo(b.statSync().modified));
+      files.sort(
+        (a, b) => a.statSync().modified.compareTo(b.statSync().modified),
+      );
 
       final toDelete = files.length - maxFiles;
       for (var i = 0; i < toDelete; i++) {
@@ -252,9 +256,11 @@ class FileLogOutput extends LogOutput {
 
     final files = await logDir
         .list()
-        .where((f) =>
-            f is File &&
-            path.basename(f.path).startsWith(LogConfig.logFilePrefix))
+        .where(
+          (f) =>
+              f is File &&
+              path.basename(f.path).startsWith(LogConfig.logFilePrefix),
+        )
         .toList();
 
     return files.map((f) => f.path).toList();
@@ -295,7 +301,9 @@ class LogService {
   LogService._internal();
 
   /// MethodChannel用于接收Android原生层日志
-  static const MethodChannel _channel = MethodChannel('com.acautomaton.receipt.tamer/log');
+  static const MethodChannel _channel = MethodChannel(
+    'com.acautomaton.receipt.tamer/log',
+  );
 
   late final Logger _logger;
   late final FileLogOutput _fileOutput;
@@ -317,15 +325,9 @@ class LogService {
 
     // 配置Logger
     _logger = Logger(
-      filter: kDebugMode
-          ? DevelopmentFilter()
-          : ProductionFilter(),
+      filter: kDebugMode ? DevelopmentFilter() : ProductionFilter(),
       printer: AppLogPrinter(),
-      output: MultiOutput([
-        ConsoleOutput(),
-        _fileOutput,
-        _memoryOutput,
-      ]),
+      output: MultiOutput([ConsoleOutput(), _fileOutput, _memoryOutput]),
     );
 
     // 设置MethodChannel处理器，接收Android层日志
@@ -361,8 +363,12 @@ class LogService {
     String? error,
     String? stackTrace,
   ) {
-    final formattedMessage = error != null ? '$message | Error: $error' : message;
-    final fullMessage = stackTrace != null ? '$formattedMessage\n$stackTrace' : formattedMessage;
+    final formattedMessage = error != null
+        ? '$message | Error: $error'
+        : message;
+    final fullMessage = stackTrace != null
+        ? '$formattedMessage\n$stackTrace'
+        : formattedMessage;
 
     switch (level.toUpperCase()) {
       case 'D':
@@ -384,31 +390,42 @@ class LogService {
 
   /// 刷新日志缓冲区
   Future<void> flush() async {
+    if (!_initialized) return;
     await _fileOutput.flush();
   }
 
   /// DEBUG级别日志
   void d(String module, String message) {
+    if (!_initialized) return;
     _logger.d('[$module] $message');
   }
 
   /// INFO级别日志
   void i(String module, String message) {
+    if (!_initialized) return;
     _logger.i('[$module] $message');
   }
 
   /// WARN级别日志
   void w(String module, String message) {
+    if (!_initialized) return;
     _logger.w('[$module] $message');
   }
 
   /// ERROR级别日志
-  void e(String module, String message, [Object? error, StackTrace? stackTrace]) {
+  void e(
+    String module,
+    String message, [
+    Object? error,
+    StackTrace? stackTrace,
+  ]) {
+    if (!_initialized) return;
     _logger.e('[$module] $message', error: error, stackTrace: stackTrace);
   }
 
   /// 诊断日志（DEBUG级别，带DIAG标签）
   void diag(String module, String metric, dynamic value) {
+    if (!_initialized) return;
     _logger.d('[$module] [DIAG] $metric: $value');
   }
 
@@ -459,15 +476,15 @@ class LogService {
       // 添加系统信息文件
       final systemInfoBytes = systemInfo.codeUnits;
       archive.addFile(
-        ArchiveFile('system_info.json', systemInfoBytes.length, systemInfoBytes),
+        ArchiveFile(
+          'system_info.json',
+          systemInfoBytes.length,
+          systemInfoBytes,
+        ),
       );
 
       // 编码ZIP
       final zipData = ZipEncoder().encode(archive);
-      if (zipData == null) {
-        e(LogConfig.moduleApp, 'Failed to encode ZIP archive');
-        return null;
-      }
 
       // 写入临时文件
       await File(zipPath).writeAsBytes(zipData);

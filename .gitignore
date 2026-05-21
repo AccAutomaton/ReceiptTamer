@@ -51,3 +51,6 @@ android/key.properties
 # Superpowers docs (local only)
 docs/superpowers/
 /.superpowers/
+
+# codex
+/tasks/

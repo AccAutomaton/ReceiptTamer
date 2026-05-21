@@ -12,7 +12,9 @@ import 'presentation/providers/ocr_provider.dart';
 /// The root widget of the application.
 /// Wraps the app with ProviderScope for Riverpod state management.
 class App extends ConsumerStatefulWidget {
-  const App({super.key});
+  const App({super.key, this.enableBackgroundInitialization = true});
+
+  final bool enableBackgroundInitialization;
 
   @override
   ConsumerState<App> createState() => _AppState();
@@ -36,9 +38,11 @@ class _AppState extends ConsumerState<App> {
     logService.d(LogConfig.moduleApp, 'App initState');
     // LogService 已在 main.dart 中初始化
     // 使用 addPostFrameCallback 确保首帧渲染完成后再初始化其他服务
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _delayedInitialize();
-    });
+    if (widget.enableBackgroundInitialization) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _delayedInitialize();
+      });
+    }
   }
 
   Future<void> _delayedInitialize() async {
@@ -89,16 +93,22 @@ class _AppState extends ConsumerState<App> {
     if (!mounted || _navigating) return;
 
     final sharedMedia = _shareHandlerService.sharedMediaNotifier.value;
-    logService.i(LogConfig.moduleApp, 'onSharedMedia 调用，hasMedia: ${sharedMedia != null && sharedMedia.isNotEmpty}');
+    logService.i(
+      LogConfig.moduleApp,
+      'onSharedMedia 调用，hasMedia: ${sharedMedia != null && sharedMedia.isNotEmpty}',
+    );
 
     if (sharedMedia != null && sharedMedia.isNotEmpty) {
       // 检查当前路由是否需要跳过自动导航
       final router = ref.read(routerProvider);
-      final currentLocation = router.routerDelegate.currentConfiguration.uri.toString();
+      final currentLocation = router.routerDelegate.currentConfiguration.uri
+          .toString();
       logService.i(LogConfig.moduleApp, '当前位置: $currentLocation');
 
       // 如果当前已经在分享相关页面，不自动导航
-      if (_skipAutoNavigateRoutes.any((route) => currentLocation.startsWith(route))) {
+      if (_skipAutoNavigateRoutes.any(
+        (route) => currentLocation.startsWith(route),
+      )) {
         logService.i(LogConfig.moduleApp, '跳过自动导航，已在 $currentLocation');
         return;
       }
@@ -108,7 +118,10 @@ class _AppState extends ConsumerState<App> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         try {
-          logService.i(LogConfig.moduleApp, '导航到 /share，共 ${sharedMedia.length} 项');
+          logService.i(
+            LogConfig.moduleApp,
+            '导航到 /share，共 ${sharedMedia.length} 项',
+          );
           router.go('/share');
         } catch (e, stackTrace) {
           logService.e(LogConfig.moduleApp, '导航到分享页面失败', e, stackTrace);

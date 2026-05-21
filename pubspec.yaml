@@ -44,7 +44,7 @@ dependencies:
   uuid: ^4.2.1
   path_provider: ^2.1.1
   share_plus: ^12.0.1
-  excel: ^4.0.1
+  syncfusion_flutter_xlsio: ^32.2.8
   image: ^4.1.3
   easy_refresh: ^3.4.0
 
@@ -65,7 +65,10 @@ dependencies:
   permission_handler: ^11.0.0
 
   # Archive (zip compression)
-  archive: ^3.6.1
+  archive: ^4.0.9
+
+  # PDF Rendering
+  pdfrx: ^2.4.1
 
   # Logging
   logger: ^2.5.0
