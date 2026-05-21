@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:receipt_tamer/core/services/pdf_font_service.dart';
+import 'package:receipt_tamer/core/utils/pdf_render_strategy.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/data/models/order.dart';
 import 'package:image/image.dart' as img;
@@ -457,12 +458,24 @@ class InvoiceExportService {
     required double height,
   }) async {
     try {
-      final renderedPage = await _renderFirstPdfPageToPng(pdfBytes);
-      if (renderedPage == null) return;
+      if (PdfRenderStrategy.needsPdfiumRendering(pdfBytes)) {
+        final renderedPage = await _renderFirstPdfPageToPng(pdfBytes);
+        if (renderedPage == null) return;
 
-      await _drawImageInvoice(
+        await _drawImageInvoice(
+          graphics: graphics,
+          imageBytes: renderedPage,
+          x: x,
+          y: y,
+          width: width,
+          height: height,
+        );
+        return;
+      }
+
+      await _drawPdfTemplateInvoice(
         graphics: graphics,
-        imageBytes: renderedPage,
+        pdfBytes: pdfBytes,
         x: x,
         y: y,
         width: width,
@@ -470,6 +483,65 @@ class InvoiceExportService {
       );
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleFile, '处理 PDF 发票失败', e, stackTrace);
+    }
+  }
+
+  /// Draw a PDF invoice with Syncfusion template rendering.
+  static Future<void> _drawPdfTemplateInvoice({
+    required PdfGraphics graphics,
+    required List<int> pdfBytes,
+    required double x,
+    required double y,
+    required double width,
+    required double height,
+  }) async {
+    final sourceDoc = PdfDocument(inputBytes: pdfBytes);
+    try {
+      if (sourceDoc.pages.count == 0) return;
+
+      final sourcePage = sourceDoc.pages[0];
+      final sourceWidth = sourcePage.size.width;
+      final sourceHeight = sourcePage.size.height;
+      final needsRotation = sourceHeight > sourceWidth;
+
+      const padding = 10.0;
+      final availableWidth = width - padding * 2;
+      final availableHeight = height - padding * 2;
+
+      final effectiveWidth = needsRotation ? sourceHeight : sourceWidth;
+      final effectiveHeight = needsRotation ? sourceWidth : sourceHeight;
+      final scaleX = availableWidth / effectiveWidth;
+      final scaleY = availableHeight / effectiveHeight;
+      final scale = scaleX < scaleY ? scaleX : scaleY;
+
+      final drawWidth = effectiveWidth * scale;
+      final drawHeight = effectiveHeight * scale;
+      final drawX = x + (width - drawWidth) / 2;
+      final drawY = y + (height - drawHeight) / 2;
+
+      final template = sourcePage.createTemplate();
+      if (needsRotation) {
+        graphics.save();
+        graphics.translateTransform(
+          drawX + drawWidth / 2,
+          drawY + drawHeight / 2,
+        );
+        graphics.rotateTransform(-90);
+        graphics.drawPdfTemplate(
+          template,
+          Offset(-drawHeight / 2, -drawWidth / 2),
+          Size(drawHeight, drawWidth),
+        );
+        graphics.restore();
+      } else {
+        graphics.drawPdfTemplate(
+          template,
+          Offset(drawX, drawY),
+          Size(drawWidth, drawHeight),
+        );
+      }
+    } finally {
+      sourceDoc.dispose();
     }
   }
 

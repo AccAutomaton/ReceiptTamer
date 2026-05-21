@@ -1,8 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:pdfrx/pdfrx.dart';
+import 'package:pdfrx/pdfrx.dart' as pdfrx;
+import 'package:receipt_tamer/core/utils/pdf_render_strategy.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 /// Invoice image/PDF preview widget
 class InvoiceImagePreview extends StatelessWidget {
@@ -342,12 +344,24 @@ class FullScreenPdfPreview extends StatelessWidget {
           ),
         ],
       ),
-      body: PdfViewer.file(
-        filePath,
-        params: const PdfViewerParams(
-          annotationRenderingMode:
-              PdfAnnotationRenderingMode.annotationAndForms,
-        ),
+      body: _buildPdfViewer(file),
+    );
+  }
+
+  Widget _buildPdfViewer(File file) {
+    final usePdfium = PdfRenderStrategy.needsPdfiumRendering(
+      file.readAsBytesSync(),
+    );
+
+    if (!usePdfium) {
+      return SfPdfViewer.file(file);
+    }
+
+    return pdfrx.PdfViewer.file(
+      file.path,
+      params: const pdfrx.PdfViewerParams(
+        annotationRenderingMode:
+            pdfrx.PdfAnnotationRenderingMode.annotationAndForms,
       ),
     );
   }
