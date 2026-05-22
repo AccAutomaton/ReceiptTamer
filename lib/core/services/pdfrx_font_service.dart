@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/services.dart';
 import 'package:pdfrx/pdfrx.dart' as pdfrx;
@@ -12,7 +13,6 @@ class PdfrxFontService {
   static const String _sansPath = 'assets/fonts/NotoSansSC-VF.ttf';
   static const String _serifPath = 'assets/fonts/NotoSerifSC-VF.ttf';
   static const String _kaiPath = 'assets/fonts/LXGWWenKai-Regular.ttf';
-  static const String _fallbackPath = 'assets/fonts/MiSans-Medium.ttf';
 
   final Map<String, Uint8List> _fontDataCache = {};
 
@@ -59,13 +59,7 @@ class PdfrxFontService {
 
   _BundledFontAsset? _chooseFont(pdfrx.PdfFontQuery query) {
     final face = _normalizeFace(query.face);
-    final isCjkCharset =
-        query.charset == pdfrx.PdfFontCharset.gb2312 ||
-        query.charset == pdfrx.PdfFontCharset.chineseBig5 ||
-        query.charset == pdfrx.PdfFontCharset.shiftJis ||
-        query.charset == pdfrx.PdfFontCharset.hangul;
-
-    if (_containsAny(face, const ['kaiti', 'stkaiti', 'simkai', 'kai'])) {
+    if (_containsAny(face, const ['kaiti', 'stkaiti', 'simkai', 'kai', '楷'])) {
       return const _BundledFontAsset(_kaiPath, 'LXGW WenKai');
     }
 
@@ -80,36 +74,21 @@ class PdfrxFontService {
       'ming',
       'pmingliu',
       'batang',
+      'songti',
+      '宋',
+      '仿宋',
+      '明',
     ])) {
       return const _BundledFontAsset(_serifPath, 'Noto Serif SC');
     }
 
-    if (_containsAny(face, const [
-      'hei',
-      'simhei',
-      'stheiti',
-      'yahei',
-      'microsoftyahei',
-      'deng',
-      'dengxian',
-      'sans',
-      'gothic',
-      'dotum',
-    ])) {
-      return const _BundledFontAsset(_sansPath, 'Noto Sans SC');
-    }
-
-    if (isCjkCharset || query.face.contains('UniGB')) {
-      return const _BundledFontAsset(_fallbackPath, 'MiSans');
-    }
-
-    return null;
+    return const _BundledFontAsset(_sansPath, 'Noto Sans SC');
   }
 
   List<pdfrx.PdfFontQuery> extractFontQueries(List<int> pdfBytes) {
     final content = String.fromCharCodes(pdfBytes);
     final matches = RegExp(
-      r'/(?:BaseFont|FontName)\s*/([A-Za-z0-9+#._-]+)',
+      r'/(?:BaseFont|FontName)\s*/([^\s<>\[\]\(\)/%]+)',
     ).allMatches(content);
 
     final queries = <pdfrx.PdfFontQuery>[];
@@ -153,13 +132,37 @@ class PdfrxFontService {
   }
 
   static String _decodePdfName(String name) {
-    return name.replaceAllMapped(RegExp(r'#([0-9A-Fa-f]{2})'), (match) {
-      return String.fromCharCode(int.parse(match.group(1)!, radix: 16));
-    });
+    if (name.codeUnits.any((codeUnit) => codeUnit > 0xff)) {
+      return name.replaceAllMapped(RegExp(r'#([0-9A-Fa-f]{2})'), (match) {
+        return String.fromCharCode(int.parse(match.group(1)!, radix: 16));
+      });
+    }
+
+    final bytes = <int>[];
+    for (var i = 0; i < name.length; i += 1) {
+      final char = name[i];
+      if (char == '#' &&
+          i + 2 < name.length &&
+          RegExp(r'^[0-9A-Fa-f]{2}$').hasMatch(name.substring(i + 1, i + 3))) {
+        bytes.add(int.parse(name.substring(i + 1, i + 3), radix: 16));
+        i += 2;
+      } else {
+        bytes.add(name.codeUnitAt(i));
+      }
+    }
+
+    try {
+      return utf8.decode(bytes, allowMalformed: false);
+    } on FormatException {
+      return String.fromCharCodes(bytes);
+    }
   }
 
   static String _normalizeFace(String face) {
-    final baseFace = face.contains('+') ? face.split('+').last : face;
+    final decodedFace = _decodePdfName(face);
+    final baseFace = decodedFace.contains('+')
+        ? decodedFace.split('+').last
+        : decodedFace;
     return baseFace.toLowerCase().replaceAll(RegExp(r'[\s_-]+'), '');
   }
 

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -54,6 +55,20 @@ void main() {
           charset: pdfrx.PdfFontCharset.gb2312,
           pitchFamily: 0,
         ),
+        pdfrx.PdfFontQuery(
+          face: 'CourierNewPSMT',
+          weight: 400,
+          isItalic: false,
+          charset: pdfrx.PdfFontCharset.ansi,
+          pitchFamily: 1,
+        ),
+        pdfrx.PdfFontQuery(
+          face: 'UnknownInvoiceFont',
+          weight: 400,
+          isItalic: false,
+          charset: pdfrx.PdfFontCharset.ansi,
+          pitchFamily: 0,
+        ),
       ]) {
         final resolution = await resolver.resolve(
           query,
@@ -66,6 +81,81 @@ void main() {
       }
     },
   );
+
+  test(
+    'pdfrx font resolver decodes PDF byte-style Chinese font names',
+    () async {
+      final resolver = PdfrxFontService.instance.createFontResolver();
+
+      final kaiResolution = await resolver.resolve(
+        pdfrx.PdfFontQuery(
+          face: String.fromCharCodes(utf8.encode('SWQMSB+楷体')),
+          weight: 400,
+          isItalic: false,
+          charset: pdfrx.PdfFontCharset.gb2312,
+          pitchFamily: 0,
+        ),
+        const pdfrx.PdfFontResolveContext(),
+      );
+      final songResolution = await resolver.resolve(
+        pdfrx.PdfFontQuery(
+          face: String.fromCharCodes(utf8.encode('SWWNNY+宋体')),
+          weight: 400,
+          isItalic: false,
+          charset: pdfrx.PdfFontCharset.gb2312,
+          pitchFamily: 0,
+        ),
+        const pdfrx.PdfFontResolveContext(),
+      );
+
+      expect(kaiResolution?.resolvedFace, 'LXGW WenKai');
+      expect(songResolution?.resolvedFace, 'Noto Serif SC');
+    },
+  );
+
+  test('pdfrx font resolver only uses bundled Noto and LXGW fonts', () async {
+    final resolver = PdfrxFontService.instance.createFontResolver();
+    final expectedFaces = {'Noto Sans SC', 'Noto Serif SC', 'LXGW WenKai'};
+
+    for (final query in const [
+      pdfrx.PdfFontQuery(
+        face: 'STSong-Light-UniGB-UCS2-H',
+        weight: 400,
+        isItalic: false,
+        charset: pdfrx.PdfFontCharset.gb2312,
+        pitchFamily: 0,
+      ),
+      pdfrx.PdfFontQuery(
+        face: 'VFRUUO+STKaitiSC-Bold',
+        weight: 700,
+        isItalic: false,
+        charset: pdfrx.PdfFontCharset.gb2312,
+        pitchFamily: 0,
+      ),
+      pdfrx.PdfFontQuery(
+        face: 'CourierNewPSMT',
+        weight: 400,
+        isItalic: false,
+        charset: pdfrx.PdfFontCharset.ansi,
+        pitchFamily: 1,
+      ),
+      pdfrx.PdfFontQuery(
+        face: 'UnknownInvoiceFont',
+        weight: 400,
+        isItalic: false,
+        charset: pdfrx.PdfFontCharset.ansi,
+        pitchFamily: 0,
+      ),
+    ]) {
+      final resolution = await resolver.resolve(
+        query,
+        const pdfrx.PdfFontResolveContext(),
+      );
+
+      expect(resolution, isNotNull, reason: query.face);
+      expect(expectedFaces, contains(resolution!.resolvedFace));
+    }
+  });
 
   test(
     'pdfrx font service extracts exact embedded PDF font names',
@@ -81,6 +171,16 @@ void main() {
         ? false
         : 'Local font-sensitive PDF sample is not available.',
   );
+
+  test('pdfrx font service extracts utf8 PDF font names', () {
+    final queries = PdfrxFontService.instance.extractFontQueries(
+      utf8.encode('/BaseFont /SWQMSB+楷体 /FontName /SWWNNY+宋体'),
+    );
+    final faces = queries.map((query) => query.face).toSet();
+
+    expect(faces, contains('SWQMSB+楷体'));
+    expect(faces, contains('SWWNNY+宋体'));
+  });
 
   test(
     'invoice PDF export rasterizes stamp-annotation PDFs',
