@@ -13,6 +13,11 @@ class PdfrxFontService {
   static const String _sansPath = 'assets/fonts/NotoSansSC-VF.ttf';
   static const String _serifPath = 'assets/fonts/NotoSerifSC-VF.ttf';
   static const String _kaiPath = 'assets/fonts/LXGWWenKai-Regular.ttf';
+  static const String _tinosRegularPath = 'assets/fonts/Tinos-Regular.ttf';
+  static const String _tinosBoldPath = 'assets/fonts/Tinos-Bold.ttf';
+  static const String _tinosItalicPath = 'assets/fonts/Tinos-Italic.ttf';
+  static const String _tinosBoldItalicPath =
+      'assets/fonts/Tinos-BoldItalic.ttf';
 
   final Map<String, Uint8List> _fontDataCache = {};
 
@@ -82,7 +87,11 @@ class PdfrxFontService {
       return const _BundledFontAsset(_serifPath, 'Noto Serif SC');
     }
 
-    return const _BundledFontAsset(_sansPath, 'Noto Sans SC');
+    if (_isTimesFallbackFont(query, face)) {
+      return _chooseTinosFont(query);
+    }
+
+    return const _BundledFontAsset(_sansPath, 'Source Han Sans SC Light');
   }
 
   List<pdfrx.PdfFontQuery> extractFontQueries(List<int> pdfBytes) {
@@ -164,6 +173,64 @@ class PdfrxFontService {
         ? decodedFace.split('+').last
         : decodedFace;
     return baseFace.toLowerCase().replaceAll(RegExp(r'[\s_-]+'), '');
+  }
+
+  static bool _isTimesFallbackFont(pdfrx.PdfFontQuery query, String face) {
+    return _isAmountFont(face) || _isLatinFont(query, face);
+  }
+
+  static bool _isAmountFont(String face) {
+    return _containsAny(face, const [
+      'amount',
+      'money',
+      'currency',
+      'total',
+      'subtotal',
+      'rmb',
+      'cny',
+      'price',
+      'taxamount',
+      'netamount',
+      'jine',
+      'heji',
+      '金额',
+      '合计',
+      '价税',
+      '小写',
+      '大写',
+    ]);
+  }
+
+  static bool _isLatinFont(pdfrx.PdfFontQuery query, String face) {
+    return query.charset == pdfrx.PdfFontCharset.ansi ||
+        _containsAny(face, const [
+          'times',
+          'roman',
+          'courier',
+          'arial',
+          'helvetica',
+          'calibri',
+          'cambria',
+          'verdana',
+          'tahoma',
+          'latin',
+          'english',
+          'psmt',
+        ]);
+  }
+
+  static _BundledFontAsset _chooseTinosFont(pdfrx.PdfFontQuery query) {
+    final isBold = query.weight >= 600;
+    if (isBold && query.isItalic) {
+      return const _BundledFontAsset(_tinosBoldItalicPath, 'Tinos');
+    }
+    if (isBold) {
+      return const _BundledFontAsset(_tinosBoldPath, 'Tinos');
+    }
+    if (query.isItalic) {
+      return const _BundledFontAsset(_tinosItalicPath, 'Tinos');
+    }
+    return const _BundledFontAsset(_tinosRegularPath, 'Tinos');
   }
 
   static bool _containsAny(String value, List<String> needles) {

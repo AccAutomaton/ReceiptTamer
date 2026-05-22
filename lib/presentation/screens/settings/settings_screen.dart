@@ -472,6 +472,12 @@ Licensed under the SIL Open Font License 1.1
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+Tinos
+Copyright 2010-2012 Google Corporation
+Licensed under the Apache License 2.0
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 image
 Copyright 2013-2022, Brendan Duncan.
 Licensed under the MIT License

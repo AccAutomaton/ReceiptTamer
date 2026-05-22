@@ -63,6 +63,27 @@ void main() {
           pitchFamily: 1,
         ),
         pdfrx.PdfFontQuery(
+          face: 'TimesNewRomanPSMT',
+          weight: 400,
+          isItalic: false,
+          charset: pdfrx.PdfFontCharset.ansi,
+          pitchFamily: 16,
+        ),
+        pdfrx.PdfFontQuery(
+          face: 'InvoiceAmountDigits',
+          weight: 400,
+          isItalic: false,
+          charset: pdfrx.PdfFontCharset.ansi,
+          pitchFamily: 0,
+        ),
+        pdfrx.PdfFontQuery(
+          face: 'InvoiceNumberDigits',
+          weight: 400,
+          isItalic: false,
+          charset: pdfrx.PdfFontCharset.gb2312,
+          pitchFamily: 0,
+        ),
+        pdfrx.PdfFontQuery(
           face: 'UnknownInvoiceFont',
           weight: 400,
           isItalic: false,
@@ -77,7 +98,94 @@ void main() {
 
         expect(resolution, isNotNull, reason: query.face);
         final data = await resolution!.loadData!();
-        expect(data.length, greaterThan(1000000), reason: query.face);
+        expect(data.length, greaterThan(100000), reason: query.face);
+      }
+    },
+  );
+
+  test(
+    'pdfrx font resolver maps english and amount digits to Times fallback',
+    () async {
+      final resolver = PdfrxFontService.instance.createFontResolver();
+
+      for (final query in const [
+        pdfrx.PdfFontQuery(
+          face: 'TimesNewRomanPSMT',
+          weight: 400,
+          isItalic: false,
+          charset: pdfrx.PdfFontCharset.ansi,
+          pitchFamily: 16,
+        ),
+        pdfrx.PdfFontQuery(
+          face: 'CourierNewPSMT',
+          weight: 400,
+          isItalic: false,
+          charset: pdfrx.PdfFontCharset.ansi,
+          pitchFamily: 1,
+        ),
+        pdfrx.PdfFontQuery(
+          face: 'InvoiceAmountDigits',
+          weight: 400,
+          isItalic: false,
+          charset: pdfrx.PdfFontCharset.ansi,
+          pitchFamily: 0,
+        ),
+        pdfrx.PdfFontQuery(
+          face: 'RMBTotalAmount',
+          weight: 700,
+          isItalic: false,
+          charset: pdfrx.PdfFontCharset.ansi,
+          pitchFamily: 0,
+        ),
+      ]) {
+        final resolution = await resolver.resolve(
+          query,
+          const pdfrx.PdfFontResolveContext(),
+        );
+
+        expect(resolution?.resolvedFace, 'Tinos', reason: query.face);
+      }
+    },
+  );
+
+  test(
+    'pdfrx font resolver maps non-amount digit fonts to Source Han Sans Light',
+    () async {
+      final resolver = PdfrxFontService.instance.createFontResolver();
+
+      for (final query in const [
+        pdfrx.PdfFontQuery(
+          face: 'InvoiceNumberDigits',
+          weight: 400,
+          isItalic: false,
+          charset: pdfrx.PdfFontCharset.gb2312,
+          pitchFamily: 0,
+        ),
+        pdfrx.PdfFontQuery(
+          face: 'InvoiceDateDigits',
+          weight: 400,
+          isItalic: false,
+          charset: pdfrx.PdfFontCharset.gb2312,
+          pitchFamily: 0,
+        ),
+        pdfrx.PdfFontQuery(
+          face: 'TaxpayerCodeDigits',
+          weight: 400,
+          isItalic: false,
+          charset: pdfrx.PdfFontCharset.gb2312,
+          pitchFamily: 0,
+        ),
+      ]) {
+        final resolution = await resolver.resolve(
+          query,
+          const pdfrx.PdfFontResolveContext(),
+        );
+
+        expect(
+          resolution?.resolvedFace,
+          'Source Han Sans SC Light',
+          reason: query.face,
+        );
       }
     },
   );
@@ -113,9 +221,14 @@ void main() {
     },
   );
 
-  test('pdfrx font resolver only uses bundled Noto and LXGW fonts', () async {
+  test('pdfrx font resolver only uses bundled fallback fonts', () async {
     final resolver = PdfrxFontService.instance.createFontResolver();
-    final expectedFaces = {'Noto Sans SC', 'Noto Serif SC', 'LXGW WenKai'};
+    final expectedFaces = {
+      'Tinos',
+      'Noto Serif SC',
+      'LXGW WenKai',
+      'Source Han Sans SC Light',
+    };
 
     for (final query in const [
       pdfrx.PdfFontQuery(
