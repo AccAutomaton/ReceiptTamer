@@ -1,7 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:receipt_tamer/core/utils/pdf_render_strategy.dart';
+import 'package:pdfrx/pdfrx.dart' as pdfrx;
+import 'package:receipt_tamer/core/services/pdfrx_font_service.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/data/services/invoice_export_service.dart';
 
@@ -13,24 +14,72 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test(
-    'selects pdfrx only for stamp-annotation PDFs',
+    'pdfrx font resolver maps common Chinese invoice font aliases',
     () async {
-      final stampBytes = await File(_samplePdfPath).readAsBytes();
-      final fontSensitiveBytes = await File(
-        _fontSensitivePdfPath,
-      ).readAsBytes();
+      final resolver = PdfrxFontService.instance.createFontResolver();
 
-      expect(PdfRenderStrategy.needsPdfiumRendering(stampBytes), isTrue);
-      expect(
-        PdfRenderStrategy.needsPdfiumRendering(fontSensitiveBytes),
-        isFalse,
-      );
+      for (final query in const [
+        pdfrx.PdfFontQuery(
+          face: 'STSong-Light-UniGB-UCS2-H',
+          weight: 400,
+          isItalic: false,
+          charset: pdfrx.PdfFontCharset.gb2312,
+          pitchFamily: 0,
+        ),
+        pdfrx.PdfFontQuery(
+          face: 'VFRUUO+STKaitiSC-Bold',
+          weight: 700,
+          isItalic: false,
+          charset: pdfrx.PdfFontCharset.gb2312,
+          pitchFamily: 0,
+        ),
+        pdfrx.PdfFontQuery(
+          face: 'SimSun',
+          weight: 400,
+          isItalic: false,
+          charset: pdfrx.PdfFontCharset.gb2312,
+          pitchFamily: 0,
+        ),
+        pdfrx.PdfFontQuery(
+          face: 'Microsoft YaHei',
+          weight: 400,
+          isItalic: false,
+          charset: pdfrx.PdfFontCharset.gb2312,
+          pitchFamily: 0,
+        ),
+        pdfrx.PdfFontQuery(
+          face: 'FangSong',
+          weight: 400,
+          isItalic: false,
+          charset: pdfrx.PdfFontCharset.gb2312,
+          pitchFamily: 0,
+        ),
+      ]) {
+        final resolution = await resolver.resolve(
+          query,
+          const pdfrx.PdfFontResolveContext(),
+        );
+
+        expect(resolution, isNotNull, reason: query.face);
+        final data = await resolution!.loadData!();
+        expect(data.length, greaterThan(1000000), reason: query.face);
+      }
     },
-    skip:
-        File(_samplePdfPath).existsSync() &&
-            File(_fontSensitivePdfPath).existsSync()
+  );
+
+  test(
+    'pdfrx font service extracts exact embedded PDF font names',
+    () async {
+      final sourceBytes = await File(_fontSensitivePdfPath).readAsBytes();
+      final queries = PdfrxFontService.instance.extractFontQueries(sourceBytes);
+      final faces = queries.map((query) => query.face).toSet();
+
+      expect(faces, contains('STSong-Light-UniGB-UCS2-H'));
+      expect(faces, contains('VFRUUO+STKaitiSC-Bold'));
+    },
+    skip: File(_fontSensitivePdfPath).existsSync()
         ? false
-        : 'Local PDF samples are not available.',
+        : 'Local font-sensitive PDF sample is not available.',
   );
 
   test(
@@ -71,7 +120,7 @@ void main() {
   );
 
   test(
-    'invoice PDF export keeps non-annotation PDFs on the template path',
+    'invoice PDF export rasterizes font-sensitive PDFs with pdfrx',
     () async {
       final source = File(_fontSensitivePdfPath);
       final sourceBytes = await source.readAsBytes();
@@ -96,10 +145,10 @@ void main() {
         );
 
         final outputBytes = await File(outputPath).readAsBytes();
-        expect(outputBytes.length, greaterThan(10000));
+        expect(outputBytes.length, greaterThan(100000));
         expect(
           String.fromCharCodes(outputBytes),
-          contains('STSong-Light-UniGB-UCS2-H'),
+          isNot(contains('STSong-Light-UniGB-UCS2-H')),
         );
       } finally {
         await tempDir.delete(recursive: true);

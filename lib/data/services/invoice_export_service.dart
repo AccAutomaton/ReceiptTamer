@@ -1,9 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:receipt_tamer/core/services/pdf_font_service.dart';
-import 'package:receipt_tamer/core/utils/pdf_render_strategy.dart';
+import 'package:receipt_tamer/core/services/pdfrx_font_service.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/data/models/order.dart';
 import 'package:image/image.dart' as img;
@@ -458,24 +459,12 @@ class InvoiceExportService {
     required double height,
   }) async {
     try {
-      if (PdfRenderStrategy.needsPdfiumRendering(pdfBytes)) {
-        final renderedPage = await _renderFirstPdfPageToPng(pdfBytes);
-        if (renderedPage == null) return;
+      final renderedPage = await _renderFirstPdfPageToPng(pdfBytes);
+      if (renderedPage == null) return;
 
-        await _drawImageInvoice(
-          graphics: graphics,
-          imageBytes: renderedPage,
-          x: x,
-          y: y,
-          width: width,
-          height: height,
-        );
-        return;
-      }
-
-      await _drawPdfTemplateInvoice(
+      await _drawImageInvoice(
         graphics: graphics,
-        pdfBytes: pdfBytes,
+        imageBytes: renderedPage,
         x: x,
         y: y,
         width: width,
@@ -486,69 +475,18 @@ class InvoiceExportService {
     }
   }
 
-  /// Draw a PDF invoice with Syncfusion template rendering.
-  static Future<void> _drawPdfTemplateInvoice({
-    required PdfGraphics graphics,
-    required List<int> pdfBytes,
-    required double x,
-    required double y,
-    required double width,
-    required double height,
-  }) async {
-    final sourceDoc = PdfDocument(inputBytes: pdfBytes);
-    try {
-      if (sourceDoc.pages.count == 0) return;
-
-      final sourcePage = sourceDoc.pages[0];
-      final sourceWidth = sourcePage.size.width;
-      final sourceHeight = sourcePage.size.height;
-      final needsRotation = sourceHeight > sourceWidth;
-
-      const padding = 10.0;
-      final availableWidth = width - padding * 2;
-      final availableHeight = height - padding * 2;
-
-      final effectiveWidth = needsRotation ? sourceHeight : sourceWidth;
-      final effectiveHeight = needsRotation ? sourceWidth : sourceHeight;
-      final scaleX = availableWidth / effectiveWidth;
-      final scaleY = availableHeight / effectiveHeight;
-      final scale = scaleX < scaleY ? scaleX : scaleY;
-
-      final drawWidth = effectiveWidth * scale;
-      final drawHeight = effectiveHeight * scale;
-      final drawX = x + (width - drawWidth) / 2;
-      final drawY = y + (height - drawHeight) / 2;
-
-      final template = sourcePage.createTemplate();
-      if (needsRotation) {
-        graphics.save();
-        graphics.translateTransform(
-          drawX + drawWidth / 2,
-          drawY + drawHeight / 2,
-        );
-        graphics.rotateTransform(-90);
-        graphics.drawPdfTemplate(
-          template,
-          Offset(-drawHeight / 2, -drawWidth / 2),
-          Size(drawHeight, drawWidth),
-        );
-        graphics.restore();
-      } else {
-        graphics.drawPdfTemplate(
-          template,
-          Offset(drawX, drawY),
-          Size(drawWidth, drawHeight),
-        );
-      }
-    } finally {
-      sourceDoc.dispose();
-    }
-  }
-
   /// Render the first PDF page to a PNG with annotations/forms included.
   static Future<List<int>?> _renderFirstPdfPageToPng(List<int> pdfBytes) async {
-    final document = await pdfrx.PdfDocument.openData(
-      Uint8List.fromList(pdfBytes),
+    final pdfData = Uint8List.fromList(pdfBytes);
+    final fontManager = PdfrxFontService.instance.createFontManager();
+    await PdfrxFontService.instance.prepareFontManagerForPdfBytes(
+      fontManager,
+      pdfData,
+    );
+
+    final document = await _openPdfDocumentAfterFontWarmup(
+      pdfData,
+      fontManager,
     );
     try {
       if (document.pages.isEmpty) return null;
@@ -577,6 +515,57 @@ class InvoiceExportService {
     } finally {
       document.dispose();
     }
+  }
+
+  static Future<pdfrx.PdfDocument> _openPdfDocumentAfterFontWarmup(
+    Uint8List pdfData,
+    pdfrx.PdfFontManager fontManager,
+  ) async {
+    final document = await pdfrx.PdfDocument.openData(pdfData);
+    if (document.pages.isEmpty) return document;
+
+    final loadResult = Completer<pdfrx.PdfFontLoadResult?>();
+    final association = document.associateFontManager(
+      fontManager,
+      onLoadComplete: (result) {
+        if (!loadResult.isCompleted) {
+          loadResult.complete(result);
+        }
+      },
+    );
+
+    var shouldReturnInitialDocument = true;
+    try {
+      await document.reloadPages(pageNumbersToReload: const [1]);
+      await _renderPdfPageWarmup(document.pages[0]);
+
+      final result = await loadResult.future.timeout(
+        const Duration(seconds: 2),
+        onTimeout: () => null,
+      );
+
+      if (result?.hasLoadedFonts ?? false) {
+        shouldReturnInitialDocument = false;
+        return await pdfrx.PdfDocument.openData(pdfData);
+      }
+
+      return document;
+    } finally {
+      association.dispose();
+      if (!shouldReturnInitialDocument) {
+        document.dispose();
+      }
+    }
+  }
+
+  static Future<void> _renderPdfPageWarmup(pdfrx.PdfPage page) async {
+    final pageImage = await page.render(
+      fullWidth: 8,
+      fullHeight: 8,
+      annotationRenderingMode:
+          pdfrx.PdfAnnotationRenderingMode.annotationAndForms,
+    );
+    pageImage?.dispose();
   }
 
   /// Draw time label at specified position

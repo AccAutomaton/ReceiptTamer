@@ -2,9 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:pdfrx/pdfrx.dart' as pdfrx;
-import 'package:receipt_tamer/core/utils/pdf_render_strategy.dart';
+import 'package:receipt_tamer/core/services/pdfrx_font_service.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 /// Invoice image/PDF preview widget
 class InvoiceImagePreview extends StatelessWidget {
@@ -344,25 +343,66 @@ class FullScreenPdfPreview extends StatelessWidget {
           ),
         ],
       ),
-      body: _buildPdfViewer(file),
+      body: _PdfrxInvoicePdfViewer(file: file),
+    );
+  }
+}
+
+class _PdfrxInvoicePdfViewer extends StatefulWidget {
+  const _PdfrxInvoicePdfViewer({required this.file});
+
+  final File file;
+
+  @override
+  State<_PdfrxInvoicePdfViewer> createState() => _PdfrxInvoicePdfViewerState();
+}
+
+class _PdfrxInvoicePdfViewerState extends State<_PdfrxInvoicePdfViewer> {
+  late Future<pdfrx.PdfFontManager> _fontManagerFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _fontManagerFuture = _createFontManager();
+  }
+
+  @override
+  void didUpdateWidget(covariant _PdfrxInvoicePdfViewer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.file.path != widget.file.path) {
+      _fontManagerFuture = _createFontManager();
+    }
+  }
+
+  Future<pdfrx.PdfFontManager> _createFontManager() async {
+    final pdfBytes = await widget.file.readAsBytes();
+    return PdfrxFontService.instance.createPreparedFontManagerForPdfBytes(
+      pdfBytes,
     );
   }
 
-  Widget _buildPdfViewer(File file) {
-    final usePdfium = PdfRenderStrategy.needsPdfiumRendering(
-      file.readAsBytesSync(),
-    );
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<pdfrx.PdfFontManager>(
+      future: _fontManagerFuture,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(child: Text('PDF加载失败: ${snapshot.error}'));
+        }
 
-    if (!usePdfium) {
-      return SfPdfViewer.file(file);
-    }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-    return pdfrx.PdfViewer.file(
-      file.path,
-      params: const pdfrx.PdfViewerParams(
-        annotationRenderingMode:
-            pdfrx.PdfAnnotationRenderingMode.annotationAndForms,
-      ),
+        return pdfrx.PdfViewer.file(
+          widget.file.path,
+          fontManager: snapshot.data,
+          params: const pdfrx.PdfViewerParams(
+            annotationRenderingMode:
+                pdfrx.PdfAnnotationRenderingMode.annotationAndForms,
+          ),
+        );
+      },
     );
   }
 }

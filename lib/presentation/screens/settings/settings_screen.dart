@@ -459,6 +459,19 @@ Licensed under the MIT License
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+Noto Sans SC
+Noto Serif SC
+Copyright 2022 The Noto Project Authors
+Licensed under the SIL Open Font License 1.1
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+LXGW WenKai
+Copyright 2021 LXGW
+Licensed under the SIL Open Font License 1.1
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 image
 Copyright 2013-2022, Brendan Duncan.
 Licensed under the MIT License
