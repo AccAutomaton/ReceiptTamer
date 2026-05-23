@@ -2,7 +2,7 @@ name: receipt_tamer
 description: "ReceiptTamer - A Receipt Management App"
 publish_to: 'none'
 
-version: 0.3.5+20260428
+version: 0.3.6+20260523
 
 environment:
   sdk: ^3.11.0
