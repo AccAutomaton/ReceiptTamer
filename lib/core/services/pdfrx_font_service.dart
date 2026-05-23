@@ -9,15 +9,19 @@ class PdfrxFontService {
   PdfrxFontService._();
 
   static final PdfrxFontService instance = PdfrxFontService._();
+  static const int _maxCachedFontBytes = 2 * 1024 * 1024;
 
   static const String _sansPath = 'assets/fonts/NotoSansSC-VF.ttf';
   static const String _serifPath = 'assets/fonts/NotoSerifSC-VF.ttf';
-  static const String _kaiPath = 'assets/fonts/LXGWWenKai-Regular.ttf';
+  static const String _kaiPath = 'assets/fonts/LXGWZhenKaiGB-Regular.ttf';
   static const String _tinosRegularPath = 'assets/fonts/Tinos-Regular.ttf';
   static const String _tinosBoldPath = 'assets/fonts/Tinos-Bold.ttf';
   static const String _tinosItalicPath = 'assets/fonts/Tinos-Italic.ttf';
   static const String _tinosBoldItalicPath =
       'assets/fonts/Tinos-BoldItalic.ttf';
+  static const String _courierPrimeRegularPath =
+      'assets/fonts/CourierPrime-Regular.ttf';
+  static const String _arimoRegularPath = 'assets/fonts/Arimo-Regular.ttf';
 
   final Map<String, Uint8List> _fontDataCache = {};
 
@@ -39,10 +43,39 @@ class PdfrxFontService {
   ) async {
     await fontManager.prepare();
 
-    final queries = extractFontQueries(pdfBytes);
-    if (queries.isEmpty) return;
+    // PDFium may silently substitute declared-but-unembedded fonts instead of
+    // emitting a missing-font event. Preload only those declared fallbacks so
+    // embedded font subsets still win and large bundled fonts are not repeated.
+    final declaredFallbackQueries = extractUnembeddedFontQueries(pdfBytes);
+    if (declaredFallbackQueries.isEmpty) return;
 
-    await fontManager.loadMissingFonts(queries);
+    await fontManager.loadMissingFonts(declaredFallbackQueries);
+  }
+
+  List<pdfrx.PdfFontQuery> extractFontQueriesForPdfByteCollections(
+    Iterable<List<int>> pdfByteCollections,
+  ) {
+    return _dedupeFontQueries(pdfByteCollections.expand(extractFontQueries));
+  }
+
+  List<pdfrx.PdfFontQuery> extractUnembeddedFontQueries(List<int> pdfBytes) {
+    final content = String.fromCharCodes(pdfBytes);
+    final objects = _parsePdfObjects(content);
+    if (objects.isEmpty) return const [];
+
+    final queries = <_DeclaredFallbackFontQuery>[];
+    for (final object in objects.values) {
+      if (_referencesEmbeddedFontData(object, objects, <int>{})) continue;
+
+      for (final face in _extractDeclaredFontFaces(object)) {
+        final query = _queryForFace(face);
+        final asset = _chooseFont(query);
+        if (asset == null) continue;
+        queries.add(_DeclaredFallbackFontQuery(query, asset.path));
+      }
+    }
+
+    return _dedupeFontQueriesByAssetPath(queries);
   }
 
   pdfrx.PdfFontResolver createFontResolver() {
@@ -58,14 +91,32 @@ class PdfrxFontService {
       byteData.offsetInBytes,
       byteData.lengthInBytes,
     );
-    _fontDataCache[assetPath] = data;
+    if (data.length <= _maxCachedFontBytes) {
+      _fontDataCache[assetPath] = data;
+    }
     return data;
+  }
+
+  Future<void> clearLoadedPdfiumFonts() {
+    return pdfrx.PdfrxEntryFunctions.instance.clearAllFontData();
   }
 
   _BundledFontAsset? _chooseFont(pdfrx.PdfFontQuery query) {
     final face = _normalizeFace(query.face);
+    if (_isPrintedKaiFallbackFont(face)) {
+      return const _BundledFontAsset(_serifPath, 'Noto Serif SC');
+    }
+
     if (_containsAny(face, const ['kaiti', 'stkaiti', 'simkai', 'kai', '楷'])) {
-      return const _BundledFontAsset(_kaiPath, 'LXGW WenKai');
+      return const _BundledFontAsset(_kaiPath, 'LXGW ZhenKai GB');
+    }
+
+    if (_isCourierFallbackFont(face)) {
+      return const _BundledFontAsset(_courierPrimeRegularPath, 'Courier Prime');
+    }
+
+    if (_isArialFallbackFont(face)) {
+      return const _BundledFontAsset(_arimoRegularPath, 'Arimo');
     }
 
     if (_containsAny(face, const [
@@ -101,19 +152,103 @@ class PdfrxFontService {
     ).allMatches(content);
 
     final queries = <pdfrx.PdfFontQuery>[];
-    final seen = <String>{};
     for (final match in matches) {
       final face = _decodePdfName(match.group(1)!);
       if (_chooseFont(_queryForFace(face)) == null) continue;
 
       final query = _queryForFace(face);
-      final key =
-          '${query.face}\x1f${query.weight}\x1f${query.isItalic}\x1f${query.charset}';
-      if (seen.add(key)) {
-        queries.add(query);
+      queries.add(query);
+    }
+    return _dedupeFontQueries(queries);
+  }
+
+  static List<pdfrx.PdfFontQuery> _dedupeFontQueries(
+    Iterable<pdfrx.PdfFontQuery> queries,
+  ) {
+    final deduped = <pdfrx.PdfFontQuery>[];
+    final seen = <String>{};
+    for (final query in queries) {
+      if (seen.add(_fontQueryKey(query))) {
+        deduped.add(query);
       }
     }
-    return queries;
+    return deduped;
+  }
+
+  static String _fontQueryKey(pdfrx.PdfFontQuery query) {
+    return '${query.face}\x1f${query.weight}\x1f${query.isItalic}\x1f${query.charset}';
+  }
+
+  static List<pdfrx.PdfFontQuery> _dedupeFontQueriesByAssetPath(
+    Iterable<_DeclaredFallbackFontQuery> queries,
+  ) {
+    final deduped = <pdfrx.PdfFontQuery>[];
+    final seenAssetPaths = <String>{};
+    for (final query in queries) {
+      if (seenAssetPaths.add(query.assetPath)) {
+        deduped.add(query.fontQuery);
+      }
+    }
+    return deduped;
+  }
+
+  static Map<int, String> _parsePdfObjects(String content) {
+    final objects = <int, String>{};
+    final objectMatches = RegExp(
+      r'(\d+)\s+\d+\s+obj\b(.*?)\bendobj',
+      dotAll: true,
+    ).allMatches(content);
+    for (final match in objectMatches) {
+      objects[int.parse(match.group(1)!)] = match.group(2)!;
+    }
+    return objects;
+  }
+
+  static Iterable<String> _extractDeclaredFontFaces(String objectBody) {
+    return RegExp(
+      r'/(?:BaseFont|FontName)\s*/([^\s<>\[\]\(\)/%]+)',
+    ).allMatches(objectBody).map((match) {
+      return _decodePdfName(match.group(1)!);
+    });
+  }
+
+  static bool _referencesEmbeddedFontData(
+    String objectBody,
+    Map<int, String> objects,
+    Set<int> visited,
+  ) {
+    if (RegExp(r'/FontFile[23]?\b').hasMatch(objectBody)) return true;
+
+    for (final objectId in _referencedFontObjectIds(objectBody)) {
+      if (!visited.add(objectId)) continue;
+      final referencedObject = objects[objectId];
+      if (referencedObject == null) continue;
+      if (_referencesEmbeddedFontData(referencedObject, objects, visited)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  static Iterable<int> _referencedFontObjectIds(String objectBody) sync* {
+    for (final match in RegExp(
+      r'/FontDescriptor\s+(\d+)\s+\d+\s+R',
+    ).allMatches(objectBody)) {
+      yield int.parse(match.group(1)!);
+    }
+
+    for (final match in RegExp(
+      r'/DescendantFonts\s*\[(.*?)\]',
+      dotAll: true,
+    ).allMatches(objectBody)) {
+      final descendantFonts = match.group(1)!;
+      for (final ref in RegExp(
+        r'(\d+)\s+\d+\s+R',
+      ).allMatches(descendantFonts)) {
+        yield int.parse(ref.group(1)!);
+      }
+    }
   }
 
   static pdfrx.PdfFontQuery _queryForFace(String face) {
@@ -179,6 +314,33 @@ class PdfrxFontService {
     return _isAmountFont(face) || _isLatinFont(query, face);
   }
 
+  static bool _isPrintedKaiFallbackFont(String face) {
+    return face == 'stkaiti' || face.contains('stkaitiregular');
+  }
+
+  static bool _isCourierFallbackFont(String face) {
+    return _containsAny(face, const [
+      'courier',
+      'taxpayer',
+      'taxid',
+      'taxno',
+      'taxcode',
+      'creditcode',
+      'socialcredit',
+      'identificationnumber',
+    ]);
+  }
+
+  static bool _isArialFallbackFont(String face) {
+    if (face.contains('unicode')) return false;
+    return face == 'arial' ||
+        face == 'arialmt' ||
+        face == 'arialregular' ||
+        face.startsWith('arialbold') ||
+        face.startsWith('arialitalic') ||
+        face.startsWith('arialnarrow');
+  }
+
   static bool _isAmountFont(String face) {
     return _containsAny(face, const [
       'amount',
@@ -206,8 +368,6 @@ class PdfrxFontService {
         _containsAny(face, const [
           'times',
           'roman',
-          'courier',
-          'arial',
           'helvetica',
           'calibri',
           'cambria',
@@ -271,4 +431,11 @@ class _BundledFontAsset {
 
   final String path;
   final String resolvedFace;
+}
+
+class _DeclaredFallbackFontQuery {
+  const _DeclaredFallbackFontQuery(this.fontQuery, this.assetPath);
+
+  final pdfrx.PdfFontQuery fontQuery;
+  final String assetPath;
 }

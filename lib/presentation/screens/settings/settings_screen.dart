@@ -466,8 +466,20 @@ Licensed under the SIL Open Font License 1.1
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-LXGW WenKai
+LXGW ZhenKai GB
 Copyright 2021 LXGW
+Licensed under the SIL Open Font License 1.1
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Courier Prime
+Copyright 2013 Quote-Unquote Apps
+Licensed under the SIL Open Font License 1.1
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Arimo
+Copyright 2013 Steve Matteson
 Licensed under the SIL Open Font License 1.1
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

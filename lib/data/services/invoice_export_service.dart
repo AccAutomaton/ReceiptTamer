@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui';
 
-import 'package:flutter/foundation.dart';
 import 'package:receipt_tamer/core/services/pdf_font_service.dart';
 import 'package:receipt_tamer/core/services/pdfrx_font_service.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
@@ -164,6 +164,8 @@ class InvoiceExportItem {
 /// Generates PDF documents from selected invoices
 class InvoiceExportService {
   static const double _pdfRasterDpi = 200;
+  static const Duration _pdfFontLoadTimeout = Duration(milliseconds: 250);
+  static const Duration _slowInvoiceStepThreshold = Duration(milliseconds: 500);
 
   /// Prepare invoice export items from selected invoices and their orders
   static Future<List<InvoiceExportItem>> prepareInvoiceExportItems({
@@ -223,6 +225,12 @@ class InvoiceExportService {
 
     // Define fonts - use TrueType font for Chinese characters
     final labelFont = await PdfFontService.instance.getChineseFont(9);
+    final exportStopwatch = Stopwatch()..start();
+
+    logService.diagBatch(LogConfig.moduleFile, {
+      'invoice_export_items': items.length,
+      'invoice_export_pdf_sources': _countPdfInvoiceSources(items),
+    });
 
     try {
       // Process items in pairs (2 invoices per page)
@@ -287,6 +295,13 @@ class InvoiceExportService {
       // Write to output file
       final file = File(outputPath);
       await file.writeAsBytes(bytes);
+
+      exportStopwatch.stop();
+      logService.diag(
+        LogConfig.moduleFile,
+        'invoice_export_total_ms',
+        exportStopwatch.elapsedMilliseconds,
+      );
     } catch (e) {
       document.dispose();
       rethrow;
@@ -312,20 +327,21 @@ class InvoiceExportService {
     if (imagePath.isEmpty) return;
 
     try {
+      final drawStopwatch = Stopwatch()..start();
       final resolvedPath = getFilePath(imagePath);
       final file = File(resolvedPath);
       if (!await file.exists()) return;
 
-      final bytes = await file.readAsBytes();
-      if (bytes.isEmpty) return;
-
       // Check if it's a PDF or image
       final isPdf = imagePath.toLowerCase().endsWith('.pdf');
+      final bytes = await file.readAsBytes();
+      if (bytes.isEmpty) return;
 
       if (isPdf) {
         await _drawPdfInvoice(
           graphics: graphics,
           pdfBytes: bytes,
+          sourcePath: resolvedPath,
           x: x,
           y: y,
           width: width,
@@ -375,10 +391,32 @@ class InvoiceExportService {
           );
         }
       }
+
+      drawStopwatch.stop();
+      if (drawStopwatch.elapsed >= _slowInvoiceStepThreshold) {
+        logService.diag(
+          LogConfig.moduleFile,
+          'invoice_draw_ms',
+          '${drawStopwatch.elapsedMilliseconds}ms $resolvedPath',
+        );
+      }
     } catch (e, stackTrace) {
       // Ignore errors for individual invoices
       logService.e(LogConfig.moduleFile, '绘制发票失败', e, stackTrace);
     }
+  }
+
+  static int _countPdfInvoiceSources(List<InvoiceExportItem> items) {
+    final resolvedPaths = <String>{};
+    for (final item in items) {
+      final imagePath = item.invoice.imagePath;
+      if (imagePath.isEmpty || !imagePath.toLowerCase().endsWith('.pdf')) {
+        continue;
+      }
+
+      resolvedPaths.add(imagePath);
+    }
+    return resolvedPaths.length;
   }
 
   /// Draw an image invoice with auto-rotation
@@ -416,12 +454,53 @@ class InvoiceExportService {
       finalImage = decodedImage;
     }
 
-    // Encode back to PNG for PDF
-    final encodedBytes = Uint8List.fromList(img.encodePng(finalImage));
-    final image = PdfBitmap(encodedBytes);
+    if (!needsRotation) {
+      try {
+        _drawBitmapBytes(
+          graphics: graphics,
+          imageBytes: uint8Bytes,
+          imageWidth: imgWidth,
+          imageHeight: imgHeight,
+          x: x,
+          y: y,
+          width: width,
+          height: height,
+        );
+        return;
+      } catch (_) {
+        // Some decoded image formats are not accepted by Syncfusion directly.
+      }
+    }
 
-    // Validate image dimensions
+    _drawBitmapBytes(
+      graphics: graphics,
+      imageBytes: Uint8List.fromList(img.encodePng(finalImage)),
+      imageWidth: imgWidth,
+      imageHeight: imgHeight,
+      x: x,
+      y: y,
+      width: width,
+      height: height,
+    );
+  }
+
+  static void _drawBitmapBytes({
+    required PdfGraphics graphics,
+    required List<int> imageBytes,
+    required double imageWidth,
+    required double imageHeight,
+    required double x,
+    required double y,
+    required double width,
+    required double height,
+  }) {
+    final image = PdfBitmap(imageBytes);
     if (image.width <= 0 || image.height <= 0) return;
+
+    final bitmapWidth = imageWidth > 0 ? imageWidth : image.width.toDouble();
+    final bitmapHeight = imageHeight > 0
+        ? imageHeight
+        : image.height.toDouble();
 
     // Add small padding
     const padding = 10.0;
@@ -429,12 +508,12 @@ class InvoiceExportService {
     final availableHeight = height - padding * 2;
 
     // Calculate scale to fit in available area
-    final scaleX = availableWidth / imgWidth;
-    final scaleY = availableHeight / imgHeight;
+    final scaleX = availableWidth / bitmapWidth;
+    final scaleY = availableHeight / bitmapHeight;
     final scale = scaleX < scaleY ? scaleX : scaleY;
 
-    final drawWidth = imgWidth * scale;
-    final drawHeight = imgHeight * scale;
+    final drawWidth = bitmapWidth * scale;
+    final drawHeight = bitmapHeight * scale;
 
     // Ensure valid dimensions
     if (drawWidth <= 0 || drawHeight <= 0) return;
@@ -453,18 +532,43 @@ class InvoiceExportService {
   static Future<void> _drawPdfInvoice({
     required PdfGraphics graphics,
     required List<int> pdfBytes,
+    required String sourcePath,
     required double x,
     required double y,
     required double width,
     required double height,
   }) async {
     try {
+      final renderStopwatch = Stopwatch()..start();
       final renderedPage = await _renderFirstPdfPageToPng(pdfBytes);
+      renderStopwatch.stop();
       if (renderedPage == null) return;
+
+      if (renderStopwatch.elapsed >= _slowInvoiceStepThreshold) {
+        logService.diag(
+          LogConfig.moduleFile,
+          'invoice_pdf_render_ms',
+          '${renderStopwatch.elapsedMilliseconds}ms $sourcePath',
+        );
+      }
+
+      if (renderedPage.width >= renderedPage.height) {
+        _drawBitmapBytes(
+          graphics: graphics,
+          imageBytes: renderedPage.pngBytes,
+          imageWidth: renderedPage.width.toDouble(),
+          imageHeight: renderedPage.height.toDouble(),
+          x: x,
+          y: y,
+          width: width,
+          height: height,
+        );
+        return;
+      }
 
       await _drawImageInvoice(
         graphics: graphics,
-        imageBytes: renderedPage,
+        imageBytes: renderedPage.pngBytes,
         x: x,
         y: y,
         width: width,
@@ -476,51 +580,75 @@ class InvoiceExportService {
   }
 
   /// Render the first PDF page to a PNG with annotations/forms included.
-  static Future<List<int>?> _renderFirstPdfPageToPng(List<int> pdfBytes) async {
-    final pdfData = Uint8List.fromList(pdfBytes);
-    final fontManager = PdfrxFontService.instance.createFontManager();
-    await PdfrxFontService.instance.prepareFontManagerForPdfBytes(
-      fontManager,
-      pdfData,
-    );
+  static Future<_RenderedPdfPage?> _renderFirstPdfPageToPng(
+    List<int> pdfBytes,
+  ) async {
+    final pdfData = pdfBytes is Uint8List
+        ? pdfBytes
+        : Uint8List.fromList(pdfBytes);
+    await PdfrxFontService.instance.clearLoadedPdfiumFonts();
 
-    final document = await _openPdfDocumentAfterFontWarmup(
-      pdfData,
-      fontManager,
-    );
     try {
-      if (document.pages.isEmpty) return null;
-
-      final page = document.pages[0];
-      final scale = _pdfRasterDpi / 72;
-      final pageImage = await page.render(
-        fullWidth: page.width * scale,
-        fullHeight: page.height * scale,
-        annotationRenderingMode:
-            pdfrx.PdfAnnotationRenderingMode.annotationAndForms,
+      final fontManager = PdfrxFontService.instance.createFontManager();
+      await PdfrxFontService.instance.prepareFontManagerForPdfBytes(
+        fontManager,
+        pdfData,
       );
-      if (pageImage == null) return null;
 
+      final document = await _openPdfDocumentAfterFontWarmup(
+        pdfData,
+        fontManager,
+        waitForFontLoad: true,
+      );
       try {
-        final image = await pageImage.createImage();
+        if (document.pages.isEmpty) return null;
+
+        final page = document.pages[0];
+        final scale = _pdfRasterDpi / 72;
+        final renderWidth = page.width * scale;
+        final renderHeight = page.height * scale;
+        final pageImage = await page.render(
+          fullWidth: renderWidth,
+          fullHeight: renderHeight,
+          annotationRenderingMode:
+              pdfrx.PdfAnnotationRenderingMode.annotationAndForms,
+        );
+        if (pageImage == null) return null;
+
         try {
-          final byteData = await image.toByteData(format: ImageByteFormat.png);
-          return byteData?.buffer.asUint8List();
+          final image = await pageImage.createImage();
+          try {
+            final byteData = await image.toByteData(
+              format: ImageByteFormat.png,
+            );
+            if (byteData == null) return null;
+            return _RenderedPdfPage(
+              pngBytes: byteData.buffer.asUint8List(
+                byteData.offsetInBytes,
+                byteData.lengthInBytes,
+              ),
+              width: image.width,
+              height: image.height,
+            );
+          } finally {
+            image.dispose();
+          }
         } finally {
-          image.dispose();
+          pageImage.dispose();
         }
       } finally {
-        pageImage.dispose();
+        document.dispose();
       }
     } finally {
-      document.dispose();
+      await PdfrxFontService.instance.clearLoadedPdfiumFonts();
     }
   }
 
   static Future<pdfrx.PdfDocument> _openPdfDocumentAfterFontWarmup(
     Uint8List pdfData,
-    pdfrx.PdfFontManager fontManager,
-  ) async {
+    pdfrx.PdfFontManager fontManager, {
+    required bool waitForFontLoad,
+  }) async {
     final document = await pdfrx.PdfDocument.openData(pdfData);
     if (document.pages.isEmpty) return document;
 
@@ -538,9 +666,10 @@ class InvoiceExportService {
     try {
       await document.reloadPages(pageNumbersToReload: const [1]);
       await _renderPdfPageWarmup(document.pages[0]);
+      if (!waitForFontLoad) return document;
 
       final result = await loadResult.future.timeout(
-        const Duration(seconds: 2),
+        _pdfFontLoadTimeout,
         onTimeout: () => null,
       );
 
@@ -620,3 +749,15 @@ class InvoiceExportService {
 
 /// Label position enum
 enum _LabelPosition { topLeft, bottomLeft }
+
+class _RenderedPdfPage {
+  const _RenderedPdfPage({
+    required this.pngBytes,
+    required this.width,
+    required this.height,
+  });
+
+  final Uint8List pngBytes;
+  final int width;
+  final int height;
+}
