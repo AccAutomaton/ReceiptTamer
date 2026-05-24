@@ -59,7 +59,7 @@ class AppConstants {
   static const int pageSize = 20;
 
   // OCR placeholders (for when model is not integrated yet)
-  static const String ocrNotAvailable = 'OCR识别功能暂未启用，请手动填写信息';
+  static const String ocrNotAvailable = 'OCR 识别功能暂未启用，请手动填写信息';
 
   // Error messages
   static const String errorLoadingData = '加载数据失败';
@@ -93,7 +93,7 @@ class AppConstants {
   static const String btnSave = '保存';
   static const String btnCancel = '取消';
   static const String btnConfirm = '确认';
-  static const String btnOCR = 'OCR识别';
+  static const String btnOCR = 'OCR 识别';
   static const String btnExport = '导出';
   static const String btnSelectImage = '选择图片';
   static const String btnSelectPDF = '选择PDF';

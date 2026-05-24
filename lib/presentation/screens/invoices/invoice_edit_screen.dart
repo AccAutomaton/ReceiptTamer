@@ -38,8 +38,7 @@ class InvoiceEditScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<InvoiceEditScreen> createState() =>
-      _InvoiceEditScreenState();
+  ConsumerState<InvoiceEditScreen> createState() => _InvoiceEditScreenState();
 }
 
 class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
@@ -56,7 +55,7 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
   final FileService _fileService = FileService();
 
   bool _isLoading = false;
-  bool _hasOcrResult = false; // 是否有OCR识别结果
+  bool _hasOcrResult = false; // 是否有 OCR 识别结果
   List<Map<String, dynamic>> _sellerNameOptions = []; // 销售方名称选项列表（含次数）
 
   @override
@@ -95,7 +94,9 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
     // 重置状态
     setState(() {
       _invoiceDate = null;
-      _selectedOrderIds = widget.initialOrderId != null ? [widget.initialOrderId!] : [];
+      _selectedOrderIds = widget.initialOrderId != null
+          ? [widget.initialOrderId!]
+          : [];
       _filePath = widget.initialFilePath;
       _isPdf = widget.initialFilePath?.toLowerCase().endsWith('.pdf') ?? false;
       _hasOcrResult = false;
@@ -108,7 +109,9 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
   }
 
   Future<void> _loadSellerNames() async {
-    final sellerNamesWithCount = await ref.read(invoiceProvider.notifier).getSellerNamesWithCount();
+    final sellerNamesWithCount = await ref
+        .read(invoiceProvider.notifier)
+        .getSellerNamesWithCount();
     if (mounted) {
       setState(() {
         _sellerNameOptions = sellerNamesWithCount;
@@ -126,11 +129,14 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
 
   Future<void> _loadInvoice() async {
     try {
-      final invoice =
-          await ref.read(invoiceProvider.notifier).getInvoiceById(widget.invoiceId!);
+      final invoice = await ref
+          .read(invoiceProvider.notifier)
+          .getInvoiceById(widget.invoiceId!);
       if (invoice != null && mounted) {
         // Load order relations
-        final orderIds = await ref.read(invoiceProvider.notifier).getOrderIdsForInvoice(widget.invoiceId!);
+        final orderIds = await ref
+            .read(invoiceProvider.notifier)
+            .getOrderIdsForInvoice(widget.invoiceId!);
         setState(() {
           _invoiceNumberController.text = invoice.invoiceNumber;
           _amountController.text = invoice.totalAmount.toStringAsFixed(2);
@@ -158,12 +164,18 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
             ListTile(
               leading: const Icon(Icons.camera_alt),
               title: const Text(AppConstants.btnTakePhoto),
-              onTap: () => Navigator.pop(context, _FilePickResult(ImageSource.camera, false)),
+              onTap: () => Navigator.pop(
+                context,
+                _FilePickResult(ImageSource.camera, false),
+              ),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library),
               title: const Text(AppConstants.btnSelectFromGallery),
-              onTap: () => Navigator.pop(context, _FilePickResult(ImageSource.gallery, false)),
+              onTap: () => Navigator.pop(
+                context,
+                _FilePickResult(ImageSource.gallery, false),
+              ),
             ),
             ListTile(
               leading: const Icon(Icons.picture_as_pdf),
@@ -206,13 +218,13 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
 
   Future<void> _handleOCR() async {
     if (_filePath == null || _filePath!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先选择图片或PDF')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请先选择图片或PDF')));
       return;
     }
 
-    logService.i(LogConfig.moduleUi, '开始OCR识别');
+    logService.i(LogConfig.moduleUi, '开始发票 OCR 识别');
 
     // Show progress dialog (handles both image and PDF)
     if (mounted) {
@@ -230,23 +242,27 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
                     ocrResult!.invoiceNumber!.isNotEmpty) {
                   _invoiceNumberController.text = ocrResult.invoiceNumber!;
                 }
-                if (ocrResult?.totalAmount != null && ocrResult!.totalAmount! > 0) {
-                  _amountController.text = ocrResult.totalAmount!.toStringAsFixed(2);
+                if (ocrResult?.totalAmount != null &&
+                    ocrResult!.totalAmount! > 0) {
+                  _amountController.text = ocrResult.totalAmount!
+                      .toStringAsFixed(2);
                 }
-                if (ocrResult?.invoiceDate != null && ocrResult!.invoiceDate!.isNotEmpty) {
+                if (ocrResult?.invoiceDate != null &&
+                    ocrResult!.invoiceDate!.isNotEmpty) {
                   _invoiceDate = DateTime.tryParse(ocrResult.invoiceDate!);
                 }
-                if (ocrResult?.sellerName != null && ocrResult!.sellerName!.isNotEmpty) {
+                if (ocrResult?.sellerName != null &&
+                    ocrResult!.sellerName!.isNotEmpty) {
                   _sellerNameController.text = ocrResult.sellerName!;
                 }
               });
-              logService.i(LogConfig.moduleUi, 'OCR识别成功');
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('OCR识别成功')),
-              );
+              logService.i(LogConfig.moduleUi, '发票 OCR 识别成功');
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('OCR 识别成功')));
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(ocrResult?.errorMessage ?? 'OCR识别失败')),
+                SnackBar(content: Text(ocrResult?.errorMessage ?? 'OCR 识别失败')),
               );
             }
           },
@@ -262,7 +278,8 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
       path: '/orders/select',
       queryParameters: {
         if (selectedIdsStr.isNotEmpty) 'selectedIds': selectedIdsStr,
-        if (widget.invoiceId != null) 'excludeInvoiceId': widget.invoiceId.toString(),
+        if (widget.invoiceId != null)
+          'excludeInvoiceId': widget.invoiceId.toString(),
       },
     );
 
@@ -281,25 +298,25 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
     }
 
     if (_filePath == null || _filePath!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请选择发票图片或PDF')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请选择发票图片或PDF')));
       return;
     }
 
     // Validate required fields that are not TextFormField
     final amount = double.tryParse(_amountController.text) ?? 0.0;
     if (amount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请输入有效的价税合计金额')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请输入有效的价税合计金额')));
       return;
     }
 
     if (_invoiceDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请选择开票日期')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请选择开票日期')));
       return;
     }
 
@@ -366,12 +383,19 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
             );
 
       final success = widget.invoiceId != null
-          ? await ref.read(invoiceProvider.notifier).updateInvoice(invoice, orderIds: _selectedOrderIds)
-          : await ref.read(invoiceProvider.notifier).createInvoice(invoice, orderIds: _selectedOrderIds);
+          ? await ref
+                .read(invoiceProvider.notifier)
+                .updateInvoice(invoice, orderIds: _selectedOrderIds)
+          : await ref
+                .read(invoiceProvider.notifier)
+                .createInvoice(invoice, orderIds: _selectedOrderIds);
 
       if (mounted) {
         if (success) {
-          logService.i(LogConfig.moduleUi, '发票保存成功: id=${widget.invoiceId ?? invoice.id}');
+          logService.i(
+            LogConfig.moduleUi,
+            '发票保存成功: id=${widget.invoiceId ?? invoice.id}',
+          );
           // Clean up temp file after successful save
           if (_filePath != null) {
             _fileService.deleteTempFile(_filePath!);
@@ -415,7 +439,10 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
     if (_selectedOrderIds.isEmpty) {
       return AppConstants.labelNoOrdersSelected;
     }
-    return AppConstants.labelOrdersSelected.replaceAll('{}', _selectedOrderIds.length.toString());
+    return AppConstants.labelOrdersSelected.replaceAll(
+      '{}',
+      _selectedOrderIds.length.toString(),
+    );
   }
 
   void _showSellerNamePicker() {
@@ -432,9 +459,9 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
               padding: const EdgeInsets.all(16),
               child: Text(
                 '选择销售方',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
             ),
             const Divider(height: 1),
@@ -446,7 +473,9 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
                     Icon(
                       Icons.store,
                       size: 48,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -527,7 +556,9 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
               final remainingItems = items.skip(1).toList();
 
               // 更新剩余列表
-              service.sharedMediaNotifier.value = remainingItems.isNotEmpty ? remainingItems : null;
+              service.sharedMediaNotifier.value = remainingItems.isNotEmpty
+                  ? remainingItems
+                  : null;
 
               // 导航到下一个发票编辑页面
               context.go(
@@ -550,7 +581,9 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          isEditing ? AppConstants.titleInvoiceEdit : AppConstants.titleInvoiceAdd,
+          isEditing
+              ? AppConstants.titleInvoiceEdit
+              : AppConstants.titleInvoiceAdd,
         ),
         elevation: 0,
       ),
@@ -569,28 +602,24 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
                     Text(
                       '发票文件',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     if (_filePath != null && _filePath!.isNotEmpty)
-                      InvoiceImagePreview(
-                        imagePath: _filePath!,
-                        height: 200,
-                      )
+                      InvoiceImagePreview(imagePath: _filePath!, height: 200)
                     else
                       Container(
                         height: 200,
                         decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerHighest,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .outlineVariant
-                                .withValues(alpha: 0.5),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.outlineVariant.withValues(alpha: 0.5),
                             style: BorderStyle.solid,
                           ),
                         ),
@@ -610,9 +639,9 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
                               Text(
                                 '点击下方按钮选择图片或PDF',
                                 style: TextStyle(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ],
@@ -632,20 +661,24 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: (_isLoading || isModelLoading) ? null : _handleOCR,
+                            onPressed: (_isLoading || isModelLoading)
+                                ? null
+                                : _handleOCR,
                             icon: _isLoading || isModelLoading
                                 ? const SizedBox(
                                     width: 18,
                                     height: 18,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
                                   )
                                 : const Icon(Icons.document_scanner),
                             label: Text(
                               _isLoading
-                                  ? '识别中...'
+                                  ? 'OCR 识别中...'
                                   : isModelLoading
-                                      ? '模型加载中...'
-                                      : 'OCR识别',
+                                  ? '模型加载中...'
+                                  : AppConstants.btnOCR,
                             ),
                           ),
                         ),
@@ -792,10 +825,12 @@ class _InvoiceOcrProgressDialog extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<_InvoiceOcrProgressDialog> createState() => _InvoiceOcrProgressDialogState();
+  ConsumerState<_InvoiceOcrProgressDialog> createState() =>
+      _InvoiceOcrProgressDialogState();
 }
 
-class _InvoiceOcrProgressDialogState extends ConsumerState<_InvoiceOcrProgressDialog> {
+class _InvoiceOcrProgressDialogState
+    extends ConsumerState<_InvoiceOcrProgressDialog> {
   bool _started = false;
   bool _cancelled = false;
 
@@ -815,10 +850,14 @@ class _InvoiceOcrProgressDialogState extends ConsumerState<_InvoiceOcrProgressDi
     final OcrResult? result;
     if (widget.isPdf) {
       // PDF file: use PDF recognition
-      result = await ref.read(ocrProvider.notifier).recognizeInvoiceFromPdf(widget.filePath);
+      result = await ref
+          .read(ocrProvider.notifier)
+          .recognizeInvoiceFromPdf(widget.filePath);
     } else {
       // Image file: use image recognition
-      result = await ref.read(ocrProvider.notifier).recognizeInvoiceWithProgress(widget.filePath);
+      result = await ref
+          .read(ocrProvider.notifier)
+          .recognizeInvoiceWithProgress(widget.filePath);
     }
 
     if (_cancelled) return;
@@ -854,9 +893,7 @@ class _InvoiceOcrProgressDialogState extends ConsumerState<_InvoiceOcrProgressDi
     }
 
     return AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       content: Padding(
         padding: const EdgeInsets.symmetric(vertical: 16),
         child: Column(
@@ -875,7 +912,9 @@ class _InvoiceOcrProgressDialogState extends ConsumerState<_InvoiceOcrProgressDi
                     child: CircularProgressIndicator(
                       value: ocrState.progress,
                       strokeWidth: 6,
-                      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
                     ),
                   ),
                   Text(
@@ -901,9 +940,10 @@ class _InvoiceOcrProgressDialogState extends ConsumerState<_InvoiceOcrProgressDi
               children: [
                 _buildStageChip(
                   context,
-                  'OCR识别',
+                  'OCR 识别',
                   ocrState.stage == OcrStage.ocrRecognizing,
-                  ocrState.progress > 0.21 || ocrState.stage == OcrStage.llmParsing,
+                  ocrState.progress > 0.21 ||
+                      ocrState.stage == OcrStage.llmParsing,
                 ),
                 Container(
                   width: 24,
@@ -923,24 +963,26 @@ class _InvoiceOcrProgressDialogState extends ConsumerState<_InvoiceOcrProgressDi
           ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: _handleCancel,
-          child: const Text('取消'),
-        ),
-      ],
+      actions: [TextButton(onPressed: _handleCancel, child: const Text('取消'))],
     );
   }
 
-  Widget _buildStageChip(BuildContext context, String label, bool isActive, bool isCompleted) {
+  Widget _buildStageChip(
+    BuildContext context,
+    String label,
+    bool isActive,
+    bool isCompleted,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: isActive
             ? Theme.of(context).colorScheme.primaryContainer
             : isCompleted
-                ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5)
-                : Theme.of(context).colorScheme.surfaceContainerHighest,
+            ? Theme.of(
+                context,
+              ).colorScheme.primaryContainer.withValues(alpha: 0.5)
+            : Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Text(

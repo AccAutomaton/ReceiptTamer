@@ -49,7 +49,7 @@ class _AppState extends ConsumerState<App> {
     // 首帧已渲染完成，现在可以安全地进行后台初始化
     await Future.delayed(const Duration(milliseconds: 100));
 
-    // 开始后台初始化OCR/LLM模型（不阻塞UI）
+    // 开始后台初始化 OCR/LLM 模型（不阻塞UI）
     _startOcrBackgroundInitialization();
 
     // 初始化分享处理器
@@ -57,15 +57,15 @@ class _AppState extends ConsumerState<App> {
     _initializeShareHandler();
   }
 
-  /// 在后台初始化OCR，不阻塞UI
+  /// 在后台初始化 OCR，不阻塞UI
   void _startOcrBackgroundInitialization() {
     Future.delayed(const Duration(milliseconds: 50), () async {
       try {
-        logService.i(LogConfig.moduleApp, '开始 OCR 后台初始化...');
-        // 触发OCR初始化，但不等待完成
+        logService.i(LogConfig.moduleApp, '开始 OCR 识别后台初始化...');
+        // 触发 OCR 初始化，但不等待完成
         ref.read(ocrProvider.notifier).initialize();
       } catch (e, stackTrace) {
-        logService.e(LogConfig.moduleApp, 'OCR 后台初始化错误', e, stackTrace);
+        logService.e(LogConfig.moduleApp, 'OCR 识别后台初始化错误', e, stackTrace);
       }
     });
   }

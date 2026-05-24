@@ -3,12 +3,12 @@
 本项目是一个用于存储餐饮发票报销单据以及记录导出的APP，主要功能：
 
 1. **订单管理**：从手机相册中选择外卖订单截图，存储到数据库中
-2. **OCR识别**：使用本地 OCR 模型识别订单截图中的店铺名称、实付款、下单时间、订单号
+2. **OCR 识别**：使用本地 OCR 模型识别订单截图中的店铺名称、实付款、下单时间、订单号
 3. **发票管理**：选择图片或PDF作为发票存储，关联对应的外卖订单
-4. **发票OCR**：识别发票的发票号码、开票日期、价税合计金额
+4. **发票 OCR**：识别发票的发票号码、开票日期、价税合计金额
 5. **数据导出**：导出报销材料（用餐证明PDF、发票PDF、用餐明细Excel）
 
-所有OCR识别字段均可由用户自行修正。
+所有 OCR 识别字段均可由用户自行修正。
 
 ---
 
@@ -36,7 +36,7 @@
 | 数据清理      | ✅  | 根据订单/发票清理数据、级联选择删除关联、文件清理                        |
 | OCR引擎     | ✅  | RapidOcrAndroidOnnx (ONNX格式，内置模型)                       |
 | LLM推理     | ✅  | MNN框架集成 (阿里开源)                                          |
-| OCR+LLM识别 | ✅  | RapidOcr ONNX + Qwen3.5-0.8B-MNN 结构化提取                  |
+| OCR + LLM 识别 | ✅  | RapidOcr ONNX + Qwen3.5-0.8B-MNN 结构化提取                  |
 | 应用更新      | ✅  | 基于 GitHub Release 的检查更新与下载安装、APK保存到Download/ReceiptTamer |
 | 数据备份与还原  | ✅  | 备份所有数据到zip包、覆盖/增量还原、版本兼容性检查、自动保存到Download/ReceiptTamer |
 
@@ -290,11 +290,11 @@ tools/
 
 ---
 
-## OCR集成说明
+## OCR 集成说明
 
 ### 识别流程
 
-OCR识别采用两阶段流程：
+OCR 识别采用两阶段流程：
 1. **RapidOcrAndroidOnnx OCR**: 使用ONNX Runtime进行文字检测和识别
 2. **Qwen3.5-0.8B-MNN LLM**: 对OCR结果进行结构化提取，输出JSON格式数据
 
@@ -317,6 +317,13 @@ OCR识别采用两阶段流程：
   - `android/app/src/main/jniLibs/` - MNN预编译库
   - `android/app/src/main/kotlin/.../MainActivity.kt` - Flutter MethodChannel
   - `android/app/src/main/kotlin/.../MnnEngine.kt` - MNN LLM引擎封装
+
+### Android ABI 与 AVD 运行说明
+
+- MNN LLM native runtime 当前仅随 `arm64-v8a` 打包。
+- 普通 `flutter run` 或 Android Studio 在 x86_64 AVD 上可能传入 `android-x64`；这种情况下构建只打印警告，不中止，应用应能启动，但运行时会按 `applicationInfo.nativeLibraryDir` 判断当前安装 ABI 并跳过 MNN 加载。
+- 如需在 x86_64 AVD 上通过 ARM64 translation 测试 MNN，需要先执行 `flutter build apk --debug --target-platform android-arm64`，再使用 `adb install -r build/app/outputs/flutter-apk/app-debug.apk` 安装，并用 `adb shell am start -n com.acautomaton.receipt.tamer/.MainActivity` 启动，必要时再 `flutter attach`。
+- 不要仅用 `Build.SUPPORTED_ABIS.contains("arm64-v8a")` 判断能否加载 MNN；x86_64 AVD 的设备 ABI 列表可能包含 arm64，但 x86_64 进程不能混加载 arm64 so。
 
 ### MNN框架优势
 

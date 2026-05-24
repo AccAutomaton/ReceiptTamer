@@ -12,7 +12,9 @@ import '../../core/services/log_config.dart';
 /// 使用端侧 Qwen3.5-0.8B MNN 模型进行结构化数据提取
 /// 模型文件: assets/models/qwen3.5-0.8b.mnn/
 class LlmService {
-  static const MethodChannel _channel = MethodChannel('com.acautomaton.receipt.tamer/llm');
+  static const MethodChannel _channel = MethodChannel(
+    'com.acautomaton.receipt.tamer/llm',
+  );
 
   bool _isInitialized = false;
   bool _isLoading = false;
@@ -47,9 +49,15 @@ class LlmService {
 
   /// Get model size formatted as string
   String get modelSizeFormatted {
-    if (_modelSizeBytes == 0) return '未加载';
-    if (_modelSizeBytes < 1024) return '$_modelSizeBytes B';
-    if (_modelSizeBytes < 1024 * 1024) return '${(_modelSizeBytes / 1024).toStringAsFixed(1)} KB';
+    if (_modelSizeBytes == 0) {
+      return '未加载';
+    }
+    if (_modelSizeBytes < 1024) {
+      return '$_modelSizeBytes B';
+    }
+    if (_modelSizeBytes < 1024 * 1024) {
+      return '${(_modelSizeBytes / 1024).toStringAsFixed(1)} KB';
+    }
     return '${(_modelSizeBytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
@@ -75,9 +83,10 @@ class LlmService {
       try {
         logService.i(LogConfig.moduleLlm, '正在初始化LLM服务...');
 
-        final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('initialize', {
-          'modelPath': _modelPath,
-        });
+        final result = await _channel.invokeMethod<Map<dynamic, dynamic>>(
+          'initialize',
+          {'modelPath': _modelPath},
+        );
 
         // Parse result
         _isModelLoading = result?['isLoading'] ?? false;
@@ -122,7 +131,10 @@ class LlmService {
         _archNotSupported = status['archNotSupported'] ?? false;
         _loadError = status['error'] as String?;
 
-        logService.d(LogConfig.moduleLlm, '轮询状态: isLoading=$_isModelLoading, isInitialized=$_isInitialized');
+        logService.d(
+          LogConfig.moduleLlm,
+          '轮询状态: isLoading=$_isModelLoading, isInitialized=$_isInitialized',
+        );
 
         if (_isInitialized) {
           logService.i(LogConfig.moduleLlm, '模型加载完成!');
@@ -145,40 +157,64 @@ class LlmService {
 
   /// Wait for model initialization to complete
   /// Returns true if model is initialized successfully
-  Future<bool> waitForInitialization({Duration timeout = const Duration(seconds: 120)}) async {
+  Future<bool> waitForInitialization({
+    Duration timeout = const Duration(seconds: 120),
+  }) async {
     if (_isInitialized) return true;
     if (_archNotSupported) return false;
 
-    try {
-      final result = await _channel.invokeMethod<bool>('waitForLoaded', {
-        'timeoutMs': timeout.inMilliseconds,
-      });
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      try {
+        final status = await getStatus();
+        _isInitialized = status['isInitialized'] ?? false;
+        _isModelLoading = status['isLoading'] ?? false;
+        _archNotSupported = status['archNotSupported'] ?? false;
+        _loadError = status['error'] as String?;
 
-      _isInitialized = result ?? false;
-      _isLoading = false;
-      _isModelLoading = false;
+        if (_isInitialized) {
+          _isLoading = false;
+          _isModelLoading = false;
+          return true;
+        }
+        if (_archNotSupported || _loadError != null) {
+          _isLoading = false;
+          _isModelLoading = false;
+          return false;
+        }
+        if (!_isModelLoading) {
+          break;
+        }
+      } catch (e, stackTrace) {
+        logService.e(LogConfig.moduleLlm, '等待LLM初始化状态轮询失败', e, stackTrace);
+        break;
+      }
 
-      return _isInitialized;
-    } catch (e, stackTrace) {
-      logService.e(LogConfig.moduleLlm, '等待LLM初始化失败', e, stackTrace);
-      _isLoading = false;
-      _isModelLoading = false;
-      return false;
+      await Future.delayed(const Duration(milliseconds: 500));
     }
+
+    _isLoading = false;
+    _isModelLoading = false;
+    return _isInitialized;
   }
 
   /// Get current status from native side
   Future<Map<String, dynamic>> getStatus() async {
     logService.d(LogConfig.moduleLlm, '获取 LLM 状态...');
     try {
-      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('getStatus');
+      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>(
+        'getStatus',
+      );
       if (result != null) {
         _isInitialized = result['isInitialized'] ?? false;
         _isModelLoading = result['isLoading'] ?? false;
         _archNotSupported = result['archNotSupported'] ?? false;
         _loadError = result['error'] as String?;
       }
-      logService.d(LogConfig.moduleLlm, 'LLM 状态: isInitialized=$_isInitialized, isModelLoading=$_isModelLoading, archNotSupported=$_archNotSupported');
+      logService.d(
+        LogConfig.moduleLlm,
+        'LLM 状态: isInitialized=$_isInitialized, isModelLoading=$_isModelLoading, archNotSupported=$_archNotSupported',
+      );
       return Map<String, dynamic>.from(result ?? {});
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleLlm, '获取LLM状态失败', e, stackTrace);
@@ -191,19 +227,19 @@ class LlmService {
     OcrRawResult ocrResult,
     OcrType type,
   ) async {
-    logService.d(LogConfig.moduleLlm, 'extractStructuredData: type=${type == OcrType.order ? "Order" : "Invoice"}');
+    logService.d(
+      LogConfig.moduleLlm,
+      'extractStructuredData: type=${type == OcrType.order ? "Order" : "Invoice"}',
+    );
     if (!_isInitialized) {
       logService.w(LogConfig.moduleLlm, 'LLM 模型未初始化');
-      return OcrResult.failure(
-        errorMessage: 'LLM模型未初始化',
-        type: type,
-      );
+      return OcrResult.failure(errorMessage: 'LLM模型未初始化', type: type);
     }
 
     if (!ocrResult.success) {
       logService.w(LogConfig.moduleLlm, 'OCR 结果无效: ${ocrResult.errorMessage}');
       return OcrResult.failure(
-        errorMessage: ocrResult.errorMessage ?? 'OCR识别失败',
+        errorMessage: ocrResult.errorMessage ?? 'OCR 识别失败',
         type: type,
       );
     }
@@ -213,9 +249,20 @@ class LlmService {
     try {
       final ocrText = ocrResult.fullText;
       logService.i(LogConfig.moduleLlm, '========== LLM 结构化提取 ==========');
-      logService.diag(LogConfig.moduleLlm, 'Type', type == OcrType.order ? "Order" : "Invoice");
-      logService.diag(LogConfig.moduleLlm, 'OCR text length', '${ocrText.length} chars');
-      logService.d(LogConfig.moduleLlm, 'OCR text: ${ocrText.substring(0, ocrText.length > 300 ? 300 : ocrText.length)}${ocrText.length > 300 ? "..." : ""}');
+      logService.diag(
+        LogConfig.moduleLlm,
+        'Type',
+        type == OcrType.order ? "Order" : "Invoice",
+      );
+      logService.diag(
+        LogConfig.moduleLlm,
+        'OCR text length',
+        '${ocrText.length} chars',
+      );
+      logService.d(
+        LogConfig.moduleLlm,
+        'OCR text: ${ocrText.substring(0, ocrText.length > 300 ? 300 : ocrText.length)}${ocrText.length > 300 ? "..." : ""}',
+      );
 
       String? jsonResult;
 
@@ -227,14 +274,15 @@ class LlmService {
       }
       extractStopwatch.stop();
 
-      logService.diag(LogConfig.moduleLlm, 'Native extraction time', '${extractStopwatch.elapsedMilliseconds}ms');
+      logService.diag(
+        LogConfig.moduleLlm,
+        'Native extraction time',
+        '${extractStopwatch.elapsedMilliseconds}ms',
+      );
 
       if (jsonResult == null) {
         logService.w(LogConfig.moduleLlm, '提取结果为空');
-        return OcrResult.failure(
-          errorMessage: 'LLM提取失败',
-          type: type,
-        );
+        return OcrResult.failure(errorMessage: 'LLM提取失败', type: type);
       }
 
       logService.d(LogConfig.moduleLlm, 'LLM raw result: $jsonResult');
@@ -245,17 +293,21 @@ class LlmService {
       parseStopwatch.stop();
 
       totalStopwatch.stop();
-      logService.diag(LogConfig.moduleLlm, 'JSON parsing time', '${parseStopwatch.elapsedMilliseconds}ms');
-      logService.diag(LogConfig.moduleLlm, 'Total LLM service time', '${totalStopwatch.elapsedMilliseconds}ms');
+      logService.diag(
+        LogConfig.moduleLlm,
+        'JSON parsing time',
+        '${parseStopwatch.elapsedMilliseconds}ms',
+      );
+      logService.diag(
+        LogConfig.moduleLlm,
+        'Total LLM service time',
+        '${totalStopwatch.elapsedMilliseconds}ms',
+      );
 
       return result;
-
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleLlm, 'LLM提取异常', e, stackTrace);
-      return OcrResult.failure(
-        errorMessage: 'LLM提取异常: $e',
-        type: type,
-      );
+      return OcrResult.failure(errorMessage: 'LLM提取异常: $e', type: type);
     }
   }
 
@@ -309,7 +361,9 @@ class LlmService {
         );
       } else {
         return OcrResult.invoiceSuccess(
-          invoiceNumber: _cleanOrderNumber(json['invoiceNumber'] as String? ?? ''),
+          invoiceNumber: _cleanOrderNumber(
+            json['invoiceNumber'] as String? ?? '',
+          ),
           invoiceDate: json['invoiceDate'] as String? ?? '',
           totalAmount: _parseAmount(json['totalAmount']),
           sellerName: json['sellerName'] as String? ?? '',
@@ -317,10 +371,7 @@ class LlmService {
       }
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleLlm, '解析LLM结果失败', e, stackTrace);
-      return OcrResult.failure(
-        errorMessage: '解析LLM结果失败: $e',
-        type: type,
-      );
+      return OcrResult.failure(errorMessage: '解析LLM结果失败: $e', type: type);
     }
   }
 

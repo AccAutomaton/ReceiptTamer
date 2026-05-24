@@ -28,7 +28,7 @@ import android.os.Looper
 class MainActivity : FlutterActivity() {
 
     companion object {
-        // 延迟加载 MNN 库，避免在 x86 模拟器上崩溃
+        // 延迟加载 MNN 库，避免在不支持 arm64-v8a 的进程上崩溃
         private var mnnLibLoaded = false
         private var mnnLibLoadAttempted = false
         private val mnnLoadLatch = CountDownLatch(1)
@@ -57,14 +57,16 @@ class MainActivity : FlutterActivity() {
         /**
          * 同步加载 MNN 库（应在后台线程调用）
          */
-        private fun loadMnnLibrarySync(): Boolean {
+        private fun loadMnnLibrarySync(nativeLibraryDir: String?): Boolean {
             if (mnnLibLoadAttempted) return mnnLibLoaded
             mnnLibLoadAttempted = true
 
-            // 检查是否为 arm64-v8a 架构
-            val arch = Build.SUPPORTED_ABIS.firstOrNull() ?: "unknown"
-            if (arch != "arm64-v8a") {
-                LogHelper.w("LLM", "MNN 仅支持 arm64-v8a 架构，当前架构: $arch，跳过加载")
+            val installedNativeAbi = getNativeAbiFromLibraryDir(nativeLibraryDir)
+            if (installedNativeAbi != "arm64-v8a") {
+                LogHelper.w(
+                    "LLM",
+                    "MNN 需要 arm64-v8a 进程，当前 native ABI: $installedNativeAbi，nativeLibraryDir: $nativeLibraryDir，跳过加载"
+                )
                 mnnLoadLatch.countDown()
                 return false
             }
@@ -85,12 +87,23 @@ class MainActivity : FlutterActivity() {
         /**
          * 在后台线程预加载 MNN 库
          */
-        private fun preloadMnnLibraryAsync() {
+        private fun preloadMnnLibraryAsync(nativeLibraryDir: String?) {
             if (mnnLibLoadAttempted) return
 
             Thread {
-                loadMnnLibrarySync()
+                loadMnnLibrarySync(nativeLibraryDir)
             }.start()
+        }
+
+        private fun getNativeAbiFromLibraryDir(nativeLibraryDir: String?): String {
+            val path = nativeLibraryDir.orEmpty()
+            return when {
+                path.contains("arm64", ignoreCase = true) -> "arm64-v8a"
+                path.contains("x86_64", ignoreCase = true) -> "x86_64"
+                path.contains("armeabi-v7a", ignoreCase = true) -> "armeabi-v7a"
+                path.contains("armeabi", ignoreCase = true) -> "armeabi-v7a"
+                else -> "unknown"
+            }
         }
     }
 
@@ -126,7 +139,7 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         // 在后台线程预加载 MNN 库，不阻塞 UI 渲染
         // 库会在 Flutter 引擎启动期间加载完成
-        preloadMnnLibraryAsync()
+        preloadMnnLibraryAsync(applicationInfo.nativeLibraryDir)
 
         // 保存分享Intent，以便Flutter准备好后处理
         if (intent?.action in listOf(android.content.Intent.ACTION_SEND, android.content.Intent.ACTION_SEND_MULTIPLE)) {
@@ -221,7 +234,7 @@ class MainActivity : FlutterActivity() {
                             } else {
                                 result.success(mapOf(
                                     "success" to false,
-                                    "error" to (error ?: "OCR识别失败")
+                                    "error" to (error ?: "OCR 识别失败")
                                 ))
                             }
                         }
@@ -241,7 +254,7 @@ class MainActivity : FlutterActivity() {
                             } else {
                                 result.success(mapOf(
                                     "success" to false,
-                                    "error" to (error ?: "OCR识别失败")
+                                    "error" to (error ?: "OCR 识别失败")
                                 ))
                             }
                         }
@@ -272,8 +285,12 @@ class MainActivity : FlutterActivity() {
                 "waitForLoaded" -> {
                     val timeoutArg = call.argument<Number>("timeoutMs")
                     val timeoutMs = timeoutArg?.toLong() ?: 120000L
-                    val success = waitForLlmLoaded(timeoutMs)
-                    result.success(success)
+                    Thread {
+                        val success = waitForLlmLoaded(timeoutMs)
+                        runOnUiThread {
+                            result.success(success)
+                        }
+                    }.start()
                 }
                 "getStatus" -> {
                     result.success(getLlmStatus())
@@ -476,7 +493,7 @@ class MainActivity : FlutterActivity() {
                 // 创建输出Bitmap（与输入相同大小）
                 val outputBitmap = bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, true)
 
-                // 执行OCR识别，maxSideLen设为1024
+                // 执行 OCR 识别，maxSideLen设为1024
                 val ocrResult = ocrEngine?.detect(bitmap, outputBitmap, 1024)
 
                 if (ocrResult != null) {
@@ -489,8 +506,8 @@ class MainActivity : FlutterActivity() {
                 outputBitmap.recycle()
 
             } catch (e: Exception) {
-                LogHelper.e("OCR", "OCR识别异常", e)
-                mainHandler.post { callback(null, "OCR识别异常: ${e.message}") }
+                LogHelper.e("OCR", "OCR 识别异常", e)
+                mainHandler.post { callback(null, "OCR 识别异常: ${e.message}") }
             }
         }
     }
@@ -513,7 +530,7 @@ class MainActivity : FlutterActivity() {
                 val outputBitmap = bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, true)
 
                 val startTime = System.currentTimeMillis()
-                // 执行OCR识别，maxSideLen设为1024
+                // 执行 OCR 识别，maxSideLen设为1024
                 val ocrResult = ocrEngine?.detect(bitmap, outputBitmap, 1024)
 
                 if (ocrResult != null) {
@@ -538,7 +555,7 @@ class MainActivity : FlutterActivity() {
                         ))
                     }
 
-                    LogHelper.d("APP", "OCR识别完成，耗时: ${System.currentTimeMillis() - startTime}ms，识别到 ${textBlocks.size} 个文本块")
+                    LogHelper.d("APP", "OCR 识别完成，耗时: ${System.currentTimeMillis() - startTime}ms，识别到 ${textBlocks.size} 个文本块")
                     mainHandler.post { callback(textBlocks, null) }
                 } else {
                     LogHelper.e("OCR", "OCR引擎未初始化")
@@ -548,8 +565,8 @@ class MainActivity : FlutterActivity() {
                 outputBitmap.recycle()
 
             } catch (e: Exception) {
-                LogHelper.e("OCR", "OCR识别异常", e)
-                mainHandler.post { callback(null, "OCR识别异常: ${e.message}") }
+                LogHelper.e("OCR", "OCR 识别异常", e)
+                mainHandler.post { callback(null, "OCR 识别异常: ${e.message}") }
             }
         }
     }
@@ -573,10 +590,24 @@ class MainActivity : FlutterActivity() {
     }
 
     /**
-     * 检查是否为 arm64-v8a 架构
+     * 获取设备支持的 ABI 列表
      */
-    private fun isArm64V8(): Boolean {
-        return getDeviceArch() == "arm64-v8a"
+    private fun getSupportedAbiList(): String {
+        return Build.SUPPORTED_ABIS.joinToString(",")
+    }
+
+    /**
+     * 获取当前安装包 native 库目录对应的 ABI。
+     */
+    private fun getInstalledNativeAbi(): String {
+        return getNativeAbiFromLibraryDir(applicationInfo.nativeLibraryDir)
+    }
+
+    /**
+     * 检查当前进程是否实际使用 arm64-v8a native 库。
+     */
+    private fun isCurrentProcessArm64V8(): Boolean {
+        return getInstalledNativeAbi() == "arm64-v8a"
     }
 
     /**
@@ -623,7 +654,10 @@ class MainActivity : FlutterActivity() {
             "isInitialized" to (mnnEngine?.isInitialized() ?: false),
             "archNotSupported" to archNotSupported,
             "error" to llmLoadError,
-            "deviceArch" to getDeviceArch()
+            "deviceArch" to getDeviceArch(),
+            "supportedAbis" to getSupportedAbiList(),
+            "installedNativeAbi" to getInstalledNativeAbi(),
+            "nativeLibraryDir" to applicationInfo.nativeLibraryDir
         )
     }
 
@@ -652,17 +686,21 @@ class MainActivity : FlutterActivity() {
      * 返回状态Map，包含isLoading、archNotSupported、error等信息
      */
     private fun initializeLlmAsync(modelPath: String): Map<String, Any?> {
-        // 架构检查（快速非阻塞检查）
-        if (!isArm64V8()) {
-            val arch = getDeviceArch()
+        // ABI 检查（快速非阻塞检查）
+        if (!isCurrentProcessArm64V8()) {
+            val abiList = getSupportedAbiList()
+            val installedNativeAbi = getInstalledNativeAbi()
             archNotSupported = true
-            llmLoadError = "仅支持 arm64-v8a 架构，当前架构: $arch"
+            llmLoadError = "当前安装 ABI 为 $installedNativeAbi，无法加载 arm64-v8a MNN；设备 ABI 列表: $abiList"
             LogHelper.w("APP", llmLoadError!!)
             return mapOf(
                 "isLoading" to false,
                 "archNotSupported" to true,
                 "error" to llmLoadError,
-                "deviceArch" to arch
+                "deviceArch" to getDeviceArch(),
+                "supportedAbis" to abiList,
+                "installedNativeAbi" to installedNativeAbi,
+                "nativeLibraryDir" to applicationInfo.nativeLibraryDir
             )
         }
 

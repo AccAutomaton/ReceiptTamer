@@ -15,6 +15,41 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
+val mnnArm64Only = providers
+    .gradleProperty("mnn.arm64Only")
+    .map(String::toBoolean)
+    .orElse(true)
+    .get()
+val flutterTargetPlatforms = providers
+    .gradleProperty("target-platform")
+    .orElse("android-arm64")
+    .get()
+    .split(",")
+    .map { it.trim() }
+    .filter { it.isNotEmpty() }
+val arm64OnlyFlutterTarget = flutterTargetPlatforms == listOf("android-arm64")
+
+if (mnnArm64Only && !flutterTargetPlatforms.contains("android-arm64")) {
+    val mnnFlutterRunWarning = """
+        |========== ReceiptTamer MNN LLM Run Warning ==========
+        |ReceiptTamer local LLM requires an arm64 Flutter engine.
+        |Current target-platform=${flutterTargetPlatforms.joinToString(",")}.
+        |
+        |Ordinary flutter run on an x86_64 AVD may pass android-x64.
+        |That can start the app, but the arm64-only MNN LLM runtime will be skipped in an x86_64 process.
+        |
+        |If you want to use MNN LLM on an x86_64 AVD with ARM64 translation:
+        |  1. flutter build apk --debug --target-platform android-arm64
+        |  2. adb install -r build/app/outputs/flutter-apk/app-debug.apk
+        |  3. adb shell am start -n com.acautomaton.receipt.tamer/.MainActivity
+        |  4. Optional: flutter attach
+        |
+        |flutter run does not support --target-platform; build/install/attach instead.
+        |=====================================================
+    """.trimMargin()
+    System.err.println(mnnFlutterRunWarning)
+}
+
 android {
     namespace = "com.acautomaton.receipt.tamer"
     compileSdk = flutter.compileSdkVersion
@@ -39,9 +74,11 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        // NDK配置 - 只支持arm64-v8a (避免armeabi-v7a的FP16指令兼容问题)
-        ndk {
-            abiFilters += listOf("arm64-v8a")
+        if (arm64OnlyFlutterTarget) {
+            // NDK配置 - 只支持arm64-v8a (避免armeabi-v7a的FP16指令兼容问题)
+            ndk {
+                abiFilters += listOf("arm64-v8a")
+            }
         }
 
         // 外部native构建配置
@@ -64,6 +101,17 @@ android {
     // 不压缩模型文件，允许通过fd直接访问
     aaptOptions {
         noCompress += listOf("mnn", "json", "txt", "weight")
+    }
+
+    if (mnnArm64Only && arm64OnlyFlutterTarget) {
+        // MNN LLM runtime is arm64-only. If x86_64 libraries remain in an
+        // arm64-target APK, Android may start a translated AVD process as x86_64
+        // and fail to load the arm64 MNN libraries.
+        packaging {
+            jniLibs {
+                excludes += listOf("lib/x86_64/**", "lib/armeabi-v7a/**")
+            }
+        }
     }
 
     signingConfigs {

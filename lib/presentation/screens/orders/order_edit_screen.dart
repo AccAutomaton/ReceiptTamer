@@ -51,7 +51,7 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
   final FileService _fileService = FileService();
 
   bool _isLoading = false;
-  bool _hasOcrResult = false; // 是否有OCR识别结果
+  bool _hasOcrResult = false; // 是否有 OCR 识别结果
   List<Map<String, dynamic>> _shopNameOptions = []; // 店铺名称选项列表（含次数）
 
   @override
@@ -95,7 +95,9 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
   }
 
   Future<void> _loadShopNames() async {
-    final shopNamesWithCount = await ref.read(orderProvider.notifier).getShopNamesWithCount();
+    final shopNamesWithCount = await ref
+        .read(orderProvider.notifier)
+        .getShopNamesWithCount();
     if (mounted) {
       setState(() {
         _shopNameOptions = shopNamesWithCount;
@@ -113,7 +115,9 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
 
   Future<void> _loadOrder() async {
     try {
-      final order = await ref.read(orderProvider.notifier).getOrderById(widget.orderId!);
+      final order = await ref
+          .read(orderProvider.notifier)
+          .getOrderById(widget.orderId!);
       if (order != null && mounted) {
         setState(() {
           _shopNameController.text = order.shopName;
@@ -168,13 +172,13 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
 
   Future<void> _handleOCR() async {
     if (_imagePath == null || _imagePath!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先选择图片')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请先选择图片')));
       return;
     }
 
-    logService.i(LogConfig.moduleUi, '开始OCR识别');
+    logService.i(LogConfig.moduleUi, '开始订单 OCR 识别');
 
     // Show progress dialog
     if (mounted) {
@@ -187,31 +191,39 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
             if (ocrResult?.success == true) {
               setState(() {
                 _hasOcrResult = true;
-                if (ocrResult?.shopName != null && ocrResult!.shopName!.isNotEmpty) {
+                if (ocrResult?.shopName != null &&
+                    ocrResult!.shopName!.isNotEmpty) {
                   _shopNameController.text = ocrResult.shopName!;
                 }
                 if (ocrResult?.amount != null && ocrResult!.amount! > 0) {
                   _amountController.text = ocrResult.amount!.toStringAsFixed(2);
                 }
-                if (ocrResult?.orderNumber != null && ocrResult!.orderNumber!.isNotEmpty) {
+                if (ocrResult?.orderNumber != null &&
+                    ocrResult!.orderNumber!.isNotEmpty) {
                   _orderNumberController.text = ocrResult.orderNumber!;
                 }
                 // Parse orderTime from OCR result into orderDate and mealTime
-                if (ocrResult?.orderTime != null && ocrResult!.orderTime!.isNotEmpty) {
-                  final (dateStr, mealTime) = DateFormatter.parseDateTimeToOrderDateAndMealTime(ocrResult.orderTime);
+                if (ocrResult?.orderTime != null &&
+                    ocrResult!.orderTime!.isNotEmpty) {
+                  final (
+                    dateStr,
+                    mealTime,
+                  ) = DateFormatter.parseDateTimeToOrderDateAndMealTime(
+                    ocrResult.orderTime,
+                  );
                   if (dateStr != null) {
                     _orderDate = DateTime.tryParse(dateStr);
                   }
                   _mealTime = mealTime;
                 }
               });
-              logService.i(LogConfig.moduleUi, 'OCR识别成功');
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('OCR识别成功')),
-              );
+              logService.i(LogConfig.moduleUi, '订单 OCR 识别成功');
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('OCR 识别成功')));
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(ocrResult?.errorMessage ?? 'OCR识别失败')),
+                SnackBar(content: Text(ocrResult?.errorMessage ?? 'OCR 识别失败')),
               );
             }
           },
@@ -234,9 +246,9 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
               padding: const EdgeInsets.all(16),
               child: Text(
                 '选择店铺',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
             ),
             const Divider(height: 1),
@@ -248,7 +260,9 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
                     Icon(
                       Icons.restaurant_menu,
                       size: 48,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -329,7 +343,9 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
               final remainingItems = items.skip(1).toList();
 
               // 更新剩余列表
-              service.sharedMediaNotifier.value = remainingItems.isNotEmpty ? remainingItems : null;
+              service.sharedMediaNotifier.value = remainingItems.isNotEmpty
+                  ? remainingItems
+                  : null;
 
               // 导航到下一个订单编辑页面
               context.go(
@@ -349,32 +365,32 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
     }
 
     if (_imagePath == null || _imagePath!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请选择订单图片')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请选择订单图片')));
       return;
     }
 
     // Validate required fields that are not TextFormField
     final amount = double.tryParse(_amountController.text) ?? 0.0;
     if (amount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请输入有效的实付金额')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请输入有效的实付金额')));
       return;
     }
 
     if (_orderDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请选择订单日期')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请选择订单日期')));
       return;
     }
 
     if (_mealTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请选择用餐时段')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请选择用餐时段')));
       return;
     }
 
@@ -416,7 +432,10 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
 
       if (mounted) {
         if (success) {
-          logService.i(LogConfig.moduleUi, '订单保存成功: id=${widget.orderId ?? order.id}');
+          logService.i(
+            LogConfig.moduleUi,
+            '订单保存成功: id=${widget.orderId ?? order.id}',
+          );
           // Clean up temp file after successful save
           if (_imagePath != null) {
             _fileService.deleteTempFile(_imagePath!);
@@ -489,23 +508,19 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
                     ),
                     const SizedBox(height: 12),
                     if (_imagePath != null && _imagePath!.isNotEmpty)
-                      OrderImagePreview(
-                        imagePath: _imagePath!,
-                        height: 200,
-                      )
+                      OrderImagePreview(imagePath: _imagePath!, height: 200)
                     else
                       Container(
                         height: 200,
                         decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerHighest,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .outlineVariant
-                                .withValues(alpha: 0.5),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.outlineVariant.withValues(alpha: 0.5),
                             style: BorderStyle.solid,
                           ),
                         ),
@@ -525,9 +540,9 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
                               Text(
                                 '点击下方按钮选择图片',
                                 style: TextStyle(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ],
@@ -552,15 +567,17 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
                                 ? const SizedBox(
                                     width: 18,
                                     height: 18,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
                                   )
                                 : const Icon(Icons.document_scanner),
                             label: Text(
                               _isLoading
-                                  ? '识别中...'
+                                  ? 'OCR 识别中...'
                                   : isModelLoading
-                                      ? '模型加载中...'
-                                      : 'OCR识别',
+                                  ? '模型加载中...'
+                                  : AppConstants.btnOCR,
                             ),
                           ),
                         ),
@@ -621,7 +638,8 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
               label: AppConstants.labelMealTime,
               value: _mealTime,
               options: MealTime.values,
-              displayValue: (mealTime) => DateFormatter.mealTimeToDisplayName(mealTime),
+              displayValue: (mealTime) =>
+                  DateFormatter.mealTimeToDisplayName(mealTime),
               onChanged: (value) {
                 setState(() {
                   _mealTime = value;
@@ -690,10 +708,7 @@ class _OcrProgressDialog extends ConsumerStatefulWidget {
   final String imagePath;
   final void Function(OcrResult?) onResult;
 
-  const _OcrProgressDialog({
-    required this.imagePath,
-    required this.onResult,
-  });
+  const _OcrProgressDialog({required this.imagePath, required this.onResult});
 
   @override
   ConsumerState<_OcrProgressDialog> createState() => _OcrProgressDialogState();
@@ -716,7 +731,9 @@ class _OcrProgressDialogState extends ConsumerState<_OcrProgressDialog> {
     if (_started) return;
     _started = true;
 
-    final result = await ref.read(ocrProvider.notifier).recognizeOrderWithProgress(widget.imagePath);
+    final result = await ref
+        .read(ocrProvider.notifier)
+        .recognizeOrderWithProgress(widget.imagePath);
 
     if (_cancelled) return;
 
@@ -751,9 +768,7 @@ class _OcrProgressDialogState extends ConsumerState<_OcrProgressDialog> {
     }
 
     return AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       content: Padding(
         padding: const EdgeInsets.symmetric(vertical: 16),
         child: Column(
@@ -772,7 +787,9 @@ class _OcrProgressDialogState extends ConsumerState<_OcrProgressDialog> {
                     child: CircularProgressIndicator(
                       value: ocrState.progress,
                       strokeWidth: 6,
-                      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
                     ),
                   ),
                   Text(
@@ -798,9 +815,10 @@ class _OcrProgressDialogState extends ConsumerState<_OcrProgressDialog> {
               children: [
                 _buildStageChip(
                   context,
-                  'OCR识别',
+                  'OCR 识别',
                   ocrState.stage == OcrStage.ocrRecognizing,
-                  ocrState.progress > 0.21 || ocrState.stage == OcrStage.llmParsing,
+                  ocrState.progress > 0.21 ||
+                      ocrState.stage == OcrStage.llmParsing,
                 ),
                 Container(
                   width: 24,
@@ -820,24 +838,26 @@ class _OcrProgressDialogState extends ConsumerState<_OcrProgressDialog> {
           ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: _handleCancel,
-          child: const Text('取消'),
-        ),
-      ],
+      actions: [TextButton(onPressed: _handleCancel, child: const Text('取消'))],
     );
   }
 
-  Widget _buildStageChip(BuildContext context, String label, bool isActive, bool isCompleted) {
+  Widget _buildStageChip(
+    BuildContext context,
+    String label,
+    bool isActive,
+    bool isCompleted,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: isActive
             ? Theme.of(context).colorScheme.primaryContainer
             : isCompleted
-                ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5)
-                : Theme.of(context).colorScheme.surfaceContainerHighest,
+            ? Theme.of(
+                context,
+              ).colorScheme.primaryContainer.withValues(alpha: 0.5)
+            : Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Text(
