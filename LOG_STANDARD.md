@@ -118,6 +118,8 @@ logService.e(LogConfig.moduleOcr, 'Recognition failed', error, stackTrace);
 
 - MNN ABI 兼容性问题使用 `WARN` 或 `ERROR` 级别记录，并包含 `installedNativeAbi`、`supportedAbis` 或 `nativeLibraryDir` 等定位信息。
 - x86_64 AVD 的 `flutter run` 构建期 MNN 提示只输出为 Gradle 警告，不应作为应用运行日志写入。
+- OpenAI-compatible 云端模型日志不得记录 API key、Authorization header、完整请求体或完整图片 base64；可记录端点主机、模型名、是否多模态、HTTP 状态码和耗时。
+- 本地模型下载/导入日志使用 `LLM` 或 `FILE` 模块记录关键节点：下载源、逐文件下载进度、是否断点续传、HTTP Range/206/200 行为、解压校验、原子替换、删除模型。不得记录用户选择的外部压缩包完整路径以外的敏感内容；失败时记录错误类型和必要堆栈。
 
 ### 5.3 文件操作
 

@@ -3,12 +3,12 @@
 本项目是一个用于存储餐饮发票报销单据以及记录导出的APP，主要功能：
 
 1. **订单管理**：从手机相册中选择外卖订单截图，存储到数据库中
-2. **OCR 识别**：使用本地 OCR 模型识别订单截图中的店铺名称、实付款、下单时间、订单号
+2. **AI 识别**：用户可选择本地 MNN 模型或 OpenAI-compatible 云端模型识别订单截图中的店铺名称、实付款、下单时间、订单号
 3. **发票管理**：选择图片或PDF作为发票存储，关联对应的外卖订单
-4. **发票 OCR**：识别发票的发票号码、开票日期、价税合计金额
+4. **发票 AI 识别**：识别发票的发票号码、开票日期、价税合计金额
 5. **数据导出**：导出报销材料（用餐证明PDF、发票PDF、用餐明细Excel）
 
-所有 OCR 识别字段均可由用户自行修正。
+所有 AI/OCR 识别字段均可由用户自行修正。
 
 ---
 
@@ -32,11 +32,11 @@
 | 首页统计      | ✅  | 数据概览页面                                                  |
 | 分享功能      | ✅  | 图片、PDF、导出文件分享                                           |
 | PDF预览     | ✅  | syncfusion_flutter_pdfviewer                            |
-| 设置页面      | ✅  | 应用信息、存储统计、缓存清理、OCR状态                                    |
+| 设置页面      | ✅  | 应用信息、存储统计、缓存清理、模型管理、云端模型提供商预置（Xiaomi MiMo/Deepseek/其它 OpenAI 风格接口）、按供应商独立保存配置、/v1/models 模型列表、本地模型逐文件下载（可选 hf-mirror/Hugging Face、断点续传、取消）/ZIP 导入/删除 |
 | 数据清理      | ✅  | 根据订单/发票清理数据、级联选择删除关联、文件清理                        |
 | OCR引擎     | ✅  | RapidOcrAndroidOnnx (ONNX格式，内置模型)                       |
-| LLM推理     | ✅  | MNN框架集成 (阿里开源)                                          |
-| OCR + LLM 识别 | ✅  | RapidOcr ONNX + Qwen3.5-0.8B-MNN 结构化提取                  |
+| LLM推理     | ✅  | 本地 MNN 或 OpenAI-compatible 云端模型                         |
+| OCR + LLM 识别 | ✅  | 本地 OCR 文本提取 + LLM 结构化；多模态云端模型可直接识别图片       |
 | 应用更新      | ✅  | 基于 GitHub Release 的检查更新与下载安装、APK保存到Download/ReceiptTamer |
 | 数据备份与还原  | ✅  | 备份所有数据到zip包、覆盖/增量还原、版本兼容性检查、自动保存到Download/ReceiptTamer |
 
@@ -163,11 +163,11 @@ android/app/src/main/
 └── libs/
     └── OcrLibrary-1.3.0-release.aar # OCR库 (含内置模型)
 
-assets/models/
-└── qwen3.5-0.8b.mnn/               # Qwen3.5-0.8B MNN模型
+filesDir/
+└── qwen3.5-0.8b/                   # 用户下载或导入的 Qwen3.5-0.8B MNN 模型
     ├── llm_config.json             # 模型配置
     ├── llm.mnn                     # 模型结构
-    ├── llm.mnn.weight              # 模型权重 (~450MB)
+    ├── llm.mnn.weight              # 模型权重
     └── tokenizer.txt               # 分词器
 
 tools/
@@ -294,9 +294,11 @@ tools/
 
 ### 识别流程
 
-OCR 识别采用两阶段流程：
-1. **RapidOcrAndroidOnnx OCR**: 使用ONNX Runtime进行文字检测和识别
-2. **Qwen3.5-0.8B-MNN LLM**: 对OCR结果进行结构化提取，输出JSON格式数据
+AI 识别按用户设置路由：
+1. **未设置**: OCR 入口提示用户前往设置选择本地模型或云端模型。
+2. **本地 MNN**: 仅在 `filesDir/qwen3.5-0.8b` 中的必需文件完整时可启用；使用 RapidOcrAndroidOnnx 进行文字检测和识别，再用 Qwen3.5-0.8B-MNN 做结构化提取。
+3. **云端文本模型**: 仅在端点和模型名称已配置时可启用；可选择 Xiaomi MiMo、Deepseek 或其它 OpenAI 风格接口，每个提供商的端点、模型、API key、多模态开关和 extra_body 会独立保存；预置提供商会自动填充端点和关闭思考模式的 extra_body，Xiaomi MiMo 首次默认开启多模态，并在填写 API key 后从 `/v1/models` 获取模型列表，401 会提示 API Key 错误；先本地 OCR/PDF 文本提取，再调用 OpenAI-compatible Chat Completions。
+4. **云端多模态模型**: 图片订单/发票直接以 base64 data URL 传入 `image_url` content part；PDF 发票仍走文本提取路径。
 
 ### 模型文件
 
@@ -306,12 +308,12 @@ OCR 识别采用两阶段流程：
 | `ch_PP-OCRv3_rec_infer.onnx` | 文本识别模型 | OcrLibrary AAR内置 |
 | `ch_ppocr_mobile_v2.0_cls_infer.onnx` | 文本方向分类 | OcrLibrary AAR内置 |
 | `ppocr_keys_v1.txt` | 字符字典 | OcrLibrary AAR内置 |
-| `qwen3.5-0.8b.mnn/` | Qwen3.5-0.8B MNN模型 | `assets/models/` |
+| `qwen3.5-0.8b/` | Qwen3.5-0.8B MNN模型 | `filesDir/`，在线逐文件下载（可选 hf-mirror/Hugging Face，跳过已验证文件并保留取消后的部分下载）或从 ZIP 导入 |
 
 ### Android原生集成
 
 - **OCR引擎**: RapidOcrAndroidOnnx (基于ONNX Runtime)
-- **LLM推理**: MNN 3.4.1 (阿里开源移动端推理框架)
+- **LLM推理**: 本地 MNN 3.4.1 或用户配置的 OpenAI-compatible 云端模型
 - **代码位置**:
   - `android/app/src/main/cpp/` - Native C++代码
   - `android/app/src/main/jniLibs/` - MNN预编译库

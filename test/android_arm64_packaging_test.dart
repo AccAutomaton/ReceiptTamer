@@ -39,4 +39,32 @@ void main() {
       );
     },
   );
+
+  test('MNN model files are not bundled as Flutter assets', () {
+    final pubspec = File('pubspec.yaml').readAsStringSync();
+    final mainActivity = File(
+      'android/app/src/main/kotlin/com/acautomaton/receipt/tamer/MainActivity.kt',
+    ).readAsStringSync();
+
+    expect(pubspec, isNot(contains('assets/models/qwen3.5-0.8b.mnn/')));
+    expect(pubspec, isNot(contains('- assets/models/')));
+    expect(mainActivity, isNot(contains('flutter_assets/')));
+    expect(mainActivity, isNot(contains('copyModelDirFromAssets')));
+  });
+
+  test('disposeLlm MethodChannel waits for native dispose callback', () {
+    final mainActivity = File(
+      'android/app/src/main/kotlin/com/acautomaton/receipt/tamer/MainActivity.kt',
+    ).readAsStringSync();
+
+    expect(mainActivity, contains('"disposeLlm" -> {'));
+    expect(mainActivity, contains('disposeLlm {'));
+    expect(mainActivity, contains('result.success(null)'));
+    expect(
+      mainActivity,
+      contains('private fun disposeLlm(onComplete: () -> Unit)'),
+    );
+    expect(mainActivity, contains('disposeAsync {'));
+    expect(mainActivity, contains('onComplete()'));
+  });
 }

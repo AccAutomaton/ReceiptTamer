@@ -11,7 +11,9 @@ import 'package:receipt_tamer/core/services/log_service.dart';
 import 'package:receipt_tamer/core/services/log_config.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/order.dart';
+import 'package:receipt_tamer/data/models/llm_backend.dart';
 import 'package:receipt_tamer/data/models/ocr_result.dart';
+import 'package:receipt_tamer/data/services/llm_config_service.dart';
 import 'package:receipt_tamer/data/services/file_service.dart';
 import 'package:receipt_tamer/data/services/image_service.dart';
 import 'package:receipt_tamer/data/services/share_handler_service.dart';
@@ -180,6 +182,10 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
 
     logService.i(LogConfig.moduleUi, '开始订单 OCR 识别');
 
+    if (!await _ensureAiBackendConfigured()) {
+      return;
+    }
+
     // Show progress dialog
     if (mounted) {
       showDialog(
@@ -230,6 +236,34 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
         ),
       );
     }
+  }
+
+  Future<bool> _ensureAiBackendConfigured() async {
+    final config = await LlmConfigService().load();
+    if (config.backendType != LlmBackendType.unset) return true;
+    if (!mounted) return false;
+
+    final goToSettings = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('选择 AI 分析方式'),
+        content: const Text('请先在设置中选择本地模型或云端模型，然后再进行 OCR 识别。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('去设置'),
+          ),
+        ],
+      ),
+    );
+    if (goToSettings == true && mounted) {
+      context.push('/settings/model-management');
+    }
+    return false;
   }
 
   void _showShopNamePicker() {
@@ -480,6 +514,8 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
     final isEditing = widget.orderId != null;
     final ocrState = ref.watch(ocrProvider);
     final isModelLoading = ocrState.isModelLoading;
+    final isRecognizing = ocrState.isLoading;
+    final isOcrButtonBusy = isRecognizing || isModelLoading;
 
     return Scaffold(
       appBar: AppBar(
@@ -562,8 +598,10 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: _isLoading ? null : _handleOCR,
-                            icon: _isLoading || isModelLoading
+                            onPressed: (_isLoading || isOcrButtonBusy)
+                                ? null
+                                : _handleOCR,
+                            icon: isOcrButtonBusy
                                 ? const SizedBox(
                                     width: 18,
                                     height: 18,
@@ -573,7 +611,7 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
                                   )
                                 : const Icon(Icons.document_scanner),
                             label: Text(
-                              _isLoading
+                              isRecognizing
                                   ? 'OCR 识别中...'
                                   : isModelLoading
                                   ? '模型加载中...'
@@ -760,12 +798,17 @@ class _OcrProgressDialogState extends ConsumerState<_OcrProgressDialog> {
       case OcrStage.ocrRecognizing:
         stageText = '正在识别文本...';
         break;
+      case OcrStage.imageRecognizing:
+        stageText = '正在理解图片...';
+        break;
       case OcrStage.llmParsing:
         stageText = '正在解析文本...';
         break;
       default:
         stageText = '准备中...';
     }
+
+    final isDirectVisionStage = ocrState.stage == OcrStage.imageRecognizing;
 
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -810,31 +853,34 @@ class _OcrProgressDialogState extends ConsumerState<_OcrProgressDialog> {
             ),
             const SizedBox(height: 24),
             // Stage indicator
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildStageChip(
-                  context,
-                  'OCR 识别',
-                  ocrState.stage == OcrStage.ocrRecognizing,
-                  ocrState.progress > 0.21 ||
-                      ocrState.stage == OcrStage.llmParsing,
-                ),
-                Container(
-                  width: 24,
-                  height: 2,
-                  color: ocrState.progress > 0.21
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.outlineVariant,
-                ),
-                _buildStageChip(
-                  context,
-                  'LLM解析',
-                  ocrState.stage == OcrStage.llmParsing,
-                  ocrState.progress >= 1.0,
-                ),
-              ],
-            ),
+            if (isDirectVisionStage)
+              _buildStageChip(context, '图片理解', true, ocrState.progress >= 1.0)
+            else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildStageChip(
+                    context,
+                    'OCR 识别',
+                    ocrState.stage == OcrStage.ocrRecognizing,
+                    ocrState.progress > 0.21 ||
+                        ocrState.stage == OcrStage.llmParsing,
+                  ),
+                  Container(
+                    width: 24,
+                    height: 2,
+                    color: ocrState.progress > 0.21
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                  _buildStageChip(
+                    context,
+                    'LLM解析',
+                    ocrState.stage == OcrStage.llmParsing,
+                    ocrState.progress >= 1.0,
+                  ),
+                ],
+              ),
           ],
         ),
       ),

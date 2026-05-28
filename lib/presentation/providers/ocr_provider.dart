@@ -6,8 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/services/log_service.dart';
 import '../../core/services/log_config.dart';
+import '../../data/models/llm_backend.dart';
 import '../../data/models/ocr_result.dart';
 import '../../data/models/ocr_text_block.dart';
+import '../../data/services/llm_config_service.dart';
 import '../../data/services/llm_service.dart';
 import '../../data/services/ocr_service.dart';
 import '../../data/services/pdf_service.dart';
@@ -15,8 +17,9 @@ import '../../data/services/pdf_service.dart';
 /// OCR processing stage
 enum OcrStage {
   idle,
-  ocrRecognizing,  // OCR text recognition phase
-  llmParsing,      // LLM structured extraction phase
+  ocrRecognizing, // OCR text recognition phase
+  imageRecognizing, // Direct multimodal image recognition phase
+  llmParsing, // LLM structured extraction phase
 }
 
 /// OCR state
@@ -99,13 +102,61 @@ class OcrNotifier extends Notifier<OcrState> {
 
   OcrService get _service => ref.watch(ocrServiceProvider);
 
+  Future<LlmBackendConfig> _loadBackendConfig() {
+    return LlmConfigService().load();
+  }
+
+  OcrResult _backendUnsetFailure(OcrType type) {
+    return OcrResult.failure(errorMessage: '请先在设置中选择 AI 分析方式', type: type);
+  }
+
+  String _mimeTypeForPath(String filePath) {
+    final lower = filePath.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    return 'image/jpeg';
+  }
+
+  Future<OcrResult> _recognizeImageWithCloudVision(
+    String imagePath,
+    OcrType type,
+  ) async {
+    final file = File(imagePath);
+    if (!await file.exists()) {
+      return OcrResult.failure(errorMessage: '图片文件不存在', type: type);
+    }
+
+    _startProgressAnimation(
+      OcrStage.imageRecognizing,
+      const Duration(milliseconds: _llmDurationMs),
+    );
+    final result = await (_service.llmService ?? LlmService())
+        .extractStructuredDataFromImage(
+          imageBytes: await file.readAsBytes(),
+          mimeType: _mimeTypeForPath(imagePath),
+          type: type,
+        );
+    _stopProgressAnimation();
+    return result;
+  }
+
   /// Start progress animation for a given stage
   void _startProgressAnimation(OcrStage stage, Duration totalDuration) {
     _progressTimer?.cancel();
 
     final startTime = DateTime.now();
-    final startProgress = stage == OcrStage.ocrRecognizing ? 0.0 : _ocrEndProgress;
-    final endProgress = stage == OcrStage.ocrRecognizing ? _ocrEndProgress : 1.0;
+    final startProgress = switch (stage) {
+      OcrStage.ocrRecognizing => 0.0,
+      OcrStage.imageRecognizing => 0.0,
+      OcrStage.llmParsing => _ocrEndProgress,
+      OcrStage.idle => 0.0,
+    };
+    final endProgress = switch (stage) {
+      OcrStage.ocrRecognizing => _ocrEndProgress,
+      OcrStage.imageRecognizing => 1.0,
+      OcrStage.llmParsing => 1.0,
+      OcrStage.idle => 0.0,
+    };
 
     _progressTimer = Timer.periodic(
       const Duration(milliseconds: _progressUpdateIntervalMs),
@@ -115,17 +166,12 @@ class OcrNotifier extends Notifier<OcrState> {
 
         if (progress >= 1.0) {
           // Cap at end progress but don't complete yet
-          state = state.copyWith(
-            stage: stage,
-            progress: endProgress,
-          );
+          state = state.copyWith(stage: stage, progress: endProgress);
           timer.cancel();
         } else {
-          final currentProgress = startProgress + (endProgress - startProgress) * progress;
-          state = state.copyWith(
-            stage: stage,
-            progress: currentProgress,
-          );
+          final currentProgress =
+              startProgress + (endProgress - startProgress) * progress;
+          state = state.copyWith(stage: stage, progress: currentProgress);
         }
       },
     );
@@ -143,6 +189,7 @@ class OcrNotifier extends Notifier<OcrState> {
     _stopProgressAnimation();
     state = state.copyWith(
       isLoading: false,
+      isModelLoading: false,
       stage: OcrStage.idle,
       progress: 0.0,
       clearResult: true,
@@ -168,22 +215,33 @@ class OcrNotifier extends Notifier<OcrState> {
 
         // 等待 OCR 服务初始化完成
         while (_service.isModelLoading && !_service.isModelAvailable) {
-          logService.d(LogConfig.moduleOcr, '等待中... isModelLoading=${_service.isModelLoading}, isModelAvailable=${_service.isModelAvailable}');
+          logService.d(
+            LogConfig.moduleOcr,
+            '等待中... isModelLoading=${_service.isModelLoading}, isModelAvailable=${_service.isModelAvailable}',
+          );
           await Future.delayed(const Duration(milliseconds: 200));
         }
 
-        logService.i(LogConfig.moduleOcr, 'OCR初始化完成，更新状态: isModelAvailable=${_service.isModelAvailable}, isModelLoading=${_service.isModelLoading}');
+        logService.i(
+          LogConfig.moduleOcr,
+          'OCR初始化完成，更新状态: isModelAvailable=${_service.isModelAvailable}, isModelLoading=${_service.isModelLoading}',
+        );
 
         // 更新状态
         state = state.copyWith(
           isInitialized: _service.isModelAvailable,
           isModelAvailable: _service.isModelAvailable,
-          isModelLoading: _service.isModelLoading || (_service.llmService?.isModelLoading ?? false),
+          isModelLoading:
+              _service.isModelLoading ||
+              (_service.llmService?.isModelLoading ?? false),
           archNotSupported: _service.archNotSupported,
           llmService: _service.llmService,
         );
 
-        logService.d(LogConfig.moduleOcr, '状态已更新: state.isModelLoading=${state.isModelLoading}, state.isModelAvailable=${state.isModelAvailable}');
+        logService.d(
+          LogConfig.moduleOcr,
+          '状态已更新: state.isModelLoading=${state.isModelLoading}, state.isModelAvailable=${state.isModelAvailable}',
+        );
 
         // 如果 LLM 还在加载，继续监听
         if (_service.llmService?.isModelLoading == true) {
@@ -219,20 +277,30 @@ class OcrNotifier extends Notifier<OcrState> {
         // 轮询检查模型加载状态，每200ms检查一次
         while (llmService.isModelLoading) {
           await Future.delayed(const Duration(milliseconds: 200));
-          logService.d(LogConfig.moduleOcr, 'LLM加载中... isModelLoading=${llmService.isModelLoading}, isInitialized=${llmService.isInitialized}');
+          logService.d(
+            LogConfig.moduleOcr,
+            'LLM加载中... isModelLoading=${llmService.isModelLoading}, isInitialized=${llmService.isInitialized}',
+          );
           if (!llmService.isModelLoading) break;
         }
 
-        logService.i(LogConfig.moduleOcr, 'LLM加载完成，更新状态: isInitialized=${llmService.isInitialized}');
+        logService.i(
+          LogConfig.moduleOcr,
+          'LLM加载完成，更新状态: isInitialized=${llmService.isInitialized}',
+        );
 
         // 更新状态
         state = state.copyWith(
           isModelLoading: false,
-          isModelAvailable: _service.isModelAvailable && llmService.isInitialized,
+          isModelAvailable:
+              _service.isModelAvailable && llmService.isInitialized,
           archNotSupported: llmService.archNotSupported,
         );
 
-        logService.d(LogConfig.moduleOcr, '最终状态: isModelLoading=${state.isModelLoading}, isModelAvailable=${state.isModelAvailable}');
+        logService.d(
+          LogConfig.moduleOcr,
+          '最终状态: isModelLoading=${state.isModelLoading}, isModelAvailable=${state.isModelAvailable}',
+        );
       } catch (e) {
         logService.e(LogConfig.moduleOcr, '监听LLM加载出错', e);
         state = state.copyWith(
@@ -264,13 +332,25 @@ class OcrNotifier extends Notifier<OcrState> {
       }
     }
 
+    state = state.copyWith(
+      isInitialized: _service.isModelAvailable,
+      isModelAvailable: _service.isModelAvailable,
+      isModelLoading: false,
+      archNotSupported:
+          _service.archNotSupported || (llmService?.archNotSupported ?? false),
+      llmService: llmService,
+    );
+
     return _service.isModelAvailable;
   }
 
   /// Recognize text from an order image path with progress
   Future<OcrResult?> recognizeOrderWithProgress(String imagePath) async {
     final totalStopwatch = Stopwatch()..start();
-    logService.i(LogConfig.moduleOcr, '========== OCR Pipeline 开始 (Order) ==========');
+    logService.i(
+      LogConfig.moduleOcr,
+      '========== OCR Pipeline 开始 (Order) ==========',
+    );
     logService.diag(LogConfig.moduleOcr, 'ImagePath', imagePath);
 
     state = state.copyWith(
@@ -282,6 +362,35 @@ class OcrNotifier extends Notifier<OcrState> {
     );
 
     try {
+      final backendConfig = await _loadBackendConfig();
+      if (backendConfig.backendType == LlmBackendType.unset) {
+        final failure = _backendUnsetFailure(OcrType.order);
+        state = state.copyWith(
+          isLoading: false,
+          isModelLoading: false,
+          stage: OcrStage.idle,
+          errorMessage: failure.errorMessage,
+        );
+        return failure;
+      }
+
+      if (backendConfig.backendType == LlmBackendType.openAiCompatible &&
+          backendConfig.cloud.isMultimodal) {
+        final result = await _recognizeImageWithCloudVision(
+          imagePath,
+          OcrType.order,
+        );
+        state = state.copyWith(
+          result: result,
+          isLoading: false,
+          isModelLoading: false,
+          stage: OcrStage.idle,
+          progress: result.success ? 1.0 : state.progress,
+          errorMessage: result.success ? null : result.errorMessage,
+        );
+        return result;
+      }
+
       // 确保OCR服务已初始化
       if (!_service.isModelAvailable) {
         logService.i(LogConfig.moduleOcr, 'OCR模型未初始化，开始初始化...');
@@ -302,9 +411,11 @@ class OcrNotifier extends Notifier<OcrState> {
       final llmService = _service.llmService;
 
       // Check architecture support
-      if (llmService?.archNotSupported == true) {
+      if (backendConfig.backendType == LlmBackendType.localMnn &&
+          llmService?.archNotSupported == true) {
         state = state.copyWith(
           isLoading: false,
+          isModelLoading: false,
           stage: OcrStage.idle,
           errorMessage: 'OCR功能仅支持 arm64-v8a 架构设备',
         );
@@ -317,13 +428,11 @@ class OcrNotifier extends Notifier<OcrState> {
       if (!_service.isModelAvailable) {
         state = state.copyWith(
           isLoading: false,
+          isModelLoading: false,
           stage: OcrStage.idle,
           errorMessage: 'OCR模型未加载',
         );
-        return OcrResult.failure(
-          errorMessage: 'OCR模型未加载',
-          type: OcrType.order,
-        );
+        return OcrResult.failure(errorMessage: 'OCR模型未加载', type: OcrType.order);
       }
 
       // Read image bytes
@@ -332,33 +441,50 @@ class OcrNotifier extends Notifier<OcrState> {
         logService.w(LogConfig.moduleOcr, '图片文件不存在: $imagePath');
         state = state.copyWith(
           isLoading: false,
+          isModelLoading: false,
           stage: OcrStage.idle,
           errorMessage: '图片文件不存在',
         );
-        return OcrResult.failure(
-          errorMessage: '图片文件不存在',
-          type: OcrType.order,
-        );
+        return OcrResult.failure(errorMessage: '图片文件不存在', type: OcrType.order);
       }
       final bytes = await file.readAsBytes();
-      logService.diag(LogConfig.moduleOcr, 'Image size', '${bytes.length} bytes');
+      logService.diag(
+        LogConfig.moduleOcr,
+        'Image size',
+        '${bytes.length} bytes',
+      );
 
       // Phase 1: OCR recognition
       logService.d(LogConfig.moduleOcr, 'Phase 1: OCR 识别...');
-      _startProgressAnimation(OcrStage.ocrRecognizing, const Duration(milliseconds: _ocrDurationMs));
+      _startProgressAnimation(
+        OcrStage.ocrRecognizing,
+        const Duration(milliseconds: _ocrDurationMs),
+      );
 
       final ocrStopwatch = Stopwatch()..start();
       final rawResult = await _service.recognizeRaw(bytes);
       ocrStopwatch.stop();
-      logService.diag(LogConfig.moduleOcr, 'OCR recognition time', '${ocrStopwatch.elapsedMilliseconds}ms');
-      logService.diag(LogConfig.moduleOcr, 'OCR text blocks', rawResult.textBlocks.length);
+      logService.diag(
+        LogConfig.moduleOcr,
+        'OCR recognition time',
+        '${ocrStopwatch.elapsedMilliseconds}ms',
+      );
+      logService.diag(
+        LogConfig.moduleOcr,
+        'OCR text blocks',
+        rawResult.textBlocks.length,
+      );
 
       _stopProgressAnimation();
 
       if (!rawResult.success) {
-        logService.w(LogConfig.moduleOcr, 'OCR 识别失败: ${rawResult.errorMessage}');
+        logService.w(
+          LogConfig.moduleOcr,
+          'OCR 识别失败: ${rawResult.errorMessage}',
+        );
         state = state.copyWith(
           isLoading: false,
+          isModelLoading: false,
           stage: OcrStage.idle,
           errorMessage: rawResult.errorMessage ?? 'OCR识别失败',
         );
@@ -369,24 +495,42 @@ class OcrNotifier extends Notifier<OcrState> {
       }
 
       // Phase 2: LLM parsing
-      if (llmService != null && llmService.isInitialized) {
+      if (llmService != null) {
         logService.d(LogConfig.moduleOcr, 'Phase 2: LLM 结构化提取...');
-        _startProgressAnimation(OcrStage.llmParsing, const Duration(milliseconds: _llmDurationMs));
+        _startProgressAnimation(
+          OcrStage.llmParsing,
+          const Duration(milliseconds: _llmDurationMs),
+        );
 
         final llmStopwatch = Stopwatch()..start();
-        final llmResult = await llmService.extractStructuredData(rawResult, OcrType.order);
+        final llmResult = await llmService.extractStructuredData(
+          rawResult,
+          OcrType.order,
+        );
         llmStopwatch.stop();
-        logService.diag(LogConfig.moduleOcr, 'LLM extraction time', '${llmStopwatch.elapsedMilliseconds}ms');
+        logService.diag(
+          LogConfig.moduleOcr,
+          'LLM extraction time',
+          '${llmStopwatch.elapsedMilliseconds}ms',
+        );
 
         _stopProgressAnimation();
 
         totalStopwatch.stop();
-        logService.diag(LogConfig.moduleOcr, 'Total pipeline time', '${totalStopwatch.elapsedMilliseconds}ms');
-        logService.i(LogConfig.moduleOcr, '========== OCR Pipeline 完成 (Order) ==========');
+        logService.diag(
+          LogConfig.moduleOcr,
+          'Total pipeline time',
+          '${totalStopwatch.elapsedMilliseconds}ms',
+        );
+        logService.i(
+          LogConfig.moduleOcr,
+          '========== OCR Pipeline 完成 (Order) ==========',
+        );
 
         state = state.copyWith(
           result: llmResult,
           isLoading: false,
+          isModelLoading: false,
           stage: OcrStage.idle,
           progress: 1.0,
         );
@@ -396,6 +540,7 @@ class OcrNotifier extends Notifier<OcrState> {
         logService.w(LogConfig.moduleOcr, 'LLM 未初始化');
         state = state.copyWith(
           isLoading: false,
+          isModelLoading: false,
           stage: OcrStage.idle,
           errorMessage: 'LLM未初始化，无法进行结构化提取',
         );
@@ -409,6 +554,7 @@ class OcrNotifier extends Notifier<OcrState> {
       logService.e(LogConfig.moduleOcr, 'OCR Pipeline 异常', e, stackTrace);
       state = state.copyWith(
         isLoading: false,
+        isModelLoading: false,
         stage: OcrStage.idle,
         errorMessage: 'OCR识别失败: ${e.toString()}',
       );
@@ -427,7 +573,10 @@ class OcrNotifier extends Notifier<OcrState> {
   /// Recognize text from an invoice image path with progress
   Future<OcrResult?> recognizeInvoiceWithProgress(String imagePath) async {
     final totalStopwatch = Stopwatch()..start();
-    logService.i(LogConfig.moduleOcr, '========== OCR Pipeline 开始 (Invoice) ==========');
+    logService.i(
+      LogConfig.moduleOcr,
+      '========== OCR Pipeline 开始 (Invoice) ==========',
+    );
     logService.diag(LogConfig.moduleOcr, 'ImagePath', imagePath);
 
     state = state.copyWith(
@@ -439,6 +588,35 @@ class OcrNotifier extends Notifier<OcrState> {
     );
 
     try {
+      final backendConfig = await _loadBackendConfig();
+      if (backendConfig.backendType == LlmBackendType.unset) {
+        final failure = _backendUnsetFailure(OcrType.invoice);
+        state = state.copyWith(
+          isLoading: false,
+          isModelLoading: false,
+          stage: OcrStage.idle,
+          errorMessage: failure.errorMessage,
+        );
+        return failure;
+      }
+
+      if (backendConfig.backendType == LlmBackendType.openAiCompatible &&
+          backendConfig.cloud.isMultimodal) {
+        final result = await _recognizeImageWithCloudVision(
+          imagePath,
+          OcrType.invoice,
+        );
+        state = state.copyWith(
+          result: result,
+          isLoading: false,
+          isModelLoading: false,
+          stage: OcrStage.idle,
+          progress: result.success ? 1.0 : state.progress,
+          errorMessage: result.success ? null : result.errorMessage,
+        );
+        return result;
+      }
+
       // 确保OCR服务已初始化
       if (!_service.isModelAvailable) {
         logService.i(LogConfig.moduleOcr, 'OCR模型未初始化，开始初始化...');
@@ -459,9 +637,11 @@ class OcrNotifier extends Notifier<OcrState> {
       final llmService = _service.llmService;
 
       // Check architecture support
-      if (llmService?.archNotSupported == true) {
+      if (backendConfig.backendType == LlmBackendType.localMnn &&
+          llmService?.archNotSupported == true) {
         state = state.copyWith(
           isLoading: false,
+          isModelLoading: false,
           stage: OcrStage.idle,
           errorMessage: 'OCR功能仅支持 arm64-v8a 架构设备',
         );
@@ -474,6 +654,7 @@ class OcrNotifier extends Notifier<OcrState> {
       if (!_service.isModelAvailable) {
         state = state.copyWith(
           isLoading: false,
+          isModelLoading: false,
           stage: OcrStage.idle,
           errorMessage: 'OCR模型未加载',
         );
@@ -489,6 +670,7 @@ class OcrNotifier extends Notifier<OcrState> {
         logService.w(LogConfig.moduleOcr, '图片文件不存在: $imagePath');
         state = state.copyWith(
           isLoading: false,
+          isModelLoading: false,
           stage: OcrStage.idle,
           errorMessage: '图片文件不存在',
         );
@@ -498,24 +680,43 @@ class OcrNotifier extends Notifier<OcrState> {
         );
       }
       final bytes = await file.readAsBytes();
-      logService.diag(LogConfig.moduleOcr, 'Image size', '${bytes.length} bytes');
+      logService.diag(
+        LogConfig.moduleOcr,
+        'Image size',
+        '${bytes.length} bytes',
+      );
 
       // Phase 1: OCR recognition
       logService.d(LogConfig.moduleOcr, 'Phase 1: OCR 识别...');
-      _startProgressAnimation(OcrStage.ocrRecognizing, const Duration(milliseconds: _ocrDurationMs));
+      _startProgressAnimation(
+        OcrStage.ocrRecognizing,
+        const Duration(milliseconds: _ocrDurationMs),
+      );
 
       final ocrStopwatch = Stopwatch()..start();
       final rawResult = await _service.recognizeRaw(bytes);
       ocrStopwatch.stop();
-      logService.diag(LogConfig.moduleOcr, 'OCR recognition time', '${ocrStopwatch.elapsedMilliseconds}ms');
-      logService.diag(LogConfig.moduleOcr, 'OCR text blocks', rawResult.textBlocks.length);
+      logService.diag(
+        LogConfig.moduleOcr,
+        'OCR recognition time',
+        '${ocrStopwatch.elapsedMilliseconds}ms',
+      );
+      logService.diag(
+        LogConfig.moduleOcr,
+        'OCR text blocks',
+        rawResult.textBlocks.length,
+      );
 
       _stopProgressAnimation();
 
       if (!rawResult.success) {
-        logService.w(LogConfig.moduleOcr, 'OCR 识别失败: ${rawResult.errorMessage}');
+        logService.w(
+          LogConfig.moduleOcr,
+          'OCR 识别失败: ${rawResult.errorMessage}',
+        );
         state = state.copyWith(
           isLoading: false,
+          isModelLoading: false,
           stage: OcrStage.idle,
           errorMessage: rawResult.errorMessage ?? 'OCR识别失败',
         );
@@ -526,24 +727,42 @@ class OcrNotifier extends Notifier<OcrState> {
       }
 
       // Phase 2: LLM parsing
-      if (llmService != null && llmService.isInitialized) {
+      if (llmService != null) {
         logService.d(LogConfig.moduleOcr, 'Phase 2: LLM 结构化提取...');
-        _startProgressAnimation(OcrStage.llmParsing, const Duration(milliseconds: _llmDurationMs));
+        _startProgressAnimation(
+          OcrStage.llmParsing,
+          const Duration(milliseconds: _llmDurationMs),
+        );
 
         final llmStopwatch = Stopwatch()..start();
-        final llmResult = await llmService.extractStructuredData(rawResult, OcrType.invoice);
+        final llmResult = await llmService.extractStructuredData(
+          rawResult,
+          OcrType.invoice,
+        );
         llmStopwatch.stop();
-        logService.diag(LogConfig.moduleOcr, 'LLM extraction time', '${llmStopwatch.elapsedMilliseconds}ms');
+        logService.diag(
+          LogConfig.moduleOcr,
+          'LLM extraction time',
+          '${llmStopwatch.elapsedMilliseconds}ms',
+        );
 
         _stopProgressAnimation();
 
         totalStopwatch.stop();
-        logService.diag(LogConfig.moduleOcr, 'Total pipeline time', '${totalStopwatch.elapsedMilliseconds}ms');
-        logService.i(LogConfig.moduleOcr, '========== OCR Pipeline 完成 (Invoice) ==========');
+        logService.diag(
+          LogConfig.moduleOcr,
+          'Total pipeline time',
+          '${totalStopwatch.elapsedMilliseconds}ms',
+        );
+        logService.i(
+          LogConfig.moduleOcr,
+          '========== OCR Pipeline 完成 (Invoice) ==========',
+        );
 
         state = state.copyWith(
           result: llmResult,
           isLoading: false,
+          isModelLoading: false,
           stage: OcrStage.idle,
           progress: 1.0,
         );
@@ -553,6 +772,7 @@ class OcrNotifier extends Notifier<OcrState> {
         logService.w(LogConfig.moduleOcr, 'LLM 未初始化');
         state = state.copyWith(
           isLoading: false,
+          isModelLoading: false,
           stage: OcrStage.idle,
           errorMessage: 'LLM未初始化，无法进行结构化提取',
         );
@@ -566,6 +786,7 @@ class OcrNotifier extends Notifier<OcrState> {
       logService.e(LogConfig.moduleOcr, 'OCR Pipeline 异常', e, stackTrace);
       state = state.copyWith(
         isLoading: false,
+        isModelLoading: false,
         stage: OcrStage.idle,
         errorMessage: 'OCR识别失败: ${e.toString()}',
       );
@@ -594,6 +815,18 @@ class OcrNotifier extends Notifier<OcrState> {
     );
 
     try {
+      final backendConfig = await _loadBackendConfig();
+      if (backendConfig.backendType == LlmBackendType.unset) {
+        final failure = _backendUnsetFailure(OcrType.invoice);
+        state = state.copyWith(
+          isLoading: false,
+          isModelLoading: false,
+          stage: OcrStage.idle,
+          errorMessage: failure.errorMessage,
+        );
+        return failure;
+      }
+
       // 确保OCR服务已初始化
       if (!_service.isModelAvailable) {
         logService.i(LogConfig.moduleOcr, 'OCR模型未初始化，开始初始化...');
@@ -614,9 +847,11 @@ class OcrNotifier extends Notifier<OcrState> {
       final llmService = _service.llmService;
 
       // Check architecture support
-      if (llmService?.archNotSupported == true) {
+      if (backendConfig.backendType == LlmBackendType.localMnn &&
+          llmService?.archNotSupported == true) {
         state = state.copyWith(
           isLoading: false,
+          isModelLoading: false,
           stage: OcrStage.idle,
           errorMessage: 'OCR功能仅支持 arm64-v8a 架构设备',
         );
@@ -626,9 +861,10 @@ class OcrNotifier extends Notifier<OcrState> {
         );
       }
 
-      if (llmService == null || !llmService.isInitialized) {
+      if (llmService == null) {
         state = state.copyWith(
           isLoading: false,
+          isModelLoading: false,
           stage: OcrStage.idle,
           errorMessage: 'LLM未初始化',
         );
@@ -643,6 +879,7 @@ class OcrNotifier extends Notifier<OcrState> {
       if (!await file.exists()) {
         state = state.copyWith(
           isLoading: false,
+          isModelLoading: false,
           stage: OcrStage.idle,
           errorMessage: 'PDF文件不存在',
         );
@@ -653,10 +890,16 @@ class OcrNotifier extends Notifier<OcrState> {
       }
 
       // Phase 1: Extract text from PDF (skip OCR for text-based PDF)
-      _startProgressAnimation(OcrStage.ocrRecognizing, const Duration(milliseconds: _ocrDurationMs));
+      _startProgressAnimation(
+        OcrStage.ocrRecognizing,
+        const Duration(milliseconds: _ocrDurationMs),
+      );
 
       final pdfService = PdfService();
-      final isTextBased = await pdfService.isTextBasedPdf(pdfPath, minTextLength: 20);
+      final isTextBased = await pdfService.isTextBasedPdf(
+        pdfPath,
+        minTextLength: 20,
+      );
 
       OcrRawResult rawResult;
 
@@ -686,6 +929,7 @@ class OcrNotifier extends Notifier<OcrState> {
         _stopProgressAnimation();
         state = state.copyWith(
           isLoading: false,
+          isModelLoading: false,
           stage: OcrStage.idle,
           errorMessage: '图片型PDF暂不支持OCR识别，请上传图片或文本型PDF',
         );
@@ -700,6 +944,7 @@ class OcrNotifier extends Notifier<OcrState> {
       if (!rawResult.success || rawResult.fullText.isEmpty) {
         state = state.copyWith(
           isLoading: false,
+          isModelLoading: false,
           stage: OcrStage.idle,
           errorMessage: 'PDF文本提取失败',
         );
@@ -709,18 +954,28 @@ class OcrNotifier extends Notifier<OcrState> {
         );
       }
 
-      logService.d(LogConfig.moduleOcr, 'PDF 提取文本: ${rawResult.fullText.substring(0, rawResult.fullText.length > 200 ? 200 : rawResult.fullText.length)}');
+      logService.d(
+        LogConfig.moduleOcr,
+        'PDF 提取文本: ${rawResult.fullText.substring(0, rawResult.fullText.length > 200 ? 200 : rawResult.fullText.length)}',
+      );
 
       // Phase 2: LLM parsing
-      _startProgressAnimation(OcrStage.llmParsing, const Duration(milliseconds: _llmDurationMs));
+      _startProgressAnimation(
+        OcrStage.llmParsing,
+        const Duration(milliseconds: _llmDurationMs),
+      );
 
-      final llmResult = await llmService.extractStructuredData(rawResult, OcrType.invoice);
+      final llmResult = await llmService.extractStructuredData(
+        rawResult,
+        OcrType.invoice,
+      );
 
       _stopProgressAnimation();
 
       state = state.copyWith(
         result: llmResult,
         isLoading: false,
+        isModelLoading: false,
         stage: OcrStage.idle,
         progress: 1.0,
       );
@@ -730,6 +985,7 @@ class OcrNotifier extends Notifier<OcrState> {
       logService.e(LogConfig.moduleOcr, 'PDF 识别错误', e);
       state = state.copyWith(
         isLoading: false,
+        isModelLoading: false,
         stage: OcrStage.idle,
         errorMessage: 'PDF识别失败: ${e.toString()}',
       );
@@ -749,10 +1005,12 @@ class OcrNotifier extends Notifier<OcrState> {
       state = state.copyWith(
         result: result,
         isLoading: false,
+        isModelLoading: false,
       );
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
+        isModelLoading: false,
         errorMessage: 'OCR 识别失败: ${e.toString()}',
       );
     }
@@ -763,6 +1021,7 @@ class OcrNotifier extends Notifier<OcrState> {
     if (!await imageFile.exists()) {
       state = state.copyWith(
         isLoading: false,
+        isModelLoading: false,
         errorMessage: '图片文件不存在',
       );
       return;
@@ -776,6 +1035,7 @@ class OcrNotifier extends Notifier<OcrState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
+        isModelLoading: false,
         errorMessage: '读取图片失败: ${e.toString()}',
       );
     }

@@ -204,6 +204,20 @@ class FileService {
     return await getApplicationDocumentsDirectory();
   }
 
+  /// Get Android filesDir path, falling back to app documents on non-Android
+  /// test environments.
+  Future<String> getFilesDirPath() async {
+    try {
+      final filesDirPath = await _channel.invokeMethod<String>('getFilesDirPath');
+      if (filesDirPath != null && filesDirPath.isNotEmpty) {
+        return filesDirPath;
+      }
+    } catch (_) {
+      // Tests and non-Android platforms do not expose this method channel.
+    }
+    return (await getAppDirectory()).path;
+  }
+
   /// Get or create the images directory
   Future<Directory> getImagesDirectory() async {
     final appDir = await getAppDirectory();
@@ -524,12 +538,7 @@ class FileService {
   /// Model is stored in Android's filesDir (not app_flutter)
   Future<int> _getModelSize(String flutterDocPath) async {
     try {
-      // Get filesDir path directly from Android via MethodChannel
-      final filesDirPath = await _channel.invokeMethod<String>('getFilesDirPath');
-      if (filesDirPath == null) {
-        logService.w(LogConfig.moduleFile, '从 Android 获取 filesDir 路径失败');
-        return 0;
-      }
+      final filesDirPath = await getFilesDirPath();
 
       final modelDirPath = path.join(filesDirPath, 'qwen3.5-0.8b');
       logService.d(LogConfig.moduleFile, '模型目录路径: $modelDirPath');

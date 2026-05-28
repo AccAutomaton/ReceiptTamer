@@ -304,11 +304,7 @@ public:
         // Reset LLM context to clear KV cache
         llm_->reset();
 
-        // Extract JSON from LLM response
-        std::string jsonResult = extractJsonFromResponse(rawResponse);
-        LOGI("[DIAG] 提取的 JSON 长度: %zu", jsonResult.length());
-
-        return jsonResult;
+        return rawResponse;
     }
 
     void dispose() {

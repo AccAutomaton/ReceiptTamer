@@ -10,9 +10,6 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import com.benjaminwan.ocrlibrary.OcrEngine
 import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
-import java.nio.file.Files
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.Executors
@@ -335,9 +332,30 @@ class MainActivity : FlutterActivity() {
                         result.error("INVALID_ARGUMENT", "ocrText is null", null)
                     }
                 }
+                "generate" -> {
+                    val prompt = call.argument<String>("prompt")
+                    val maxTokens = call.argument<Number>("maxTokens")?.toInt() ?: 256
+                    val temperature = call.argument<Number>("temperature")?.toFloat() ?: 0.0f
+                    val topP = call.argument<Number>("topP")?.toFloat() ?: 1.0f
+                    if (prompt != null) {
+                        generateCompletion(prompt, maxTokens, temperature, topP) { completion, error ->
+                            if (completion != null) {
+                                result.success(completion)
+                            } else {
+                                result.success(mapOf(
+                                    "success" to false,
+                                    "error" to (error ?: "LLM生成失败")
+                                ))
+                            }
+                        }
+                    } else {
+                        result.error("INVALID_ARGUMENT", "prompt is null", null)
+                    }
+                }
                 "disposeLlm" -> {
-                    disposeLlm()
-                    result.success(null)
+                    disposeLlm {
+                        result.success(null)
+                    }
                 }
                 "isInitialized" -> {
                     result.success(isLlmInitialized())
@@ -743,29 +761,16 @@ class MainActivity : FlutterActivity() {
                 }
 
                 // 构建目标路径（应用内部存储目录）
-                val destDir = filesDir.absolutePath
-                val modelDirName = modelPath.substringAfterLast("/").removeSuffix(".mnn")
-                val destModelDir = "$destDir/$modelDirName"
+                val destModelDir = File(filesDir, "qwen3.5-0.8b").absolutePath
                 val modelDir = File(destModelDir)
 
                 // 检查模型目录是否已存在且有效
-                if (isModelDirValid(modelDir)) {
-                    LogHelper.i("APP", "模型目录已存在且有效，跳过拷贝: $destModelDir")
-                } else {
-                    // 目录无效，删除旧文件后重新拷贝
-                    if (modelDir.exists()) {
-                        LogHelper.i("APP", "模型目录不完整，删除旧文件...")
-                        modelDir.deleteRecursively()
-                    }
-                    LogHelper.i("APP", "模型文件不存在或不完整，正在从assets复制...")
-                    val assetBasePath = "flutter_assets/$modelPath"
-                    LogHelper.d("APP", "Asset基础路径: $assetBasePath")
-                    if (!copyModelDirFromAssets(assetBasePath, destModelDir)) {
-                        llmLoadError = "模型复制失败"
-                        LogHelper.e("APP", llmLoadError!!)
-                        return@Thread
-                    }
+                if (!isModelDirValid(modelDir)) {
+                    llmLoadError = "本地模型未安装或文件不完整: $destModelDir"
+                    LogHelper.e("APP", llmLoadError!!)
+                    return@Thread
                 }
+                LogHelper.i("APP", "本地模型目录有效: $destModelDir")
 
                 // 加载模型
                 LogHelper.i("APP", "开始在后台线程加载MNN模型...")
@@ -822,12 +827,45 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private fun generateCompletion(
+        prompt: String,
+        maxTokens: Int,
+        temperature: Float,
+        topP: Float,
+        callback: (Map<String, Any?>?, String?) -> Unit
+    ) {
+        if (mnnEngine == null || !mnnEngine!!.isInitialized()) {
+            callback(null, "LLM引擎未初始化")
+            return
+        }
+
+        mnnEngine?.generateCompletion(prompt, maxTokens, temperature, topP) { result, error ->
+            callback(result, error)
+        }
+    }
+
     /**
      * 释放 LLM 资源
      */
-    private fun disposeLlm() {
-        mnnEngine?.disposeAsync {
-            LogHelper.i("APP", "LLM资源释放完成")
+    private fun disposeLlm(onComplete: () -> Unit) {
+        val engine = mnnEngine
+        if (engine == null) {
+            mainHandler.post { onComplete() }
+            return
+        }
+
+        try {
+            engine.disposeAsync {
+                mnnEngine = null
+                isLlmLoading = false
+                LogHelper.i("APP", "LLM资源释放完成")
+                mainHandler.post { onComplete() }
+            }
+        } catch (e: Exception) {
+            mnnEngine = null
+            isLlmLoading = false
+            LogHelper.e("APP", "LLM资源释放失败: ${e.message}", e)
+            mainHandler.post { onComplete() }
         }
     }
 
@@ -838,70 +876,4 @@ class MainActivity : FlutterActivity() {
         return mnnEngine?.isInitialized() ?: false
     }
 
-    /**
-     * 复制assets中的模型目录到内部存储
-     */
-    private fun copyModelDirFromAssets(assetPath: String, destPath: String): Boolean {
-        return try {
-            val destDir = File(destPath)
-            destDir.mkdirs()
-
-            // 获取目录下的所有文件
-            val assetFiles = assets.list(assetPath)
-            if (assetFiles.isNullOrEmpty()) {
-                LogHelper.e("APP", "Asset路径下未找到文件: $assetPath")
-                return false
-            }
-
-            for (fileName in assetFiles) {
-                val srcPath = "$assetPath/$fileName"
-                val destFile = File(destDir, fileName)
-
-                // 检查是否是目录
-                val subFiles = assets.list(srcPath)
-                if (!subFiles.isNullOrEmpty()) {
-                    // 递归复制子目录
-                    copyModelDirFromAssets(srcPath, destFile.absolutePath)
-                } else {
-                    // 复制文件
-                    copyFileFromAssets(srcPath, destFile.absolutePath)
-                }
-            }
-
-            LogHelper.i("APP", "模型目录复制成功: $destPath (${assetFiles.size} 个文件)")
-            true
-        } catch (e: IOException) {
-            LogHelper.e("APP", "模型目录复制失败: ${e.message}")
-            false
-        }
-    }
-
-    /**
-     * 复制单个文件从assets
-     */
-    private fun copyFileFromAssets(assetPath: String, destPath: String): Boolean {
-        return try {
-            val inputStream = assets.open(assetPath)
-            val outputFile = File(destPath)
-
-            // 确保父目录存在
-            outputFile.parentFile?.mkdirs()
-
-            val outputStream = java.io.FileOutputStream(outputFile)
-            val buffer = ByteArray(8192)
-            var bytesRead: Int
-
-            while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                outputStream.write(buffer, 0, bytesRead)
-            }
-
-            outputStream.close()
-            inputStream.close()
-
-            true
-        } catch (e: IOException) {
-            LogHelper.e("APP", "文件复制失败: ${e.message}")
-            false
-        }
-    }
 }

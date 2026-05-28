@@ -19,7 +19,7 @@ class OcrService {
   bool _isModelAvailable = false;
   bool _isLoading = false;
   Completer<bool>? _initCompleter;
-  LlmService? _llmService;
+  LlmService? _llmService = LlmService();
 
   /// 深度转换 Map 类型（递归处理嵌套结构）
   /// 用于解决 Platform Channel 返回的 `_Map<Object?, Object?>` 类型转换问题
@@ -64,11 +64,6 @@ class OcrService {
   void _initializeInBackground() {
     Future(() async {
       try {
-        // Initialize LLM service first (async, non-blocking)
-        _llmService = LlmService();
-        await _llmService!.initialize();
-        logService.i(LogConfig.moduleOcr, 'LLM初始化已启动 (后台加载中)');
-
         // Initialize native OCR engine
         final result = await _channel.invokeMethod<bool>('initialize');
 
@@ -119,7 +114,7 @@ class OcrService {
   bool get archNotSupported => _llmService?.archNotSupported ?? false;
 
   /// Get LLM service instance
-  LlmService? get llmService => _llmService;
+  LlmService? get llmService => _llmService ??= LlmService();
 
   /// Recognize text from an order image
   Future<OcrResult> recognizeOrder(String imagePath) async {
@@ -316,7 +311,7 @@ class OcrService {
       }
 
       // Step 2: Use LLM for structured extraction
-      if (_llmService != null && _llmService!.isInitialized) {
+      if (_llmService != null) {
         logService.d(LogConfig.moduleOcr, '步骤 2: 执行 LLM 提取...');
         final llmStopwatch = Stopwatch()..start();
         final llmResult = await _llmService!.extractStructuredData(rawResult, type);
@@ -337,9 +332,7 @@ class OcrService {
 
       // LLM未初始化或提取失败
       return OcrResult.failure(
-        errorMessage: _llmService?.isInitialized == true
-            ? 'LLM提取失败，请检查模型是否正确加载'
-            : 'LLM未初始化，无法进行结构化提取',
+        errorMessage: 'LLM提取失败，请检查 AI 分析设置或模型状态',
         type: type,
       );
 

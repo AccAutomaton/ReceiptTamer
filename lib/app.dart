@@ -7,7 +7,6 @@ import 'core/theme/app_theme.dart';
 import 'core/services/log_service.dart';
 import 'core/services/log_config.dart';
 import 'data/services/share_handler_service.dart';
-import 'presentation/providers/ocr_provider.dart';
 
 /// The root widget of the application.
 /// Wraps the app with ProviderScope for Riverpod state management.
@@ -49,25 +48,9 @@ class _AppState extends ConsumerState<App> {
     // 首帧已渲染完成，现在可以安全地进行后台初始化
     await Future.delayed(const Duration(milliseconds: 100));
 
-    // 开始后台初始化 OCR/LLM 模型（不阻塞UI）
-    _startOcrBackgroundInitialization();
-
     // 初始化分享处理器
     await Future.delayed(const Duration(milliseconds: 200));
     _initializeShareHandler();
-  }
-
-  /// 在后台初始化 OCR，不阻塞UI
-  void _startOcrBackgroundInitialization() {
-    Future.delayed(const Duration(milliseconds: 50), () async {
-      try {
-        logService.i(LogConfig.moduleApp, '开始 OCR 识别后台初始化...');
-        // 触发 OCR 初始化，但不等待完成
-        ref.read(ocrProvider.notifier).initialize();
-      } catch (e, stackTrace) {
-        logService.e(LogConfig.moduleApp, 'OCR 识别后台初始化错误', e, stackTrace);
-      }
-    });
   }
 
   Future<void> _initializeShareHandler() async {

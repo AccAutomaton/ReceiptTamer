@@ -130,6 +130,41 @@ class MnnEngine private constructor() {
         }
     }
 
+    fun generateCompletion(
+        prompt: String,
+        maxTokens: Int = DEFAULT_MAX_TOKENS,
+        temperature: Float = DEFAULT_TEMPERATURE,
+        topP: Float = DEFAULT_TOP_P,
+        callback: (Map<String, Any?>?, String?) -> Unit
+    ): Future<*> {
+        return executor.submit {
+            try {
+                if (!isInitialized()) {
+                    mainHandler.post { callback(null, "模型未初始化") }
+                    return@submit
+                }
+
+                val result = generate(prompt, maxTokens, temperature, topP)
+                mainHandler.post {
+                    if (result.isNotEmpty()) {
+                        callback(
+                            mapOf(
+                                "success" to true,
+                                "result" to result
+                            ),
+                            null
+                        )
+                    } else {
+                        callback(null, "生成失败")
+                    }
+                }
+            } catch (e: Exception) {
+                LogHelper.e("LLM", "MNN生成异常", e)
+                mainHandler.post { callback(null, e.message) }
+            }
+        }
+    }
+
     /**
      * 从OCR文本中提取订单信息
      */

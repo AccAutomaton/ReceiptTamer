@@ -19,6 +19,8 @@ import '../presentation/screens/export/meal_proof_order_select_screen.dart';
 import '../presentation/screens/export/invoice_quick_select_screen.dart';
 import '../presentation/screens/settings/settings_screen.dart';
 import '../presentation/screens/settings/data_cleanup_screen.dart';
+import '../presentation/screens/settings/model_management_screen.dart';
+import '../presentation/screens/settings/storage_management_screen.dart';
 import '../presentation/screens/cleanup/order_cleanup_screen.dart';
 import '../presentation/screens/cleanup/invoice_cleanup_screen.dart';
 import '../presentation/screens/share/share_target_screen.dart';
@@ -55,9 +57,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               final orderId = state.uri.queryParameters['orderId'] != null
                   ? int.tryParse(state.uri.queryParameters['orderId']!)
                   : null;
-              return InvoicesScreen(
-                filterOrderId: orderId,
-              );
+              return InvoicesScreen(filterOrderId: orderId);
             },
           ),
           GoRoute(
@@ -73,7 +73,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'order_new',
         builder: (context, state) {
           final sharedPath = state.uri.queryParameters['sharedPath'];
-          final remainingCount = state.uri.queryParameters['remainingCount'] != null
+          final remainingCount =
+              state.uri.queryParameters['remainingCount'] != null
               ? int.tryParse(state.uri.queryParameters['remainingCount']!)
               : null;
           // 安全解码路径
@@ -98,13 +99,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           // Parse selected order IDs from query parameters
           final selectedIdsStr = state.uri.queryParameters['selectedIds'];
-          final excludeInvoiceId = state.uri.queryParameters['excludeInvoiceId'] != null
+          final excludeInvoiceId =
+              state.uri.queryParameters['excludeInvoiceId'] != null
               ? int.tryParse(state.uri.queryParameters['excludeInvoiceId']!)
               : null;
 
           List<int> selectedIds = [];
           if (selectedIdsStr != null && selectedIdsStr.isNotEmpty) {
-            selectedIds = selectedIdsStr.split(',').map((id) => int.tryParse(id)).whereType<int>().toList();
+            selectedIds = selectedIdsStr
+                .split(',')
+                .map((id) => int.tryParse(id))
+                .whereType<int>()
+                .toList();
           }
 
           return OrderSelectorScreen(
@@ -157,7 +163,8 @@ final routerProvider = Provider<GoRouter>((ref) {
               ? int.tryParse(state.uri.queryParameters['orderId']!)
               : null;
           final sharedPath = state.uri.queryParameters['sharedPath'];
-          final remainingCount = state.uri.queryParameters['remainingCount'] != null
+          final remainingCount =
+              state.uri.queryParameters['remainingCount'] != null
               ? int.tryParse(state.uri.queryParameters['remainingCount']!)
               : null;
           // 安全解码路径
@@ -222,10 +229,18 @@ final routerProvider = Provider<GoRouter>((ref) {
 
           final invoiceIds = invoiceIdsStr.isEmpty
               ? <int>[]
-              : invoiceIdsStr.split(',').map((id) => int.tryParse(id)).whereType<int>().toList();
+              : invoiceIdsStr
+                    .split(',')
+                    .map((id) => int.tryParse(id))
+                    .whereType<int>()
+                    .toList();
           final orderIds = orderIdsStr.isEmpty
               ? <int>[]
-              : orderIdsStr.split(',').map((id) => int.tryParse(id)).whereType<int>().toList();
+              : orderIdsStr
+                    .split(',')
+                    .map((id) => int.tryParse(id))
+                    .whereType<int>()
+                    .toList();
 
           return ExportOptionsScreen(
             invoiceIds: invoiceIds,
@@ -246,6 +261,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const InvoiceQuickSelectScreen(),
       ),
       // Data cleanup routes
+      GoRoute(
+        path: '/settings/model-management',
+        name: 'model_management',
+        builder: (context, state) => const ModelManagementScreen(),
+      ),
+      GoRoute(
+        path: '/settings/storage',
+        name: 'storage_management',
+        builder: (context, state) => const StorageManagementScreen(),
+      ),
       GoRoute(
         path: '/settings/cleanup',
         name: 'data_cleanup',
@@ -273,10 +298,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
     errorBuilder: (context, state) {
-      logService.e(LogConfig.moduleApp, '路由错误: ${state.error?.toString() ?? "Page not found"}');
-      return _ErrorScreen(
-        message: state.error?.toString() ?? 'Page not found',
+      logService.e(
+        LogConfig.moduleApp,
+        '路由错误: ${state.error?.toString() ?? "Page not found"}',
       );
+      return _ErrorScreen(message: state.error?.toString() ?? 'Page not found');
     },
   );
 });
@@ -290,20 +316,14 @@ class _ErrorScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Error'),
-      ),
+      appBar: AppBar(title: const Text('Error')),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.error_outline,
-                size: 64,
-                color: Colors.red,
-              ),
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
               const SizedBox(height: 16),
               Text(
                 message,

@@ -1,17 +1,12 @@
 import 'package:receipt_tamer/core/constants/app_constants.dart';
 import 'package:receipt_tamer/core/services/log_service.dart';
 import 'package:receipt_tamer/core/services/log_config.dart';
-import 'package:receipt_tamer/data/services/file_service.dart';
-import 'package:receipt_tamer/data/services/llm_service.dart';
 import 'package:receipt_tamer/data/services/update_preferences.dart';
 import 'package:receipt_tamer/data/services/update_service.dart';
-import 'package:receipt_tamer/presentation/providers/ocr_provider.dart';
 import 'package:receipt_tamer/presentation/screens/export/saved_files_screen.dart';
 import 'package:receipt_tamer/presentation/screens/settings/info_screen.dart';
 import 'package:receipt_tamer/presentation/screens/settings/release_history_screen.dart';
-import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/receipt_icon.dart';
-import 'package:receipt_tamer/presentation/widgets/common/storage_ring_chart.dart';
 import 'package:receipt_tamer/presentation/widgets/common/update_dialog.dart';
 import 'package:receipt_tamer/presentation/widgets/settings/backup_dialog.dart';
 import 'package:flutter/material.dart';
@@ -31,12 +26,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen>
     with WidgetsBindingObserver {
-  final FileService _fileService = FileService();
   final UpdateService _updateService = UpdateService();
-  Map<String, int> _storageUsage = {};
-  bool _isLoading = true;
   bool _isCheckingUpdate = false;
-  LlmService? _llmService;
   String _currentVersion = '';
 
   /// Path of the downloaded APK file (for cleanup after install)
@@ -51,8 +42,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _loadStorageUsage();
-    _initLlmService();
     _loadCurrentVersion();
   }
 
@@ -74,7 +63,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   /// Clean up downloaded APK file after installation
   Future<void> _cleanupApkAfterInstall() async {
     final apkPath = _downloadedApkPath;
-    _downloadedApkPath = null;  // 先清空避免重复清理
+    _downloadedApkPath = null; // 先清空避免重复清理
     if (apkPath != null) {
       await _updateService.deleteApk(apkPath);
     }
@@ -86,7 +75,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
 
     // Reset if too long since last tap
     if (_lastLogoTapTime != null &&
-        now.difference(_lastLogoTapTime!).inMilliseconds > LogConfig.tapTimeoutMs) {
+        now.difference(_lastLogoTapTime!).inMilliseconds >
+            LogConfig.tapTimeoutMs) {
       _logoTapCount = 0;
     }
 
@@ -120,15 +110,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
               label: '查看',
               onPressed: () {
                 // Open saved files screen in logs directory
-                showSavedFilesScreen(context, initialSubDir: LogConfig.logDirName);
+                showSavedFilesScreen(
+                  context,
+                  initialSubDir: LogConfig.logDirName,
+                );
               },
             ),
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('日志导出失败')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('日志导出失败')));
       }
     } finally {
       if (mounted) {
@@ -143,57 +136,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
       setState(() {
         _currentVersion = packageInfo.version;
       });
-    }
-  }
-
-  Future<void> _initLlmService() async {
-    // Get LLM service from OCR provider
-    final ocrState = ref.read(ocrProvider);
-    _llmService = ocrState.llmService;
-    setState(() {});
-  }
-
-  Future<void> _loadStorageUsage() async {
-    setState(() => _isLoading = true);
-
-    try {
-      final usage = await _fileService.getStorageUsage();
-      setState(() {
-        _storageUsage = usage;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _clearCache() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('确认清理'),
-        content: const Text('确定要清理缓存文件吗？这不会删除您的订单和发票数据。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('确认'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      final deletedCount = await _fileService.cleanTempFiles();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('已清理 $deletedCount 个临时文件')),
-        );
-        _loadStorageUsage();
-      }
     }
   }
 
@@ -224,9 +166,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
           },
         );
       } else if (response.result == UpdateCheckResult.notAvailable) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('当前已是最新版本')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('当前已是最新版本')));
       } else {
         // Handle rate limit error specifically
         String errorMessage;
@@ -235,9 +177,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
         } else {
           errorMessage = '检查更新失败: ${response.errorMessage ?? "未知错误"}';
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(errorMessage)));
       }
     } finally {
       if (mounted) {
@@ -276,7 +218,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     try {
       // 先尝试用外部应用（如 GitHub App）打开
       if (await canLaunchUrl(uri)) {
-        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        final launched = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
         // 如果外部应用打开失败，回退到浏览器
         if (!launched) {
           await launchUrl(uri, mode: LaunchMode.platformDefault);
@@ -287,9 +232,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('打开链接失败: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('打开链接失败: $e')));
       }
     }
   }
@@ -303,7 +248,7 @@ ReceiptTamer 隐私政策
 
 一、信息收集
 
-本应用是一款本地化应用，所有数据均存储在您的设备本地，不会上传至任何服务器。我们收集的信息包括：
+本应用默认将数据存储在您的设备本地。若您在设置中选择云端 AI 模型，识别所需的文本或图片会发送到您配置的模型服务商。我们收集的信息包括：
 
 1. 订单信息：店铺名称、实付款、下单时间、订单号
 2. 发票信息：发票号码、开票日期、价税合计金额
@@ -316,21 +261,22 @@ ReceiptTamer 隐私政策
 您的信息仅用于：
 1. 记录和管理您的餐饮发票报销单据
 2. 导出订单和发票数据为Excel文件
-3. 通过本地OCR识别提取订单和发票信息
+3. 通过本地 OCR 或您配置的云端 AI 模型提取订单和发票信息
 
 三、信息存储与安全
 
 1. 所有数据存储在您的设备本地数据库中
-2. 我们不会将您的任何数据上传至云端服务器
+2. 未启用云端 AI 模型时，我们不会将您的订单、发票、图片或 PDF 上传至云端服务器
 3. 您可以随时删除本应用，所有数据将随之删除
 
 四、OCR与AI功能
 
-本应用的OCR识别和AI推理功能完全在您的设备本地运行：
-1. OCR引擎：RapidOcrAndroidOnnx，基于ONNX Runtime
-2. AI推理：MNN框架，运行Qwen3.5-0.8B模型
+OCR 与 AI 功能可由您自行选择：
+1. 本地 OCR 引擎：RapidOcrAndroidOnnx，基于 ONNX Runtime
+2. 本地 AI 推理：MNN 框架，运行用户下载或导入的 Qwen3.5-0.8B 模型
+3. 云端 AI 推理：调用您配置的 OpenAI-compatible 服务端点和模型
 
-所有识别过程均在本地完成，不会将您的图片或数据发送到任何服务器。
+云端模型的 API key 仅保存在本机设置中，不写入日志、不进入备份文件。多模态云端模型会直接接收图片；文本模型会先本地 OCR 后发送文本。
 
 五、第三方服务
 
@@ -521,124 +467,65 @@ Licensed under the Apache License 2.0
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final ocrState = ref.watch(ocrProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('关于'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('关于'), elevation: 0),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           // 应用信息头部
           _buildAppHeader(context, theme, colorScheme),
 
-          // AI引擎状态
-          _buildAiEngineSection(context, theme, colorScheme, ocrState),
-
-          const SizedBox(height: 16),
-
-          // 存储信息
-          _buildSection(
-            context,
-            '存储管理',
-            [
-              if (_isLoading)
-                const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Center(child: CircularProgressIndicator()),
-                )
-              else ...[
-                // Ring chart with legend on the right
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      StorageRingChart(
-                        storageData: _storageUsage,
-                        size: 160,
-                        strokeWidth: 16,
-                      ),
-                      const SizedBox(width: 24),
-                      StorageLegend(storageData: _storageUsage),
-                    ],
-                  ),
-                ),
-              ],
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: AppButton(
-                        text: '清理数据',
-                        onPressed: () => context.push('/settings/cleanup'),
-                        type: AppButtonType.outlined,
-                        foregroundColor: Theme.of(context).colorScheme.error,
-                        borderSide: BorderSide(
-                          color: Theme.of(context).colorScheme.error.withValues(alpha: 0.5),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: AppButton(
-                        text: '清理缓存',
-                        onPressed: _clearCache,
-                        type: AppButtonType.outlined,
-                      ),
-                    ),
-                  ],
+          // 管理入口与应用信息
+          _buildSection(context, '', [
+            _buildListTile(
+              context,
+              icon: Icons.tune_outlined,
+              title: '模型管理',
+              subtitle: '选择本地模型或外部模型',
+              onTap: () => context.push('/settings/model-management'),
+            ),
+            _buildListTile(
+              context,
+              icon: Icons.storage_outlined,
+              title: '存储管理',
+              subtitle: '查看占用、清理缓存和数据',
+              onTap: () => context.push('/settings/storage'),
+            ),
+            _buildListTile(
+              context,
+              icon: Icons.privacy_tip_outlined,
+              title: '隐私政策',
+              subtitle: '本地存储，可选云端 AI 分析',
+              onTap: () => _navigateToInfo(context, 'privacy'),
+            ),
+            _buildListTile(
+              context,
+              icon: Icons.code_outlined,
+              title: '开源信息',
+              subtitle: '查看开源许可证',
+              onTap: () => _navigateToInfo(context, 'opensource'),
+            ),
+            _buildListTile(
+              context,
+              icon: Icons.history_outlined,
+              title: '更新历史',
+              subtitle: '查看版本发布记录',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ReleaseHistoryScreen(),
                 ),
               ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // 隐私政策与开源信息
-          _buildSection(
-            context,
-            '',
-            [
-              _buildListTile(
-                context,
-                icon: Icons.privacy_tip_outlined,
-                title: '隐私政策',
-                subtitle: '数据仅存储在本地设备',
-                onTap: () => _navigateToInfo(context, 'privacy'),
-              ),
-              _buildListTile(
-                context,
-                icon: Icons.code_outlined,
-                title: '开源信息',
-                subtitle: '查看开源许可证',
-                onTap: () => _navigateToInfo(context, 'opensource'),
-              ),
-              _buildListTile(
-                context,
-                icon: Icons.history_outlined,
-                title: '更新历史',
-                subtitle: '查看版本发布记录',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ReleaseHistoryScreen(),
-                  ),
-                ),
-              ),
-              _buildListTile(
-                context,
-                icon: Icons.backup_outlined,
-                title: '备份与还原',
-                subtitle: '导出或恢复应用数据',
-                onTap: () => showBackupDialog(context),
-              ),
-            ],
-          ),
+            ),
+            _buildListTile(
+              context,
+              icon: Icons.backup_outlined,
+              title: '备份与还原',
+              subtitle: '导出或恢复应用数据',
+              onTap: () => showBackupDialog(context),
+            ),
+          ]),
 
           const SizedBox(height: 32),
 
@@ -706,10 +593,7 @@ Licensed under the Apache License 2.0
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // 应用图标（连点10次导出日志）
-          GestureDetector(
-            onTap: _handleLogoTap,
-            child: ReceiptIcon(size: 96),
-          ),
+          GestureDetector(onTap: _handleLogoTap, child: ReceiptIcon(size: 96)),
           // 应用名称
           Text(
             AppConstants.appName,
@@ -742,145 +626,6 @@ Licensed under the Apache License 2.0
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildAiEngineSection(
-    BuildContext context,
-    ThemeData theme,
-    ColorScheme colorScheme,
-    dynamic ocrState,
-  ) {
-    final isOcrAvailable = ocrState.isModelAvailable;
-    final isLlmAvailable = _llmService?.isInitialized == true;
-    final isLlmLoading = _llmService?.isLoading == true;
-    final isArchNotSupported = _llmService?.archNotSupported == true;
-
-    return Card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  ' AI 引擎',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  '均在您的设备上运行',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Paddle OCR
-          ListTile(
-            leading: Icon(Icons.document_scanner, color: colorScheme.primary),
-            title: const Text('Paddle OCR'),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (!isOcrAvailable) ...[
-                  GestureDetector(
-                    onTap: () => _showUnavailableInfo(context, 'ocr', false),
-                    child: Icon(
-                      Icons.help_outline,
-                      size: 20,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                _buildStatusBadge(
-                  isOcrAvailable ? '可用' : '不可用',
-                  isOcrAvailable ? Colors.green : Colors.orange,
-                ),
-              ],
-            ),
-          ),
-          // Qwen 3.5
-          ListTile(
-            leading: Icon(Icons.psychology, color: colorScheme.primary),
-            title: const Text('Qwen 3.5'),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (!isLlmAvailable && !isLlmLoading) ...[
-                  GestureDetector(
-                    onTap: () => _showUnavailableInfo(context, 'llm', isArchNotSupported),
-                    child: Icon(
-                      Icons.help_outline,
-                      size: 20,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                _buildStatusBadge(
-                  isLlmAvailable ? '可用' : '不可用',
-                  isLlmAvailable ? Colors.green : Colors.orange,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showUnavailableInfo(BuildContext context, String type, bool isArchNotSupported) {
-    String title;
-    String message;
-
-    if (type == 'ocr') {
-      title = 'Paddle OCR 不可用';
-      message = 'Paddle OCR 模型加载失败，请尝试重启 APP。';
-    } else {
-      title = 'Qwen 3.5 不可用';
-      if (isArchNotSupported) {
-        message = 'Qwen 3.5 仅支持 arm64-v8a 架构设备。';
-      } else {
-        message = 'Qwen 3.5 模型加载失败，请尝试重启 APP。';
-      }
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('知道了'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusBadge(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-        ),
       ),
     );
   }
@@ -932,7 +677,8 @@ Licensed under the Apache License 2.0
           color: colorScheme.onSurfaceVariant,
         ),
       ),
-      trailing: trailing ?? (onTap != null ? const Icon(Icons.chevron_right) : null),
+      trailing:
+          trailing ?? (onTap != null ? const Icon(Icons.chevron_right) : null),
       onTap: onTap,
     );
   }
