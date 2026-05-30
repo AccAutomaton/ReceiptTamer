@@ -75,7 +75,7 @@ class MainActivity : FlutterActivity() {
                 mnnLoadLatch.countDown()
                 true
             } catch (e: UnsatisfiedLinkError) {
-                LogHelper.e("LLM", "MNN 库加载失败: ${e.message}")
+                LogHelper.e("LLM", "MNN 库加载失败", e)
                 mnnLoadLatch.countDown()
                 false
             }
@@ -461,7 +461,7 @@ class MainActivity : FlutterActivity() {
                 LogHelper.d("APP", "OCR引擎初始化成功 (RapidOcrAndroidOnnx)")
                 mainHandler.post { callback(true) }
             } catch (e: Exception) {
-                LogHelper.e("APP", "OCR初始化失败: ${e.message}")
+                LogHelper.e("OCR", "OCR初始化失败", e)
                 mainHandler.post { callback(false) }
             }
         }
@@ -490,7 +490,7 @@ class MainActivity : FlutterActivity() {
             LogHelper.d("APP", "OCR引擎初始化成功 (RapidOcrAndroidOnnx)")
             true
         } catch (e: Exception) {
-            LogHelper.e("APP", "OCR初始化失败: ${e.message}")
+            LogHelper.e("OCR", "OCR初始化失败", e)
             false
         }
     }
@@ -517,7 +517,7 @@ class MainActivity : FlutterActivity() {
                 if (ocrResult != null) {
                     mainHandler.post { callback(ocrResult.strRes, null) }
                 } else {
-                    LogHelper.e("OCR", "OCR引擎未初始化")
+                    LogHelper.w("OCR", "OCR引擎未初始化")
                     mainHandler.post { callback(null, "OCR引擎未初始化") }
                 }
 
@@ -576,7 +576,7 @@ class MainActivity : FlutterActivity() {
                     LogHelper.d("APP", "OCR 识别完成，耗时: ${System.currentTimeMillis() - startTime}ms，识别到 ${textBlocks.size} 个文本块")
                     mainHandler.post { callback(textBlocks, null) }
                 } else {
-                    LogHelper.e("OCR", "OCR引擎未初始化")
+                    LogHelper.w("OCR", "OCR引擎未初始化")
                     mainHandler.post { callback(null, "OCR引擎未初始化") }
                 }
 
@@ -693,7 +693,7 @@ class MainActivity : FlutterActivity() {
             llmLoadLatch.await(timeoutMs, TimeUnit.MILLISECONDS)
             mnnEngine?.isInitialized() ?: false
         } catch (e: InterruptedException) {
-            LogHelper.e("APP", "等待LLM加载被中断: ${e.message}")
+            LogHelper.e("LLM", "等待LLM加载被中断", e)
             false
         }
     }
@@ -751,7 +751,7 @@ class MainActivity : FlutterActivity() {
                 // 等待 MNN 库加载完成（在后台线程等待，不阻塞主线程）
                 if (!waitForMnnLibLoaded()) {
                     llmLoadError = "MNN库加载超时"
-                    LogHelper.e("APP", llmLoadError!!)
+                    LogHelper.w("LLM", llmLoadError!!)
                     return@Thread
                 }
 
@@ -767,24 +767,24 @@ class MainActivity : FlutterActivity() {
                 // 检查模型目录是否已存在且有效
                 if (!isModelDirValid(modelDir)) {
                     llmLoadError = "本地模型未安装或文件不完整: $destModelDir"
-                    LogHelper.e("APP", llmLoadError!!)
+                    LogHelper.w("LLM", llmLoadError!!)
                     return@Thread
                 }
-                LogHelper.i("APP", "本地模型目录有效: $destModelDir")
+                LogHelper.i("LLM", "本地模型目录有效: $destModelDir")
 
                 // 加载模型
-                LogHelper.i("APP", "开始在后台线程加载MNN模型...")
+                LogHelper.i("LLM", "开始在后台线程加载MNN模型...")
                 val loadSuccess = mnnEngine?.loadModel(destModelDir, 4) ?: false
 
                 if (loadSuccess) {
-                    LogHelper.i("APP", "LLM引擎初始化成功 (MNN)")
+                    LogHelper.i("LLM", "LLM引擎初始化成功 (MNN)")
                 } else {
                     llmLoadError = "MNN模型加载失败"
-                    LogHelper.e("APP", llmLoadError!!)
+                    LogHelper.w("LLM", llmLoadError!!)
                 }
             } catch (e: Exception) {
                 llmLoadError = "LLM初始化异常: ${e.message}"
-                LogHelper.e("APP", llmLoadError!!)
+                LogHelper.e("LLM", "LLM初始化异常", e)
             } finally {
                 isLlmLoading = false
                 llmLoadLatch.countDown()

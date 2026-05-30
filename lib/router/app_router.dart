@@ -298,11 +298,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
     errorBuilder: (context, state) {
+      final error = state.error ?? StateError('页面未找到');
       logService.e(
         LogConfig.moduleApp,
-        '路由错误: ${state.error?.toString() ?? "Page not found"}',
+        '路由错误: $error',
+        error,
+        StackTrace.current,
       );
-      return _ErrorScreen(message: state.error?.toString() ?? 'Page not found');
+      return _ErrorScreen(message: state.error?.toString() ?? '页面未找到');
     },
   );
 });

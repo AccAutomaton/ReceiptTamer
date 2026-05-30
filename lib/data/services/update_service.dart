@@ -15,11 +15,7 @@ import '../../core/services/log_config.dart';
 import '../models/app_version.dart';
 
 /// Update check result
-enum UpdateCheckResult {
-  available,
-  notAvailable,
-  error,
-}
+enum UpdateCheckResult { available, notAvailable, error }
 
 /// Result of checking for updates
 class UpdateCheckResponse {
@@ -120,8 +116,8 @@ class UpdateService {
 
   /// Constructor
   UpdateService({http.Client? httpClient, Connectivity? connectivity})
-      : _httpClient = httpClient ?? http.Client(),
-        _connectivity = connectivity ?? Connectivity();
+    : _httpClient = httpClient ?? http.Client(),
+      _connectivity = connectivity ?? Connectivity();
 
   /// Check if connected to WiFi
   Future<bool> isWifiConnection() async {
@@ -148,7 +144,11 @@ class UpdateService {
       logService.i(LogConfig.moduleUpdate, '========== 开始检查更新 ==========');
       // Get current version
       final currentVersion = await getCurrentVersion();
-      logService.diag(LogConfig.moduleUpdate, 'Current version', currentVersion);
+      logService.diag(
+        LogConfig.moduleUpdate,
+        'Current version',
+        currentVersion,
+      );
 
       // Fetch latest release from GitHub
       logService.i(LogConfig.moduleUpdate, '请求 $_latestReleaseUrl');
@@ -173,12 +173,21 @@ class UpdateService {
         }
 
         final latestVersion = AppVersion.fromGitHubRelease(json);
-        logService.i(LogConfig.moduleUpdate, '最新版本: ${latestVersion.version}，当前版本: $currentVersion');
+        logService.i(
+          LogConfig.moduleUpdate,
+          '最新版本: ${latestVersion.version}，当前版本: $currentVersion',
+        );
 
         // Check if update is available
         if (latestVersion.isNewerThan(currentVersion)) {
-          logService.i(LogConfig.moduleUpdate, '发现新版本: ${latestVersion.version}');
-          logService.i(LogConfig.moduleUpdate, '========== 检查更新完成 (有更新) ==========');
+          logService.i(
+            LogConfig.moduleUpdate,
+            '发现新版本: ${latestVersion.version}',
+          );
+          logService.i(
+            LogConfig.moduleUpdate,
+            '========== 检查更新完成 (有更新) ==========',
+          );
           return UpdateCheckResponse(
             result: UpdateCheckResult.available,
             latestVersion: latestVersion,
@@ -186,7 +195,10 @@ class UpdateService {
           );
         } else {
           logService.i(LogConfig.moduleUpdate, '已是最新版本');
-          logService.i(LogConfig.moduleUpdate, '========== 检查更新完成 (无更新) ==========');
+          logService.i(
+            LogConfig.moduleUpdate,
+            '========== 检查更新完成 (无更新) ==========',
+          );
           return UpdateCheckResponse(
             result: UpdateCheckResult.notAvailable,
             latestVersion: latestVersion,
@@ -298,10 +310,13 @@ class UpdateService {
       // Check response status
       // 200 = full download, 206 = partial download (resume)
       if (response.statusCode != 200 && response.statusCode != 206) {
-        logService.e(LogConfig.moduleUpdate, '下载失败: ${response.statusCode}');
+        logService.w(
+          LogConfig.moduleUpdate,
+          '下载失败: HTTP ${response.statusCode}',
+        );
         return DownloadResult(
           success: false,
-          errorMessage: 'Server returned ${response.statusCode}',
+          errorMessage: '服务器返回 HTTP ${response.statusCode}',
         );
       }
 
@@ -315,7 +330,9 @@ class UpdateService {
       final speedStopwatch = Stopwatch()..start();
 
       // Write to file (append mode if resuming)
-      final sink = file.openWrite(mode: existingSize > 0 ? FileMode.append : FileMode.write);
+      final sink = file.openWrite(
+        mode: existingSize > 0 ? FileMode.append : FileMode.write,
+      );
       try {
         await for (final chunk in response.stream) {
           sink.add(chunk);
@@ -330,19 +347,25 @@ class UpdateService {
           }
 
           if (totalBytes > 0) {
-            onProgress?.call(DownloadProgress(
-              downloadedBytes: downloadedBytes,
-              totalBytes: totalBytes,
-              progress: downloadedBytes / totalBytes,
-              speed: speed,
-            ));
+            onProgress?.call(
+              DownloadProgress(
+                downloadedBytes: downloadedBytes,
+                totalBytes: totalBytes,
+                progress: downloadedBytes / totalBytes,
+                speed: speed,
+              ),
+            );
           }
         }
 
         await sink.flush();
         await sink.close();
 
-        logService.diag(LogConfig.moduleUpdate, 'Total size', '$downloadedBytes bytes');
+        logService.diag(
+          LogConfig.moduleUpdate,
+          'Total size',
+          '$downloadedBytes bytes',
+        );
         logService.i(LogConfig.moduleUpdate, '========== 下载完成 ==========');
         logService.i(LogConfig.moduleUpdate, '下载完成: $filePath');
         return DownloadResult(
@@ -354,17 +377,11 @@ class UpdateService {
         await sink.close();
         logService.e(LogConfig.moduleUpdate, '下载错误', e, stackTrace);
         // Keep partial file for resume
-        return DownloadResult(
-          success: false,
-          errorMessage: e.toString(),
-        );
+        return DownloadResult(success: false, errorMessage: e.toString());
       }
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleUpdate, '下载错误', e, stackTrace);
-      return DownloadResult(
-        success: false,
-        errorMessage: e.toString(),
-      );
+      return DownloadResult(success: false, errorMessage: e.toString());
     }
   }
 
@@ -397,7 +414,10 @@ class UpdateService {
       }
 
       final result = await OpenFile.open(filePath);
-      logService.i(LogConfig.moduleUpdate, 'OpenFile 结果: ${result.type} - ${result.message}');
+      logService.i(
+        LogConfig.moduleUpdate,
+        'OpenFile 结果: ${result.type} - ${result.message}',
+      );
 
       logService.i(LogConfig.moduleUpdate, '========== 安装请求已发送 ==========');
       return result.type == ResultType.done;
@@ -514,10 +534,7 @@ class UpdateService {
       }
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleUpdate, '获取更新历史失败', e, stackTrace);
-      return FetchReleasesResult(
-        success: false,
-        errorMessage: e.toString(),
-      );
+      return FetchReleasesResult(success: false, errorMessage: e.toString());
     }
   }
 

@@ -10,15 +10,58 @@ import 'package:intl/intl.dart';
 import 'log_config.dart';
 import 'package:receipt_tamer/data/services/file_service.dart';
 
+typedef ServiceLogSink =
+    void Function(
+      String level,
+      String module,
+      String message, [
+      Object? error,
+      StackTrace? stackTrace,
+    ]);
+
+void defaultServiceLogSink(
+  String level,
+  String module,
+  String message, [
+  Object? error,
+  StackTrace? stackTrace,
+]) {
+  switch (level.toUpperCase()) {
+    case 'D':
+      logService.d(module, message);
+      break;
+    case 'W':
+      logService.w(module, message);
+      break;
+    case 'E':
+      logService.e(module, message, error, stackTrace);
+      break;
+    case 'I':
+    default:
+      logService.i(module, message);
+  }
+}
+
 /// 自定义日志打印器 - 统一格式
 class AppLogPrinter extends LogPrinter {
   final DateFormat _dateFormat = DateFormat('yyyy-MM-dd HH:mm:ss');
+  static final RegExp _diagMessagePattern = RegExp(
+    r'^\[([A-Z]+)\]\s+\[DIAG\]\s*(.*)$',
+  );
 
   @override
   List<String> log(LogEvent event) {
     final timestamp = _dateFormat.format(event.time);
-    final level = _levelToString(event.level);
-    final message = event.message;
+    var level = _levelToString(event.level);
+    var message = event.message.toString();
+
+    final diagMatch = _diagMessagePattern.firstMatch(message);
+    if (diagMatch != null) {
+      final module = diagMatch.group(1)!;
+      final diagMessage = diagMatch.group(2) ?? '';
+      level = 'DIAG';
+      message = '[$module] $diagMessage';
+    }
 
     // 格式: [时间] [级别] [模块] 消息
     final formattedMessage = '[$timestamp] [$level] $message';
@@ -57,6 +100,10 @@ class AppLogPrinter extends LogPrinter {
 
 /// 文件输出器 - 支持按日期轮转和大小限制
 class FileLogOutput extends LogOutput {
+  static const MethodChannel _storageChannel = MethodChannel(
+    'com.acautomaton.receipt.tamer/storage',
+  );
+
   final String? basePath;
   final int maxFileSize;
   final int maxFiles;
@@ -66,6 +113,7 @@ class FileLogOutput extends LogOutput {
   File? _currentFile;
   int _currentFileSize = 0;
   String _currentDate = '';
+  int _currentSequence = 0;
   final List<String> _buffer = [];
   String? _logDirPath;
 
@@ -82,15 +130,22 @@ class FileLogOutput extends LogOutput {
     if (basePath != null) {
       _logDirPath = basePath!;
     } else {
-      // 使用应用内部存储目录
-      final appDir = await getApplicationSupportDirectory();
-      _logDirPath = path.join(appDir.path, LogConfig.logDirName);
+      _logDirPath = await _resolveDefaultLogDirPath();
     }
 
     // 创建日志目录
     final logDir = Directory(_logDirPath!);
-    if (!await logDir.exists()) {
-      await logDir.create(recursive: true);
+    try {
+      if (!await logDir.exists()) {
+        await logDir.create(recursive: true);
+      }
+    } catch (_) {
+      final appDir = await getApplicationSupportDirectory();
+      _logDirPath = path.join(appDir.path, LogConfig.logDirName);
+      final fallbackDir = Directory(_logDirPath!);
+      if (!await fallbackDir.exists()) {
+        await fallbackDir.create(recursive: true);
+      }
     }
 
     // 清理过期日志
@@ -125,16 +180,18 @@ class FileLogOutput extends LogOutput {
     // 检查日期轮转
     final today = _getDateString();
     if (today != _currentDate) {
-      await _rotateFile(today);
+      await _switchToDate(today);
     }
 
-    // 检查大小轮转
-    if (_currentFileSize > maxFileSize) {
+    final content = '${_buffer.join('\n')}\n';
+
+    // 检查大小轮转。先判断即将写入后的大小，避免写入后再递归轮转。
+    if (_currentFileSize > 0 &&
+        _currentFileSize + content.length > maxFileSize) {
       await _rotateFile(today);
     }
 
     // 写入文件
-    final content = '${_buffer.join('\n')}\n';
     await _currentFile!.writeAsString(
       content,
       mode: FileMode.append,
@@ -152,10 +209,11 @@ class FileLogOutput extends LogOutput {
   }
 
   /// 获取日志文件路径
-  String _getLogFilePath(String dateStr) {
+  String _getLogFilePath(String dateStr, int sequence) {
+    final suffix = sequence == 0 ? '' : '_$sequence';
     return path.join(
       _logDirPath!,
-      '${LogConfig.logFilePrefix}$dateStr${LogConfig.logFileExtension}',
+      '${LogConfig.logFilePrefix}$dateStr$suffix${LogConfig.logFileExtension}',
     );
   }
 
@@ -163,7 +221,8 @@ class FileLogOutput extends LogOutput {
   Future<void> _openCurrentFile() async {
     final today = _getDateString();
     _currentDate = today;
-    final filePath = _getLogFilePath(today);
+    _currentSequence = await _latestSequenceForDate(today);
+    final filePath = _getLogFilePath(today, _currentSequence);
 
     _currentFile = File(filePath);
     if (await _currentFile!.exists()) {
@@ -176,18 +235,33 @@ class FileLogOutput extends LogOutput {
 
   /// 轮转日志文件
   Future<void> _rotateFile(String newDate) async {
-    // 刷新当前缓冲
-    await _flushBuffer();
-
-    // 关闭当前文件
+    // 切换到下一个文件，调用方负责在切换后写入当前缓冲。
     _currentFile = null;
     _currentFileSize = 0;
     _currentDate = newDate;
+    _currentSequence = await _nextSequenceForDate(newDate);
 
     // 打开新文件
-    await _openCurrentFile();
+    final filePath = _getLogFilePath(newDate, _currentSequence);
+    _currentFile = File(filePath);
+    await _currentFile!.create(recursive: true);
 
     // 检查文件数量限制
+    await _enforceMaxFiles();
+  }
+
+  Future<void> _switchToDate(String newDate) async {
+    _currentFile = null;
+    _currentFileSize = 0;
+    _currentDate = newDate;
+    _currentSequence = 0;
+    final filePath = _getLogFilePath(newDate, _currentSequence);
+    _currentFile = File(filePath);
+    if (await _currentFile!.exists()) {
+      _currentFileSize = await _currentFile!.length();
+    } else {
+      await _currentFile!.create(recursive: true);
+    }
     await _enforceMaxFiles();
   }
 
@@ -210,7 +284,7 @@ class FileLogOutput extends LogOutput {
             fileName.length - LogConfig.logFileExtension.length,
           );
           try {
-            final fileDate = DateTime.parse(dateStr);
+            final fileDate = DateTime.parse(_datePartFromLogFileName(dateStr));
             if (fileDate.isBefore(cutoffDate)) {
               await file.delete();
             }
@@ -268,6 +342,61 @@ class FileLogOutput extends LogOutput {
 
   /// 获取日志目录路径
   String? get logDirPath => _logDirPath;
+
+  Future<String> _resolveDefaultLogDirPath() async {
+    if (Platform.isAndroid) {
+      try {
+        final downloadLogDir = await _storageChannel.invokeMethod<String>(
+          'getDownloadDirectoryPath',
+          {'subDir': LogConfig.logDirName},
+        );
+        if (downloadLogDir != null && downloadLogDir.trim().isNotEmpty) {
+          return downloadLogDir;
+        }
+      } catch (_) {
+        // 测试、桌面端或 MethodChannel 尚不可用时使用应用内部目录兜底。
+      }
+    }
+
+    final appDir = await getApplicationSupportDirectory();
+    return path.join(appDir.path, LogConfig.logDirName);
+  }
+
+  Future<int> _latestSequenceForDate(String dateStr) async {
+    final logDir = Directory(_logDirPath!);
+    if (!await logDir.exists()) return 0;
+    var latest = 0;
+    await for (final entity in logDir.list()) {
+      if (entity is! File) continue;
+      final sequence = _sequenceForLogFile(path.basename(entity.path), dateStr);
+      if (sequence != null && sequence > latest) {
+        latest = sequence;
+      }
+    }
+    return latest;
+  }
+
+  Future<int> _nextSequenceForDate(String dateStr) async {
+    return await _latestSequenceForDate(dateStr) + 1;
+  }
+
+  int? _sequenceForLogFile(String fileName, String dateStr) {
+    final pattern = RegExp(
+      '^${RegExp.escape(LogConfig.logFilePrefix)}'
+      '${RegExp.escape(dateStr)}'
+      r'(?:_(\d+))?'
+      '${RegExp.escape(LogConfig.logFileExtension)}\$',
+    );
+    final match = pattern.firstMatch(fileName);
+    if (match == null) return null;
+    return int.tryParse(match.group(1) ?? '0');
+  }
+
+  String _datePartFromLogFileName(String dateStrWithOptionalSequence) {
+    final underscoreIndex = dateStrWithOptionalSequence.indexOf('_');
+    if (underscoreIndex < 0) return dateStrWithOptionalSequence;
+    return dateStrWithOptionalSequence.substring(0, underscoreIndex);
+  }
 }
 
 /// 内存输出器 - 用于导出日志
@@ -334,7 +463,7 @@ class LogService {
     _channel.setMethodCallHandler(_handleMethodCall);
 
     _initialized = true;
-    i(LogConfig.moduleApp, 'LogService initialized');
+    i(LogConfig.moduleApp, 'LogService 初始化完成');
   }
 
   /// 处理来自Android原生层的MethodChannel调用
@@ -441,7 +570,7 @@ class LogService {
     if (!_initialized) return null;
 
     try {
-      i(LogConfig.moduleApp, 'Starting log export');
+      i(LogConfig.moduleApp, '开始导出日志');
 
       // 刷新文件缓冲
       await _fileOutput.flush();
@@ -498,12 +627,12 @@ class LogService {
       );
 
       if (savedPath != null) {
-        i(LogConfig.moduleApp, 'Logs exported to: $savedPath');
+        i(LogConfig.moduleApp, '日志已导出: $savedPath');
       }
 
       return savedPath;
     } catch (ex, stackTrace) {
-      e(LogConfig.moduleApp, 'Failed to export logs', ex, stackTrace);
+      e(LogConfig.moduleApp, '导出日志失败', ex, stackTrace);
       return null;
     }
   }
@@ -537,10 +666,10 @@ class LogService {
 
       _memoryOutput.clear();
 
-      i(LogConfig.moduleApp, 'All logs cleared');
+      i(LogConfig.moduleApp, '所有日志已清除');
       return true;
     } catch (ex, stackTrace) {
-      e(LogConfig.moduleApp, 'Failed to clear logs', ex, stackTrace);
+      e(LogConfig.moduleApp, '清除日志失败', ex, stackTrace);
       return false;
     }
   }

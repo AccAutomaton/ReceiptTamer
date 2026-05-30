@@ -11,13 +11,11 @@ class SharedMediaItem {
   final String path;
   final SharedMediaType type;
 
-  const SharedMediaItem({
-    required this.path,
-    required this.type,
-  });
+  const SharedMediaItem({required this.path, required this.type});
 
   bool get isImage => type == SharedMediaType.image;
-  bool get isPdf => type == SharedMediaType.file && path.toLowerCase().endsWith('.pdf');
+  bool get isPdf =>
+      type == SharedMediaType.file && path.toLowerCase().endsWith('.pdf');
 }
 
 /// Service for handling shared content from other apps
@@ -27,7 +25,8 @@ class ShareHandlerService {
   ShareHandlerService._internal();
 
   /// Stream of shared media events
-  final ValueNotifier<List<SharedMediaItem>?> sharedMediaNotifier = ValueNotifier(null);
+  final ValueNotifier<List<SharedMediaItem>?> sharedMediaNotifier =
+      ValueNotifier(null);
 
   /// Initialize the share handler and listen for shared content
   Future<void> initialize() async {
@@ -37,11 +36,14 @@ class ShareHandlerService {
       // Listen for shared media while app is running
       ReceiveSharingIntent.instance.getMediaStream().listen(
         (sharedFiles) {
-          logService.i(LogConfig.moduleShare, '从流中接收到 ${sharedFiles.length} 个文件');
+          logService.i(
+            LogConfig.moduleShare,
+            '从流中接收到 ${sharedFiles.length} 个文件',
+          );
           _processSharedMedia(sharedFiles);
         },
-        onError: (error) {
-          logService.e(LogConfig.moduleShare, '分享处理流错误', error);
+        onError: (Object error, StackTrace stackTrace) {
+          logService.e(LogConfig.moduleShare, '分享处理流错误', error, stackTrace);
         },
       );
 
@@ -49,7 +51,8 @@ class ShareHandlerService {
       await Future.delayed(const Duration(milliseconds: 500));
 
       // Check for shared media when app is launched from share
-      final initialFiles = await ReceiveSharingIntent.instance.getInitialMedia();
+      final initialFiles = await ReceiveSharingIntent.instance
+          .getInitialMedia();
       if (initialFiles.isNotEmpty) {
         logService.i(LogConfig.moduleShare, '发现 ${initialFiles.length} 个初始文件');
         _processSharedMedia(initialFiles);
@@ -69,10 +72,7 @@ class ShareHandlerService {
     for (final file in sharedFiles) {
       final path = file.path;
       if (path.isNotEmpty) {
-        items.add(SharedMediaItem(
-          path: path,
-          type: file.type,
-        ));
+        items.add(SharedMediaItem(path: path, type: file.type));
       }
     }
 
@@ -85,7 +85,9 @@ class ShareHandlerService {
   }
 
   /// Check if there are pending shared files
-  bool get hasPendingSharedMedia => sharedMediaNotifier.value != null && sharedMediaNotifier.value!.isNotEmpty;
+  bool get hasPendingSharedMedia =>
+      sharedMediaNotifier.value != null &&
+      sharedMediaNotifier.value!.isNotEmpty;
 
   /// Get pending shared media items
   List<SharedMediaItem>? get pendingSharedMedia => sharedMediaNotifier.value;
@@ -113,7 +115,10 @@ class ShareHandlerService {
   }
 
   /// Filter items by type
-  List<SharedMediaItem> filterByType(List<SharedMediaItem> items, SharedMediaType type) {
+  List<SharedMediaItem> filterByType(
+    List<SharedMediaItem> items,
+    SharedMediaType type,
+  ) {
     return items.where((item) => item.type == type).toList();
   }
 

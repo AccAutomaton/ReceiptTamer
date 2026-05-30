@@ -103,19 +103,22 @@ class ModelAssetService {
   final int minWeightBytes;
   final Future<void> Function()? disposeBeforeDelete;
   final Future<void> Function()? beforePromoteForTesting;
+  final ServiceLogSink _logSink;
 
   ModelAssetService({
     http.Client? client,
     List<Uri>? repositoryUrls,
     Directory? filesDirOverride,
     Directory? cacheDirOverride,
+    ServiceLogSink? logSink,
     this.minWeightBytes = 400000000,
     this.disposeBeforeDelete,
     this.beforePromoteForTesting,
   }) : _client = client ?? http.Client(),
        _repositoryUrls = repositoryUrls ?? defaultRepositoryUrls,
        _filesDirOverride = filesDirOverride,
-       _cacheDirOverride = cacheDirOverride;
+       _cacheDirOverride = cacheDirOverride,
+       _logSink = logSink ?? defaultServiceLogSink;
 
   Future<ModelAssetStatus> getStatus() async {
     final modelDir = await _modelDir();
@@ -147,22 +150,29 @@ class ModelAssetService {
         : _repositoryUrls;
     for (final repositoryUrl in repositories) {
       try {
+        _logI('开始下载本地 MNN 模型: 下载源=${repositoryUrl.host}, 断点续传=$resume');
         final modelDir = await _downloadRepositoryToCache(
           repositoryUrl,
           resume: resume,
           onProgress: onProgress,
           shouldCancel: shouldCancel,
         );
-        return await _installModelDirectory(modelDir, appOwnedSource: true);
+        final result = await _installModelDirectory(
+          modelDir,
+          appOwnedSource: true,
+        );
+        _logI(
+          '本地 MNN 模型下载完成: 下载源=${repositoryUrl.host}, '
+          'sizeBytes=${result.sizeBytes}',
+        );
+        return result;
       } on ModelDownloadCancelledException {
+        _logW('本地 MNN 模型下载已取消: 下载源=${repositoryUrl.host}');
         rethrow;
       } catch (e, stackTrace) {
         lastError = e;
-        logService.w(
-          LogConfig.moduleLlm,
-          '模型下载失败，尝试下一个源: $repositoryUrl, error=$e',
-        );
-        logService.d(LogConfig.moduleLlm, stackTrace.toString());
+        _logW('模型下载失败，尝试下一个源: $repositoryUrl, error=$e');
+        _logD(stackTrace.toString());
       }
     }
     throw StateError('模型下载失败: $lastError');
@@ -203,6 +213,7 @@ class ModelAssetService {
       throw StateError('模型压缩包不存在: $selectedPath');
     }
 
+    _logI('开始导入本地 MNN 模型 ZIP: fileName=${path.basename(selectedPath)}');
     final cacheDir = await _cacheDir();
     await cacheDir.create(recursive: true);
     final copiedZip = File(
@@ -218,8 +229,13 @@ class ModelAssetService {
   Future<bool> deleteDownloadedModel() async {
     await disposeBeforeDelete?.call();
     final dir = await _modelDir();
-    if (!await dir.exists()) return false;
+    _logI('开始删除本地模型: modelDir=${dir.path}');
+    if (!await dir.exists()) {
+      _logW('本地模型目录不存在，无需删除: modelDir=${dir.path}');
+      return false;
+    }
     await dir.delete(recursive: true);
+    _logI('本地模型已删除: modelDir=${dir.path}');
     return true;
   }
 
@@ -248,6 +264,7 @@ class ModelAssetService {
       final targetFile = File(path.join(downloadDir.path, fileName));
 
       if (resume && await _isModelFileValid(targetFile, fileName)) {
+        _logI('跳过已验证模型文件: fileName=$fileName, 下载源=${repositoryUrl.host}');
         completedBytes += await targetFile.length();
         onProgress?.call(
           ModelDownloadProgress(
@@ -279,8 +296,9 @@ class ModelAssetService {
         sourceHost: repositoryUrl.host,
       );
       if (!await _isModelFileValid(targetFile, fileName)) {
-        throw StateError('妯″瀷鏂囦欢鏍￠獙澶辫触: $fileName');
+        throw StateError('模型文件校验失败: $fileName');
       }
+      _logI('模型文件校验通过: fileName=$fileName');
       completedBytes += await targetFile.length();
     }
 
@@ -326,10 +344,18 @@ class ModelAssetService {
       request.headers['if-range'] = validator;
     }
 
+    _logI(
+      '开始下载模型文件: fileName=$fileName, 下载源=$sourceHost, '
+      'partBytes=$partLength, Range=${request.headers['range'] ?? 'none'}',
+    );
     _throwIfCancelled(shouldCancel);
     final response = await _client.send(request);
     final appending = response.statusCode == 206 && partLength > 0;
     final restarting = response.statusCode == 200;
+    _logI(
+      '模型文件响应: fileName=$fileName, HTTP ${response.statusCode}, '
+      '断点续传=$appending, 重新下载=$restarting',
+    );
     if (!appending && !restarting) {
       throw HttpException(
         'HTTP ${response.statusCode}',
@@ -404,6 +430,10 @@ class ModelAssetService {
 
     await _deleteIfExists(targetFile);
     await partFile.rename(targetFile.path);
+    _logI(
+      '模型文件下载完成: fileName=$fileName, bytes=$downloadedBytes, '
+      '断点续传=$appending',
+    );
     return targetFile;
   }
 
@@ -448,6 +478,7 @@ class ModelAssetService {
     );
 
     try {
+      _logI('开始解压模型 ZIP: fileName=${path.basename(zipFile.path)}');
       await _deleteDirectoryIfExists(extractDir);
       await extractDir.create(recursive: true);
       await extractFileToDisk(zipFile.path, extractDir.path);
@@ -456,6 +487,7 @@ class ModelAssetService {
       if (extractedModelDir == null) {
         throw StateError('压缩包中未找到有效的 MNN 模型文件');
       }
+      _logI('模型 ZIP 解压校验通过: modelDir=${extractedModelDir.path}');
 
       return await _installModelDirectory(
         extractedModelDir,
@@ -481,6 +513,7 @@ class ModelAssetService {
     final backupDir = Directory(path.join(filesDir.path, '$modelDirName.old'));
 
     try {
+      _logI('开始原子替换模型目录: target=${finalDir.path}');
       await _deleteDirectoryIfExists(stagingDir);
       await stagingDir.create(recursive: true);
       await _copyDirectory(sourceDir, stagingDir);
@@ -502,8 +535,8 @@ class ModelAssetService {
         try {
           await _deleteDirectoryIfExists(backupDir);
         } catch (e, stackTrace) {
-          logService.w(LogConfig.moduleLlm, '删除旧模型备份目录失败: $e');
-          logService.d(LogConfig.moduleLlm, stackTrace.toString());
+          _logW('删除旧模型备份目录失败: $e');
+          _logD(stackTrace.toString());
         }
       } catch (_) {
         if (backupCreated) {
@@ -513,6 +546,7 @@ class ModelAssetService {
       }
 
       final size = await _directorySize(finalDir);
+      _logI('模型目录原子替换完成: target=${finalDir.path}, sizeBytes=$size');
       return ModelInstallResult(
         installed: true,
         modelPath: finalDir.path,
@@ -534,7 +568,7 @@ class ModelAssetService {
     try {
       await backupDir.rename(finalDir.path);
     } catch (e, stackTrace) {
-      logService.e(LogConfig.moduleLlm, '恢复旧模型目录失败', e, stackTrace);
+      _logE('恢复旧模型目录失败', e, stackTrace);
       rethrow;
     }
   }
@@ -656,5 +690,21 @@ class ModelAssetService {
     if (await dir.exists()) {
       await dir.delete(recursive: true);
     }
+  }
+
+  void _logD(String message) {
+    _logSink('D', LogConfig.moduleLlm, message);
+  }
+
+  void _logI(String message) {
+    _logSink('I', LogConfig.moduleLlm, message);
+  }
+
+  void _logW(String message) {
+    _logSink('W', LogConfig.moduleLlm, message);
+  }
+
+  void _logE(String message, Object error, StackTrace stackTrace) {
+    _logSink('E', LogConfig.moduleLlm, message, error, stackTrace);
   }
 }

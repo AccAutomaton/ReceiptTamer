@@ -13,7 +13,9 @@ import 'llm_service.dart';
 ///
 /// 流程：OCR识别 → LLM结构化提取
 class OcrService {
-  static const MethodChannel _channel = MethodChannel('com.acautomaton.receipt.tamer/ocr');
+  static const MethodChannel _channel = MethodChannel(
+    'com.acautomaton.receipt.tamer/ocr',
+  );
 
   bool _isInitialized = false;
   bool _isModelAvailable = false;
@@ -24,10 +26,9 @@ class OcrService {
   /// 深度转换 Map 类型（递归处理嵌套结构）
   /// 用于解决 Platform Channel 返回的 `_Map<Object?, Object?>` 类型转换问题
   static Map<String, dynamic> _deepConvertMap(Map<dynamic, dynamic> map) {
-    return map.map((key, value) => MapEntry(
-      key.toString(),
-      _deepConvertValue(value),
-    ));
+    return map.map(
+      (key, value) => MapEntry(key.toString(), _deepConvertValue(value)),
+    );
   }
 
   /// 递归转换值类型
@@ -70,7 +71,10 @@ class OcrService {
         _isInitialized = true;
         _isModelAvailable = result ?? false;
 
-        logService.i(LogConfig.moduleOcr, 'Paddle-Lite OCR初始化: ${_isModelAvailable ? "成功" : "失败"}');
+        logService.i(
+          LogConfig.moduleOcr,
+          'Paddle-Lite OCR初始化: ${_isModelAvailable ? "成功" : "失败"}',
+        );
 
         _initCompleter!.complete(_isModelAvailable);
         _isLoading = false;
@@ -108,7 +112,8 @@ class OcrService {
   bool get isLlmAvailable => _llmService?.isInitialized ?? false;
 
   /// Check if model is currently loading
-  bool get isModelLoading => _isLoading || (_llmService?.isModelLoading ?? false);
+  bool get isModelLoading =>
+      _isLoading || (_llmService?.isModelLoading ?? false);
 
   /// Check if architecture is not supported
   bool get archNotSupported => _llmService?.archNotSupported ?? false;
@@ -139,20 +144,14 @@ class OcrService {
     }
 
     if (!_isModelAvailable) {
-      return OcrResult.failure(
-        errorMessage: 'OCR模型未加载',
-        type: OcrType.order,
-      );
+      return OcrResult.failure(errorMessage: 'OCR模型未加载', type: OcrType.order);
     }
 
     try {
       final file = File(imagePath);
       if (!await file.exists()) {
         logService.w(LogConfig.moduleOcr, '图片文件不存在: $imagePath');
-        return OcrResult.failure(
-          errorMessage: '图片文件不存在',
-          type: OcrType.order,
-        );
+        return OcrResult.failure(errorMessage: '图片文件不存在', type: OcrType.order);
       }
 
       final bytes = await file.readAsBytes();
@@ -188,10 +187,7 @@ class OcrService {
     }
 
     if (!_isModelAvailable) {
-      return OcrResult.failure(
-        errorMessage: 'OCR模型未加载',
-        type: OcrType.invoice,
-      );
+      return OcrResult.failure(errorMessage: 'OCR模型未加载', type: OcrType.invoice);
     }
 
     try {
@@ -215,8 +211,14 @@ class OcrService {
   }
 
   /// Recognize text from image bytes
-  Future<OcrResult> recognizeFromBytes(Uint8List imageBytes, OcrType type) async {
-    logService.d(LogConfig.moduleOcr, 'recognizeFromBytes: type=${type == OcrType.order ? "Order" : "Invoice"}, size=${imageBytes.length} bytes');
+  Future<OcrResult> recognizeFromBytes(
+    Uint8List imageBytes,
+    OcrType type,
+  ) async {
+    logService.d(
+      LogConfig.moduleOcr,
+      'recognizeFromBytes: type=${type == OcrType.order ? "Order" : "Invoice"}, size=${imageBytes.length} bytes',
+    );
     // Wait for initialization if still loading
     if (_isLoading) {
       logService.i(LogConfig.moduleOcr, '等待OCR模型加载完成...');
@@ -238,10 +240,7 @@ class OcrService {
     }
 
     if (!_isModelAvailable) {
-      return OcrResult.failure(
-        errorMessage: 'OCR模型未加载',
-        type: type,
-      );
+      return OcrResult.failure(errorMessage: 'OCR模型未加载', type: type);
     }
 
     return await _recognizeFromBytes(imageBytes, type);
@@ -256,9 +255,13 @@ class OcrService {
       );
 
       if (result != null && result['success'] == true) {
-        final textBlocks = (result['textBlocks'] as List<dynamic>?)
-                ?.map((block) => OcrTextBlock.fromJson(
-                    _deepConvertMap(Map<dynamic, dynamic>.from(block as Map))))
+        final textBlocks =
+            (result['textBlocks'] as List<dynamic>?)
+                ?.map(
+                  (block) => OcrTextBlock.fromJson(
+                    _deepConvertMap(Map<dynamic, dynamic>.from(block as Map)),
+                  ),
+                )
                 .toList() ??
             [];
 
@@ -271,16 +274,12 @@ class OcrService {
           errorMessage: result?['error'] as String? ?? 'OCR识别失败',
         );
       }
-    } on PlatformException catch (e) {
-      logService.e(LogConfig.moduleOcr, 'Platform Channel调用失败', e);
-      return OcrRawResultFactory.failure(
-        errorMessage: 'OCR调用失败: ${e.message}',
-      );
-    } catch (e) {
-      logService.e(LogConfig.moduleOcr, 'OCR识别异常', e);
-      return OcrRawResultFactory.failure(
-        errorMessage: 'OCR识别异常: $e',
-      );
+    } on PlatformException catch (e, stackTrace) {
+      logService.e(LogConfig.moduleOcr, 'Platform Channel调用失败', e, stackTrace);
+      return OcrRawResultFactory.failure(errorMessage: 'OCR调用失败: ${e.message}');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleOcr, 'OCR识别异常', e, stackTrace);
+      return OcrRawResultFactory.failure(errorMessage: 'OCR识别异常: $e');
     }
   }
 
@@ -289,7 +288,11 @@ class OcrService {
     final totalStopwatch = Stopwatch()..start();
 
     logService.i(LogConfig.moduleOcr, '========== OCR Pipeline 开始 ==========');
-    logService.diag(LogConfig.moduleOcr, 'Type', type == OcrType.order ? "Order" : "Invoice");
+    logService.diag(
+      LogConfig.moduleOcr,
+      'Type',
+      type == OcrType.order ? "Order" : "Invoice",
+    );
     logService.diag(LogConfig.moduleOcr, 'Image size', '${bytes.length} bytes');
 
     try {
@@ -298,12 +301,27 @@ class OcrService {
       final ocrStopwatch = Stopwatch()..start();
       final rawResult = await recognizeRaw(bytes);
       ocrStopwatch.stop();
-      logService.diag(LogConfig.moduleOcr, 'OCR recognition time', '${ocrStopwatch.elapsedMilliseconds}ms');
-      logService.diag(LogConfig.moduleOcr, 'OCR text blocks', rawResult.textBlocks.length);
-      logService.diag(LogConfig.moduleOcr, 'OCR full text length', rawResult.fullText.length);
+      logService.diag(
+        LogConfig.moduleOcr,
+        'OCR recognition time',
+        '${ocrStopwatch.elapsedMilliseconds}ms',
+      );
+      logService.diag(
+        LogConfig.moduleOcr,
+        'OCR text blocks',
+        rawResult.textBlocks.length,
+      );
+      logService.diag(
+        LogConfig.moduleOcr,
+        'OCR full text length',
+        rawResult.fullText.length,
+      );
 
       if (!rawResult.success) {
-        logService.w(LogConfig.moduleOcr, 'OCR 识别失败: ${rawResult.errorMessage}');
+        logService.w(
+          LogConfig.moduleOcr,
+          'OCR 识别失败: ${rawResult.errorMessage}',
+        );
         return OcrResult.failure(
           errorMessage: rawResult.errorMessage ?? 'OCR识别失败',
           type: type,
@@ -314,20 +332,37 @@ class OcrService {
       if (_llmService != null) {
         logService.d(LogConfig.moduleOcr, '步骤 2: 执行 LLM 提取...');
         final llmStopwatch = Stopwatch()..start();
-        final llmResult = await _llmService!.extractStructuredData(rawResult, type);
+        final llmResult = await _llmService!.extractStructuredData(
+          rawResult,
+          type,
+        );
         llmStopwatch.stop();
 
         totalStopwatch.stop();
-        logService.diag(LogConfig.moduleOcr, 'LLM extraction time', '${llmStopwatch.elapsedMilliseconds}ms');
-        logService.diag(LogConfig.moduleOcr, 'Total pipeline time', '${totalStopwatch.elapsedMilliseconds}ms');
+        logService.diag(
+          LogConfig.moduleOcr,
+          'LLM extraction time',
+          '${llmStopwatch.elapsedMilliseconds}ms',
+        );
+        logService.diag(
+          LogConfig.moduleOcr,
+          'Total pipeline time',
+          '${totalStopwatch.elapsedMilliseconds}ms',
+        );
 
         if (llmResult.success) {
           logService.i(LogConfig.moduleOcr, 'Pipeline 执行成功');
           return llmResult;
         }
-        logService.w(LogConfig.moduleOcr, 'LLM 提取失败: ${llmResult.errorMessage}');
+        logService.w(
+          LogConfig.moduleOcr,
+          'LLM 提取失败: ${llmResult.errorMessage}',
+        );
       } else {
-        logService.w(LogConfig.moduleOcr, 'LLM 服务不可用 (initialized: ${_llmService?.isInitialized})');
+        logService.w(
+          LogConfig.moduleOcr,
+          'LLM 服务不可用 (initialized: ${_llmService?.isInitialized})',
+        );
       }
 
       // LLM未初始化或提取失败
@@ -335,19 +370,15 @@ class OcrService {
         errorMessage: 'LLM提取失败，请检查 AI 分析设置或模型状态',
         type: type,
       );
-
-    } on PlatformException catch (e) {
-      logService.e(LogConfig.moduleOcr, 'Platform 异常', e);
+    } on PlatformException catch (e, stackTrace) {
+      logService.e(LogConfig.moduleOcr, 'Platform 异常', e, stackTrace);
       return OcrResult.failure(
         errorMessage: 'OCR调用失败: ${e.message}',
         type: type,
       );
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleOcr, 'OCR Pipeline 异常', e, stackTrace);
-      return OcrResult.failure(
-        errorMessage: 'OCR识别异常: $e',
-        type: type,
-      );
+      return OcrResult.failure(errorMessage: 'OCR识别异常: $e', type: type);
     }
   }
 

@@ -71,7 +71,7 @@ class MnnEngine private constructor() {
                         LogHelper.i("LLM", "MNN模型加载成功")
                         callback(true, null)
                     } else {
-                        LogHelper.e("LLM", "MNN模型加载失败")
+                        LogHelper.w("LLM", "MNN模型加载失败")
                         callback(false, "模型加载失败")
                     }
                 }
@@ -100,8 +100,10 @@ class MnnEngine private constructor() {
                 }
 
                 LogHelper.i("LLM", "========== MNN LLM Pipeline 开始 ==========")
-                LogHelper.i("LLM", "Prompt: ${prompt.take(100)}${if (prompt.length > 100) "..." else ""}")
-                LogHelper.i("LLM", "Max tokens: $maxTokens, Temperature: $temperature, Top-P: $topP")
+                LogHelper.diag("LLM", "Prompt长度", "${prompt.length} chars")
+                LogHelper.diag("LLM", "Max tokens", maxTokens)
+                LogHelper.diag("LLM", "Temperature", temperature)
+                LogHelper.diag("LLM", "Top-P", topP)
 
                 val pipelineStart = System.currentTimeMillis()
 
@@ -113,7 +115,6 @@ class MnnEngine private constructor() {
                 LogHelper.i("LLM", "========== MNN LLM Pipeline 完成 ==========")
                 LogHelper.diag("LLM", "Pipeline总耗时", "${pipelineMs}ms")
                 LogHelper.diag("LLM", "结果长度", "${result.length} chars")
-                LogHelper.diag("LLM", "结果", "${result.take(200)}${if (result.length > 200) "..." else ""}")
 
                 mainHandler.post {
                     if (result.isNotEmpty()) {
@@ -124,7 +125,6 @@ class MnnEngine private constructor() {
                 }
             } catch (e: Exception) {
                 LogHelper.e("LLM", "MNN生成异常", e)
-                e.printStackTrace()
                 mainHandler.post { callback(null, e.message) }
             }
         }
@@ -174,11 +174,9 @@ class MnnEngine private constructor() {
     ): Future<*> {
         LogHelper.i("LLM", "========== 提取订单信息 ==========")
         LogHelper.diag("LLM", "OCR文本长度", "${ocrText.length} chars")
-        LogHelper.diag("LLM", "OCR文本预览", "${ocrText.take(200)}${if (ocrText.length > 200) "..." else ""}")
 
         val prompt = buildOrderExtractionPrompt(ocrText)
         LogHelper.diag("LLM", "完整Prompt长度", "${prompt.length} chars")
-        LogHelper.diag("LLM", "完整Prompt", prompt)
 
         // 减少maxTokens，强制模型输出简洁JSON
         return generateAsync(prompt, maxTokens = 128, callback = callback)
@@ -193,11 +191,9 @@ class MnnEngine private constructor() {
     ): Future<*> {
         LogHelper.i("LLM", "========== 提取发票信息 ==========")
         LogHelper.diag("LLM", "OCR文本长度", "${ocrText.length} chars")
-        LogHelper.diag("LLM", "OCR文本预览", "${ocrText.take(200)}${if (ocrText.length > 200) "..." else ""}")
 
         val prompt = buildInvoiceExtractionPrompt(ocrText)
         LogHelper.diag("LLM", "完整Prompt长度", "${prompt.length} chars")
-        LogHelper.diag("LLM", "完整Prompt", prompt)
 
         // 减少maxTokens，强制模型输出简洁JSON
         return generateAsync(prompt, maxTokens = 128, callback = callback)

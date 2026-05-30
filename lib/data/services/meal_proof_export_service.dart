@@ -46,13 +46,15 @@ class MealProofExportService {
       );
 
       for (final proratedOrder in prorationResult.orderAmounts) {
-        items.add(MealProofItem(
-          order: proratedOrder.order,
-          invoice: invoice,
-          proratedInvoiceAmount: proratedOrder.proratedInvoiceAmount,
-          totalInvoiceAmount: invoice.totalAmount,
-          isProRated: prorationResult.needsProration,
-        ));
+        items.add(
+          MealProofItem(
+            order: proratedOrder.order,
+            invoice: invoice,
+            proratedInvoiceAmount: proratedOrder.proratedInvoiceAmount,
+            totalInvoiceAmount: invoice.totalAmount,
+            isProRated: prorationResult.needsProration,
+          ),
+        );
       }
     }
 
@@ -104,25 +106,29 @@ class MealProofExportService {
       );
 
       for (final proratedOrder in prorationResult.orderAmounts) {
-        items.add(MealProofItem(
-          order: proratedOrder.order,
-          invoice: invoice,
-          proratedInvoiceAmount: proratedOrder.proratedInvoiceAmount,
-          totalInvoiceAmount: invoice.totalAmount,
-          isProRated: prorationResult.needsProration,
-        ));
+        items.add(
+          MealProofItem(
+            order: proratedOrder.order,
+            invoice: invoice,
+            proratedInvoiceAmount: proratedOrder.proratedInvoiceAmount,
+            totalInvoiceAmount: invoice.totalAmount,
+            isProRated: prorationResult.needsProration,
+          ),
+        );
       }
     }
 
     // Process orders without invoice association
     for (final order in ordersWithoutInvoice) {
-      items.add(MealProofItem(
-        order: order,
-        invoice: null,
-        proratedInvoiceAmount: 0.0,
-        totalInvoiceAmount: 0.0,
-        isProRated: false,
-      ));
+      items.add(
+        MealProofItem(
+          order: order,
+          invoice: null,
+          proratedInvoiceAmount: 0.0,
+          totalInvoiceAmount: 0.0,
+          isProRated: false,
+        ),
+      );
     }
 
     // Sort items by date and meal time
@@ -153,7 +159,8 @@ class MealProofExportService {
   static Future<void> generatePdf({
     required List<MealProofItem> items,
     required String outputPath,
-    required String Function(String) getImagePath, // Function to resolve image path
+    required String Function(String)
+    getImagePath, // Function to resolve image path
     String? remark, // Optional remark to draw on each page
   }) async {
     if (items.isEmpty) {
@@ -164,7 +171,8 @@ class MealProofExportService {
 
     final document = PdfDocument();
     document.pageSettings.size = PdfPageSize.a4;
-    document.pageSettings.margins.all = 0; // No margins, we'll handle positioning manually
+    document.pageSettings.margins.all =
+        0; // No margins, we'll handle positioning manually
 
     // Content margin for printer safe area
     const contentMargin = 36.0;
@@ -174,12 +182,17 @@ class MealProofExportService {
 
     try {
       // Remark drawing constants
-      const labelMargin = 16.0; // Margin for remark, consistent with invoice export
-      final remarkFont = await PdfFontService.instance.getChineseFont(9); // Font size 9 for remark
+      const labelMargin =
+          16.0; // Margin for remark, consistent with invoice export
+      final remarkFont = await PdfFontService.instance.getChineseFont(
+        9,
+      ); // Font size 9 for remark
       // Process items in groups of 4 (2x2 grid per page)
       for (var pageIndex = 0; pageIndex * 4 < items.length; pageIndex++) {
         final startIndex = pageIndex * 4;
-        final endIndex = startIndex + 4 > items.length ? items.length : startIndex + 4;
+        final endIndex = startIndex + 4 > items.length
+            ? items.length
+            : startIndex + 4;
         final pageItems = items.sublist(startIndex, endIndex);
 
         // Add a new page for each iteration
@@ -210,7 +223,8 @@ class MealProofExportService {
         // Row 2 & 4: image (taller)
         final cellWidth = availableWidth / 2;
         final textRowHeight = 40.0; // Height for text rows
-        final imageRowHeight = (availableHeight - textRowHeight * 2) / 2; // Height for image rows
+        final imageRowHeight =
+            (availableHeight - textRowHeight * 2) / 2; // Height for image rows
 
         // Fill content for each cell (max 4 items per page)
         for (var j = 0; j < pageItems.length; j++) {
@@ -220,7 +234,8 @@ class MealProofExportService {
 
           // Calculate position (with content margin offset)
           final x = contentMargin + col * cellWidth;
-          final textY = contentMargin + rowPair * (textRowHeight + imageRowHeight);
+          final textY =
+              contentMargin + rowPair * (textRowHeight + imageRowHeight);
           final imageY = textY + textRowHeight;
 
           // Draw text cell
@@ -309,7 +324,12 @@ class MealProofExportService {
       line2,
       font,
       brush: blackBrush,
-      bounds: Rect.fromLTWH(line2X, startY + lineHeight, line2Size.width, lineHeight),
+      bounds: Rect.fromLTWH(
+        line2X,
+        startY + lineHeight,
+        line2Size.width,
+        lineHeight,
+      ),
     );
   }
 
@@ -366,9 +386,8 @@ class MealProofExportService {
         image,
         Rect.fromLTWH(drawX, drawY, drawWidth, drawHeight),
       );
-    } catch (e) {
-      // Ignore image loading errors, but could log for debugging
-      // print('Error loading image: $e');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleFile, '加载用餐证明图片失败', e, stackTrace);
     }
   }
 
