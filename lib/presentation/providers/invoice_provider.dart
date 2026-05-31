@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/invoice.dart';
 import '../../data/repositories/invoice_repository.dart';
+import 'order_provider.dart';
 
 /// Invoice state
 class InvoiceState {
@@ -48,6 +49,17 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
   }
 
   InvoiceRepository get _repository => ref.watch(invoiceRepositoryProvider);
+
+  Future<void> _refreshOrdersAfterRelationChange(Iterable<int> orderIds) async {
+    final affectedOrderIds = orderIds.toSet();
+    if (affectedOrderIds.isEmpty) return;
+
+    await ref.read(orderProvider.notifier).loadOrders(refresh: true);
+    for (final orderId in affectedOrderIds) {
+      ref.invalidate(invoicesByOrderIdProvider(orderId));
+      ref.invalidate(invoiceCountByOrderIdProvider(orderId));
+    }
+  }
 
   /// Load all invoices
   Future<void> loadInvoices({bool refresh = false, int? filterOrderId}) async {
@@ -128,6 +140,9 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
       }
       // Invalidate count provider to refresh statistics
       ref.invalidate(invoiceCountProvider);
+      if (id > 0) {
+        await _refreshOrdersAfterRelationChange(orderIds ?? const []);
+      }
       return id > 0;
     } catch (e) {
       state = state.copyWith(
@@ -143,6 +158,9 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
     state = state.copyWith(isLoading: true);
 
     try {
+      final previousOrderIds = invoice.id != null && orderIds != null
+          ? await _repository.getOrderIdsForInvoice(invoice.id!)
+          : const <int>[];
       final rowsAffected = await _repository.update(invoice, orderIds: orderIds);
       if (rowsAffected > 0) {
         // Update the invoice in the list
@@ -150,6 +168,12 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
           return i.id == invoice.id ? invoice : i;
         }).toList();
         state = state.copyWith(invoices: updatedInvoices, isLoading: false);
+        if (orderIds != null) {
+          await _refreshOrdersAfterRelationChange([
+            ...previousOrderIds,
+            ...orderIds,
+          ]);
+        }
         return true;
       }
       state = state.copyWith(isLoading: false);
@@ -168,12 +192,14 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
     state = state.copyWith(isLoading: true);
 
     try {
+      final linkedOrderIds = await _repository.getOrderIdsForInvoice(id);
       final rowsAffected = await _repository.delete(id);
       if (rowsAffected > 0) {
         final updatedInvoices = state.invoices.where((i) => i.id != id).toList();
         state = state.copyWith(invoices: updatedInvoices, isLoading: false);
         // Invalidate count provider to refresh statistics
         ref.invalidate(invoiceCountProvider);
+        await _refreshOrdersAfterRelationChange(linkedOrderIds);
         return true;
       }
       state = state.copyWith(isLoading: false);
@@ -318,7 +344,9 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
 
   /// Update order relations for an invoice
   Future<void> updateOrderRelations(int invoiceId, List<int> orderIds) async {
+    final previousOrderIds = await _repository.getOrderIdsForInvoice(invoiceId);
     await _repository.updateOrderRelations(invoiceId, orderIds);
+    await _refreshOrdersAfterRelationChange([...previousOrderIds, ...orderIds]);
   }
 
   /// Get seller names with count, ordered by count (highest first)
