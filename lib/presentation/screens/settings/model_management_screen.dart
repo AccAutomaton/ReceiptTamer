@@ -790,6 +790,11 @@ class _ModelManagementScreenState extends ConsumerState<ModelManagementScreen> {
                           : _showInstallOptions,
                       icon: const Icon(Icons.download),
                       label: const Text('重新安装'),
+                      style: FilledButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -800,6 +805,11 @@ class _ModelManagementScreenState extends ConsumerState<ModelManagementScreen> {
                           : _deleteDownloadedModel,
                       icon: const Icon(Icons.delete_outline),
                       label: const Text('删除'),
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
                     ),
                   ),
                 ],

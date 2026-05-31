@@ -251,6 +251,11 @@ class UpdateDialog {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text(
+                    '正在从 Github 拉取安装包 ...',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  ),
+                  const SizedBox(height: 12),
                   LinearProgressIndicator(value: progressInfo?.progress ?? 0),
                   const SizedBox(height: 16),
                   Text(
