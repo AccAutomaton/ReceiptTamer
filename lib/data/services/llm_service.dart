@@ -18,6 +18,8 @@ class LlmService {
   );
 
   static const String _modelPath = ModelAssetService.modelDirName;
+  static const Duration _statusPollInterval = Duration(milliseconds: 500);
+  static const int _staleNativeLoadMaxPolls = 240;
 
   final LlmConfigService _configService;
 
@@ -27,6 +29,8 @@ class LlmService {
   bool _archNotSupported = false;
   String? _loadError;
   int _modelSizeBytes = 0;
+  int _loadGeneration = 0;
+  int? _wantedLoadGeneration;
 
   LlmService({LlmConfigService? configService})
     : _configService = configService ?? LlmConfigService();
@@ -48,17 +52,30 @@ class LlmService {
     return '${(_modelSizeBytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
+  Future<bool> preloadIfConfiguredLocalModel() async {
+    final config = await _configService.load();
+    if (config.backendType != LlmBackendType.localMnn) {
+      return false;
+    }
+    logService.i(LogConfig.moduleLlm, '检测到本地模型配置，启动预加载');
+    return initialize();
+  }
+
   Future<bool> initialize() async {
     if (_isInitialized) return true;
     if (_isLoading) return true;
 
+    final generation = ++_loadGeneration;
+    _wantedLoadGeneration = generation;
     _isLoading = true;
     _isModelLoading = true;
-    _initializeInBackground();
+    _archNotSupported = false;
+    _loadError = null;
+    _initializeInBackground(generation);
     return true;
   }
 
-  void _initializeInBackground() {
+  void _initializeInBackground(int generation) {
     Future(() async {
       try {
         logService.i(LogConfig.moduleLlm, '正在初始化本地 MNN LLM...');
@@ -66,6 +83,10 @@ class LlmService {
           'initialize',
           {'modelPath': _modelPath},
         );
+        if (!_isCurrentLoad(generation)) {
+          await _disposeStaleNativeLoad();
+          return;
+        }
         _applyStatus(Map<String, dynamic>.from(result ?? {}));
 
         if (_archNotSupported || _loadError != null) {
@@ -74,9 +95,13 @@ class LlmService {
           return;
         }
         if (_isModelLoading) {
-          await _pollForLoadingComplete();
+          await _pollForLoadingComplete(generation);
         }
       } catch (e, stackTrace) {
+        if (!_isCurrentLoad(generation)) {
+          await _disposeStaleNativeLoad();
+          return;
+        }
         logService.e(LogConfig.moduleLlm, '本地 LLM 初始化失败', e, stackTrace);
         _loadError = e.toString();
         _isLoading = false;
@@ -85,15 +110,43 @@ class LlmService {
     });
   }
 
-  Future<void> _pollForLoadingComplete() async {
-    while (_isModelLoading) {
-      await Future.delayed(const Duration(milliseconds: 500));
-      final status = await getStatus();
+  bool _isCurrentLoad(int generation) =>
+      generation == _loadGeneration && _wantedLoadGeneration == generation;
+
+  Future<void> _pollForLoadingComplete(int generation) async {
+    while (true) {
+      await Future.delayed(_statusPollInterval);
+      if (!_isCurrentLoad(generation)) {
+        await _disposeStaleNativeLoad();
+        return;
+      }
+      final status = await _readNativeStatus(apply: false);
+      if (!_isCurrentLoad(generation)) {
+        await _disposeStaleNativeLoad();
+        return;
+      }
+      _applyStatus(status);
       if (_isInitialized || _archNotSupported || _loadError != null) break;
       if (status['isLoading'] != true) break;
     }
+    if (!_isCurrentLoad(generation)) {
+      await _disposeStaleNativeLoad();
+      return;
+    }
     _isLoading = false;
     _isModelLoading = false;
+  }
+
+  Future<void> _disposeStaleNativeLoad() async {
+    logService.i(LogConfig.moduleLlm, '本地 LLM 加载已取消，准备释放 Native 资源');
+    for (var i = 0; i < _staleNativeLoadMaxPolls; i++) {
+      final status = await _readNativeStatus(apply: false);
+      if (status['isLoading'] != true) break;
+      await Future.delayed(_statusPollInterval);
+    }
+    if (_wantedLoadGeneration == null) {
+      await _disposeNativeLlm();
+    }
   }
 
   Future<bool> waitForInitialization({
@@ -116,12 +169,16 @@ class LlmService {
   }
 
   Future<Map<String, dynamic>> getStatus() async {
+    return _readNativeStatus();
+  }
+
+  Future<Map<String, dynamic>> _readNativeStatus({bool apply = true}) async {
     try {
       final result = await _channel.invokeMethod<Map<dynamic, dynamic>>(
         'getStatus',
       );
       final status = Map<String, dynamic>.from(result ?? {});
-      _applyStatus(status);
+      if (apply) _applyStatus(status);
       return status;
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleLlm, '获取 LLM 状态失败', e, stackTrace);
@@ -227,14 +284,22 @@ class LlmService {
 
   Future<void> dispose() async {
     logService.i(LogConfig.moduleLlm, '释放 LLM 服务资源...');
+    _loadGeneration++;
+    _wantedLoadGeneration = null;
+    await _disposeNativeLlm();
+    _isInitialized = false;
+    _isModelLoading = false;
+    _isLoading = false;
+    _archNotSupported = false;
+    _loadError = null;
+  }
+
+  Future<void> _disposeNativeLlm() async {
     try {
       await _channel.invokeMethod('disposeLlm');
     } catch (e) {
       logService.w(LogConfig.moduleLlm, '释放 Native LLM 资源时出错: $e');
     }
-    _isInitialized = false;
-    _isModelLoading = false;
-    _isLoading = false;
   }
 
   Map<String, dynamic> getModelInfo() {

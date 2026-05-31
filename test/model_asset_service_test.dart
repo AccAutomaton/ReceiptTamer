@@ -57,6 +57,25 @@ void main() {
     },
   );
 
+  test('legacy APK-extracted model directory is recognized as installed', () async {
+    final legacyModelDir = Directory(
+      p.join(filesDir.path, ModelAssetService.modelDirName),
+    )..createSync(recursive: true);
+    await _writeModelFiles(legacyModelDir, weightBytes: [1, 2, 3]);
+
+    final service = ModelAssetService(
+      filesDirOverride: filesDir,
+      cacheDirOverride: cacheDir,
+      minWeightBytes: 1,
+    );
+
+    final status = await service.getStatus();
+
+    expect(status.installed, isTrue);
+    expect(status.modelPath, legacyModelDir.path);
+    expect(status.sizeBytes, greaterThan(0));
+  });
+
   test(
     'online install downloads required model files from Hugging Face sources',
     () async {

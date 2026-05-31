@@ -647,7 +647,7 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        '由于设备性能限制，识别结果可能存在错误。\n请自行核对识别结果的准确性。',
+                        '识别结果可能存在错误，请自行核对识别结果的准确性。',
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.error,
                           fontSize: 13,

@@ -30,7 +30,7 @@ class _ModelManagementScreenState extends ConsumerState<ModelManagementScreen> {
   late final ModelAssetService _modelAssetService;
   LlmBackendConfig _llmConfig = const LlmBackendConfig();
   ModelAssetStatus? _modelStatus;
-  OpenAiModelProvider _selectedProvider = OpenAiModelProvider.custom;
+  OpenAiModelProvider _selectedProvider = OpenAiModelProvider.xiaomiMimo;
   Map<OpenAiModelProvider, OpenAiCompatibleConfig> _providerConfigs = {};
   List<String> _presetModelOptions = const [];
   String? _presetModelLoadError;
@@ -44,7 +44,7 @@ class _ModelManagementScreenState extends ConsumerState<ModelManagementScreen> {
     super.initState();
     _modelAssetService = ModelAssetService(
       disposeBeforeDelete: () async {
-        await ref.read(ocrProvider).llmService?.dispose();
+        await ref.read(ocrServiceProvider).llmService?.dispose();
       },
     );
     _loadState();
@@ -208,6 +208,7 @@ class _ModelManagementScreenState extends ConsumerState<ModelManagementScreen> {
       }
     }
 
+    final previousType = _llmConfig.backendType;
     final nextType = enabled
         ? backendType
         : _llmConfig.backendType == backendType
@@ -220,6 +221,21 @@ class _ModelManagementScreenState extends ConsumerState<ModelManagementScreen> {
       nextConfig.copyWith(backendType: nextType),
       showMessage: false,
     );
+    await _syncLocalModelLifecycle(previousType, nextType);
+  }
+
+  Future<void> _syncLocalModelLifecycle(
+    LlmBackendType previousType,
+    LlmBackendType nextType,
+  ) async {
+    final llmService = ref.read(ocrServiceProvider).llmService;
+    if (nextType == LlmBackendType.localMnn) {
+      await llmService?.preloadIfConfiguredLocalModel();
+      return;
+    }
+    if (previousType == LlmBackendType.localMnn) {
+      await llmService?.dispose();
+    }
   }
 
   Future<void> _saveExternalModel() async {

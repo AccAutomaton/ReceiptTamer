@@ -36,7 +36,8 @@ extension OpenAiModelProviderCodec on OpenAiModelProvider {
 
   String get presetEndpoint {
     return switch (this) {
-      OpenAiModelProvider.xiaomiMimo => 'https://api.xiaomimimo.com/v1',
+      OpenAiModelProvider.xiaomiMimo =>
+        OpenAiCompatibleConfig.xiaomiMimoEndpoint,
       OpenAiModelProvider.deepSeek => 'https://api.deepseek.com/v1',
       OpenAiModelProvider.custom => '',
     };
@@ -44,8 +45,8 @@ extension OpenAiModelProviderCodec on OpenAiModelProvider {
 
   String get disabledThinkingExtraBodyJson {
     return switch (this) {
-      OpenAiModelProvider.xiaomiMimo ||
-      OpenAiModelProvider.deepSeek => '{"thinking":{"type":"disabled"}}',
+      OpenAiModelProvider.xiaomiMimo || OpenAiModelProvider.deepSeek =>
+        OpenAiCompatibleConfig.disabledThinkingExtraBodyJson,
       OpenAiModelProvider.custom => '',
     };
   }
@@ -59,7 +60,10 @@ extension OpenAiModelProviderCodec on OpenAiModelProvider {
 }
 
 class OpenAiCompatibleConfig {
-  static const String defaultExtraBodyJson = '';
+  static const String emptyExtraBodyJson = '';
+  static const String xiaomiMimoEndpoint = 'https://api.xiaomimimo.com/v1';
+  static const String disabledThinkingExtraBodyJson =
+      '{"thinking":{"type":"disabled"}}';
 
   final OpenAiModelProvider provider;
   final String endpoint;
@@ -74,8 +78,16 @@ class OpenAiCompatibleConfig {
     this.modelName = '',
     this.apiKey = '',
     this.isMultimodal = false,
-    this.extraParamsJson = defaultExtraBodyJson,
+    this.extraParamsJson = emptyExtraBodyJson,
   });
+
+  const OpenAiCompatibleConfig.xiaomiMimoDefaults()
+    : provider = OpenAiModelProvider.xiaomiMimo,
+      endpoint = xiaomiMimoEndpoint,
+      modelName = '',
+      apiKey = '',
+      isMultimodal = true,
+      extraParamsJson = disabledThinkingExtraBodyJson;
 
   factory OpenAiCompatibleConfig.forProvider(OpenAiModelProvider provider) {
     return OpenAiCompatibleConfig(
@@ -140,15 +152,14 @@ class OpenAiCompatibleConfig {
   };
 
   factory OpenAiCompatibleConfig.fromJson(Map<String, dynamic>? json) {
-    if (json == null) return const OpenAiCompatibleConfig();
+    if (json == null) return const OpenAiCompatibleConfig.xiaomiMimoDefaults();
     return OpenAiCompatibleConfig(
       provider: OpenAiModelProviderCodec.fromName(json['provider'] as String?),
       endpoint: json['endpoint'] as String? ?? '',
       modelName: json['modelName'] as String? ?? '',
       apiKey: json['apiKey'] as String? ?? '',
       isMultimodal: json['isMultimodal'] as bool? ?? false,
-      extraParamsJson:
-          json['extraParamsJson'] as String? ?? defaultExtraBodyJson,
+      extraParamsJson: json['extraParamsJson'] as String? ?? emptyExtraBodyJson,
     );
   }
 }
@@ -181,7 +192,7 @@ class LlmBackendConfig {
   const LlmBackendConfig({
     this.backendType = LlmBackendType.unset,
     this.local = const LocalMnnConfig(),
-    this.cloud = const OpenAiCompatibleConfig(),
+    this.cloud = const OpenAiCompatibleConfig.xiaomiMimoDefaults(),
     this.cloudConfigs = const {},
   });
 

@@ -296,8 +296,8 @@ tools/
 
 AI 识别按用户设置路由：
 1. **未设置**: OCR 入口提示用户前往设置选择本地模型或云端模型。
-2. **本地 MNN**: 仅在 `filesDir/qwen3.5-0.8b` 中的必需文件完整时可启用；使用 RapidOcrAndroidOnnx 进行文字检测和识别，再用 Qwen3.5-0.8B-MNN 做结构化提取。
-3. **云端文本模型**: 仅在端点和模型名称已配置时可启用；可选择 Xiaomi MiMo、Deepseek 或其它 OpenAI 风格接口，每个提供商的端点、模型、API key、多模态开关和 extra_body 会独立保存；预置提供商会自动填充端点和关闭思考模式的 extra_body，Xiaomi MiMo 首次默认开启多模态，并在填写 API key 后从 `/v1/models` 获取模型列表，401 会提示 API Key 错误；先本地 OCR/PDF 文本提取，再调用 OpenAI-compatible Chat Completions。
+2. **本地 MNN**: 仅在 `filesDir/qwen3.5-0.8b` 中的必需文件完整时可启用；用户选择本地模型后会立即后台预加载，应用启动时若仍选择本地模型也会自动预加载，关闭本地模型会取消/释放加载中的 LLM；识别时使用 RapidOcrAndroidOnnx 进行文字检测和识别，再用 Qwen3.5-0.8B-MNN 做结构化提取。
+3. **云端文本模型**: 仅在端点和模型名称已配置时可启用；外部模型初始默认选择 Xiaomi MiMo，也可切换 Deepseek 或其它 OpenAI 风格接口，每个提供商的端点、模型、API key、多模态开关和 extra_body 会独立保存；预置提供商会自动填充端点和关闭思考模式的 extra_body，Xiaomi MiMo 首次默认开启多模态，并在填写 API key 后从 `/v1/models` 获取模型列表，401 会提示 API Key 错误；先本地 OCR/PDF 文本提取，再调用 OpenAI-compatible Chat Completions。
 4. **云端多模态模型**: 图片订单/发票直接以 base64 data URL 传入 `image_url` content part；PDF 发票仍走文本提取路径。
 
 ### 模型文件

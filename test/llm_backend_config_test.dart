@@ -20,9 +20,19 @@ void main() {
 
     expect(config.backendType, LlmBackendType.unset);
     expect(config.isConfigured, isFalse);
-    expect(config.cloud.provider, OpenAiModelProvider.custom);
-    expect(config.cloud.extraParamsJson, isEmpty);
-    expect(config.cloud.extraParams, isEmpty);
+    expect(config.cloud.provider, OpenAiModelProvider.xiaomiMimo);
+    expect(
+      config.cloud.endpoint,
+      OpenAiModelProvider.xiaomiMimo.presetEndpoint,
+    );
+    expect(config.cloud.isMultimodal, isTrue);
+    expect(
+      config.cloud.extraParamsJson,
+      OpenAiModelProvider.xiaomiMimo.disabledThinkingExtraBodyJson,
+    );
+    expect(config.cloud.extraParams, {
+      'thinking': {'type': 'disabled'},
+    });
   });
 
   test('preset providers define endpoint and disabled thinking extra body', () {

@@ -11,8 +11,10 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   const pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
+  const storageChannel = MethodChannel('com.acautomaton.receipt.tamer/storage');
   late Directory rootDir;
   late Directory docsDir;
+  late Directory filesDir;
   late Directory tempDir;
 
   setUp(() async {
@@ -20,6 +22,7 @@ void main() {
       'receipt_tamer_file_service_test_',
     );
     docsDir = Directory(p.join(rootDir.path, 'docs'))..createSync();
+    filesDir = Directory(p.join(rootDir.path, 'files'))..createSync();
     tempDir = Directory(p.join(rootDir.path, 'cache'))..createSync();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(pathProviderChannel, (call) async {
@@ -29,11 +32,20 @@ void main() {
             _ => null,
           };
         });
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(storageChannel, (call) async {
+          return switch (call.method) {
+            'getFilesDirPath' => filesDir.path,
+            _ => null,
+          };
+        });
   });
 
   tearDown(() async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(pathProviderChannel, null);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(storageChannel, null);
     if (await rootDir.exists()) {
       await rootDir.delete(recursive: true);
     }
@@ -65,4 +77,18 @@ void main() {
       expect(await downloadDir.exists(), isFalse);
     },
   );
+
+  test('legacy APK-extracted model directory is counted as model storage', () async {
+    final modelDir = Directory(
+      p.join(filesDir.path, ModelAssetService.modelDirName),
+    )..createSync(recursive: true);
+    await File(p.join(modelDir.path, 'llm_config.json')).writeAsString('{}');
+    await File(p.join(modelDir.path, 'llm.mnn')).writeAsBytes([1, 2]);
+    await File(p.join(modelDir.path, 'llm.mnn.weight')).writeAsBytes([3, 4, 5]);
+    await File(p.join(modelDir.path, 'tokenizer.txt')).writeAsString('token');
+
+    final usage = await FileService().getStorageUsage();
+
+    expect(usage['model'], 12);
+  });
 }

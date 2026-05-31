@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +9,7 @@ import 'core/theme/app_theme.dart';
 import 'core/services/log_service.dart';
 import 'core/services/log_config.dart';
 import 'data/services/share_handler_service.dart';
+import 'presentation/providers/ocr_provider.dart';
 
 /// The root widget of the application.
 /// Wraps the app with ProviderScope for Riverpod state management.
@@ -47,10 +50,29 @@ class _AppState extends ConsumerState<App> {
   Future<void> _delayedInitialize() async {
     // 首帧已渲染完成，现在可以安全地进行后台初始化
     await Future.delayed(const Duration(milliseconds: 100));
+    if (!mounted) return;
+    _preloadLocalModelIfNeeded();
 
     // 初始化分享处理器
     await Future.delayed(const Duration(milliseconds: 200));
     _initializeShareHandler();
+  }
+
+  void _preloadLocalModelIfNeeded() {
+    unawaited(
+      Future(() async {
+        try {
+          final llmService = ref.read(ocrServiceProvider).llmService;
+          final started =
+              await llmService?.preloadIfConfiguredLocalModel() ?? false;
+          if (started) {
+            logService.i(LogConfig.moduleApp, '本地模型预加载已启动');
+          }
+        } catch (e, stackTrace) {
+          logService.e(LogConfig.moduleApp, '本地模型预加载失败', e, stackTrace);
+        }
+      }),
+    );
   }
 
   Future<void> _initializeShareHandler() async {
