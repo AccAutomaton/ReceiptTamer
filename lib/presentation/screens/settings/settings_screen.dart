@@ -1,11 +1,14 @@
 import 'package:receipt_tamer/core/constants/app_constants.dart';
 import 'package:receipt_tamer/core/services/log_service.dart';
 import 'package:receipt_tamer/core/services/log_config.dart';
+import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 import 'package:receipt_tamer/data/services/update_preferences.dart';
 import 'package:receipt_tamer/data/services/update_service.dart';
 import 'package:receipt_tamer/presentation/screens/export/saved_files_screen.dart';
 import 'package:receipt_tamer/presentation/screens/settings/info_screen.dart';
 import 'package:receipt_tamer/presentation/screens/settings/release_history_screen.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
 import 'package:receipt_tamer/presentation/widgets/common/receipt_icon.dart';
 import 'package:receipt_tamer/presentation/widgets/common/update_dialog.dart';
 import 'package:receipt_tamer/presentation/widgets/settings/backup_dialog.dart';
@@ -469,9 +472,10 @@ Licensed under the Apache License 2.0
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(title: const Text('关于'), elevation: 0),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 128),
         children: [
           // 应用信息头部
           _buildAppHeader(context, theme, colorScheme),
@@ -587,45 +591,59 @@ Licensed under the Apache License 2.0
     ThemeData theme,
     ColorScheme colorScheme,
   ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // 应用图标（连点10次导出日志）
-          GestureDetector(onTap: _handleLogoTap, child: ReceiptIcon(size: 96)),
-          // 应用名称
-          Text(
-            AppConstants.appName,
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
+    return GlassSurface(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+      fillColor: AppGlassTokens.sheetFill,
+      borderRadius: BorderRadius.circular(AppRadii.glassLarge),
+      boxShadow: AppShadows.glass,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // 应用图标（连点10次导出日志）
+            GestureDetector(
+              onTap: _handleLogoTap,
+              child: ReceiptIcon(size: 96),
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 4),
-          // 版本号
-          Text(
-            '版本 ${_currentVersion.isNotEmpty ? _currentVersion : '...'}',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurfaceVariant,
+            // 应用名称
+            Text(
+              AppConstants.appName,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: AppPalette.textPrimary,
+              ),
+              textAlign: TextAlign.center,
             ),
-          ),
-          // 检查更新按钮
-          TextButton.icon(
-            onPressed: _isCheckingUpdate ? null : _checkUpdate,
-            icon: _isCheckingUpdate
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.refresh, size: 18),
-            label: Text(_isCheckingUpdate ? '检查中...' : '检查更新'),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            const SizedBox(height: 4),
+            // 版本号
+            Text(
+              '版本 ${_currentVersion.isNotEmpty ? _currentVersion : '...'}',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: AppPalette.textSecondary,
+              ),
             ),
-          ),
-        ],
+            // 检查更新按钮
+            TextButton.icon(
+              onPressed: _isCheckingUpdate ? null : _checkUpdate,
+              icon: _isCheckingUpdate
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.refresh, size: 18),
+              label: Text(_isCheckingUpdate ? '检查中...' : '检查更新'),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -637,7 +655,9 @@ Licensed under the Apache License 2.0
   ) {
     final theme = Theme.of(context);
 
-    return Card(
+    return AppCard(
+      margin: EdgeInsets.zero,
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -669,7 +689,15 @@ Licensed under the Apache License 2.0
     final colorScheme = theme.colorScheme;
 
     return ListTile(
-      leading: Icon(icon, color: colorScheme.primary),
+      leading: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: AppPalette.selectedFill,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Icon(icon, color: AppPalette.amountMuted, size: 21),
+      ),
       title: Text(title),
       subtitle: Text(
         subtitle,

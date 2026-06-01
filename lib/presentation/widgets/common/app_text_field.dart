@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 
 /// App Text Field - Unified text field widget with consistent styling
@@ -78,21 +79,26 @@ class _AppTextFieldState extends State<AppTextField> {
   void initState() {
     super.initState();
     if (widget.controller == null) {
-      _internalController = TextEditingController(text: widget.initialValue ?? '');
+      _internalController = TextEditingController(
+        text: widget.initialValue ?? '',
+      );
     }
   }
 
   @override
   void didUpdateWidget(AppTextField oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.controller == null && widget.initialValue != oldWidget.initialValue) {
+    if (widget.controller == null &&
+        widget.initialValue != oldWidget.initialValue) {
       _internalController!.text = widget.initialValue ?? '';
     }
     if (widget.controller != null && oldWidget.controller == null) {
       _internalController?.dispose();
       _internalController = null;
     } else if (widget.controller == null && oldWidget.controller != null) {
-      _internalController = TextEditingController(text: widget.initialValue ?? '');
+      _internalController = TextEditingController(
+        text: widget.initialValue ?? '',
+      );
     }
   }
 
@@ -104,45 +110,24 @@ class _AppTextFieldState extends State<AppTextField> {
 
   @override
   Widget build(BuildContext context) {
+    return _buildFieldContent(context, glass: false);
+  }
+
+  Widget _buildFieldContent(BuildContext context, {required bool glass}) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    final effectivePadding = widget.contentPadding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 14);
-    final effectiveBorderRadius = widget.borderRadius ?? 8.0;
+    final effectivePadding =
+        widget.contentPadding ??
+        const EdgeInsets.symmetric(horizontal: 16, vertical: 14);
+    final effectiveBorderRadius = widget.borderRadius ?? AppRadii.control;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         if (widget.label != null) ...[
-          widget.required
-              ? RichText(
-                  text: TextSpan(
-                    children: [
-                      TextSpan(
-                        text: widget.label!,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      TextSpan(
-                        text: ' *',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: Colors.red,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : Text(
-                  widget.label!,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+          _buildLabel(theme, colorScheme),
           const SizedBox(height: 6),
         ],
         TextField(
@@ -162,7 +147,9 @@ class _AppTextFieldState extends State<AppTextField> {
           textCapitalization: widget.textCapitalization,
           onEditingComplete: widget.onEditingComplete,
           onSubmitted: widget.onSubmitted,
-          style: theme.textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface),
+          style: theme.textTheme.bodyLarge?.copyWith(
+            color: colorScheme.onSurface,
+          ),
           decoration: InputDecoration(
             hintText: widget.hint,
             hintStyle: theme.textTheme.bodyLarge?.copyWith(
@@ -172,39 +159,86 @@ class _AppTextFieldState extends State<AppTextField> {
             helperText: widget.helperText,
             counterText: widget.counterText,
             filled: true,
-            fillColor: widget.enabled
-                ? colorScheme.surfaceContainerHighest
+            fillColor: glass
+                ? Colors.transparent
+                : widget.enabled
+                ? AppGlassTokens.contentFill
                 : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
             prefixIcon: widget.prefixIcon,
             suffixIcon: widget.suffixIcon,
             contentPadding: effectivePadding,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(effectiveBorderRadius),
-              borderSide: BorderSide(color: colorScheme.outline.withValues(alpha: 0.3)),
+              borderSide: glass
+                  ? BorderSide.none
+                  : BorderSide(
+                      color: colorScheme.outline.withValues(alpha: 0.3),
+                    ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(effectiveBorderRadius),
-              borderSide: BorderSide(color: colorScheme.outline.withValues(alpha: 0.3)),
+              borderSide: glass
+                  ? BorderSide.none
+                  : BorderSide(
+                      color: colorScheme.outline.withValues(alpha: 0.3),
+                    ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(effectiveBorderRadius),
-              borderSide: BorderSide(color: colorScheme.primary, width: 2),
+              borderSide: glass
+                  ? BorderSide(
+                      color: AppPalette.primaryMuted.withValues(alpha: 0.42),
+                      width: 1.2,
+                    )
+                  : BorderSide(color: colorScheme.primary, width: 2),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(effectiveBorderRadius),
-              borderSide: const BorderSide(color: Colors.red),
+              borderSide: BorderSide(
+                color: Colors.red.withValues(alpha: glass ? 0.58 : 1),
+              ),
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(effectiveBorderRadius),
-              borderSide: const BorderSide(color: Colors.red, width: 2),
+              borderSide: BorderSide(
+                color: Colors.red.withValues(alpha: glass ? 0.62 : 1),
+                width: glass ? 1.2 : 2,
+              ),
             ),
             disabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(effectiveBorderRadius),
-              borderSide: BorderSide(color: colorScheme.outline.withValues(alpha: 0.2)),
+              borderSide: glass
+                  ? BorderSide.none
+                  : BorderSide(
+                      color: colorScheme.outline.withValues(alpha: 0.2),
+                    ),
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildLabel(ThemeData theme, ColorScheme colorScheme) {
+    final labelStyle = theme.textTheme.bodyMedium?.copyWith(
+      color: colorScheme.onSurfaceVariant,
+      fontWeight: FontWeight.w500,
+    );
+
+    if (!widget.required) {
+      return Text(widget.label!, style: labelStyle);
+    }
+
+    return RichText(
+      text: TextSpan(
+        children: [
+          TextSpan(text: widget.label!, style: labelStyle),
+          TextSpan(
+            text: ' *',
+            style: labelStyle?.copyWith(color: Colors.red),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -259,7 +293,8 @@ class _AppAmountFieldState extends State<AppAmountField> {
   @override
   void didUpdateWidget(AppAmountField oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.controller == null && widget.initialValue != oldWidget.initialValue) {
+    if (widget.controller == null &&
+        widget.initialValue != oldWidget.initialValue) {
       _internalController!.text = widget.initialValue?.toStringAsFixed(2) ?? '';
     }
     if (widget.controller != null && oldWidget.controller == null) {
@@ -368,7 +403,8 @@ class _AppDateFieldState extends State<AppDateField> {
   @override
   void didUpdateWidget(AppDateField oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.controller == null && widget.initialValue != oldWidget.initialValue) {
+    if (widget.controller == null &&
+        widget.initialValue != oldWidget.initialValue) {
       _selectedDate = widget.initialValue;
       _internalController!.text = widget.initialValue != null
           ? DateFormatter.formatDisplayWithWeekday(widget.initialValue!)
@@ -403,7 +439,9 @@ class _AppDateFieldState extends State<AppDateField> {
     );
     if (picked != null && mounted) {
       _selectedDate = picked;
-      _effectiveController.text = DateFormatter.formatDisplayWithWeekday(picked);
+      _effectiveController.text = DateFormatter.formatDisplayWithWeekday(
+        picked,
+      );
       widget.onChanged?.call(picked);
     }
   }
@@ -502,7 +540,7 @@ class AppSelectField<T> extends StatelessWidget {
             color: enabled
                 ? colorScheme.surfaceContainerHighest
                 : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppRadii.control),
             border: Border.all(
               color: errorText != null
                   ? Colors.red
@@ -533,7 +571,10 @@ class AppSelectField<T> extends StatelessWidget {
               decoration: InputDecoration(
                 errorText: errorText,
                 helperText: helperText,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,

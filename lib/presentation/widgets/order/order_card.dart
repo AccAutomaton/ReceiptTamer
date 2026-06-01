@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/order.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
+import 'package:receipt_tamer/presentation/widgets/common/muted_status_chip.dart';
 
 /// Order card widget for displaying order information in the list
 class OrderCard extends StatelessWidget {
@@ -93,18 +95,17 @@ class OrderCard extends StatelessWidget {
               Text(
                 DateFormatter.formatAmount(order.amount),
                 style: theme.textTheme.titleLarge?.copyWith(
-                  color: colorScheme.primary,
+                  color: AppPalette.amountMuted,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
-                order.hasInvoice ? '已关联发票' : '未关联发票',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: order.hasInvoice
-                      ? const Color(0xFF4CAF50).withValues(alpha: 0.7) // Low saturation green
-                      : const Color(0xFFE57373).withValues(alpha: 0.7), // Low saturation red
-                ),
+              MutedStatusChip(
+                label: order.hasInvoice ? '已关联发票' : '未关联发票',
+                icon: order.hasInvoice ? Icons.link : Icons.link_off,
+                color: order.hasInvoice
+                    ? AppPalette.successMuted
+                    : AppPalette.errorMuted,
               ),
             ],
           ),
@@ -122,7 +123,9 @@ class OrderCard extends StatelessWidget {
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         child: Icon(
           Icons.receipt_long,
-          color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+          color: Theme.of(
+            context,
+          ).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
         ),
       ),
     );
@@ -134,11 +137,7 @@ class OrderCardCompact extends StatelessWidget {
   final Order order;
   final VoidCallback? onTap;
 
-  const OrderCardCompact({
-    super.key,
-    required this.order,
-    this.onTap,
-  });
+  const OrderCardCompact({super.key, required this.order, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -195,7 +194,7 @@ class OrderCardCompact extends StatelessWidget {
             Text(
               DateFormatter.formatAmount(order.amount),
               style: theme.textTheme.titleMedium?.copyWith(
-                color: colorScheme.primary,
+                color: AppPalette.amountMuted,
                 fontWeight: FontWeight.bold,
               ),
             ),

@@ -1,13 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
+
 /// App Button - Unified button styles for the application
-enum AppButtonType {
-  primary,
-  secondary,
-  tertiary,
-  outlined,
-  text,
-}
+enum AppButtonType { primary, secondary, tertiary, outlined, text }
 
 /// App Button widget
 class AppButton extends StatelessWidget {
@@ -44,7 +40,7 @@ class AppButton extends StatelessWidget {
     this.backgroundColor,
     this.foregroundColor,
     this.borderSide,
-    this.borderRadius = 8,
+    this.borderRadius = AppRadii.control,
     this.onPressedWhileLoading,
   });
 
@@ -62,7 +58,9 @@ class AppButton extends StatelessWidget {
         button = ElevatedButton(
           onPressed: effectiveDisabled && onPressedWhileLoading == null
               ? null
-              : isLoading ? onPressedWhileLoading : onPressed,
+              : isLoading
+              ? onPressedWhileLoading
+              : onPressed,
           onLongPress: onLongPress,
           style: _primaryStyle(context, colorScheme),
           child: child,
@@ -73,7 +71,9 @@ class AppButton extends StatelessWidget {
         button = ElevatedButton(
           onPressed: effectiveDisabled && onPressedWhileLoading == null
               ? null
-              : isLoading ? onPressedWhileLoading : onPressed,
+              : isLoading
+              ? onPressedWhileLoading
+              : onPressed,
           onLongPress: onLongPress,
           style: _secondaryStyle(context, colorScheme),
           child: child,
@@ -84,7 +84,9 @@ class AppButton extends StatelessWidget {
         button = ElevatedButton(
           onPressed: effectiveDisabled && onPressedWhileLoading == null
               ? null
-              : isLoading ? onPressedWhileLoading : onPressed,
+              : isLoading
+              ? onPressedWhileLoading
+              : onPressed,
           onLongPress: onLongPress,
           style: _tertiaryStyle(context, colorScheme),
           child: child,
@@ -95,7 +97,9 @@ class AppButton extends StatelessWidget {
         button = OutlinedButton(
           onPressed: effectiveDisabled && onPressedWhileLoading == null
               ? null
-              : isLoading ? onPressedWhileLoading : onPressed,
+              : isLoading
+              ? onPressedWhileLoading
+              : onPressed,
           onLongPress: onLongPress,
           style: _outlinedStyle(context, colorScheme),
           child: child,
@@ -106,7 +110,9 @@ class AppButton extends StatelessWidget {
         button = TextButton(
           onPressed: effectiveDisabled && onPressedWhileLoading == null
               ? null
-              : isLoading ? onPressedWhileLoading : onPressed,
+              : isLoading
+              ? onPressedWhileLoading
+              : onPressed,
           onLongPress: onLongPress,
           style: _textStyle(context, colorScheme),
           child: child,
@@ -114,14 +120,15 @@ class AppButton extends StatelessWidget {
         break;
     }
 
+    return _applyWidth(button);
+  }
+
+  Widget _applyWidth(Widget child) {
     if (isFullWidth || width != null) {
-      return SizedBox(
-        width: width ?? double.infinity,
-        child: button,
-      );
+      return SizedBox(width: width ?? double.infinity, child: child);
     }
 
-    return button;
+    return child;
   }
 
   Widget _buildChild(BuildContext context) {
@@ -135,8 +142,7 @@ class AppButton extends StatelessWidget {
             child: CircularProgressIndicator(
               strokeWidth: 2,
               valueColor: AlwaysStoppedAnimation<Color>(
-                foregroundColor ??
-                    Theme.of(context).colorScheme.onPrimary,
+                foregroundColor ?? Theme.of(context).colorScheme.onPrimary,
               ),
             ),
           ),
@@ -151,15 +157,9 @@ class AppButton extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (icon != null) ...[
-            icon!,
-            const SizedBox(width: 8),
-          ],
+          if (icon != null) ...[icon!, const SizedBox(width: 8)],
           Flexible(child: Text(text)),
-          if (trailing != null) ...[
-            const SizedBox(width: 8),
-            trailing!,
-          ],
+          if (trailing != null) ...[const SizedBox(width: 8), trailing!],
         ],
       );
     }
@@ -215,7 +215,8 @@ class AppButton extends StatelessWidget {
   ButtonStyle _outlinedStyle(BuildContext context, ColorScheme colorScheme) {
     return OutlinedButton.styleFrom(
       foregroundColor: foregroundColor ?? colorScheme.primary,
-      side: borderSide ??
+      side:
+          borderSide ??
           BorderSide(
             color: colorScheme.outline.withValues(alpha: 0.5),
             width: 1,
@@ -267,8 +268,8 @@ class AppIconButton extends StatelessWidget {
     this.isLoading = false,
     this.backgroundColor,
     this.foregroundColor,
-    this.size = 40,
-    this.borderRadius = 8,
+    this.size = 44,
+    this.borderRadius = AppRadii.control,
   });
 
   @override
@@ -294,7 +295,7 @@ class AppIconButton extends StatelessWidget {
             )
           : Icon(icon),
       style: IconButton.styleFrom(
-        backgroundColor: backgroundColor ?? colorScheme.surfaceContainerHighest,
+        backgroundColor: backgroundColor ?? AppGlassTokens.lightFill,
         foregroundColor: foregroundColor ?? colorScheme.onSurface,
         minimumSize: Size(size, size),
         maximumSize: Size(size, size),

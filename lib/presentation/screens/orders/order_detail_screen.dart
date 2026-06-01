@@ -18,10 +18,7 @@ import 'package:receipt_tamer/presentation/screens/orders/invoice_selector_scree
 class OrderDetailScreen extends ConsumerStatefulWidget {
   final int orderId;
 
-  const OrderDetailScreen({
-    super.key,
-    required this.orderId,
-  });
+  const OrderDetailScreen({super.key, required this.orderId});
 
   @override
   ConsumerState<OrderDetailScreen> createState() => _OrderDetailScreenState();
@@ -38,7 +35,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
   Future<void> _loadOrder() async {
     try {
-      final order = await ref.read(orderProvider.notifier).getOrderById(widget.orderId);
+      final order = await ref
+          .read(orderProvider.notifier)
+          .getOrderById(widget.orderId);
       if (mounted) {
         setState(() {
           _order = order;
@@ -79,7 +78,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     );
 
     if (confirmed == true) {
-      final success = await ref.read(orderProvider.notifier).deleteOrder(widget.orderId);
+      final success = await ref
+          .read(orderProvider.notifier)
+          .deleteOrder(widget.orderId);
       if (mounted) {
         if (success) {
           logService.i(LogConfig.moduleUi, '订单已删除: id=${widget.orderId}');
@@ -112,7 +113,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
               subtitle: const Text('创建一张新发票并关联'),
               onTap: () async {
                 Navigator.pop(context);
-                final result = await context.push<bool>('/invoices/new?orderId=${widget.orderId}');
+                final result = await context.push<bool>(
+                  '/invoices/new?orderId=${widget.orderId}',
+                );
                 if (result == true) {
                   _loadOrder();
                   // Invalidate the provider to refresh invoices list
@@ -129,14 +132,15 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                 final result = await context.push<InvoiceSelectorResult>(
                   '/invoices/select?orderId=${widget.orderId}',
                 );
+                if (!context.mounted) return;
                 if (result?.selectedInvoiceId != null) {
                   _loadOrder();
                   // Invalidate the provider to refresh invoices list
                   ref.invalidate(invoicesByOrderIdProvider(widget.orderId));
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('发票关联成功')),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(const SnackBar(content: Text('发票关联成功')));
                   }
                 }
               },
@@ -154,19 +158,13 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
     if (_order == null) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text(AppConstants.titleOrderDetail),
-        ),
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        appBar: AppBar(title: const Text(AppConstants.titleOrderDetail)),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     final order = _order!;
-    final invoices = ref.watch(
-      invoicesByOrderIdProvider(order.id!),
-    );
+    final invoices = ref.watch(invoicesByOrderIdProvider(order.id!));
 
     final orderDate = order.orderDate != null && order.orderDate!.isNotEmpty
         ? DateTime.tryParse(order.orderDate!)
@@ -195,11 +193,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Image preview
-            if (order.imagePath.isNotEmpty && File(order.imagePath).existsSync())
-              OrderImagePreview(
-                imagePath: order.imagePath,
-                height: 250,
-              ),
+            if (order.imagePath.isNotEmpty &&
+                File(order.imagePath).existsSync())
+              OrderImagePreview(imagePath: order.imagePath, height: 250),
 
             // Order details
             Padding(
@@ -213,7 +209,13 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                   const SizedBox(height: 16),
 
                   // Details card
-                  _buildDetailsCard(context, order, orderDate, mealTime, colorScheme),
+                  _buildDetailsCard(
+                    context,
+                    order,
+                    orderDate,
+                    mealTime,
+                    colorScheme,
+                  ),
 
                   const SizedBox(height: 16),
 
@@ -228,7 +230,11 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     );
   }
 
-  Widget _buildAmountCard(BuildContext context, Order order, ColorScheme colorScheme) {
+  Widget _buildAmountCard(
+    BuildContext context,
+    Order order,
+    ColorScheme colorScheme,
+  ) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -240,9 +246,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           ],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colorScheme.primary.withValues(alpha: 0.2),
-        ),
+        border: Border.all(color: colorScheme.primary.withValues(alpha: 0.2)),
       ),
       child: Column(
         children: [
@@ -280,9 +284,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           children: [
             Text(
               '订单信息',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             _buildDetailRow(
@@ -301,9 +305,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             const Divider(),
             _buildDetailRow(
               '日期',
-              orderDate != null
-                  ? DateFormatter.formatDisplay(orderDate)
-                  : '-',
+              orderDate != null ? DateFormatter.formatDisplay(orderDate) : '-',
               Icons.calendar_today,
               colorScheme,
             ),
@@ -331,7 +333,12 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     );
   }
 
-  Widget _buildDetailRow(String label, String value, IconData icon, ColorScheme colorScheme) {
+  Widget _buildDetailRow(
+    String label,
+    String value,
+    IconData icon,
+    ColorScheme colorScheme,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -341,9 +348,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           Expanded(
             child: Text(
               label,
-              style: TextStyle(
-                color: colorScheme.onSurfaceVariant,
-              ),
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
             ),
           ),
           Expanded(
@@ -351,9 +356,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             child: Text(
               value,
               textAlign: TextAlign.right,
-              style: const TextStyle(
-                fontWeight: FontWeight.w500,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -403,14 +406,14 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                         Icon(
                           Icons.description_outlined,
                           size: 48,
-                          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                          color: colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.3,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           '暂无关联发票',
-                          style: TextStyle(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
+                          style: TextStyle(color: colorScheme.onSurfaceVariant),
                         ),
                       ],
                     ),
@@ -424,9 +427,11 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                       final invoice = invoiceList[index];
                       return ListTile(
                         leading: const Icon(Icons.description),
-                        title: Text(invoice.invoiceNumber.isEmpty
-                            ? '未填写发票号'
-                            : invoice.invoiceNumber),
+                        title: Text(
+                          invoice.invoiceNumber.isEmpty
+                              ? '未填写发票号'
+                              : invoice.invoiceNumber,
+                        ),
                         subtitle: Text(
                           DateFormatter.formatAmount(invoice.totalAmount),
                         ),
@@ -450,14 +455,12 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             children: [
               Text(
                 '关联发票',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
-              const Center(
-                child: CircularProgressIndicator(),
-              ),
+              const Center(child: CircularProgressIndicator()),
             ],
           ),
         ),
@@ -470,17 +473,15 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             children: [
               Text(
                 '关联发票',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               Center(
                 child: Text(
                   '加载失败: $error',
-                  style: TextStyle(
-                    color: colorScheme.error,
-                  ),
+                  style: TextStyle(color: colorScheme.error),
                 ),
               ),
             ],

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
 
 /// Section header for month groups in order list
 class MonthSectionHeader extends StatelessWidget {
@@ -22,28 +24,12 @@ class MonthSectionHeader extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Container(
+    return GlassSurface(
       margin: const EdgeInsets.symmetric(horizontal: 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: isPinned
-            ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.9)
-            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-          width: 1,
-        ),
-        boxShadow: isPinned
-            ? [
-                BoxShadow(
-                  color: colorScheme.shadow.withValues(alpha: 0.08),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ]
-            : null,
-      ),
+      fillColor: isPinned ? AppGlassTokens.sheetFill : AppGlassTokens.lightFill,
+      borderRadius: BorderRadius.circular(AppRadii.control),
+      boxShadow: isPinned ? AppShadows.glass : null,
       child: Row(
         children: [
           // Left side: Year and Month
@@ -70,7 +56,7 @@ class MonthSectionHeader extends StatelessWidget {
                 '$month',
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: colorScheme.primary,
+                  color: AppPalette.amountMuted,
                 ),
               ),
               const SizedBox(width: 2),
@@ -120,14 +106,18 @@ class MonthSectionHeader extends StatelessWidget {
         Icon(
           icon,
           size: 16,
-          color: isHighlight ? colorScheme.primary : colorScheme.onSurfaceVariant,
+          color: isHighlight
+              ? AppPalette.amountMuted
+              : colorScheme.onSurfaceVariant,
         ),
         const SizedBox(width: 4),
         Text(
           label,
           style: theme.textTheme.bodyMedium?.copyWith(
             fontWeight: isHighlight ? FontWeight.w600 : FontWeight.normal,
-            color: isHighlight ? colorScheme.primary : colorScheme.onSurfaceVariant,
+            color: isHighlight
+                ? AppPalette.amountMuted
+                : colorScheme.onSurfaceVariant,
           ),
         ),
       ],

@@ -7,10 +7,14 @@ import 'package:receipt_tamer/data/services/meal_details_export_service.dart';
 import 'package:receipt_tamer/data/services/meal_proof_export_service.dart';
 import 'package:receipt_tamer/core/services/log_service.dart';
 import 'package:receipt_tamer/core/services/log_config.dart';
+import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/screens/export/saved_files_screen.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
+import 'package:receipt_tamer/presentation/widgets/common/liquid_glass_background.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -27,7 +31,8 @@ class ExportOptionsScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<ExportOptionsScreen> createState() => _ExportOptionsScreenState();
+  ConsumerState<ExportOptionsScreen> createState() =>
+      _ExportOptionsScreenState();
 }
 
 class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
@@ -56,123 +61,132 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('导出选项'),
-        elevation: 0,
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                // Summary card
-                Card(
-                  child: Padding(
+      backgroundColor: AppPalette.coldBackground,
+      appBar: AppBar(title: const Text('导出选项'), elevation: 0),
+      body: LiquidGlassBackground(
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  // Summary card
+                  AppCard(
+                    margin: EdgeInsets.zero,
                     padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Icon(Icons.description_outlined, color: colorScheme.primary),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '报销材料',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${widget.invoiceIds.length} 张发票 · ${widget.orderIds.length} 条订单',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
+                    child: Padding(
+                      padding: EdgeInsets.zero,
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.description_outlined,
+                            color: colorScheme.primary,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '报销材料',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${widget.invoiceIds.length} 张发票 · ${widget.orderIds.length} 条订单',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
 
-                const SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
-                // Export options
-                Text(
-                  '选择导出内容',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w500,
+                  // Export options
+                  Text(
+                    '选择导出内容',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
+                  const SizedBox(height: 12),
 
-                // Meal proof option
-                _buildExportOptionCard(
-                  title: '用餐证明',
-                  subtitle: '订单截图汇总文档',
-                  icon: Icons.restaurant_menu,
-                  value: _exportMealProof,
-                  formatLabel: 'PDF',
-                  onToggle: (v) => setState(() => _exportMealProof = v),
-                ),
+                  // Meal proof option
+                  _buildExportOptionCard(
+                    title: '用餐证明',
+                    subtitle: '订单截图汇总文档',
+                    icon: Icons.restaurant_menu,
+                    value: _exportMealProof,
+                    formatLabel: 'PDF',
+                    onToggle: (v) => setState(() => _exportMealProof = v),
+                  ),
 
-                const SizedBox(height: 12),
+                  const SizedBox(height: 12),
 
-                // Invoice option
-                _buildExportOptionCard(
-                  title: '发票',
-                  subtitle: '发票信息汇总文档',
-                  icon: Icons.receipt_long,
-                  value: _exportInvoice,
-                  formatLabel: 'PDF',
-                  onToggle: (v) => setState(() => _exportInvoice = v),
-                ),
+                  // Invoice option
+                  _buildExportOptionCard(
+                    title: '发票',
+                    subtitle: '发票信息汇总文档',
+                    icon: Icons.receipt_long,
+                    value: _exportInvoice,
+                    formatLabel: 'PDF',
+                    onToggle: (v) => setState(() => _exportInvoice = v),
+                  ),
 
-                const SizedBox(height: 12),
+                  const SizedBox(height: 12),
 
-                // Meal details option
-                _buildExportOptionCard(
-                  title: '用餐明细',
-                  subtitle: '订单和发票明细表格',
-                  icon: Icons.table_chart,
-                  value: _exportMealDetails,
-                  formatLabel: 'XLSX',
-                  onToggle: (v) => setState(() => _exportMealDetails = v),
-                ),
+                  // Meal details option
+                  _buildExportOptionCard(
+                    title: '用餐明细',
+                    subtitle: '订单和发票明细表格',
+                    icon: Icons.table_chart,
+                    value: _exportMealDetails,
+                    formatLabel: 'XLSX',
+                    onToggle: (v) => setState(() => _exportMealDetails = v),
+                  ),
 
-                const SizedBox(height: 24),
-              ],
-            ),
-          ),
-
-          // Meal proof export options group (新增)
-          _buildMealProofExportOptions(context),
-
-          // Invoice export options group (only visible when invoice export is enabled)
-          _buildInvoiceExportOptions(context),
-
-          // Meal details export options group
-          _buildMealDetailsExportOptions(context),
-
-          // Export button
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: AppButton(
-                text: '开始导出',
-                onPressed: _canExport() ? _handleExport : null,
-                isLoading: _isExporting,
-                isFullWidth: true,
-                type: AppButtonType.primary,
+                  const SizedBox(height: 24),
+                ],
               ),
             ),
-          ),
-        ],
+
+            // Meal proof export options group (新增)
+            _buildMealProofExportOptions(context),
+
+            // Invoice export options group (only visible when invoice export is enabled)
+            _buildInvoiceExportOptions(context),
+
+            // Meal details export options group
+            _buildMealDetailsExportOptions(context),
+
+            // Export button
+            SafeArea(
+              child: GlassSurface(
+                margin: const EdgeInsets.fromLTRB(12, 6, 12, 12),
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                fillColor: AppGlassTokens.sheetFill,
+                borderRadius: BorderRadius.circular(AppRadii.glassLarge),
+                boxShadow: AppShadows.glass,
+                child: AppButton(
+                  text: '开始导出',
+                  onPressed: _canExport() ? _handleExport : null,
+                  isLoading: _isExporting,
+                  isFullWidth: true,
+                  type: AppButtonType.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -192,9 +206,18 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Card(
+    return AppCard(
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.all(12),
+      backgroundColor: value ? AppPalette.selectedFill : AppPalette.cardFill,
+      borderSide: BorderSide(
+        color: value
+            ? AppPalette.amountMuted
+            : colorScheme.outlineVariant.withValues(alpha: 0.44),
+        width: value ? 1.4 : 1,
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.zero,
         child: Column(
           children: [
             Row(
@@ -211,14 +234,16 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: value
-                        ? colorScheme.primaryContainer.withValues(alpha: 0.5)
+                        ? AppPalette.selectedFill
                         : colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(
                     icon,
                     size: 20,
-                    color: value ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                    color: value
+                        ? AppPalette.amountMuted
+                        : colorScheme.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -249,10 +274,13 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
-                        color: colorScheme.primary,
-                        borderRadius: BorderRadius.circular(16),
+                        color: AppPalette.amountMuted,
+                        borderRadius: BorderRadius.circular(AppRadii.chip),
                       ),
                       child: Text(
                         formatLabel,
@@ -283,9 +311,7 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
           controller: controller,
           decoration: InputDecoration(
             hintText: '请输入备注内容',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
           maxLength: 50,
           autofocus: true,
@@ -320,7 +346,9 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
 
   /// Show dialog for inputting meal proof remark
   Future<void> _showMealProofRemarkDialog() async {
-    final controller = TextEditingController(text: _mealProofRemarkContent ?? '');
+    final controller = TextEditingController(
+      text: _mealProofRemarkContent ?? '',
+    );
 
     final result = await showDialog<String>(
       context: context,
@@ -330,9 +358,7 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
           controller: controller,
           decoration: InputDecoration(
             hintText: '请输入备注内容',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
           maxLength: 50,
           autofocus: true,
@@ -376,8 +402,9 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: Card(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+      child: AppCard(
+        margin: EdgeInsets.zero,
+        backgroundColor: AppPalette.cardFill,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -419,18 +446,18 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
             height: 20,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _addMealProofRemark ? colorScheme.primary : Colors.transparent,
+              color: _addMealProofRemark
+                  ? colorScheme.primary
+                  : Colors.transparent,
               border: Border.all(
-                color: _addMealProofRemark ? colorScheme.primary : colorScheme.outline,
+                color: _addMealProofRemark
+                    ? colorScheme.primary
+                    : colorScheme.outline,
                 width: 2,
               ),
             ),
             child: _addMealProofRemark
-                ? Icon(
-                    Icons.check,
-                    size: 14,
-                    color: colorScheme.onPrimary,
-                  )
+                ? Icon(Icons.check, size: 14, color: colorScheme.onPrimary)
                 : null,
           ),
           const SizedBox(width: 8),
@@ -475,8 +502,9 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: Card(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+      child: AppCard(
+        margin: EdgeInsets.zero,
+        backgroundColor: AppPalette.cardFill,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -516,8 +544,9 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: Card(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+      child: AppCard(
+        margin: EdgeInsets.zero,
+        backgroundColor: AppPalette.cardFill,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -573,11 +602,7 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
               ),
             ),
             child: value
-                ? Icon(
-                    Icons.check,
-                    size: 14,
-                    color: colorScheme.onPrimary,
-                  )
+                ? Icon(Icons.check, size: 14, color: colorScheme.onPrimary)
                 : null,
           ),
           const SizedBox(width: 8),
@@ -612,18 +637,18 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
             height: 20,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _addInvoiceRemark ? colorScheme.primary : Colors.transparent,
+              color: _addInvoiceRemark
+                  ? colorScheme.primary
+                  : Colors.transparent,
               border: Border.all(
-                color: _addInvoiceRemark ? colorScheme.primary : colorScheme.outline,
+                color: _addInvoiceRemark
+                    ? colorScheme.primary
+                    : colorScheme.outline,
                 width: 2,
               ),
             ),
             child: _addInvoiceRemark
-                ? Icon(
-                    Icons.check,
-                    size: 14,
-                    color: colorScheme.onPrimary,
-                  )
+                ? Icon(Icons.check, size: 14, color: colorScheme.onPrimary)
                 : null,
           ),
           const SizedBox(width: 8),
@@ -669,7 +694,8 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
     try {
       final now = DateTime.now();
       final timestamp = _formatTimestamp(now);
-      final dateDir = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+      final dateDir =
+          '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
       final subDir = 'materials/$dateDir';
 
       int successCount = 0;
@@ -704,7 +730,9 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
               items: items,
               outputPath: tempPath,
               getImagePath: (p) => p, // Image path is already absolute
-              remark: _addMealProofRemark ? _mealProofRemarkContent : null, // 新增参数
+              remark: _addMealProofRemark
+                  ? _mealProofRemarkContent
+                  : null, // 新增参数
             );
 
             // Copy to Download/ReceiptTamer/materials/YYYYMMDD
@@ -864,9 +892,9 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
     } catch (e, stackTrace) {
       if (mounted) {
         logService.e(LogConfig.moduleUi, '导出失败', e, stackTrace);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('导出失败: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('导出失败: $e')));
       }
     } finally {
       if (mounted) {
@@ -881,7 +909,9 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
   Future<List<Invoice>> _getSelectedInvoices() async {
     final invoices = <Invoice>[];
     for (final id in widget.invoiceIds) {
-      final invoice = await ref.read(invoiceProvider.notifier).getInvoiceById(id);
+      final invoice = await ref
+          .read(invoiceProvider.notifier)
+          .getInvoiceById(id);
       if (invoice != null) {
         invoices.add(invoice);
       }

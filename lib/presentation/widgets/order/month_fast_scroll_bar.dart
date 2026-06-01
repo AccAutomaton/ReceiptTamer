@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 
 /// A sleek fast scroll bar that displays month indicators on the right edge.
 /// Shows a bubble with year/month when dragging, and jumps to that position on release.
@@ -82,9 +83,9 @@ class _MonthFastScrollBarState extends State<MonthFastScrollBar> {
     final item = widget.items[_hoveredIndex];
 
     return Material(
-      elevation: 4,
-      borderRadius: BorderRadius.circular(8),
-      color: colorScheme.primaryContainer,
+      elevation: 0,
+      borderRadius: BorderRadius.circular(18),
+      color: AppGlassTokens.sheetFill,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Column(
@@ -92,17 +93,14 @@ class _MonthFastScrollBarState extends State<MonthFastScrollBar> {
           children: [
             Text(
               '${item.year}年',
-              style: TextStyle(
-                fontSize: 12,
-                color: colorScheme.onPrimaryContainer,
-              ),
+              style: TextStyle(fontSize: 12, color: AppPalette.textSecondary),
             ),
             Text(
               '${item.month}月',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: colorScheme.onPrimaryContainer,
+                color: AppPalette.amountMuted,
               ),
             ),
           ],
@@ -150,7 +148,10 @@ class _MonthFastScrollBarState extends State<MonthFastScrollBar> {
     if (box == null || box.size.height <= 0) return 0;
 
     final ratio = (localY / box.size.height).clamp(0.0, 1.0);
-    return (ratio * widget.items.length).floor().clamp(0, widget.items.length - 1);
+    return (ratio * widget.items.length).floor().clamp(
+      0,
+      widget.items.length - 1,
+    );
   }
 }
 
@@ -185,7 +186,7 @@ class _ScrollBarPainter extends CustomPainter {
 
     // Draw the center rail line
     final railPaint = Paint()
-      ..color = colorScheme.outlineVariant.withValues(alpha: 0.4)
+      ..color = AppPalette.outlineMuted.withValues(alpha: 0.62)
       ..strokeWidth = 1.0
       ..style = PaintingStyle.stroke;
 
@@ -197,32 +198,34 @@ class _ScrollBarPainter extends CustomPainter {
 
     // Background color for text (to hide rail behind numbers)
     final bgPaint = Paint()
-      ..color = colorScheme.surface
+      ..color = AppPalette.coldBackground
       ..style = PaintingStyle.fill;
 
     // Styles for different states
     final normalStyle = TextStyle(
       fontSize: 8,
       fontWeight: FontWeight.w400,
-      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+      color: AppPalette.textSecondary.withValues(alpha: 0.72),
     );
 
     final yearMarkerStyle = TextStyle(
       fontSize: 10,
       fontWeight: FontWeight.w600,
-      color: colorScheme.primary,
+      color: AppPalette.amountMuted,
     );
 
     final hoveredStyle = TextStyle(
       fontSize: 11,
       fontWeight: FontWeight.bold,
-      color: colorScheme.primary,
+      color: AppPalette.amountMuted,
     );
 
     int? currentYear;
     for (int i = 0; i < items.length; i++) {
       final item = items[i];
-      final y = topPadding + (i / (items.length - 1).clamp(1, items.length)) * railHeight;
+      final y =
+          topPadding +
+          (i / (items.length - 1).clamp(1, items.length)) * railHeight;
 
       final isHovered = i == hoveredIndex;
       final isYearStart = currentYear != item.year;
@@ -235,7 +238,7 @@ class _ScrollBarPainter extends CustomPainter {
           style: TextStyle(
             fontSize: 7,
             fontWeight: FontWeight.w500,
-            color: colorScheme.primary.withValues(alpha: 0.8),
+            color: AppPalette.amountMuted.withValues(alpha: 0.8),
           ),
         );
         final yearPainter = TextPainter(
@@ -264,14 +267,11 @@ class _ScrollBarPainter extends CustomPainter {
       final textStyle = isHovered
           ? hoveredStyle
           : isYearStart
-              ? yearMarkerStyle
-              : normalStyle;
+          ? yearMarkerStyle
+          : normalStyle;
 
       // Draw month label centered on the rail
-      final textSpan = TextSpan(
-        text: '${item.month}',
-        style: textStyle,
-      );
+      final textSpan = TextSpan(text: '${item.month}', style: textStyle);
       final textPainter = TextPainter(
         text: textSpan,
         textDirection: TextDirection.ltr,
@@ -297,6 +297,7 @@ class _ScrollBarPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _ScrollBarPainter oldDelegate) {
-    return oldDelegate.hoveredIndex != hoveredIndex || oldDelegate.items != items;
+    return oldDelegate.hoveredIndex != hoveredIndex ||
+        oldDelegate.items != items;
   }
 }

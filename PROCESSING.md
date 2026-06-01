@@ -22,6 +22,7 @@
 | 数据层       | ✅  | Order/Invoice/OcrResult/InvoiceOrderRelation 模型、仓库层、服务层 |
 | 状态管理      | ✅  | Riverpod StateNotifier (order/invoice/ocr)              |
 | UI组件库     | ✅  | 统一卡片、按钮、输入框、空状态、月份选择器、存储环形图                             |
+| 冷调液态玻璃视觉改造 | ✅ | 已完成冷调低饱和设计 token、LiquidGlassBackground 冷调雾面背景、GlassSurface/GlassBottomSheet/GlassNavigationBar/MutedStatusChip 基础组件；全局保持纯 Flutter 非 shader 仿液态玻璃样式，避免真实 shader 导致卡顿 |
 | 订单管理      | ✅  | 列表、详情、编辑页面、月份分组、快速滚动                                    |
 | 发票管理      | ✅  | 列表、详情、编辑页面、月份分组                                         |
 | 发票-订单关联   | ✅  | 一对多关系（一张发票关联多个订单）、双向选择器、关联计数显示                          |
@@ -475,3 +476,14 @@ backup.zip
 | 备份数据库版本 < 当前版本，应用版本相同 | 执行数据库升级后还原 |
 | 备份数据库版本 < 当前版本，应用版本不同 | 警告后执行数据库升级再还原 |
 | 备份数据库版本 == 当前版本，应用版本不同 | 警告后允许还原 |
+
+---
+
+## 2026-06-01 视觉改造记录
+
+- 继续推进 iOS 26 风格冷调液态玻璃改造：保留冷调低饱和设计 token 与冷调雾面背景；移除第三方真实 shader/refraction 方案，回到第一版纯 Flutter 仿液态玻璃视觉。
+- 因全量控件 shader 在长列表与弹层中性能开销过高，已回滚到公共控件的非 shader 结构：移除页面级 `LiquidGlassHost`、弹层 host、`LiquidGlassSlot` 与 app 自有控件真实镜片；AppCard、GlassSurface、AppButton、AppIconButton、AppTextField、MutedStatusChip、GlassBottomSheet、GlassActionTile 等继续使用非 shader 冷调玻璃样式。
+- 修正底部导航透明命中层与液态玻璃镜片的定位一致性，确保导航栏内加号按钮点击区域与视觉位置一致。
+- 移除公共玻璃 preset 的硬 optical border 宽度，改用低饱和 tint、柔和 distortion 与内容底色保证可读性，避免硬白边与子内容 0.x 像素溢出。
+- 首页快捷功能入口改为与统计卡片一致的冷调玻璃卡片质感，但保留完整单行文案；全宽的报销材料导出入口居中呈现，避免拆分后的大号“导出”造成视觉突兀。
+- 当前性能预算：页面、底部导航、卡片、按钮、输入框、chip、底部弹层、Dialog 外壳等均不创建真实 shader 镜片，统一使用纯 Flutter 仿玻璃效果。

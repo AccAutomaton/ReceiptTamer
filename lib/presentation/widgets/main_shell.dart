@@ -6,6 +6,9 @@ import 'package:receipt_tamer/data/services/update_preferences.dart';
 import 'package:receipt_tamer/data/services/update_service.dart';
 import 'package:receipt_tamer/core/services/log_service.dart';
 import 'package:receipt_tamer/core/services/log_config.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_bottom_sheet.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_navigation_bar.dart';
+import 'package:receipt_tamer/presentation/widgets/common/liquid_glass_background.dart';
 import 'package:receipt_tamer/presentation/widgets/common/update_dialog.dart';
 
 /// Shell widget that provides bottom navigation bar
@@ -58,43 +61,54 @@ class _MainShellState extends ConsumerState<MainShell>
   ];
 
   void _onDestinationSelected(int index) {
-    // _currentIndex stores UI index directly (for NavigationBar.selectedIndex)
-    // UI: [0:首页, 1:订单, 2:占位符, 3:发票, 4:设置]
-    // _destinations: [0:首页, 1:订单, 2:发票, 3:设置]
-    final destIndex = index < 2 ? index : index - 1;
     setState(() => _currentIndex = index);
-    context.go(_destinations[destIndex].path);
+    context.go(_destinations[index].path);
+  }
+
+  int _destinationIndexForPath(String path) {
+    if (path == '/') return 0;
+    for (var index = 1; index < _destinations.length; index++) {
+      final destinationPath = _destinations[index].path;
+      if (path == destinationPath || path.startsWith('$destinationPath/')) {
+        return index;
+      }
+    }
+    return _currentIndex;
   }
 
   void _onAddPressed() {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    showModalBottomSheet(
+    showGlassBottomSheet<void>(
       context: context,
-      builder: (context) => SafeArea(
+      builder: (context) => GlassBottomSheet(
+        key: const ValueKey('glass_add_sheet'),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: Icon(
-                Icons.receipt_long,
-                color: colorScheme.primary,
+            Container(
+              width: 42,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurfaceVariant.withValues(alpha: 0.28),
+                borderRadius: BorderRadius.circular(999),
               ),
-              title: const Text('添加订单'),
-              subtitle: const Text('通过订单截图导入'),
+            ),
+            GlassActionTile(
+              icon: Icons.receipt_long,
+              title: '添加订单',
+              subtitle: '通过订单截图导入',
               onTap: () {
                 Navigator.pop(context);
                 context.push('/orders/new');
               },
             ),
-            ListTile(
-              leading: Icon(
-                Icons.description,
-                color: colorScheme.primary,
-              ),
-              title: const Text('添加发票'),
-              subtitle: const Text('通过图片或PDF导入'),
+            const SizedBox(height: 6),
+            GlassActionTile(
+              icon: Icons.description,
+              title: '添加发票',
+              subtitle: '通过图片或PDF导入',
               onTap: () {
                 Navigator.pop(context);
                 context.push('/invoices/new');
@@ -155,7 +169,7 @@ class _MainShellState extends ConsumerState<MainShell>
   /// Clean up downloaded APK file after installation
   Future<void> _cleanupApkAfterInstall() async {
     final apkPath = _downloadedApkPath;
-    _downloadedApkPath = null;  // 先清空避免重复清理
+    _downloadedApkPath = null; // 先清空避免重复清理
     if (apkPath != null) {
       await _updateService.deleteApk(apkPath);
     }
@@ -222,21 +236,14 @@ class _MainShellState extends ConsumerState<MainShell>
   void _updateCurrentIndex() {
     try {
       final state = GoRouterState.of(context);
-      final location = state.matchedLocation;
-      final destIndex = _destinations.indexWhere((d) => d.path == location);
-      if (destIndex != -1) {
-        // Map destination index back to UI index (add 1 for items after placeholder)
-        // _destinations: [0:首页, 1:订单, 2:发票, 3:设置]
-        // UI: [0:首页, 1:订单, 2:占位符, 3:发票, 4:设置]
-        final uiIndex = destIndex < 2 ? destIndex : destIndex + 1;
-        if (uiIndex != _currentIndex) {
-          // Use WidgetsBinding to defer setState to after the current build frame
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              setState(() => _currentIndex = uiIndex);
-            }
-          });
-        }
+      final destIndex = _destinationIndexForPath(state.uri.path);
+      if (destIndex != _currentIndex) {
+        // Use WidgetsBinding to defer setState to after the current build frame
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() => _currentIndex = destIndex);
+          }
+        });
       }
     } catch (e) {
       // Ignore errors during route state access
@@ -247,8 +254,9 @@ class _MainShellState extends ConsumerState<MainShell>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final selectedIndex = _destinationIndexForPath(
+      GoRouterState.of(context).uri.path,
+    );
 
     return PopScope(
       canPop: false,
@@ -263,67 +271,32 @@ class _MainShellState extends ConsumerState<MainShell>
           });
         }
       },
-      child: Stack(
-        children: [
-          Scaffold(
-            body: widget.child,
-            bottomNavigationBar: NavigationBar(
-              selectedIndex: _currentIndex,
-              onDestinationSelected: _onDestinationSelected,
-              destinations: [
-                // 首页
-                NavigationDestination(
-                  icon: Icon(_destinations[0].icon),
-                  selectedIcon: Icon(_destinations[0].selectedIcon),
-                  label: _destinations[0].label,
-                ),
-                // 订单
-                NavigationDestination(
-                  icon: Icon(_destinations[1].icon),
-                  selectedIcon: Icon(_destinations[1].selectedIcon),
-                  label: _destinations[1].label,
-                ),
-                // 中间的加号占位
-                NavigationDestination(
-                  icon: const SizedBox.shrink(),
-                  label: '',
-                  enabled: false,
-                ),
-                // 发票
-                NavigationDestination(
-                  icon: Icon(_destinations[2].icon),
-                  selectedIcon: Icon(_destinations[2].selectedIcon),
-                  label: _destinations[2].label,
-                ),
-                // 关于
-                NavigationDestination(
-                  icon: Icon(_destinations[3].icon),
-                  selectedIcon: Icon(_destinations[3].selectedIcon),
-                  label: _destinations[3].label,
-                ),
-              ],
-            ),
-          ),
-          // FAB positioned outside Scaffold to prevent animation on rebuild
-          Positioned(
-            bottom: 35,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: FloatingActionButton(
-                key: const ValueKey('main_fab'),
-                heroTag: null,
-                onPressed: _onAddPressed,
-                elevation: 8,
-                highlightElevation: 12,
-                backgroundColor: colorScheme.primary,
-                foregroundColor: colorScheme.onPrimary,
-                shape: const CircleBorder(),
-                child: const Icon(Icons.add, size: 32),
+      child: Scaffold(
+        extendBody: true,
+        backgroundColor: Colors.transparent,
+        body: Stack(
+          children: [
+            Positioned.fill(child: LiquidGlassBackground(child: widget.child)),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: GlassNavigationBar(
+                selectedIndex: selectedIndex,
+                items: [
+                  for (final destination in _destinations)
+                    GlassNavItem(
+                      icon: destination.icon,
+                      selectedIcon: destination.selectedIcon,
+                      label: destination.label,
+                    ),
+                ],
+                onDestinationSelected: _onDestinationSelected,
+                onCenterPressed: _onAddPressed,
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

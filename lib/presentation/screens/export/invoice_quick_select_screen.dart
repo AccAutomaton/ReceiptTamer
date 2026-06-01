@@ -6,6 +6,7 @@ import 'dart:io';
 
 import 'package:receipt_tamer/core/services/log_service.dart';
 import 'package:receipt_tamer/core/services/log_config.dart';
+import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/data/services/invoice_export_service.dart';
@@ -15,6 +16,9 @@ import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/widgets/common/empty_state.dart';
 import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
+import 'package:receipt_tamer/presentation/widgets/common/liquid_glass_background.dart';
 import 'package:receipt_tamer/presentation/screens/export/saved_files_screen.dart';
 
 /// Order relation filter enum for invoice export
@@ -31,10 +35,12 @@ class InvoiceQuickSelectScreen extends ConsumerStatefulWidget {
   const InvoiceQuickSelectScreen({super.key});
 
   @override
-  ConsumerState<InvoiceQuickSelectScreen> createState() => _InvoiceQuickSelectScreenState();
+  ConsumerState<InvoiceQuickSelectScreen> createState() =>
+      _InvoiceQuickSelectScreenState();
 }
 
-class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScreen> {
+class _InvoiceQuickSelectScreenState
+    extends ConsumerState<InvoiceQuickSelectScreen> {
   Set<int> _selectedInvoiceIds = {};
   List<Invoice> _invoices = [];
   int _totalInvoiceCount = 0; // 全部筛选下的发票数量（用于已选计数分母）
@@ -76,15 +82,18 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
 
     try {
       // Use searchInvoices to support hasLinkedOrder filter
-      await ref.read(invoiceProvider.notifier).searchInvoices(
-        startDate: _startDate,
-        endDate: _endDate,
-        hasLinkedOrder: _orderRelationFilter == OrderRelationFilter.withOrder
-            ? true
-            : _orderRelationFilter == OrderRelationFilter.withoutOrder
+      await ref
+          .read(invoiceProvider.notifier)
+          .searchInvoices(
+            startDate: _startDate,
+            endDate: _endDate,
+            hasLinkedOrder:
+                _orderRelationFilter == OrderRelationFilter.withOrder
+                ? true
+                : _orderRelationFilter == OrderRelationFilter.withoutOrder
                 ? false
                 : null,
-      );
+          );
 
       // Get invoices from provider state
       final invoices = ref.read(invoiceProvider).invoices;
@@ -96,41 +105,50 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
           final sellerName = invoice.sellerName.toLowerCase();
           final invoiceNumber = invoice.invoiceNumber.toLowerCase();
           final keyword = _searchKeyword.toLowerCase();
-          return sellerName.contains(keyword) || invoiceNumber.contains(keyword);
+          return sellerName.contains(keyword) ||
+              invoiceNumber.contains(keyword);
         }).toList();
       }
 
       // 获取全部筛选下的发票数量（用于已选计数分母）
       int totalCount;
-      if (_orderRelationFilter == OrderRelationFilter.all && _searchKeyword.isEmpty) {
+      if (_orderRelationFilter == OrderRelationFilter.all &&
+          _searchKeyword.isEmpty) {
         totalCount = filteredInvoices.length;
       } else {
         // 需要额外查询全部筛选的数量
-        await ref.read(invoiceProvider.notifier).searchInvoices(
-          startDate: _startDate,
-          endDate: _endDate,
-          hasLinkedOrder: null, // 全部
-        );
+        await ref
+            .read(invoiceProvider.notifier)
+            .searchInvoices(
+              startDate: _startDate,
+              endDate: _endDate,
+              hasLinkedOrder: null, // 全部
+            );
         final allInvoices = ref.read(invoiceProvider).invoices;
         // 搜索关键词不影响分母（分母只考虑日期筛选）
         totalCount = allInvoices.length;
         // 恢复当前筛选的发票列表
-        await ref.read(invoiceProvider.notifier).searchInvoices(
-          startDate: _startDate,
-          endDate: _endDate,
-          hasLinkedOrder: _orderRelationFilter == OrderRelationFilter.withOrder
-              ? true
-              : _orderRelationFilter == OrderRelationFilter.withoutOrder
+        await ref
+            .read(invoiceProvider.notifier)
+            .searchInvoices(
+              startDate: _startDate,
+              endDate: _endDate,
+              hasLinkedOrder:
+                  _orderRelationFilter == OrderRelationFilter.withOrder
+                  ? true
+                  : _orderRelationFilter == OrderRelationFilter.withoutOrder
                   ? false
                   : null,
-        );
+            );
       }
 
       // Load order counts for each invoice
       final invoiceOrderCounts = <int, int>{};
       for (final invoice in filteredInvoices) {
         if (invoice.id != null) {
-          final orderIds = await ref.read(invoiceProvider.notifier).getOrderIdsForInvoice(invoice.id!);
+          final orderIds = await ref
+              .read(invoiceProvider.notifier)
+              .getOrderIdsForInvoice(invoice.id!);
           invoiceOrderCounts[invoice.id!] = orderIds.length;
         }
       }
@@ -147,9 +165,9 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
       if (mounted) {
         setState(() => _isLoading = false);
         logService.e(LogConfig.moduleUi, '加载发票失败', e, stackTrace);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('加载发票失败: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('加载发票失败: $e')));
       }
     }
   }
@@ -166,7 +184,10 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
 
   void _selectAll() {
     setState(() {
-      _selectedInvoiceIds = _invoices.where((i) => i.id != null).map((i) => i.id!).toSet();
+      _selectedInvoiceIds = _invoices
+          .where((i) => i.id != null)
+          .map((i) => i.id!)
+          .toSet();
     });
   }
 
@@ -178,7 +199,10 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
 
   void _invertSelection() {
     setState(() {
-      final allIds = _invoices.where((i) => i.id != null).map((i) => i.id!).toSet();
+      final allIds = _invoices
+          .where((i) => i.id != null)
+          .map((i) => i.id!)
+          .toSet();
       _selectedInvoiceIds = allIds.difference(_selectedInvoiceIds);
     });
   }
@@ -224,9 +248,7 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
           controller: controller,
           decoration: InputDecoration(
             hintText: '请输入备注内容',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
           maxLength: 50,
           autofocus: true,
@@ -261,9 +283,9 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
 
   Future<void> _confirmAndExport() async {
     if (_selectedInvoiceIds.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先选择发票')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请先选择发票')));
       return;
     }
 
@@ -271,7 +293,9 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
 
     try {
       // Get selected invoices
-      final selectedInvoices = _invoices.where((i) => _selectedInvoiceIds.contains(i.id)).toList();
+      final selectedInvoices = _invoices
+          .where((i) => _selectedInvoiceIds.contains(i.id))
+          .toList();
 
       // Prepare invoice export items
       final items = await InvoiceExportService.prepareInvoiceExportItems(
@@ -283,10 +307,12 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
         remark: _addRemark ? _remarkContent : null,
       );
 
+      if (!mounted) return;
+
       if (items.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('没有可导出的发票')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('没有可导出的发票')));
         setState(() => _isExporting = false);
         return;
       }
@@ -306,7 +332,8 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
 
       // Copy to download directory
       final now = DateTime.now();
-      final dateDir = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+      final dateDir =
+          '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
       final fileService = FileService();
       final savedPath = await fileService.copyToDownloadDirectory(
         tempPath,
@@ -326,20 +353,23 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
         // Navigate to saved files screen to show exported file
         if (savedPath != null) {
           Navigator.pop(context);
-          await showSavedFilesScreen(context, initialSubDir: 'materials/$dateDir');
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('保存文件失败')),
+          await showSavedFilesScreen(
+            context,
+            initialSubDir: 'materials/$dateDir',
           );
+        } else {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('保存文件失败')));
         }
       }
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleFile, '发票PDF导出失败', e, stackTrace);
       if (mounted) {
         setState(() => _isExporting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('导出失败: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('导出失败: $e')));
       }
     }
   }
@@ -347,53 +377,41 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('发票导出'),
-        elevation: 0,
-      ),
-      body: Column(
-        children: [
-          // Search and filter section
-          _buildFilterSection(context),
+      backgroundColor: AppPalette.coldBackground,
+      appBar: AppBar(title: const Text('发票导出'), elevation: 0),
+      body: LiquidGlassBackground(
+        child: Column(
+          children: [
+            // Search and filter section
+            _buildFilterSection(context),
 
-          // Date filter chip
-          if (_startDate != null || _endDate != null)
-            _buildDateFilterChip(context),
+            // Date filter chip
+            if (_startDate != null || _endDate != null)
+              _buildDateFilterChip(context),
 
-          // Select buttons row
-          _buildSelectButtonsRow(context),
+            // Select buttons row
+            _buildSelectButtonsRow(context),
 
-          // Invoice list
-          Expanded(
-            child: _buildInvoiceList(context),
-          ),
+            // Invoice list
+            Expanded(child: _buildInvoiceList(context)),
 
-          // Export options card
-          _buildExportOptions(context),
+            // Export options card
+            _buildExportOptions(context),
 
-          // Bottom confirm bar
-          _buildBottomBar(context),
-        ],
+            // Bottom confirm bar
+            _buildBottomBar(context),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildFilterSection(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Container(
+    return GlassSurface(
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      fillColor: AppGlassTokens.lightFill,
+      borderRadius: BorderRadius.circular(AppRadii.card),
       child: Column(
         children: [
           // Search field
@@ -415,7 +433,10 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
               isDense: true,
             ),
             onChanged: _onSearchChanged,
@@ -475,8 +496,12 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
   }
 
   Widget _buildDateFilterChip(BuildContext context) {
-    final startStr = _startDate != null ? DateFormatter.formatDisplay(_startDate!) : '';
-    final endStr = _endDate != null ? DateFormatter.formatDisplay(_endDate!) : '';
+    final startStr = _startDate != null
+        ? DateFormatter.formatDisplay(_startDate!)
+        : '';
+    final endStr = _endDate != null
+        ? DateFormatter.formatDisplay(_endDate!)
+        : '';
     final dateRangeStr = startStr == endStr ? startStr : '$startStr - $endStr';
 
     return Container(
@@ -519,7 +544,9 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
                   ? '已选 ${_selectedInvoiceIds.length}/$_totalInvoiceCount ✕'
                   : '已选 ${_selectedInvoiceIds.length}/$_totalInvoiceCount',
               style: TextStyle(
-                color: hasSelection ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                color: hasSelection
+                    ? AppPalette.amountMuted
+                    : colorScheme.onSurfaceVariant,
                 fontSize: 14,
               ),
             ),
@@ -536,8 +563,9 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: Card(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+      child: AppCard(
+        margin: EdgeInsets.zero,
+        backgroundColor: AppPalette.cardFill,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -578,18 +606,18 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
             height: 20,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _showTimeLabel ? colorScheme.primary : Colors.transparent,
+              color: _showTimeLabel
+                  ? AppPalette.amountMuted
+                  : Colors.transparent,
               border: Border.all(
-                color: _showTimeLabel ? colorScheme.primary : colorScheme.outline,
+                color: _showTimeLabel
+                    ? AppPalette.amountMuted
+                    : colorScheme.outline,
                 width: 2,
               ),
             ),
             child: _showTimeLabel
-                ? Icon(
-                    Icons.check,
-                    size: 14,
-                    color: colorScheme.onPrimary,
-                  )
+                ? Icon(Icons.check, size: 14, color: colorScheme.onPrimary)
                 : null,
           ),
           const SizedBox(width: 8),
@@ -621,18 +649,16 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
             height: 20,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _addRemark ? colorScheme.primary : Colors.transparent,
+              color: _addRemark ? AppPalette.amountMuted : Colors.transparent,
               border: Border.all(
-                color: _addRemark ? colorScheme.primary : colorScheme.outline,
+                color: _addRemark
+                    ? AppPalette.amountMuted
+                    : colorScheme.outline,
                 width: 2,
               ),
             ),
             child: _addRemark
-                ? Icon(
-                    Icons.check,
-                    size: 14,
-                    color: colorScheme.onPrimary,
-                  )
+                ? Icon(Icons.check, size: 14, color: colorScheme.onPrimary)
                 : null,
           ),
           const SizedBox(width: 8),
@@ -648,8 +674,8 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: colorScheme.primaryContainer.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(8),
+                  color: AppPalette.selectedFill,
+                  borderRadius: BorderRadius.circular(AppRadii.control),
                 ),
                 child: Text(
                   _remarkContent!,
@@ -674,7 +700,8 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
     if (_invoices.isEmpty) {
       return EmptyState(
         icon: Icons.receipt_long,
-        title: _searchKeyword.isNotEmpty ||
+        title:
+            _searchKeyword.isNotEmpty ||
                 _startDate != null ||
                 _orderRelationFilter != OrderRelationFilter.all
             ? '没有找到符合条件的发票'
@@ -688,8 +715,11 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
       itemBuilder: (context, index) {
         final invoice = _invoices[index];
         final invoiceId = invoice.id;
-        final isSelected = invoiceId != null && _selectedInvoiceIds.contains(invoiceId);
-        final orderCount = invoiceId != null ? _invoiceOrderCounts[invoiceId] : null;
+        final isSelected =
+            invoiceId != null && _selectedInvoiceIds.contains(invoiceId);
+        final orderCount = invoiceId != null
+            ? _invoiceOrderCounts[invoiceId]
+            : null;
 
         return _InvoiceSelectCard(
           invoice: invoice,
@@ -713,18 +743,12 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
 
     final hasSelection = _selectedInvoiceIds.isNotEmpty;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
+    return GlassSurface(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      fillColor: AppGlassTokens.sheetFill,
+      borderRadius: BorderRadius.circular(AppRadii.glassLarge),
+      boxShadow: AppShadows.glass,
       child: SafeArea(
         top: false,
         child: Row(
@@ -734,15 +758,21 @@ class _InvoiceQuickSelectScreenState extends ConsumerState<InvoiceQuickSelectScr
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  hasSelection ? '已选择 ${_selectedInvoiceIds.length} 张发票' : '未选择发票',
+                  hasSelection
+                      ? '已选择 ${_selectedInvoiceIds.length} 张发票'
+                      : '未选择发票',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
-                  hasSelection ? '合计: ${DateFormatter.formatAmount(totalAmount)}' : '请选择发票后导出',
+                  hasSelection
+                      ? '合计: ${DateFormatter.formatAmount(totalAmount)}'
+                      : '请选择发票后导出',
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: hasSelection ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                    color: hasSelection
+                        ? AppPalette.amountMuted
+                        : colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -790,7 +820,8 @@ class _InvoiceSelectCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    final invoiceDate = invoice.invoiceDate != null && invoice.invoiceDate!.isNotEmpty
+    final invoiceDate =
+        invoice.invoiceDate != null && invoice.invoiceDate!.isNotEmpty
         ? DateTime.tryParse(invoice.invoiceDate!)
         : null;
     final formattedDate = invoiceDate != null
@@ -803,18 +834,16 @@ class _InvoiceSelectCard extends StatelessWidget {
       onDoubleTap: onDoubleTap,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadii.card),
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: isSelected
-                ? colorScheme.primaryContainer.withValues(alpha: 0.3)
-                : colorScheme.surface,
-            borderRadius: BorderRadius.circular(12),
+            color: isSelected ? AppPalette.selectedFill : AppPalette.cardFill,
+            borderRadius: BorderRadius.circular(AppRadii.card),
             border: Border.all(
               color: isSelected
-                  ? colorScheme.primary
+                  ? AppPalette.amountMuted
                   : colorScheme.outlineVariant.withValues(alpha: 0.3),
               width: isSelected ? 2 : 1,
             ),
@@ -941,7 +970,7 @@ class _InvoiceSelectCard extends StatelessWidget {
                   Text(
                     DateFormatter.formatAmount(invoice.totalAmount),
                     style: theme.textTheme.titleMedium?.copyWith(
-                      color: colorScheme.primary,
+                      color: AppPalette.amountMuted,
                       fontWeight: FontWeight.bold,
                     ),
                   ),

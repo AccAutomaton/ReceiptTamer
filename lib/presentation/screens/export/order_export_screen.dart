@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/order.dart';
 import 'package:receipt_tamer/presentation/providers/export_provider.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
 import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
+import 'package:receipt_tamer/presentation/widgets/common/liquid_glass_background.dart';
 
 /// Order export screen for selecting orders to export
 /// 支持级联选择（关联同一发票的订单会被一并选中）
@@ -33,22 +38,20 @@ class _OrderExportScreenState extends ConsumerState<OrderExportScreen> {
     );
 
     if (result != null) {
-      ref.read(exportProvider.notifier).setDateRange(
-            result.startDate,
-            result.endDate,
-          );
+      ref
+          .read(exportProvider.notifier)
+          .setDateRange(result.startDate, result.endDate);
     }
   }
 
   Future<void> _toggleSelection(int orderId) async {
-    final message = await ref.read(exportProvider.notifier).toggleSelection(orderId);
+    final message = await ref
+        .read(exportProvider.notifier)
+        .toggleSelection(orderId);
     if (message != null && mounted) {
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          duration: const Duration(seconds: 2),
-        ),
+        SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
       );
     }
   }
@@ -58,10 +61,7 @@ class _OrderExportScreenState extends ConsumerState<OrderExportScreen> {
     if (message != null && mounted) {
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          duration: const Duration(seconds: 2),
-        ),
+        SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
       );
     }
   }
@@ -71,10 +71,7 @@ class _OrderExportScreenState extends ConsumerState<OrderExportScreen> {
     if (message != null && mounted) {
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          duration: const Duration(seconds: 2),
-        ),
+        SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
       );
     }
   }
@@ -83,14 +80,16 @@ class _OrderExportScreenState extends ConsumerState<OrderExportScreen> {
     final state = ref.read(exportProvider);
 
     if (state.totalSelectedCount == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请选择要导出的订单')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请选择要导出的订单')));
       return;
     }
 
     // Get invoice IDs involved in selected orders
-    final invoiceIds = await ref.read(exportProvider.notifier).getSelectedInvoiceIds();
+    final invoiceIds = await ref
+        .read(exportProvider.notifier)
+        .getSelectedInvoiceIds();
     final orderIds = state.allSelectedIds;
 
     if (!mounted) return;
@@ -110,102 +109,100 @@ class _OrderExportScreenState extends ConsumerState<OrderExportScreen> {
     final state = ref.watch(exportProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('选择要导出的订单'),
-      ),
-      body: Column(
-        children: [
-          // Options and filters
-          _buildOptionsSection(state, colorScheme),
+      backgroundColor: AppPalette.coldBackground,
+      appBar: AppBar(title: const Text('选择要导出的订单')),
+      body: LiquidGlassBackground(
+        child: Column(
+          children: [
+            // Options and filters
+            _buildOptionsSection(state, colorScheme),
 
-          // Statistics card
-          _buildStatisticsCard(state, colorScheme),
+            // Statistics card
+            _buildStatisticsCard(state, colorScheme),
 
-          // Order list
-          Expanded(
-            child: state.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : state.availableOrders.isEmpty
-                    ? _buildEmptyState(colorScheme)
-                    : _buildOrderList(state, colorScheme),
-          ),
+            // Order list
+            Expanded(
+              child: state.isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : state.availableOrders.isEmpty
+                  ? _buildEmptyState(colorScheme)
+                  : _buildOrderList(state, colorScheme),
+            ),
 
-          // Bottom action bar
-          _buildBottomBar(state, colorScheme),
-        ],
+            // Bottom action bar
+            _buildBottomBar(state, colorScheme),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildOptionsSection(ExportState state, ColorScheme colorScheme) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        border: Border(
-          bottom: BorderSide(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-          ),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Hint text
-          Text(
-            '选择订单后，关联同一发票的订单将被一并选中',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Action buttons
-          Row(
-            children: [
-              TextButton.icon(
-                onPressed: state.availableOrders.isEmpty ? null : _selectAll,
-                icon: const Icon(Icons.select_all, size: 18),
-                label: const Text('全选'),
-              ),
-              const SizedBox(width: 8),
-              TextButton.icon(
-                onPressed: state.availableOrders.isEmpty ? null : _invertSelection,
-                icon: const Icon(Icons.flip, size: 18),
-                label: const Text('反选'),
-              ),
-              const SizedBox(width: 8),
-              TextButton.icon(
-                onPressed: _showDateRangePicker,
-                icon: const Icon(Icons.calendar_month, size: 18),
-                label: Text(
-                  state.startDate != null ? '修改日期' : '日期筛选',
-                ),
-              ),
-            ],
-          ),
-
-          // Date range chip
-          if (state.startDate != null && state.endDate != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Row(
-                children: [
-                  Chip(
-                    label: Text(
-                      '${DateFormatter.formatDisplay(state.startDate!)} - ${DateFormatter.formatDisplay(state.endDate!)}',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    deleteIcon: const Icon(Icons.close, size: 16),
-                    onDeleted: () {
-                      ref.read(exportProvider.notifier).clearDateRange();
-                    },
-                  ),
-                ],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: GlassSurface(
+        padding: const EdgeInsets.all(14),
+        borderRadius: BorderRadius.circular(AppRadii.card),
+        fillColor: AppGlassTokens.lightFill,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Hint text
+            Text(
+              '选择订单后，关联同一发票的订单将被一并选中',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
-        ],
+
+            const SizedBox(height: 12),
+
+            // Action buttons
+            Row(
+              children: [
+                TextButton.icon(
+                  onPressed: state.availableOrders.isEmpty ? null : _selectAll,
+                  icon: const Icon(Icons.select_all, size: 18),
+                  label: const Text('全选'),
+                ),
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  onPressed: state.availableOrders.isEmpty
+                      ? null
+                      : _invertSelection,
+                  icon: const Icon(Icons.flip, size: 18),
+                  label: const Text('反选'),
+                ),
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  onPressed: _showDateRangePicker,
+                  icon: const Icon(Icons.calendar_month, size: 18),
+                  label: Text(state.startDate != null ? '修改日期' : '日期筛选'),
+                ),
+              ],
+            ),
+
+            // Date range chip
+            if (state.startDate != null && state.endDate != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  children: [
+                    Chip(
+                      label: Text(
+                        '${DateFormatter.formatDisplay(state.startDate!)} - ${DateFormatter.formatDisplay(state.endDate!)}',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      deleteIcon: const Icon(Icons.close, size: 16),
+                      onDeleted: () {
+                        ref.read(exportProvider.notifier).clearDateRange();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -220,20 +217,19 @@ class _OrderExportScreenState extends ConsumerState<OrderExportScreen> {
       return sum + (state.orderInvoiceCount[id] ?? 0);
     });
 
-    return Container(
+    return AppCard(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: selectedCount > 0
-            ? colorScheme.primaryContainer.withValues(alpha: 0.3)
-            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      backgroundColor: selectedCount > 0
+          ? AppPalette.selectedFill
+          : AppPalette.cardFill,
       child: Row(
         children: [
           Icon(
             Icons.info_outline,
-            color: selectedCount > 0 ? colorScheme.primary : colorScheme.onSurfaceVariant,
+            color: selectedCount > 0
+                ? AppPalette.amountMuted
+                : colorScheme.onSurfaceVariant,
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -248,8 +244,8 @@ class _OrderExportScreenState extends ConsumerState<OrderExportScreen> {
                   Text(
                     '涉及发票 $involvedInvoiceCount 张',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                   ),
               ],
             ),
@@ -273,8 +269,8 @@ class _OrderExportScreenState extends ConsumerState<OrderExportScreen> {
           Text(
             '暂无订单数据',
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
+              color: colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -307,20 +303,16 @@ class _OrderExportScreenState extends ConsumerState<OrderExportScreen> {
 
   Widget _buildBottomBar(ExportState state, ColorScheme colorScheme) {
     final selectedCount = state.totalSelectedCount;
-    final totalAmount = ref.read(exportProvider.notifier).getSelectedTotalAmount();
+    final totalAmount = ref
+        .read(exportProvider.notifier)
+        .getSelectedTotalAmount();
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 4,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
+    return GlassSurface(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      fillColor: AppGlassTokens.sheetFill,
+      borderRadius: BorderRadius.circular(AppRadii.glassLarge),
+      boxShadow: AppShadows.glass,
       child: SafeArea(
         top: false,
         child: Row(
@@ -336,16 +328,17 @@ class _OrderExportScreenState extends ConsumerState<OrderExportScreen> {
                 Text(
                   '合计: ${DateFormatter.formatAmount(totalAmount)}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
             const Spacer(),
-            FilledButton.icon(
+            AppButton(
+              text: '导出',
               onPressed: selectedCount > 0 ? _navigateToExportOptions : null,
               icon: const Icon(Icons.file_download),
-              label: const Text('导出'),
+              width: 112,
             ),
           ],
         ),
@@ -388,28 +381,28 @@ class _OrderExportCard extends StatelessWidget {
     final formattedMealTime = DateFormatter.mealTimeToDisplayName(mealTime);
 
     // Determine card appearance based on state
-    Color? backgroundColor;
+    Color backgroundColor;
     Color borderColor;
     double borderWidth;
 
     if (!isSelectable) {
       // Unselectable: gray semi-transparent
-      backgroundColor = colorScheme.surfaceContainerHighest.withValues(alpha: 0.5);
+      backgroundColor = AppPalette.elevatedFill.withValues(alpha: 0.76);
       borderColor = colorScheme.outlineVariant.withValues(alpha: 0.3);
       borderWidth = 1;
     } else if (isCascadeSelected) {
       // Cascade selected: orange/tertiary
-      backgroundColor = colorScheme.tertiaryContainer.withValues(alpha: 0.3);
-      borderColor = colorScheme.tertiary;
+      backgroundColor = AppPalette.selectedFill;
+      borderColor = AppPalette.warningMuted;
       borderWidth = 2;
     } else if (isSelected) {
       // Directly selected: blue/primary
-      backgroundColor = colorScheme.primaryContainer.withValues(alpha: 0.3);
-      borderColor = colorScheme.primary;
+      backgroundColor = AppPalette.selectedFill;
+      borderColor = AppPalette.amountMuted;
       borderWidth = 2;
     } else {
       // Unselected: white background
-      backgroundColor = null;
+      backgroundColor = AppPalette.cardFill;
       borderColor = colorScheme.outlineVariant.withValues(alpha: 0.3);
       borderWidth = 1;
     }
@@ -422,12 +415,9 @@ class _OrderExportCard extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: backgroundColor ?? colorScheme.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: borderColor,
-              width: borderWidth,
-            ),
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(AppRadii.card),
+            border: Border.all(color: borderColor, width: borderWidth),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -436,9 +426,7 @@ class _OrderExportCard extends StatelessWidget {
               SizedBox(
                 width: 40,
                 height: 40,
-                child: Center(
-                  child: _buildCheckbox(colorScheme, theme),
-                ),
+                child: Center(child: _buildCheckbox(colorScheme, theme)),
               ),
               const SizedBox(width: 8),
 
@@ -456,7 +444,11 @@ class _OrderExportCard extends StatelessWidget {
                             order.shopName.isEmpty ? '未命名店铺' : order.shopName,
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.w600,
-                              color: isSelectable ? null : colorScheme.onSurface.withValues(alpha: 0.5),
+                              color: isSelectable
+                                  ? null
+                                  : colorScheme.onSurface.withValues(
+                                      alpha: 0.5,
+                                    ),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -471,8 +463,12 @@ class _OrderExportCard extends StatelessWidget {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: colorScheme.tertiaryContainer,
-                              borderRadius: BorderRadius.circular(4),
+                              color: AppPalette.warningMuted.withValues(
+                                alpha: 0.14,
+                              ),
+                              borderRadius: BorderRadius.circular(
+                                AppRadii.chip,
+                              ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -480,13 +476,13 @@ class _OrderExportCard extends StatelessWidget {
                                 Icon(
                                   Icons.link,
                                   size: 12,
-                                  color: colorScheme.onTertiaryContainer,
+                                  color: AppPalette.warningMuted,
                                 ),
                                 const SizedBox(width: 2),
                                 Text(
                                   '联动',
                                   style: theme.textTheme.labelSmall?.copyWith(
-                                    color: colorScheme.onTertiaryContainer,
+                                    color: AppPalette.warningMuted,
                                   ),
                                 ),
                               ],
@@ -523,10 +519,12 @@ class _OrderExportCard extends StatelessWidget {
                     Row(
                       children: [
                         Icon(
-                          invoiceCount > 0 ? Icons.receipt_long : Icons.link_off,
+                          invoiceCount > 0
+                              ? Icons.receipt_long
+                              : Icons.link_off,
                           size: 14,
                           color: invoiceCount > 0
-                              ? colorScheme.primary
+                              ? AppPalette.amountMuted
                               : colorScheme.error.withValues(alpha: 0.7),
                         ),
                         const SizedBox(width: 4),
@@ -534,7 +532,7 @@ class _OrderExportCard extends StatelessWidget {
                           invoiceCount > 0 ? '关联 $invoiceCount 张发票' : '未关联发票',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: invoiceCount > 0
-                                ? colorScheme.primary
+                                ? AppPalette.amountMuted
                                 : colorScheme.error.withValues(alpha: 0.7),
                           ),
                         ),
@@ -548,7 +546,9 @@ class _OrderExportCard extends StatelessWidget {
               Text(
                 DateFormatter.formatAmount(order.amount),
                 style: theme.textTheme.titleMedium?.copyWith(
-                  color: isSelectable ? colorScheme.primary : colorScheme.onSurface.withValues(alpha: 0.5),
+                  color: isSelectable
+                      ? AppPalette.amountMuted
+                      : colorScheme.onSurface.withValues(alpha: 0.5),
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -584,14 +584,10 @@ class _OrderExportCard extends StatelessWidget {
         width: checkboxSize,
         height: checkboxSize,
         decoration: BoxDecoration(
-          color: colorScheme.tertiary,
+          color: AppPalette.warningMuted,
           borderRadius: BorderRadius.circular(2),
         ),
-        child: Icon(
-          Icons.link,
-          size: iconSize,
-          color: colorScheme.onTertiary,
-        ),
+        child: Icon(Icons.link, size: iconSize, color: Colors.white),
       );
     }
 
@@ -601,14 +597,10 @@ class _OrderExportCard extends StatelessWidget {
         width: checkboxSize,
         height: checkboxSize,
         decoration: BoxDecoration(
-          color: colorScheme.primary,
+          color: AppPalette.amountMuted,
           borderRadius: BorderRadius.circular(2),
         ),
-        child: Icon(
-          Icons.check,
-          size: iconSize,
-          color: colorScheme.onPrimary,
-        ),
+        child: Icon(Icons.check, size: iconSize, color: colorScheme.onPrimary),
       );
     }
 
@@ -617,10 +609,7 @@ class _OrderExportCard extends StatelessWidget {
       width: checkboxSize,
       height: checkboxSize,
       decoration: BoxDecoration(
-        border: Border.all(
-          color: colorScheme.outline,
-          width: 2,
-        ),
+        border: Border.all(color: colorScheme.outline, width: 2),
         borderRadius: BorderRadius.circular(2),
       ),
     );

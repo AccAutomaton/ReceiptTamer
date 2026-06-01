@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
+import 'package:receipt_tamer/presentation/widgets/common/liquid_glass_background.dart';
 
 /// Export mode selection
 /// 导出模式选择
@@ -8,6 +12,7 @@ enum ExportMode {
   /// Export based on invoices
   /// 根据发票导出
   invoices,
+
   /// Export based on orders
   /// 根据订单导出
   orders,
@@ -39,47 +44,50 @@ class _ExportModeScreenState extends State<ExportModeScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('导出报销材料'),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Mode selection card
-            _buildModeSelectionCard(colorScheme),
+      backgroundColor: AppPalette.coldBackground,
+      appBar: AppBar(title: const Text('导出报销材料')),
+      body: LiquidGlassBackground(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Mode selection card
+              _buildModeSelectionCard(colorScheme),
 
-            const SizedBox(height: 32),
+              const SizedBox(height: 32),
 
-            // Next button
-            FilledButton.icon(
-              onPressed: _navigateToExportScreen,
-              icon: const Icon(Icons.arrow_forward),
-              label: const Text('下一步'),
-            ),
-          ],
+              // Next button
+              AppButton(
+                text: '下一步',
+                onPressed: _navigateToExportScreen,
+                icon: const Icon(Icons.arrow_forward),
+                isFullWidth: true,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildModeSelectionCard(ColorScheme colorScheme) {
-    return Card(
+    return AppCard(
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.all(16),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               '导出方式',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
 
-            // Invoice export option
             _buildModeOption(
               mode: ExportMode.invoices,
               icon: FontAwesomeIcons.fileInvoiceDollar,
@@ -90,7 +98,6 @@ class _ExportModeScreenState extends State<ExportModeScreen> {
 
             const SizedBox(height: 12),
 
-            // Order export option
             _buildModeOption(
               mode: ExportMode.orders,
               icon: FontAwesomeIcons.receipt,
@@ -121,27 +128,34 @@ class _ExportModeScreenState extends State<ExportModeScreen> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected
-              ? colorScheme.primaryContainer.withValues(alpha: 0.3)
-              : null,
-          borderRadius: BorderRadius.circular(12),
+          color: isSelected ? AppPalette.selectedFill : AppPalette.cardFill,
+          borderRadius: BorderRadius.circular(AppRadii.card),
           border: Border.all(
             color: isSelected
-                ? colorScheme.primary
+                ? AppPalette.amountMuted
                 : colorScheme.outline.withValues(alpha: 0.3),
+            width: isSelected ? 1.4 : 1,
           ),
         ),
         child: Row(
           children: [
-            // Radio indicator
-            Radio<ExportMode>(
-              value: mode,
-              groupValue: _selectedMode,
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => _selectedMode = value);
-                }
-              },
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSelected ? AppPalette.amountMuted : Colors.transparent,
+                border: Border.all(
+                  color: isSelected
+                      ? AppPalette.amountMuted
+                      : colorScheme.outline.withValues(alpha: 0.55),
+                  width: 2,
+                ),
+              ),
+              child: isSelected
+                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                  : null,
             ),
             const SizedBox(width: 8),
 
@@ -150,13 +164,9 @@ class _ExportModeScreenState extends State<ExportModeScreen> {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: colorScheme.primaryContainer.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(16),
               ),
-              child: FaIcon(
-                icon,
-                size: 20,
-                color: colorScheme.primary,
-              ),
+              child: FaIcon(icon, size: 20, color: AppPalette.amountMuted),
             ),
             const SizedBox(width: 12),
 
@@ -168,15 +178,15 @@ class _ExportModeScreenState extends State<ExportModeScreen> {
                   Text(
                     title,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     description,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),

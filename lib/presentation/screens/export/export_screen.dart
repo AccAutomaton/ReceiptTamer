@@ -1,10 +1,15 @@
 import 'package:receipt_tamer/core/constants/app_constants.dart';
 import 'package:receipt_tamer/core/services/log_service.dart';
 import 'package:receipt_tamer/core/services/log_config.dart';
+import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
 import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
+import 'package:receipt_tamer/presentation/widgets/common/liquid_glass_background.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -44,27 +49,30 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
+      backgroundColor: AppPalette.coldBackground,
       appBar: AppBar(title: const Text(AppConstants.titleExport), elevation: 0),
-      body: Column(
-        children: [
-          // Options and filters section
-          _buildOptionsSection(theme, colorScheme),
+      body: LiquidGlassBackground(
+        child: Column(
+          children: [
+            // Options and filters section
+            _buildOptionsSection(theme, colorScheme),
 
-          // Statistics card
-          _buildStatisticsCard(theme, colorScheme),
+            // Statistics card
+            _buildStatisticsCard(theme, colorScheme),
 
-          // Invoice list
-          Expanded(
-            child: _isLoadingInvoices
-                ? const Center(child: CircularProgressIndicator())
-                : _availableInvoices.isEmpty
-                    ? _buildEmptyState(colorScheme)
-                    : _buildInvoiceList(colorScheme),
-          ),
+            // Invoice list
+            Expanded(
+              child: _isLoadingInvoices
+                  ? const Center(child: CircularProgressIndicator())
+                  : _availableInvoices.isEmpty
+                  ? _buildEmptyState(colorScheme)
+                  : _buildInvoiceList(colorScheme),
+            ),
 
-          // Fixed export button at bottom
-          _buildBottomBar(theme, colorScheme),
-        ],
+            // Fixed export button at bottom
+            _buildBottomBar(theme, colorScheme),
+          ],
+        ),
       ),
     );
   }
@@ -74,70 +82,69 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         .where((i) => i.id != null && (_invoiceOrderCounts[i.id] ?? 0) > 0)
         .toList();
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        border: Border(
-          bottom: BorderSide(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-          ),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Hint text
-          Text(
-            '选择发票后，关联订单将被自动选中',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: GlassSurface(
+        padding: const EdgeInsets.all(14),
+        borderRadius: BorderRadius.circular(AppRadii.card),
+        fillColor: AppGlassTokens.lightFill,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Hint text
+            Text(
+              '选择发票后，关联订单将被自动选中',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
-          ),
 
-          const SizedBox(height: 12),
+            const SizedBox(height: 12),
 
-          // Action buttons row
-          Row(
-            children: [
-              TextButton.icon(
-                onPressed: selectableInvoices.isEmpty ? null : _selectAll,
-                icon: const Icon(Icons.select_all, size: 18),
-                label: const Text('全选'),
-              ),
-              const SizedBox(width: 8),
-              TextButton.icon(
-                onPressed: selectableInvoices.isEmpty ? null : _invertSelection,
-                icon: const Icon(Icons.flip, size: 18),
-                label: const Text('反选'),
-              ),
-              const SizedBox(width: 8),
-              TextButton.icon(
-                onPressed: _showDateRangePicker,
-                icon: const Icon(Icons.calendar_month, size: 18),
-                label: const Text('日期筛选'),
-              ),
-            ],
-          ),
+            // Action buttons row
+            Row(
+              children: [
+                TextButton.icon(
+                  onPressed: selectableInvoices.isEmpty ? null : _selectAll,
+                  icon: const Icon(Icons.select_all, size: 18),
+                  label: const Text('全选'),
+                ),
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  onPressed: selectableInvoices.isEmpty
+                      ? null
+                      : _invertSelection,
+                  icon: const Icon(Icons.flip, size: 18),
+                  label: const Text('反选'),
+                ),
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  onPressed: _showDateRangePicker,
+                  icon: const Icon(Icons.calendar_month, size: 18),
+                  label: const Text('日期筛选'),
+                ),
+              ],
+            ),
 
-          // Date range chip
-          if (_startDate != null && _endDate != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Row(
-                children: [
-                  Chip(
-                    label: Text(
-                      '${DateFormatter.formatDisplay(_startDate!)} - ${DateFormatter.formatDisplay(_endDate!)}',
-                      style: const TextStyle(fontSize: 12),
+            // Date range chip
+            if (_startDate != null && _endDate != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  children: [
+                    Chip(
+                      label: Text(
+                        '${DateFormatter.formatDisplay(_startDate!)} - ${DateFormatter.formatDisplay(_endDate!)}',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      deleteIcon: const Icon(Icons.close, size: 16),
+                      onDeleted: _clearDateRange,
                     ),
-                    deleteIcon: const Icon(Icons.close, size: 16),
-                    onDeleted: _clearDateRange,
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -149,20 +156,19 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     final selectableCount = selectableInvoices.length;
     final selectedCount = _selectedInvoiceIds.length;
 
-    return Container(
+    return AppCard(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: selectedCount > 0
-            ? colorScheme.primaryContainer.withValues(alpha: 0.3)
-            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      backgroundColor: selectedCount > 0
+          ? AppPalette.selectedFill
+          : AppPalette.cardFill,
       child: Row(
         children: [
           Icon(
             Icons.info_outline,
-            color: selectedCount > 0 ? colorScheme.primary : colorScheme.onSurfaceVariant,
+            color: selectedCount > 0
+                ? AppPalette.amountMuted
+                : colorScheme.onSurfaceVariant,
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -185,7 +191,9 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
           ),
           // Quick filter button
           TextButton.icon(
-            onPressed: selectableInvoices.isEmpty ? null : _showQuickFilterDialog,
+            onPressed: selectableInvoices.isEmpty
+                ? null
+                : _showQuickFilterDialog,
             icon: const Icon(Icons.filter_list, size: 18),
             label: const Text('快速筛选'),
           ),
@@ -250,18 +258,12 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       (sum, invoice) => sum + invoice.totalAmount,
     );
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 4,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
+    return GlassSurface(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      fillColor: AppGlassTokens.sheetFill,
+      borderRadius: BorderRadius.circular(AppRadii.glassLarge),
+      boxShadow: AppShadows.glass,
       child: SafeArea(
         top: false,
         child: Row(
@@ -283,10 +285,13 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               ],
             ),
             const Spacer(),
-            FilledButton.icon(
-              onPressed: _selectedInvoiceIds.isEmpty ? null : _navigateToExportOptions,
+            AppButton(
+              text: '导出',
+              onPressed: _selectedInvoiceIds.isEmpty
+                  ? null
+                  : _navigateToExportOptions,
               icon: const Icon(Icons.file_download),
-              label: const Text('导出'),
+              width: 112,
             ),
           ],
         ),
@@ -605,18 +610,16 @@ class _InvoiceSelectorCard extends StatelessWidget {
         onDoubleTap: () => _navigateToDetail(context),
         child: InkWell(
           onTap: isSelectable ? () => onChanged?.call(!isSelected) : null,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadii.card),
           child: Container(
             padding: const EdgeInsets.all(12),
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: isSelected
-                  ? colorScheme.primaryContainer.withValues(alpha: 0.3)
-                  : colorScheme.surface,
-              borderRadius: BorderRadius.circular(12),
+              color: isSelected ? AppPalette.selectedFill : AppPalette.cardFill,
+              borderRadius: BorderRadius.circular(AppRadii.card),
               border: Border.all(
                 color: isSelected
-                    ? colorScheme.primary
+                    ? AppPalette.amountMuted
                     : colorScheme.outlineVariant.withValues(alpha: 0.3),
                 width: isSelected ? 2 : 1,
               ),
@@ -660,7 +663,7 @@ class _InvoiceSelectorCard extends StatelessWidget {
                             DateFormatter.formatAmount(invoice.totalAmount),
                             style: theme.textTheme.titleMedium?.copyWith(
                               color: isSelectable
-                                  ? colorScheme.primary
+                                  ? AppPalette.amountMuted
                                   : disabledColor,
                               fontWeight: FontWeight.bold,
                             ),

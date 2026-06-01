@@ -6,6 +6,7 @@ import 'dart:io';
 
 import 'package:receipt_tamer/core/services/log_service.dart';
 import 'package:receipt_tamer/core/services/log_config.dart';
+import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/order.dart';
 import 'package:receipt_tamer/data/services/meal_proof_export_service.dart';
@@ -15,6 +16,9 @@ import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
 import 'package:receipt_tamer/presentation/widgets/common/empty_state.dart';
 import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
+import 'package:receipt_tamer/presentation/widgets/common/liquid_glass_background.dart';
 import 'package:receipt_tamer/presentation/screens/export/saved_files_screen.dart';
 
 /// Invoice relation filter enum for local use
@@ -30,10 +34,12 @@ class MealProofOrderSelectScreen extends ConsumerStatefulWidget {
   const MealProofOrderSelectScreen({super.key});
 
   @override
-  ConsumerState<MealProofOrderSelectScreen> createState() => _MealProofOrderSelectScreenState();
+  ConsumerState<MealProofOrderSelectScreen> createState() =>
+      _MealProofOrderSelectScreenState();
 }
 
-class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelectScreen> {
+class _MealProofOrderSelectScreenState
+    extends ConsumerState<MealProofOrderSelectScreen> {
   Set<int> _selectedOrderIds = {};
   List<Order> _orders = [];
   int _totalOrderCount = 0; // 全部筛选下的订单数量（用于已选计数分母）
@@ -72,15 +78,17 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
 
     try {
       // 获取当前筛选后的订单
-      final orders = await ref.read(orderProvider.notifier).searchOrdersWithInvoiceRelation(
+      final orders = await ref
+          .read(orderProvider.notifier)
+          .searchOrdersWithInvoiceRelation(
             keyword: _searchKeyword.isNotEmpty ? _searchKeyword : null,
             startDate: _startDate,
             endDate: _endDate,
             hasInvoice: _relationFilter == InvoiceRelationFilter.withInvoice
                 ? true
                 : _relationFilter == InvoiceRelationFilter.withoutInvoice
-                    ? false
-                    : null,
+                ? false
+                : null,
           );
 
       // 获取全部筛选下的订单数量（用于已选计数分母）
@@ -88,7 +96,9 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
       if (_relationFilter == InvoiceRelationFilter.all) {
         totalCount = orders.length;
       } else {
-        final allOrders = await ref.read(orderProvider.notifier).searchOrdersWithInvoiceRelation(
+        final allOrders = await ref
+            .read(orderProvider.notifier)
+            .searchOrdersWithInvoiceRelation(
               keyword: _searchKeyword.isNotEmpty ? _searchKeyword : null,
               startDate: _startDate,
               endDate: _endDate,
@@ -108,9 +118,9 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
       if (mounted) {
         setState(() => _isLoading = false);
         logService.e(LogConfig.moduleUi, '加载订单失败', e, stackTrace);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('加载订单失败: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('加载订单失败: $e')));
       }
     }
   }
@@ -127,7 +137,10 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
 
   void _selectAll() {
     setState(() {
-      _selectedOrderIds = _orders.where((o) => o.id != null).map((o) => o.id!).toSet();
+      _selectedOrderIds = _orders
+          .where((o) => o.id != null)
+          .map((o) => o.id!)
+          .toSet();
     });
   }
 
@@ -139,7 +152,10 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
 
   void _invertSelection() {
     setState(() {
-      final allIds = _orders.where((o) => o.id != null).map((o) => o.id!).toSet();
+      final allIds = _orders
+          .where((o) => o.id != null)
+          .map((o) => o.id!)
+          .toSet();
       _selectedOrderIds = allIds.difference(_selectedOrderIds);
     });
   }
@@ -185,9 +201,7 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
           controller: controller,
           decoration: InputDecoration(
             hintText: '请输入备注内容',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
           maxLength: 50,
           autofocus: true,
@@ -222,9 +236,9 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
 
   Future<void> _confirmAndExport() async {
     if (_selectedOrderIds.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先选择订单')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请先选择订单')));
       return;
     }
 
@@ -232,23 +246,26 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
 
     try {
       // Get selected orders
-      final selectedOrders = _orders.where((o) => _selectedOrderIds.contains(o.id)).toList();
+      final selectedOrders = _orders
+          .where((o) => _selectedOrderIds.contains(o.id))
+          .toList();
 
       // Prepare meal proof items
-      final items = await MealProofExportService.prepareMealProofItemsFromOrders(
-        orders: selectedOrders,
-        getInvoiceIdsForOrder: (orderId) =>
-            ref.read(orderProvider.notifier).getInvoiceIdsForOrder(orderId),
-        getInvoiceById: (invoiceId) =>
-            ref.read(invoiceProvider.notifier).getInvoiceById(invoiceId),
-      );
+      final items =
+          await MealProofExportService.prepareMealProofItemsFromOrders(
+            orders: selectedOrders,
+            getInvoiceIdsForOrder: (orderId) =>
+                ref.read(orderProvider.notifier).getInvoiceIdsForOrder(orderId),
+            getInvoiceById: (invoiceId) =>
+                ref.read(invoiceProvider.notifier).getInvoiceById(invoiceId),
+          );
 
       if (!mounted) return;
 
       if (items.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('没有可导出的用餐证明')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('没有可导出的用餐证明')));
         setState(() => _isExporting = false);
         return;
       }
@@ -267,7 +284,8 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
 
       // Copy to download directory
       final now = DateTime.now();
-      final dateDir = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+      final dateDir =
+          '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
       final fileService = FileService();
       final savedPath = await fileService.copyToDownloadDirectory(
         tempPath,
@@ -287,20 +305,23 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
         // Navigate to saved files screen to show exported file
         if (savedPath != null) {
           Navigator.pop(context);
-          await showSavedFilesScreen(context, initialSubDir: 'materials/$dateDir');
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('保存文件失败')),
+          await showSavedFilesScreen(
+            context,
+            initialSubDir: 'materials/$dateDir',
           );
+        } else {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('保存文件失败')));
         }
       }
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleFile, '用餐证明PDF导出失败', e, stackTrace);
       if (mounted) {
         setState(() => _isExporting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('导出失败: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('导出失败: $e')));
       }
     }
   }
@@ -308,53 +329,41 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('用餐证明导出'),
-        elevation: 0,
-      ),
-      body: Column(
-        children: [
-          // Search and filter section
-          _buildFilterSection(context),
+      backgroundColor: AppPalette.coldBackground,
+      appBar: AppBar(title: const Text('用餐证明导出'), elevation: 0),
+      body: LiquidGlassBackground(
+        child: Column(
+          children: [
+            // Search and filter section
+            _buildFilterSection(context),
 
-          // Date filter chip
-          if (_startDate != null || _endDate != null)
-            _buildDateFilterChip(context),
+            // Date filter chip
+            if (_startDate != null || _endDate != null)
+              _buildDateFilterChip(context),
 
-          // Select buttons row
-          _buildSelectButtonsRow(context),
+            // Select buttons row
+            _buildSelectButtonsRow(context),
 
-          // Order list
-          Expanded(
-            child: _buildOrderList(context),
-          ),
+            // Order list
+            Expanded(child: _buildOrderList(context)),
 
-          // 导出选项卡片
-          _buildExportOptions(context),
+            // 导出选项卡片
+            _buildExportOptions(context),
 
-          // Bottom confirm bar
-          _buildBottomBar(context),
-        ],
+            // Bottom confirm bar
+            _buildBottomBar(context),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildFilterSection(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Container(
+    return GlassSurface(
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      fillColor: AppGlassTokens.lightFill,
+      borderRadius: BorderRadius.circular(AppRadii.card),
       child: Column(
         children: [
           // Search field
@@ -376,7 +385,10 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
               isDense: true,
             ),
             onChanged: _onSearchChanged,
@@ -436,8 +448,12 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
   }
 
   Widget _buildDateFilterChip(BuildContext context) {
-    final startStr = _startDate != null ? DateFormatter.formatDisplay(_startDate!) : '';
-    final endStr = _endDate != null ? DateFormatter.formatDisplay(_endDate!) : '';
+    final startStr = _startDate != null
+        ? DateFormatter.formatDisplay(_startDate!)
+        : '';
+    final endStr = _endDate != null
+        ? DateFormatter.formatDisplay(_endDate!)
+        : '';
     final dateRangeStr = startStr == endStr ? startStr : '$startStr - $endStr';
 
     return Container(
@@ -480,7 +496,9 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
                   ? '已选 ${_selectedOrderIds.length}/$_totalOrderCount ✕'
                   : '已选 ${_selectedOrderIds.length}/$_totalOrderCount',
               style: TextStyle(
-                color: hasSelection ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                color: hasSelection
+                    ? AppPalette.amountMuted
+                    : colorScheme.onSurfaceVariant,
                 fontSize: 14,
               ),
             ),
@@ -498,7 +516,8 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
     if (_orders.isEmpty) {
       return EmptyState(
         icon: Icons.receipt_long,
-        title: _searchKeyword.isNotEmpty ||
+        title:
+            _searchKeyword.isNotEmpty ||
                 _startDate != null ||
                 _relationFilter != InvoiceRelationFilter.all
             ? '没有找到符合条件的订单'
@@ -512,7 +531,8 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
       itemBuilder: (context, index) {
         final order = _orders[index];
         final orderId = order.id;
-        final isSelected = orderId != null && _selectedOrderIds.contains(orderId);
+        final isSelected =
+            orderId != null && _selectedOrderIds.contains(orderId);
 
         return _MealProofOrderCard(
           order: order,
@@ -531,8 +551,9 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: Card(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+      child: AppCard(
+        margin: EdgeInsets.zero,
+        backgroundColor: AppPalette.cardFill,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -571,18 +592,16 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
             height: 20,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _addRemark ? colorScheme.primary : Colors.transparent,
+              color: _addRemark ? AppPalette.amountMuted : Colors.transparent,
               border: Border.all(
-                color: _addRemark ? colorScheme.primary : colorScheme.outline,
+                color: _addRemark
+                    ? AppPalette.amountMuted
+                    : colorScheme.outline,
                 width: 2,
               ),
             ),
             child: _addRemark
-                ? Icon(
-                    Icons.check,
-                    size: 14,
-                    color: colorScheme.onPrimary,
-                  )
+                ? Icon(Icons.check, size: 14, color: colorScheme.onPrimary)
                 : null,
           ),
           const SizedBox(width: 8),
@@ -598,8 +617,8 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: colorScheme.primaryContainer.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(8),
+                  color: AppPalette.selectedFill,
+                  borderRadius: BorderRadius.circular(AppRadii.control),
                 ),
                 child: Text(
                   _remarkContent!,
@@ -627,18 +646,12 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
 
     final hasSelection = _selectedOrderIds.isNotEmpty;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
+    return GlassSurface(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      fillColor: AppGlassTokens.sheetFill,
+      borderRadius: BorderRadius.circular(AppRadii.glassLarge),
+      boxShadow: AppShadows.glass,
       child: SafeArea(
         top: false,
         child: Row(
@@ -648,15 +661,21 @@ class _MealProofOrderSelectScreenState extends ConsumerState<MealProofOrderSelec
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  hasSelection ? '已选择 ${_selectedOrderIds.length} 个订单' : '未选择订单',
+                  hasSelection
+                      ? '已选择 ${_selectedOrderIds.length} 个订单'
+                      : '未选择订单',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
-                  hasSelection ? '合计: ${DateFormatter.formatAmount(totalAmount)}' : '请选择订单后导出',
+                  hasSelection
+                      ? '合计: ${DateFormatter.formatAmount(totalAmount)}'
+                      : '请选择订单后导出',
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: hasSelection ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                    color: hasSelection
+                        ? AppPalette.amountMuted
+                        : colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -715,18 +734,16 @@ class _MealProofOrderCard extends StatelessWidget {
       onDoubleTap: onDoubleTap,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadii.card),
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: isSelected
-                ? colorScheme.primaryContainer.withValues(alpha: 0.3)
-                : colorScheme.surface,
-            borderRadius: BorderRadius.circular(12),
+            color: isSelected ? AppPalette.selectedFill : AppPalette.cardFill,
+            borderRadius: BorderRadius.circular(AppRadii.card),
             border: Border.all(
               color: isSelected
-                  ? colorScheme.primary
+                  ? AppPalette.amountMuted
                   : colorScheme.outlineVariant.withValues(alpha: 0.3),
               width: isSelected ? 2 : 1,
             ),
@@ -815,7 +832,7 @@ class _MealProofOrderCard extends StatelessWidget {
                   Text(
                     DateFormatter.formatAmount(order.amount),
                     style: theme.textTheme.titleMedium?.copyWith(
-                      color: colorScheme.primary,
+                      color: AppPalette.amountMuted,
                       fontWeight: FontWeight.bold,
                     ),
                   ),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
+import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 import '../../providers/cleanup_provider.dart';
 
 /// Data cleanup mode selection screen
@@ -42,9 +43,7 @@ class _DataCleanupScreenState extends ConsumerState<DataCleanupScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('清理数据'),
-      ),
+      appBar: AppBar(title: const Text('清理数据')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -77,17 +76,11 @@ class _DataCleanupScreenState extends ConsumerState<DataCleanupScreen> {
       decoration: BoxDecoration(
         color: colorScheme.errorContainer.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: colorScheme.error.withValues(alpha: 0.5),
-        ),
+        border: Border.all(color: colorScheme.error.withValues(alpha: 0.5)),
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.warning_amber_rounded,
-            color: colorScheme.error,
-            size: 24,
-          ),
+          Icon(Icons.warning_amber_rounded, color: colorScheme.error, size: 24),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -112,9 +105,9 @@ class _DataCleanupScreenState extends ConsumerState<DataCleanupScreen> {
           children: [
             Text(
               '清理方式',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
 
@@ -173,16 +166,23 @@ class _DataCleanupScreenState extends ConsumerState<DataCleanupScreen> {
         ),
         child: Row(
           children: [
-            // Radio indicator
-            Radio<CleanupMode>(
-              value: mode,
-              groupValue: _selectedMode,
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => _selectedMode = value);
-                  ref.read(cleanupProvider.notifier).setMode(value);
-                }
-              },
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSelected ? AppPalette.amountMuted : Colors.transparent,
+                border: Border.all(
+                  color: isSelected
+                      ? AppPalette.amountMuted
+                      : colorScheme.outline.withValues(alpha: 0.55),
+                  width: 2,
+                ),
+              ),
+              child: isSelected
+                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                  : null,
             ),
             const SizedBox(width: 8),
 
@@ -193,11 +193,7 @@ class _DataCleanupScreenState extends ConsumerState<DataCleanupScreen> {
                 color: colorScheme.primaryContainer.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: FaIcon(
-                icon,
-                size: 20,
-                color: colorScheme.primary,
-              ),
+              child: FaIcon(icon, size: 20, color: colorScheme.primary),
             ),
             const SizedBox(width: 12),
 
@@ -209,15 +205,15 @@ class _DataCleanupScreenState extends ConsumerState<DataCleanupScreen> {
                   Text(
                     title,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     description,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),

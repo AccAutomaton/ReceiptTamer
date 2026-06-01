@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
+import 'package:receipt_tamer/presentation/widgets/common/muted_status_chip.dart';
 
 /// Invoice card widget for displaying invoice information in the list
 class InvoiceCard extends StatelessWidget {
@@ -26,8 +28,8 @@ class InvoiceCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    final invoiceDate = invoice.invoiceDate != null &&
-            invoice.invoiceDate!.isNotEmpty
+    final invoiceDate =
+        invoice.invoiceDate != null && invoice.invoiceDate!.isNotEmpty
         ? DateTime.tryParse(invoice.invoiceDate!)
         : null;
     final formattedDate = invoiceDate != null
@@ -83,41 +85,13 @@ class InvoiceCard extends StatelessWidget {
 
                 // Order info
                 const SizedBox(height: 4),
-                if (hasLinkedOrders) ...[
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.link,
-                        size: 14,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '已关联${orderCount!}条订单',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ] else ...[
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.link_off,
-                        size: 14,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '未关联订单',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                MutedStatusChip(
+                  label: hasLinkedOrders ? '已关联${orderCount!}条订单' : '未关联订单',
+                  icon: hasLinkedOrders ? Icons.link : Icons.link_off,
+                  color: hasLinkedOrders
+                      ? AppPalette.successMuted
+                      : AppPalette.errorMuted,
+                ),
               ],
             ),
           ),
@@ -126,7 +100,7 @@ class InvoiceCard extends StatelessWidget {
           Text(
             DateFormatter.formatAmount(invoice.totalAmount),
             style: theme.textTheme.titleLarge?.copyWith(
-              color: colorScheme.primary,
+              color: AppPalette.amountMuted,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -144,7 +118,9 @@ class InvoiceCard extends StatelessWidget {
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         child: Icon(
           Icons.picture_as_pdf,
-          color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+          color: Theme.of(
+            context,
+          ).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
         ),
       ),
     );
@@ -169,8 +145,8 @@ class InvoiceCardCompact extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    final invoiceDate = invoice.invoiceDate != null &&
-            invoice.invoiceDate!.isNotEmpty
+    final invoiceDate =
+        invoice.invoiceDate != null && invoice.invoiceDate!.isNotEmpty
         ? DateTime.tryParse(invoice.invoiceDate!)
         : null;
     final formattedDate = invoiceDate != null
@@ -220,7 +196,7 @@ class InvoiceCardCompact extends StatelessWidget {
             Text(
               DateFormatter.formatAmount(invoice.totalAmount),
               style: theme.textTheme.titleMedium?.copyWith(
-                color: colorScheme.primary,
+                color: AppPalette.amountMuted,
                 fontWeight: FontWeight.bold,
               ),
             ),

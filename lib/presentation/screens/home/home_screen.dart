@@ -1,11 +1,13 @@
 import 'package:receipt_tamer/core/constants/app_constants.dart';
 import 'package:receipt_tamer/core/services/log_service.dart';
 import 'package:receipt_tamer/core/services/log_config.dart';
+import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
 import 'package:easy_refresh/easy_refresh.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -73,13 +75,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // 数据未加载完成时显示加载界面
     if (!_dataLoaded) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text(AppConstants.titleHome),
-          elevation: 0,
-        ),
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        backgroundColor: Colors.transparent,
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -88,10 +85,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final orderState = ref.watch(orderProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(AppConstants.titleHome),
-        elevation: 0,
-      ),
+      extendBody: true,
+      backgroundColor: Colors.transparent,
       body: EasyRefresh(
         controller: _refreshController,
         onRefresh: () async {
@@ -119,33 +114,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 112),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Statistics cards
-              Text(
-                '数据概览',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+              SafeArea(bottom: false, child: _buildPageHeader(context)),
+              const SizedBox(height: 18),
+              _buildHeroSummary(
+                context,
+                orderCountAsync,
+                invoiceCountAsync,
+                orderState,
               ),
-              const SizedBox(height: 12),
-              _buildStatisticsCards(context, orderCountAsync, invoiceCountAsync),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 18),
+              _buildStatisticsCards(
+                context,
+                orderCountAsync,
+                invoiceCountAsync,
+              ),
 
-              // Quick access
+              const SizedBox(height: 22),
+
               Text(
                 '快捷功能',
                 style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w800,
+                  color: AppPalette.textPrimary,
                 ),
               ),
               const SizedBox(height: 12),
-              _buildQuickAccessGrid(context, colorScheme),
+              _buildQuickAccessGrid(context),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 22),
 
               // Recent orders
               Row(
@@ -154,7 +155,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   Text(
                     '最近订单',
                     style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w800,
+                      color: AppPalette.textPrimary,
                     ),
                   ),
                   TextButton(
@@ -172,6 +174,125 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  Widget _buildPageHeader(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            AppConstants.titleHome,
+            style: theme.textTheme.headlineMedium?.copyWith(
+              color: AppPalette.textPrimary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        AppIconButton(
+          icon: Icons.search,
+          tooltip: '搜索订单',
+          onPressed: () => context.push('/orders'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeroSummary(
+    BuildContext context,
+    AsyncValue<int> orderCount,
+    AsyncValue<int> invoiceCount,
+    dynamic orderState,
+  ) {
+    final theme = Theme.of(context);
+    final orders = orderState.orders as List<dynamic>;
+    final linkedCount = orders
+        .where((order) => order.hasInvoice == true)
+        .length;
+    final totalAmount = orders.fold<double>(
+      0,
+      (sum, order) => sum + (order.amount as double),
+    );
+    final totalOrders = orderCount.value ?? orders.length;
+    final linkedRatio = totalOrders == 0 ? 0.0 : linkedCount / totalOrders;
+
+    return GlassSurface(
+      padding: const EdgeInsets.all(18),
+      fillColor: AppGlassTokens.sheetFill,
+      boxShadow: AppShadows.glass,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: AppPalette.selectedFill,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Icon(
+                  Icons.receipt_long,
+                  color: AppPalette.amountMuted,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '报销材料概览',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppPalette.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${invoiceCount.value ?? 0} 张发票 · $linkedCount 条已关联订单',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: AppPalette.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                DateFormatter.formatAmount(totalAmount),
+                style: theme.textTheme.titleLarge?.copyWith(
+                  color: AppPalette.amountMuted,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadii.chip),
+            child: LinearProgressIndicator(
+              value: linkedRatio.clamp(0.0, 1.0),
+              minHeight: 8,
+              backgroundColor: AppPalette.mistBlue,
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AppPalette.primaryMuted,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            totalOrders == 0
+                ? '还没有订单数据'
+                : '订单关联进度 ${(linkedRatio * 100).round()}%',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppPalette.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStatisticsCards(
     BuildContext context,
     AsyncValue<int> orderCount,
@@ -184,7 +305,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             title: '订单总数',
             value: orderCount.value?.toString() ?? '-',
             icon: Icons.receipt_long,
-            color: Theme.of(context).colorScheme.primary,
+            color: AppPalette.amountMuted,
           ),
         ),
         const SizedBox(width: 12),
@@ -193,14 +314,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             title: '发票总数',
             value: invoiceCount.value?.toString() ?? '-',
             icon: Icons.description,
-            color: Theme.of(context).colorScheme.secondary,
+            color: AppPalette.primaryMuted,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildQuickAccessGrid(BuildContext context, ColorScheme colorScheme) {
+  Widget _buildQuickAccessGrid(BuildContext context) {
     return Column(
       children: [
         // 第一行：用餐证明导出 + 发票导出
@@ -210,7 +331,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: _QuickAccessButton(
                 icon: Icons.restaurant_menu,
                 label: '用餐证明导出',
-                color: colorScheme.tertiary,
+                color: AppPalette.amountMuted,
                 onTap: () => context.push('/export/meal-proof'),
               ),
             ),
@@ -219,7 +340,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: _QuickAccessButton(
                 icon: Icons.receipt_long,
                 label: '发票导出',
-                color: colorScheme.secondary,
+                color: AppPalette.primaryMuted,
                 onTap: () => context.push('/export/invoice'),
               ),
             ),
@@ -233,7 +354,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: _QuickAccessButton(
                 icon: Icons.file_download_outlined,
                 label: '报销材料导出',
-                color: colorScheme.primary,
+                color: AppPalette.amountMuted,
+                centerContent: true,
                 onTap: () => context.push('/export'),
               ),
             ),
@@ -268,10 +390,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 Icon(
                   Icons.inbox_outlined,
                   size: 48,
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurfaceVariant
-                      .withValues(alpha: 0.3),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -296,76 +417,82 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final recentOrders = orders.take(5).toList();
 
     return Column(
-      children: recentOrders.map((order) {
-        final orderDate = order.orderDate != null && order.orderDate!.isNotEmpty
-            ? DateTime.tryParse(order.orderDate!)
-            : null;
+      children: recentOrders
+          .map((order) {
+            final orderDate =
+                order.orderDate != null && order.orderDate!.isNotEmpty
+                ? DateTime.tryParse(order.orderDate!)
+                : null;
 
-        return AppCard(
-          onTap: () {
-            if (order.id != null && order.id! > 0) {
-              context.push('/orders/${order.id}');
-            }
-          },
-          padding: const EdgeInsets.all(12),
-          margin: const EdgeInsets.only(bottom: 8),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.receipt_long,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      order.shopName.isEmpty ? '未命名店铺' : order.shopName,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+            return AppCard(
+              onTap: () {
+                if (order.id != null && order.id! > 0) {
+                  context.push('/orders/${order.id}');
+                }
+              },
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: AppPalette.elevatedFill,
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    if (orderDate != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Text(
-                          DateFormatter.formatDisplay(orderDate),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                              ),
+                    child: Icon(
+                      Icons.receipt_long,
+                      color: AppPalette.amountMuted,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          order.shopName.isEmpty ? '未命名店铺' : order.shopName,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w500),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                  ],
-                ),
-              ),
-              Text(
-                DateFormatter.formatAmount(order.amount),
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
+                        if (orderDate != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              DateFormatter.formatDisplay(orderDate),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    DateFormatter.formatAmount(order.amount),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: AppPalette.amountMuted,
                       fontWeight: FontWeight.bold,
                     ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.chevron_right,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Icon(
-                Icons.chevron_right,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ],
-          ),
-        );
-      }).cast<Widget>().toList(),
+            );
+          })
+          .cast<Widget>()
+          .toList(),
     );
   }
 }
@@ -395,7 +522,7 @@ class _StatCard extends StatelessWidget {
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: Icon(icon, color: color),
           ),
@@ -408,16 +535,16 @@ class _StatCard extends StatelessWidget {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   value,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: color,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    color: AppPalette.amountMuted,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
@@ -434,33 +561,53 @@ class _QuickAccessButton extends StatelessWidget {
   final String label;
   final Color color;
   final VoidCallback onTap;
+  final bool centerContent;
 
   const _QuickAccessButton({
     required this.icon,
     required this.label,
     required this.color,
     required this.onTap,
+    this.centerContent = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final iconChip = Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Icon(icon, color: color),
+    );
+    final labelText = FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: centerContent ? Alignment.center : Alignment.centerLeft,
+      child: Text(
+        label,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: AppPalette.textPrimary,
+          fontWeight: FontWeight.w700,
+        ),
+        maxLines: 1,
+      ),
+    );
+
     return AppCard(
+      padding: const EdgeInsets.all(16),
       margin: EdgeInsets.zero,
       onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Row(
+        mainAxisAlignment: centerContent
+            ? MainAxisAlignment.center
+            : MainAxisAlignment.start,
+        mainAxisSize: centerContent ? MainAxisSize.min : MainAxisSize.max,
         children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          iconChip,
+          const SizedBox(width: 12),
+          if (centerContent) labelText else Expanded(child: labelText),
         ],
       ),
     );
