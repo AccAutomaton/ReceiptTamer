@@ -13,6 +13,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+const _quickAccessCardShadows = [
+  BoxShadow(
+    color: AppPalette.shadowDeep,
+    blurRadius: 30,
+    spreadRadius: -4,
+    offset: Offset(0, 14),
+  ),
+  BoxShadow(color: Color(0x44FFFFFF), blurRadius: 1, offset: Offset(0, -1)),
+];
+
 /// Home screen - main dashboard with statistics overview
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -598,17 +608,23 @@ class _QuickAccessButton extends StatelessWidget {
     return AppCard(
       padding: const EdgeInsets.all(16),
       margin: EdgeInsets.zero,
+      backgroundColor: AppGlassTokens.contentFill,
+      borderRadius: BorderRadius.circular(AppRadii.card),
+      boxShadow: _quickAccessCardShadows,
       onTap: onTap,
-      child: Row(
-        mainAxisAlignment: centerContent
-            ? MainAxisAlignment.center
-            : MainAxisAlignment.start,
-        mainAxisSize: centerContent ? MainAxisSize.min : MainAxisSize.max,
-        children: [
-          iconChip,
-          const SizedBox(width: 12),
-          if (centerContent) labelText else Expanded(child: labelText),
-        ],
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 58),
+        child: Row(
+          mainAxisAlignment: centerContent
+              ? MainAxisAlignment.center
+              : MainAxisAlignment.start,
+          mainAxisSize: centerContent ? MainAxisSize.min : MainAxisSize.max,
+          children: [
+            iconChip,
+            const SizedBox(width: 12),
+            if (centerContent) labelText else Expanded(child: labelText),
+          ],
+        ),
       ),
     );
   }

@@ -13,6 +13,7 @@ class AppCard extends StatelessWidget {
   final Color? backgroundColor;
   final Color? foregroundColor;
   final double? elevation;
+  final List<BoxShadow>? boxShadow;
   final BorderSide? borderSide;
   final BorderRadius? borderRadius;
   final bool semanticContainer;
@@ -27,6 +28,7 @@ class AppCard extends StatelessWidget {
     this.backgroundColor,
     this.foregroundColor,
     this.elevation,
+    this.boxShadow,
     this.borderSide,
     this.borderRadius,
     this.semanticContainer = true,
@@ -43,17 +45,19 @@ class AppCard extends StatelessWidget {
     final effectiveBorderRadius =
         borderRadius ?? BorderRadius.circular(AppRadii.card);
     final effectiveBorderSide = borderSide ?? BorderSide.none;
-    final effectiveShadows = elevation == null
-        ? AppShadows.card
-        : elevation! > 0
-        ? [
-            BoxShadow(
-              color: AppPalette.shadowMuted,
-              blurRadius: elevation! * 2.8,
-              offset: Offset(0, elevation!),
-            ),
-          ]
-        : null;
+    final effectiveShadows =
+        boxShadow ??
+        (elevation == null
+            ? AppShadows.card
+            : elevation! > 0
+            ? [
+                BoxShadow(
+                  color: AppPalette.shadowMuted,
+                  blurRadius: elevation! * 2.8,
+                  offset: Offset(0, elevation!),
+                ),
+              ]
+            : null);
 
     final content = Padding(padding: effectivePadding, child: child);
 
@@ -74,16 +78,24 @@ class AppCard extends StatelessWidget {
   Widget _withInk(Widget child, BorderRadius borderRadius) {
     if (onTap == null && onLongPress == null) return child;
 
-    return Material(
-      color: Colors.transparent,
-      borderRadius: borderRadius,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        borderRadius: borderRadius,
-        child: child,
-      ),
+    return Stack(
+      fit: StackFit.passthrough,
+      clipBehavior: Clip.none,
+      children: [
+        child,
+        Positioned.fill(
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: borderRadius,
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: onTap,
+              onLongPress: onLongPress,
+              borderRadius: borderRadius,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

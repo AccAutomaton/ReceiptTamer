@@ -485,5 +485,5 @@ backup.zip
 - 因全量控件 shader 在长列表与弹层中性能开销过高，已回滚到公共控件的非 shader 结构：移除页面级 `LiquidGlassHost`、弹层 host、`LiquidGlassSlot` 与 app 自有控件真实镜片；AppCard、GlassSurface、AppButton、AppIconButton、AppTextField、MutedStatusChip、GlassBottomSheet、GlassActionTile 等继续使用非 shader 冷调玻璃样式。
 - 修正底部导航透明命中层与液态玻璃镜片的定位一致性，确保导航栏内加号按钮点击区域与视觉位置一致。
 - 移除公共玻璃 preset 的硬 optical border 宽度，改用低饱和 tint、柔和 distortion 与内容底色保证可读性，避免硬白边与子内容 0.x 像素溢出。
-- 首页快捷功能入口改为与统计卡片一致的冷调玻璃卡片质感，但保留完整单行文案；全宽的报销材料导出入口居中呈现，避免拆分后的大号“导出”造成视觉突兀。
+- 首页快捷功能入口改为与统计卡片一致的冷调玻璃卡片质感，并补齐同款内容高度；快捷卡片保持同款白玻璃底色，同时加深下方投影来贴近统计卡片的托底感；保留完整单行文案，全宽的报销材料导出入口居中呈现，避免拆分后的大号“导出”造成视觉突兀。
 - 当前性能预算：页面、底部导航、卡片、按钮、输入框、chip、底部弹层、Dialog 外壳等均不创建真实 shader 镜片，统一使用纯 Flutter 仿玻璃效果。
