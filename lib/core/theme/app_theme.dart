@@ -5,22 +5,22 @@ import 'app_design_tokens.dart';
 /// App theme configuration using Material Design 3
 class AppTheme {
   // Primary colors
-  static const Color primaryColor = AppPalette.primaryMuted;
+  static const Color primaryColor = AppPalette.actionPrimary;
   static const Color onPrimaryColor = Color(0xFFFFFFFF);
-  static const Color primaryContainerColor = AppPalette.mistBlue;
+  static const Color primaryContainerColor = AppPalette.actionContainer;
   static const Color onPrimaryContainerColor = AppPalette.textPrimary;
 
   // Secondary colors
-  static const Color secondaryColor = Color(0xFF5F737C);
+  static const Color secondaryColor = AppPalette.actionSecondary;
   static const Color onSecondaryColor = Color(0xFFFFFFFF);
-  static const Color secondaryContainerColor = Color(0xFFE6EEF1);
-  static const Color onSecondaryContainerColor = AppPalette.textPrimary;
+  static const Color secondaryContainerColor = AppPalette.actionContainer;
+  static const Color onSecondaryContainerColor = AppPalette.actionPrimary;
 
   // Tertiary colors
-  static const Color tertiaryColor = AppPalette.amountMuted;
+  static const Color tertiaryColor = AppPalette.actionTertiary;
   static const Color onTertiaryColor = Color(0xFFFFFFFF);
-  static const Color tertiaryContainerColor = Color(0xFFD7E5E9);
-  static const Color onTertiaryContainerColor = AppPalette.textPrimary;
+  static const Color tertiaryContainerColor = AppPalette.actionSoftFill;
+  static const Color onTertiaryContainerColor = AppPalette.actionPrimary;
 
   // Error colors
   static const Color errorColor = Color(0xFFBA1A1A);
@@ -89,7 +89,22 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
+          backgroundColor: AppPalette.actionSoftFill,
+          foregroundColor: primaryColor,
           elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.control),
+          ),
+          side: BorderSide(
+            color: AppPalette.actionOutline.withValues(alpha: 0.44),
+          ),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: primaryColor,
+          foregroundColor: onPrimaryColor,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.control),
@@ -98,23 +113,103 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
+          backgroundColor: AppPalette.actionSoftFill.withValues(alpha: 0.58),
+          foregroundColor: primaryColor,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.control),
           ),
-          side: BorderSide(
-            color: outlineColor.withValues(alpha: 0.5),
-            width: 1,
-          ),
+          side: const BorderSide(color: AppPalette.actionOutline, width: 1.3),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
+          foregroundColor: primaryColor,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.control),
           ),
         ),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          backgroundColor: AppPalette.actionSoftFill.withValues(alpha: 0.78),
+          foregroundColor: primaryColor,
+          side: BorderSide(
+            color: AppPalette.actionOutline.withValues(alpha: 0.42),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.control),
+          ),
+        ),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        checkColor: WidgetStateProperty.all(onPrimaryColor),
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return null;
+          if (states.contains(WidgetState.selected)) return primaryColor;
+          return AppPalette.actionSoftFill;
+        }),
+        side: const BorderSide(color: AppPalette.actionOutline, width: 1.3),
+      ),
+      radioTheme: RadioThemeData(
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return null;
+          return primaryColor;
+        }),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return null;
+          if (states.contains(WidgetState.selected)) return onPrimaryColor;
+          return AppPalette.actionPrimary;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return null;
+          if (states.contains(WidgetState.selected)) return primaryColor;
+          return AppPalette.actionSoftFill;
+        }),
+        trackOutlineColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return null;
+          return AppPalette.actionOutline;
+        }),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return AppPalette.actionContainer;
+            }
+            return AppPalette.actionSoftFill.withValues(alpha: 0.58);
+          }),
+          foregroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.disabled)) return null;
+            return primaryColor;
+          }),
+          side: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.disabled)) return null;
+            return const BorderSide(
+              color: AppPalette.actionOutline,
+              width: 1.2,
+            );
+          }),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: AppPalette.actionSoftFill.withValues(alpha: 0.52),
+        selectedColor: AppPalette.actionContainer,
+        checkmarkColor: primaryColor,
+        side: BorderSide(
+          color: AppPalette.actionOutline.withValues(alpha: 0.46),
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.chip),
+        ),
+      ),
+      listTileTheme: const ListTileThemeData(
+        iconColor: primaryColor,
+        selectedColor: primaryColor,
+        selectedTileColor: primaryContainerColor,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -145,6 +240,8 @@ class AppTheme {
         ),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: primaryColor,
+        foregroundColor: onPrimaryColor,
         elevation: 4,
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
@@ -156,20 +253,26 @@ class AppTheme {
 
   /// Dark theme
   static ThemeData get darkTheme {
+    const darkPrimary = Color(0xFF6BEAFF);
+    const darkOnPrimary = Color(0xFF00363D);
+    const darkPrimaryContainer = Color(0xFF0B3F49);
+    const darkActionSoftFill = Color(0xFF123F47);
+    const darkActionOutline = Color(0xFF60D6E7);
+
     return ThemeData(
       useMaterial3: true,
       colorScheme: const ColorScheme.dark(
-        primary: Color(0xFF4FD8EB),
-        onPrimary: Color(0xFF00363D),
-        primaryContainer: Color(0xFF004F58),
+        primary: darkPrimary,
+        onPrimary: darkOnPrimary,
+        primaryContainer: darkPrimaryContainer,
         onPrimaryContainer: Color(0xFF97F0FF),
-        secondary: Color(0xFFB1CBCF),
+        secondary: Color(0xFF8AE6F3),
         onSecondary: Color(0xFF1C3438),
-        secondaryContainer: Color(0xFF334A4F),
+        secondaryContainer: darkActionSoftFill,
         onSecondaryContainer: Color(0xFFCCE7EC),
-        tertiary: Color(0xFFB2C5FF),
+        tertiary: Color(0xFFB5EEF6),
         onTertiary: Color(0xFF152C5E),
-        tertiaryContainer: Color(0xFF2F4277),
+        tertiaryContainer: Color(0xFF183E49),
         onTertiaryContainer: Color(0xFFCED9FF),
         error: Color(0xFFFFB4AB),
         errorContainer: Color(0xFF93000A),
@@ -201,7 +304,20 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
+          backgroundColor: darkActionSoftFill,
+          foregroundColor: darkPrimary,
           elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.control),
+          ),
+          side: BorderSide(color: darkActionOutline.withValues(alpha: 0.52)),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: darkPrimary,
+          foregroundColor: darkOnPrimary,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.control),
@@ -210,23 +326,96 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
+          backgroundColor: darkActionSoftFill.withValues(alpha: 0.72),
+          foregroundColor: darkPrimary,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.control),
           ),
-          side: BorderSide(
-            color: const Color(0xFF899294).withValues(alpha: 0.5),
-            width: 1,
-          ),
+          side: const BorderSide(color: darkActionOutline, width: 1.3),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
+          foregroundColor: darkPrimary,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.control),
           ),
         ),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          backgroundColor: darkActionSoftFill.withValues(alpha: 0.72),
+          foregroundColor: darkPrimary,
+          side: BorderSide(color: darkActionOutline.withValues(alpha: 0.46)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.control),
+          ),
+        ),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        checkColor: WidgetStateProperty.all(darkOnPrimary),
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return null;
+          if (states.contains(WidgetState.selected)) return darkPrimary;
+          return darkActionSoftFill;
+        }),
+        side: const BorderSide(color: darkActionOutline, width: 1.3),
+      ),
+      radioTheme: RadioThemeData(
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return null;
+          return darkPrimary;
+        }),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return null;
+          if (states.contains(WidgetState.selected)) return darkOnPrimary;
+          return darkPrimary;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return null;
+          if (states.contains(WidgetState.selected)) return darkPrimary;
+          return darkActionSoftFill;
+        }),
+        trackOutlineColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return null;
+          return darkActionOutline;
+        }),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return darkPrimaryContainer;
+            }
+            return darkActionSoftFill.withValues(alpha: 0.72);
+          }),
+          foregroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.disabled)) return null;
+            return darkPrimary;
+          }),
+          side: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.disabled)) return null;
+            return const BorderSide(color: darkActionOutline, width: 1.2);
+          }),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: darkActionSoftFill.withValues(alpha: 0.62),
+        selectedColor: darkPrimaryContainer,
+        checkmarkColor: darkPrimary,
+        side: BorderSide(color: darkActionOutline.withValues(alpha: 0.48)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.chip),
+        ),
+      ),
+      listTileTheme: const ListTileThemeData(
+        iconColor: darkPrimary,
+        selectedColor: darkPrimary,
+        selectedTileColor: darkPrimaryContainer,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -245,7 +434,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.control),
-          borderSide: const BorderSide(color: Color(0xFF4FD8EB), width: 2),
+          borderSide: const BorderSide(color: darkPrimary, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.control),
@@ -261,6 +450,8 @@ class AppTheme {
         ),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: darkPrimary,
+        foregroundColor: darkOnPrimary,
         elevation: 4,
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(

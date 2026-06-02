@@ -619,7 +619,7 @@ class _InvoiceSelectorCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppRadii.card),
               border: Border.all(
                 color: isSelected
-                    ? AppPalette.amountMuted
+                    ? AppPalette.actionPrimary
                     : colorScheme.outlineVariant.withValues(alpha: 0.3),
                 width: isSelected ? 2 : 1,
               ),

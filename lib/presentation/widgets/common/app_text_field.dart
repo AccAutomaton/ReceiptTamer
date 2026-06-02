@@ -187,7 +187,7 @@ class _AppTextFieldState extends State<AppTextField> {
               borderRadius: BorderRadius.circular(effectiveBorderRadius),
               borderSide: glass
                   ? BorderSide(
-                      color: AppPalette.primaryMuted.withValues(alpha: 0.42),
+                      color: AppPalette.actionOutline.withValues(alpha: 0.72),
                       width: 1.2,
                     )
                   : BorderSide(color: colorScheme.primary, width: 2),

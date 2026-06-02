@@ -172,10 +172,12 @@ class _DataCleanupScreenState extends ConsumerState<DataCleanupScreen> {
               height: 22,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isSelected ? AppPalette.amountMuted : Colors.transparent,
+                color: isSelected
+                    ? AppPalette.actionPrimary
+                    : Colors.transparent,
                 border: Border.all(
                   color: isSelected
-                      ? AppPalette.amountMuted
+                      ? AppPalette.actionPrimary
                       : colorScheme.outline.withValues(alpha: 0.55),
                   width: 2,
                 ),

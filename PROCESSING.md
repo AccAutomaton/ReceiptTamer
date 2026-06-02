@@ -487,3 +487,12 @@ backup.zip
 - 移除公共玻璃 preset 的硬 optical border 宽度，改用低饱和 tint、柔和 distortion 与内容底色保证可读性，避免硬白边与子内容 0.x 像素溢出。
 - 首页快捷功能入口改为与统计卡片一致的冷调玻璃卡片质感，并补齐同款内容高度；快捷卡片保持同款白玻璃底色，同时加深下方投影来贴近统计卡片的托底感；保留完整单行文案，全宽的报销材料导出入口居中呈现，避免拆分后的大号“导出”造成视觉突兀。
 - 当前性能预算：页面、底部导航、卡片、按钮、输入框、chip、底部弹层、Dialog 外壳等均不创建真实 shader 镜片，统一使用纯 Flutter 仿玻璃效果。
+
+---
+
+## 2026-06-03 交互控件可点击感优化记录
+
+- 新增 `AppPalette.actionPrimary/actionSecondary/actionTertiary/actionOutline/actionContainer/actionSoftFill` 交互色 token，将浅色主题主色从低饱和灰蓝提升为更明确的高饱和青蓝，并同步深色主题交互色。
+- 全局提升可点击控件启用态颜色：Filled/Elevated/Outlined/Text/Icon Button、FAB、Checkbox、Radio、Switch、SegmentedButton、Chip、ListTile 选中态统一使用 action 色系，避免可用控件被误认为禁用。
+- 同步公共组件与主要页面自绘控件：AppButton、AppIconButton、AppCard 可点击态、GlassActionTile、GlassNavigationBar、首页快捷入口、设置列表入口、导出/清理选择卡与备注开关的选中/可点击状态改用 action 色。
+- 本次仅涉及视觉 token 与控件样式，不修改数据模型、数据库版本、应用版本号，也不影响备份与还原逻辑。

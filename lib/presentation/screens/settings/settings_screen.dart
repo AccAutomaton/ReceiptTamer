@@ -696,7 +696,7 @@ Licensed under the Apache License 2.0
           color: AppPalette.selectedFill,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Icon(icon, color: AppPalette.amountMuted, size: 21),
+        child: Icon(icon, color: AppPalette.actionPrimary, size: 21),
       ),
       title: Text(title),
       subtitle: Text(

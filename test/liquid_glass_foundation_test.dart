@@ -35,7 +35,9 @@ void main() {
     expect(decoration.border, isNull);
   });
 
-  testWidgets('AppIconButton uses glass capsule defaults', (tester) async {
+  testWidgets('AppIconButton uses visible action capsule defaults', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -50,7 +52,7 @@ void main() {
     final shape =
         style.shape!.resolve(<WidgetState>{})! as RoundedRectangleBorder;
 
-    expect(background, AppGlassTokens.lightFill);
+    expect(background, AppPalette.actionSoftFill);
     expect(style.minimumSize!.resolve(<WidgetState>{}), const Size(44, 44));
     expect(shape.borderRadius, BorderRadius.circular(18));
   });

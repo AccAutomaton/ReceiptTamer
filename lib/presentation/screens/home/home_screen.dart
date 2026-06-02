@@ -341,7 +341,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: _QuickAccessButton(
                 icon: Icons.restaurant_menu,
                 label: '用餐证明导出',
-                color: AppPalette.amountMuted,
+                color: AppPalette.actionPrimary,
                 onTap: () => context.push('/export/meal-proof'),
               ),
             ),
@@ -350,7 +350,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: _QuickAccessButton(
                 icon: Icons.receipt_long,
                 label: '发票导出',
-                color: AppPalette.primaryMuted,
+                color: AppPalette.actionSecondary,
                 onTap: () => context.push('/export/invoice'),
               ),
             ),
@@ -364,7 +364,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: _QuickAccessButton(
                 icon: Icons.file_download_outlined,
                 label: '报销材料导出',
-                color: AppPalette.amountMuted,
+                color: AppPalette.actionPrimary,
                 centerContent: true,
                 onTap: () => context.push('/export'),
               ),
@@ -587,7 +587,7 @@ class _QuickAccessButton extends StatelessWidget {
     final iconChip = Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Icon(icon, color: color),
@@ -608,7 +608,10 @@ class _QuickAccessButton extends StatelessWidget {
     return AppCard(
       padding: const EdgeInsets.all(16),
       margin: EdgeInsets.zero,
-      backgroundColor: AppGlassTokens.contentFill,
+      backgroundColor: Color.alphaBlend(
+        color.withValues(alpha: 0.08),
+        AppGlassTokens.contentFill,
+      ),
       borderRadius: BorderRadius.circular(AppRadii.card),
       boxShadow: _quickAccessCardShadows,
       onTap: onTap,

@@ -73,7 +73,7 @@ class GlassActionTile extends StatelessWidget {
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: glass
-                  ? AppGlassTokens.sheetFill.withValues(alpha: 0.56)
+                  ? AppPalette.actionSoftFill.withValues(alpha: 0.58)
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(AppRadii.card),
             ),
@@ -86,18 +86,22 @@ class GlassActionTile extends StatelessWidget {
                     height: 46,
                     decoration: BoxDecoration(
                       color: glass
-                          ? AppPalette.selectedFill.withValues(alpha: 0.18)
+                          ? AppPalette.actionContainer
                           : AppPalette.selectedFill,
                       borderRadius: BorderRadius.circular(16),
                       border: glass
-                          ? null
+                          ? Border.all(
+                              color: AppPalette.actionOutline.withValues(
+                                alpha: 0.46,
+                              ),
+                            )
                           : Border.all(
                               color: colorScheme.outlineVariant.withValues(
                                 alpha: 0.72,
                               ),
                             ),
                     ),
-                    child: Icon(icon, color: AppPalette.amountMuted),
+                    child: Icon(icon, color: AppPalette.actionPrimary),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -124,7 +128,7 @@ class GlassActionTile extends StatelessWidget {
                   ),
                   const Icon(
                     Icons.chevron_right,
-                    color: AppPalette.textSecondary,
+                    color: AppPalette.actionPrimary,
                   ),
                 ],
               ),

@@ -93,7 +93,7 @@ class GlassNavigationBar extends StatelessWidget {
               height: AppGlassTokens.navCenterButtonSize,
               child: GlassSurface(
                 borderRadius: BorderRadius.circular(AppRadii.nav),
-                fillColor: AppPalette.primaryMuted.withValues(alpha: 0.78),
+                fillColor: AppPalette.actionPrimary,
                 borderColor: Colors.white.withValues(alpha: 0.84),
                 blurSigma: 30,
                 child: Material(
@@ -130,7 +130,6 @@ class _NavButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = index == selectedIndex;
-    final colorScheme = Theme.of(context).colorScheme;
 
     return InkWell(
       borderRadius: BorderRadius.circular(AppRadii.nav),
@@ -141,9 +140,14 @@ class _NavButton extends StatelessWidget {
         height: 50,
         decoration: BoxDecoration(
           color: selected
-              ? colorScheme.surface.withValues(alpha: 0.76)
+              ? AppPalette.actionContainer.withValues(alpha: 0.86)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(AppRadii.nav),
+          border: selected
+              ? Border.all(
+                  color: AppPalette.actionOutline.withValues(alpha: 0.36),
+                )
+              : null,
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -152,8 +156,8 @@ class _NavButton extends StatelessWidget {
               selected ? item.selectedIcon : item.icon,
               size: 20,
               color: selected
-                  ? AppPalette.textPrimary
-                  : AppPalette.textSecondary,
+                  ? AppPalette.actionPrimary
+                  : AppPalette.actionSecondary.withValues(alpha: 0.82),
             ),
             const SizedBox(height: 2),
             Text(
@@ -162,8 +166,8 @@ class _NavButton extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 color: selected
-                    ? AppPalette.textPrimary
-                    : AppPalette.textSecondary,
+                    ? AppPalette.actionPrimary
+                    : AppPalette.actionSecondary.withValues(alpha: 0.82),
                 fontWeight: FontWeight.w700,
               ),
             ),

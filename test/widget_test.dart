@@ -77,7 +77,7 @@ void main() {
     expect(find.text('添加发票'), findsOneWidget);
   });
 
-  testWidgets('App uses cold muted visual palette', (
+  testWidgets('App uses cold action-forward visual palette', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -88,7 +88,7 @@ void main() {
     final context = tester.element(find.byType(Scaffold).first);
     final colorScheme = Theme.of(context).colorScheme;
 
-    expect(colorScheme.primary, AppPalette.primaryMuted);
+    expect(colorScheme.primary, AppPalette.actionPrimary);
     expect(colorScheme.surface, AppPalette.coldBackground);
   });
 

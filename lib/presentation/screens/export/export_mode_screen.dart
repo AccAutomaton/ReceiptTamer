@@ -132,7 +132,7 @@ class _ExportModeScreenState extends State<ExportModeScreen> {
           borderRadius: BorderRadius.circular(AppRadii.card),
           border: Border.all(
             color: isSelected
-                ? AppPalette.amountMuted
+                ? AppPalette.actionPrimary
                 : colorScheme.outline.withValues(alpha: 0.3),
             width: isSelected ? 1.4 : 1,
           ),
@@ -145,10 +145,12 @@ class _ExportModeScreenState extends State<ExportModeScreen> {
               height: 22,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isSelected ? AppPalette.amountMuted : Colors.transparent,
+                color: isSelected
+                    ? AppPalette.actionPrimary
+                    : Colors.transparent,
                 border: Border.all(
                   color: isSelected
-                      ? AppPalette.amountMuted
+                      ? AppPalette.actionPrimary
                       : colorScheme.outline.withValues(alpha: 0.55),
                   width: 2,
                 ),
@@ -166,7 +168,7 @@ class _ExportModeScreenState extends State<ExportModeScreen> {
                 color: colorScheme.primaryContainer.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: FaIcon(icon, size: 20, color: AppPalette.amountMuted),
+              child: FaIcon(icon, size: 20, color: AppPalette.actionPrimary),
             ),
             const SizedBox(width: 12),
 

@@ -212,7 +212,7 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
       backgroundColor: value ? AppPalette.selectedFill : AppPalette.cardFill,
       borderSide: BorderSide(
         color: value
-            ? AppPalette.amountMuted
+            ? AppPalette.actionPrimary
             : colorScheme.outlineVariant.withValues(alpha: 0.44),
         width: value ? 1.4 : 1,
       ),
@@ -242,7 +242,7 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
                     icon,
                     size: 20,
                     color: value
-                        ? AppPalette.amountMuted
+                        ? AppPalette.actionPrimary
                         : colorScheme.onSurfaceVariant,
                   ),
                 ),
@@ -279,7 +279,7 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: AppPalette.amountMuted,
+                        color: AppPalette.actionPrimary,
                         borderRadius: BorderRadius.circular(AppRadii.chip),
                       ),
                       child: Text(

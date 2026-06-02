@@ -186,6 +186,10 @@ class AppButton extends StatelessWidget {
     return ElevatedButton.styleFrom(
       backgroundColor: backgroundColor ?? colorScheme.secondaryContainer,
       foregroundColor: foregroundColor ?? colorScheme.onSecondaryContainer,
+      side: BorderSide(
+        color: colorScheme.primary.withValues(alpha: 0.26),
+        width: 1,
+      ),
       padding: EdgeInsets.symmetric(
         horizontal: isDense ? 16 : 24,
         vertical: isDense ? 8 : 12,
@@ -201,6 +205,10 @@ class AppButton extends StatelessWidget {
     return ElevatedButton.styleFrom(
       backgroundColor: backgroundColor ?? colorScheme.tertiaryContainer,
       foregroundColor: foregroundColor ?? colorScheme.onTertiaryContainer,
+      side: BorderSide(
+        color: colorScheme.primary.withValues(alpha: 0.2),
+        width: 1,
+      ),
       padding: EdgeInsets.symmetric(
         horizontal: isDense ? 16 : 24,
         vertical: isDense ? 8 : 12,
@@ -218,9 +226,10 @@ class AppButton extends StatelessWidget {
       side:
           borderSide ??
           BorderSide(
-            color: colorScheme.outline.withValues(alpha: 0.5),
-            width: 1,
+            color: AppPalette.actionOutline.withValues(alpha: 0.72),
+            width: 1.2,
           ),
+      backgroundColor: AppPalette.actionSoftFill.withValues(alpha: 0.42),
       padding: EdgeInsets.symmetric(
         horizontal: isDense ? 16 : 24,
         vertical: isDense ? 8 : 12,
@@ -295,8 +304,11 @@ class AppIconButton extends StatelessWidget {
             )
           : Icon(icon),
       style: IconButton.styleFrom(
-        backgroundColor: backgroundColor ?? AppGlassTokens.lightFill,
-        foregroundColor: foregroundColor ?? colorScheme.onSurface,
+        backgroundColor: backgroundColor ?? AppPalette.actionSoftFill,
+        foregroundColor: foregroundColor ?? colorScheme.primary,
+        side: BorderSide(
+          color: AppPalette.actionOutline.withValues(alpha: 0.46),
+        ),
         minimumSize: Size(size, size),
         maximumSize: Size(size, size),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,

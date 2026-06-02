@@ -592,10 +592,10 @@ class _MealProofOrderSelectScreenState
             height: 20,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _addRemark ? AppPalette.amountMuted : Colors.transparent,
+              color: _addRemark ? AppPalette.actionPrimary : Colors.transparent,
               border: Border.all(
                 color: _addRemark
-                    ? AppPalette.amountMuted
+                    ? AppPalette.actionPrimary
                     : colorScheme.outline,
                 width: 2,
               ),
@@ -743,7 +743,7 @@ class _MealProofOrderCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppRadii.card),
             border: Border.all(
               color: isSelected
-                  ? AppPalette.amountMuted
+                  ? AppPalette.actionPrimary
                   : colorScheme.outlineVariant.withValues(alpha: 0.3),
               width: isSelected ? 2 : 1,
             ),

@@ -398,7 +398,7 @@ class _OrderExportCard extends StatelessWidget {
     } else if (isSelected) {
       // Directly selected: blue/primary
       backgroundColor = AppPalette.selectedFill;
-      borderColor = AppPalette.amountMuted;
+      borderColor = AppPalette.actionPrimary;
       borderWidth = 2;
     } else {
       // Unselected: white background
@@ -597,7 +597,7 @@ class _OrderExportCard extends StatelessWidget {
         width: checkboxSize,
         height: checkboxSize,
         decoration: BoxDecoration(
-          color: AppPalette.amountMuted,
+          color: AppPalette.actionPrimary,
           borderRadius: BorderRadius.circular(2),
         ),
         child: Icon(Icons.check, size: iconSize, color: colorScheme.onPrimary),
