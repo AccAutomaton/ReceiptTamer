@@ -473,12 +473,22 @@ Licensed under the Apache License 2.0
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(title: const Text('关于'), elevation: 0),
+      appBar: AppBar(
+        centerTitle: true,
+        title: Text(
+          '关于',
+          style: theme.textTheme.headlineMedium?.copyWith(
+            color: AppPalette.textPrimary,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        elevation: 0,
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 128),
         children: [
           // 应用信息头部
-          _buildAppHeader(context, theme, colorScheme),
+          _buildAppHeader(context, theme),
 
           // 管理入口与应用信息
           _buildSection(context, '', [
@@ -547,7 +557,7 @@ Licensed under the Apache License 2.0
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Powered By Claude Code With GLM-5.',
+                  'Powered By Codex With GPT-5.5',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -586,64 +596,51 @@ Licensed under the Apache License 2.0
     );
   }
 
-  Widget _buildAppHeader(
-    BuildContext context,
-    ThemeData theme,
-    ColorScheme colorScheme,
-  ) {
+  Widget _buildAppHeader(BuildContext context, ThemeData theme) {
     return GlassSurface(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
       fillColor: AppGlassTokens.sheetFill,
       borderRadius: BorderRadius.circular(AppRadii.glassLarge),
       boxShadow: AppShadows.glass,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // 应用图标（连点10次导出日志）
-            GestureDetector(
-              onTap: _handleLogoTap,
-              child: ReceiptIcon(size: 96),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // 应用图标（连点10次导出日志）
+          GestureDetector(onTap: _handleLogoTap, child: ReceiptIcon(size: 96)),
+          // 应用名称
+          Text(
+            AppConstants.appName,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: AppPalette.textPrimary,
             ),
-            // 应用名称
-            Text(
-              AppConstants.appName,
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-                color: AppPalette.textPrimary,
-              ),
-              textAlign: TextAlign.center,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          // 版本号
+          Text(
+            '版本 ${_currentVersion.isNotEmpty ? _currentVersion : '...'}',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: AppPalette.textSecondary,
             ),
-            const SizedBox(height: 4),
-            // 版本号
-            Text(
-              '版本 ${_currentVersion.isNotEmpty ? _currentVersion : '...'}',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppPalette.textSecondary,
-              ),
+          ),
+          // 检查更新按钮
+          TextButton.icon(
+            onPressed: _isCheckingUpdate ? null : _checkUpdate,
+            icon: _isCheckingUpdate
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.refresh, size: 18),
+            label: Text(_isCheckingUpdate ? '检查中...' : '检查更新'),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
-            // 检查更新按钮
-            TextButton.icon(
-              onPressed: _isCheckingUpdate ? null : _checkUpdate,
-              icon: _isCheckingUpdate
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.refresh, size: 18),
-              label: Text(_isCheckingUpdate ? '检查中...' : '检查更新'),
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
