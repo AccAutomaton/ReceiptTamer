@@ -129,7 +129,9 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
       extendBody: true,
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text(AppConstants.titleOrders),
+        centerTitle: false,
+        titleSpacing: 16,
+        title: _buildPageTitle(context, AppConstants.titleOrders),
         elevation: 0,
         actions: [
           AppIconButton(
@@ -154,23 +156,27 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
             ? const Center(child: CircularProgressIndicator())
             : orderState.orders.isEmpty
             ? EmptyOrders(onAdd: _handleAddOrder)
-            : Row(
-                children: [
-                  // Main list takes remaining space
-                  Expanded(child: _buildGroupedList()),
-                  // Fast scroll bar on the right (non-overlapping)
-                  if (_monthGroups.length > 1)
-                    MonthFastScrollBar(
-                      items: _monthGroups
-                          .map(
-                            (g) =>
-                                MonthScrollItem(year: g.year, month: g.month),
-                          )
-                          .toList(),
-                      onJumpToIndex: _scrollToGroup,
-                    ),
-                ],
+            : MonthFastScrollLayout(
+                items: _monthGroups
+                    .map((g) => MonthScrollItem(year: g.year, month: g.month))
+                    .toList(),
+                onJumpToIndex: _scrollToGroup,
+                child: _buildGroupedList(),
               ),
+      ),
+    );
+  }
+
+  Widget _buildPageTitle(BuildContext context, String title) {
+    final theme = Theme.of(context);
+
+    return Text(
+      title,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: theme.textTheme.headlineMedium?.copyWith(
+        color: AppPalette.textPrimary,
+        fontWeight: FontWeight.w800,
       ),
     );
   }

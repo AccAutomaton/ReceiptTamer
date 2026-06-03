@@ -82,4 +82,97 @@ void main() {
       );
     },
   );
+
+  testWidgets('order relation chip is compact and aligns with date row', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(420, 240);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 380,
+              child: OrderCard(
+                order: Order(
+                  shopName: '订单卡片店铺',
+                  amount: 36,
+                  orderDate: '2026-06-01',
+                  mealTime: 'lunch',
+                  hasInvoice: false,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final dateFinder = find.textContaining('2026年06月01日');
+    final chipLabelFinder = find.text('未关联发票');
+
+    expect(dateFinder, findsOneWidget);
+    expect(chipLabelFinder, findsOneWidget);
+
+    final chipText = tester.widget<Text>(chipLabelFinder);
+    expect(chipText.style?.fontSize, 10);
+
+    final dateCenterY = tester.getRect(dateFinder).center.dy;
+    final chipCenterY = tester.getRect(find.byType(MutedStatusChip)).center.dy;
+    expect((dateCenterY - chipCenterY).abs(), lessThanOrEqualTo(1));
+  });
+
+  testWidgets('invoice relation chip is compact and aligns with date row', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(420, 260);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 380,
+              child: InvoiceCard(
+                invoice: Invoice(
+                  sellerName: '发票卡片销售方',
+                  totalAmount: 36,
+                  invoiceDate: '2026-06-01',
+                ),
+                orderCount: 1,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final dateFinder = find.textContaining('2026年06月01日');
+    final chipLabelFinder = find.text('已关联1条订单');
+
+    expect(dateFinder, findsOneWidget);
+    expect(chipLabelFinder, findsOneWidget);
+
+    final chipText = tester.widget<Text>(chipLabelFinder);
+    expect(chipText.style?.fontSize, 10);
+
+    final dateRect = tester.getRect(dateFinder);
+    final chipRect = tester.getRect(find.byType(MutedStatusChip));
+    expect(
+      (dateRect.center.dy - chipRect.center.dy).abs(),
+      lessThanOrEqualTo(1),
+    );
+    expect(chipRect.left, greaterThan(dateRect.right));
+  });
 }

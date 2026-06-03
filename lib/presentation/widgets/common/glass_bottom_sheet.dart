@@ -8,6 +8,7 @@ Future<T?> showGlassBottomSheet<T>({
 }) {
   return showModalBottomSheet<T>(
     context: context,
+    useRootNavigator: true,
     useSafeArea: true,
     backgroundColor: Colors.transparent,
     barrierColor: AppPalette.darkSurface.withValues(alpha: 0.24),

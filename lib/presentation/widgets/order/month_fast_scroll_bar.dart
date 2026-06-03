@@ -1,18 +1,77 @@
 import 'package:flutter/material.dart';
 import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 
+const monthFastScrollBarWidth = 32.0;
+const monthFastScrollBarListRightInset = monthFastScrollBarWidth / 2;
+const monthFastScrollBarBottomInset = AppGlassTokens.navCenterButtonSize + 44;
+
+class MonthFastScrollLayout extends StatelessWidget {
+  final Widget child;
+  final List<MonthScrollItem> items;
+  final void Function(int index) onJumpToIndex;
+  final double scrollBarWidth;
+  final double rightInset;
+  final double bottomInset;
+  final double? listRightInset;
+  final Color labelBackgroundColor;
+
+  const MonthFastScrollLayout({
+    super.key,
+    required this.child,
+    required this.items,
+    required this.onJumpToIndex,
+    this.scrollBarWidth = monthFastScrollBarWidth,
+    this.rightInset = 0,
+    this.bottomInset = monthFastScrollBarBottomInset,
+    this.listRightInset,
+    this.labelBackgroundColor = Colors.transparent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.length <= 1) return child;
+
+    final effectiveListRightInset = listRightInset ?? scrollBarWidth / 2;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Positioned.fill(
+          child: Padding(
+            padding: EdgeInsets.only(right: effectiveListRightInset),
+            child: child,
+          ),
+        ),
+        Positioned(
+          top: 0,
+          right: rightInset,
+          bottom: bottomInset,
+          child: MonthFastScrollBar(
+            items: items,
+            onJumpToIndex: onJumpToIndex,
+            width: scrollBarWidth,
+            labelBackgroundColor: labelBackgroundColor,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// A sleek fast scroll bar that displays month indicators on the right edge.
 /// Shows a bubble with year/month when dragging, and jumps to that position on release.
 class MonthFastScrollBar extends StatefulWidget {
   final List<MonthScrollItem> items;
   final void Function(int index) onJumpToIndex;
   final double width;
+  final Color labelBackgroundColor;
 
   const MonthFastScrollBar({
     super.key,
     required this.items,
     required this.onJumpToIndex,
     this.width = 32,
+    this.labelBackgroundColor = Colors.transparent,
   });
 
   @override
@@ -60,6 +119,7 @@ class _MonthFastScrollBarState extends State<MonthFastScrollBar> {
                 items: widget.items,
                 hoveredIndex: _isDragging ? _hoveredIndex : -1,
                 colorScheme: colorScheme,
+                labelBackgroundColor: widget.labelBackgroundColor,
               ),
             ),
           ),
@@ -168,11 +228,13 @@ class _ScrollBarPainter extends CustomPainter {
   final List<MonthScrollItem> items;
   final int hoveredIndex;
   final ColorScheme colorScheme;
+  final Color labelBackgroundColor;
 
   _ScrollBarPainter({
     required this.items,
     required this.hoveredIndex,
     required this.colorScheme,
+    required this.labelBackgroundColor,
   });
 
   @override
@@ -196,10 +258,11 @@ class _ScrollBarPainter extends CustomPainter {
       railPaint,
     );
 
-    // Background color for text (to hide rail behind numbers)
-    final bgPaint = Paint()
-      ..color = AppPalette.coldBackground
-      ..style = PaintingStyle.fill;
+    final bgPaint = labelBackgroundColor.a > 0
+        ? (Paint()
+            ..color = labelBackgroundColor
+            ..style = PaintingStyle.fill)
+        : null;
 
     // Styles for different states
     final normalStyle = TextStyle(
@@ -246,16 +309,17 @@ class _ScrollBarPainter extends CustomPainter {
           textDirection: TextDirection.ltr,
         )..layout();
 
-        // Draw background to hide rail
-        canvas.drawRect(
-          Rect.fromLTWH(
-            centerX - yearPainter.width / 2 - 2,
-            y - 16,
-            yearPainter.width + 4,
-            yearPainter.height + 2,
-          ),
-          bgPaint,
-        );
+        if (bgPaint != null) {
+          canvas.drawRect(
+            Rect.fromLTWH(
+              centerX - yearPainter.width / 2 - 2,
+              y - 16,
+              yearPainter.width + 4,
+              yearPainter.height + 2,
+            ),
+            bgPaint,
+          );
+        }
 
         yearPainter.paint(
           canvas,
@@ -277,16 +341,17 @@ class _ScrollBarPainter extends CustomPainter {
         textDirection: TextDirection.ltr,
       )..layout();
 
-      // Draw background to hide rail behind text
-      canvas.drawRect(
-        Rect.fromLTWH(
-          centerX - textPainter.width / 2 - 2,
-          y - textPainter.height / 2 - 1,
-          textPainter.width + 4,
-          textPainter.height + 2,
-        ),
-        bgPaint,
-      );
+      if (bgPaint != null) {
+        canvas.drawRect(
+          Rect.fromLTWH(
+            centerX - textPainter.width / 2 - 2,
+            y - textPainter.height / 2 - 1,
+            textPainter.width + 4,
+            textPainter.height + 2,
+          ),
+          bgPaint,
+        );
+      }
 
       textPainter.paint(
         canvas,
@@ -298,6 +363,7 @@ class _ScrollBarPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _ScrollBarPainter oldDelegate) {
     return oldDelegate.hoveredIndex != hoveredIndex ||
-        oldDelegate.items != items;
+        oldDelegate.items != items ||
+        oldDelegate.labelBackgroundColor != labelBackgroundColor;
   }
 }

@@ -54,54 +54,69 @@ class InvoiceCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Seller name (title)
-                Text(
-                  invoice.sellerName.isEmpty ? '未知商家' : invoice.sellerName,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-
-                // Invoice date
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      Icons.event,
-                      size: 14,
-                      color: colorScheme.onSurfaceVariant,
+                    Expanded(
+                      child: Text(
+                        invoice.sellerName.isEmpty
+                            ? '未知商家'
+                            : invoice.sellerName,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 12),
                     Text(
-                      formattedDate,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
+                      DateFormatter.formatAmount(invoice.totalAmount),
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: AppPalette.amountMuted,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
-
-                // Order info
-                const SizedBox(height: 4),
-                MutedStatusChip(
-                  label: hasLinkedOrders ? '已关联${orderCount!}条订单' : '未关联订单',
-                  icon: hasLinkedOrders ? Icons.link : Icons.link_off,
-                  color: hasLinkedOrders
-                      ? AppPalette.successMuted
-                      : AppPalette.errorMuted,
+                const SizedBox(height: 6),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.event,
+                            size: 14,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              formattedDate,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    MutedStatusChip(
+                      label: hasLinkedOrders ? '已关联${orderCount!}条订单' : '未关联订单',
+                      icon: hasLinkedOrders ? Icons.link : Icons.link_off,
+                      color: hasLinkedOrders
+                          ? AppPalette.successMuted
+                          : AppPalette.errorMuted,
+                      compact: true,
+                    ),
+                  ],
                 ),
               ],
-            ),
-          ),
-
-          // Amount
-          Text(
-            DateFormatter.formatAmount(invoice.totalAmount),
-            style: theme.textTheme.titleLarge?.copyWith(
-              color: AppPalette.amountMuted,
-              fontWeight: FontWeight.bold,
             ),
           ),
         ],

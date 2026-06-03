@@ -7,7 +7,6 @@ import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
-import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
 import 'package:easy_refresh/easy_refresh.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -130,14 +129,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             children: [
               SafeArea(bottom: false, child: _buildPageHeader(context)),
               const SizedBox(height: 18),
-              _buildHeroSummary(
-                context,
-                orderCountAsync,
-                invoiceCountAsync,
-                orderState,
-              ),
-
-              const SizedBox(height: 18),
               _buildStatisticsCards(
                 context,
                 orderCountAsync,
@@ -187,118 +178,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildPageHeader(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            AppConstants.titleHome,
-            style: theme.textTheme.headlineMedium?.copyWith(
-              color: AppPalette.textPrimary,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-        AppIconButton(
-          icon: Icons.search,
-          tooltip: '搜索订单',
-          onPressed: () => context.push('/orders'),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHeroSummary(
-    BuildContext context,
-    AsyncValue<int> orderCount,
-    AsyncValue<int> invoiceCount,
-    dynamic orderState,
-  ) {
-    final theme = Theme.of(context);
-    final orders = orderState.orders as List<dynamic>;
-    final linkedCount = orders
-        .where((order) => order.hasInvoice == true)
-        .length;
-    final totalAmount = orders.fold<double>(
-      0,
-      (sum, order) => sum + (order.amount as double),
-    );
-    final totalOrders = orderCount.value ?? orders.length;
-    final linkedRatio = totalOrders == 0 ? 0.0 : linkedCount / totalOrders;
-
-    return GlassSurface(
-      padding: const EdgeInsets.all(18),
-      fillColor: AppGlassTokens.sheetFill,
-      boxShadow: AppShadows.glass,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: AppPalette.selectedFill,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: const Icon(
-                  Icons.receipt_long,
-                  color: AppPalette.amountMuted,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '报销材料概览',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppPalette.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${invoiceCount.value ?? 0} 张发票 · $linkedCount 条已关联订单',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppPalette.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Text(
-                DateFormatter.formatAmount(totalAmount),
-                style: theme.textTheme.titleLarge?.copyWith(
-                  color: AppPalette.amountMuted,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadii.chip),
-            child: LinearProgressIndicator(
-              value: linkedRatio.clamp(0.0, 1.0),
-              minHeight: 8,
-              backgroundColor: AppPalette.mistBlue,
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                AppPalette.primaryMuted,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            totalOrders == 0
-                ? '还没有订单数据'
-                : '订单关联进度 ${(linkedRatio * 100).round()}%',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: AppPalette.textSecondary,
-            ),
-          ),
-        ],
+    return Text(
+      AppConstants.titleHome,
+      style: theme.textTheme.headlineMedium?.copyWith(
+        color: AppPalette.textPrimary,
+        fontWeight: FontWeight.w800,
       ),
     );
   }

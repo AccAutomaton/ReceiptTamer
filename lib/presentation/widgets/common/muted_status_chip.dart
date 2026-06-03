@@ -7,18 +7,23 @@ class MutedStatusChip extends StatelessWidget {
     required this.label,
     required this.color,
     this.icon,
+    this.compact = false,
   });
 
   final String label;
   final Color color;
   final IconData? icon;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final labelStyle = theme.textTheme.labelSmall;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: compact
+          ? const EdgeInsets.symmetric(horizontal: 8, vertical: 3)
+          : const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.13),
         borderRadius: BorderRadius.circular(AppRadii.chip),
@@ -28,12 +33,13 @@ class MutedStatusChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 13, color: color),
-            const SizedBox(width: 4),
+            Icon(icon, size: compact ? 12 : 13, color: color),
+            SizedBox(width: compact ? 3 : 4),
           ],
           Text(
             label,
-            style: theme.textTheme.labelSmall?.copyWith(
+            style: labelStyle?.copyWith(
+              fontSize: compact ? (labelStyle.fontSize ?? 11) - 1 : null,
               color: color,
               fontWeight: FontWeight.w700,
             ),

@@ -492,7 +492,16 @@ backup.zip
 
 ## 2026-06-03 交互控件可点击感优化记录
 
+- 修正订单/发票列表右侧月份快速滚动条布局：改为右侧浮层并避让底部导航栏，列表仅预留半个滚动条宽度以平衡卡片右侧间距；移除月份文字背后的固定页面底色，避免滚动条区域与列表背景不一致。本次不涉及数据模型、数据库版本、应用版本号或备份还原逻辑。
+- 调整订单列表关系状态 tag：将“已关联发票/未关联发票”缩小一号，并把左侧订单日期餐次与右侧 tag 放在同一水平行，改善订单卡片信息层级与对齐。本次仅涉及 UI 布局，不影响数据、版本或备份还原逻辑。
+- 同步调整发票列表关系状态 tag：将“已关联订单/未关联订单”移到右侧，与左侧发票日期保持同一水平行，并复用订单列表的紧凑 tag 尺寸与位置规则。本次仅涉及 UI 布局，不影响数据、版本或备份还原逻辑。
+- 修正公共玻璃底部弹层的层级：`showGlassBottomSheet` 改为挂载到 root navigator，避免订单/发票列表筛选选项卡片落在 ShellRoute 内层 Navigator 中而被底部导航栏覆盖。本次仅涉及 UI 弹层层级，不影响数据、版本或备份还原逻辑。
+
 - 新增 `AppPalette.actionPrimary/actionSecondary/actionTertiary/actionOutline/actionContainer/actionSoftFill` 交互色 token，将浅色主题主色从低饱和灰蓝提升为更明确的高饱和青蓝，并同步深色主题交互色。
 - 全局提升可点击控件启用态颜色：Filled/Elevated/Outlined/Text/Icon Button、FAB、Checkbox、Radio、Switch、SegmentedButton、Chip、ListTile 选中态统一使用 action 色系，避免可用控件被误认为禁用。
 - 同步公共组件与主要页面自绘控件：AppButton、AppIconButton、AppCard 可点击态、GlassActionTile、GlassNavigationBar、首页快捷入口、设置列表入口、导出/清理选择卡与备注开关的选中/可点击状态改用 action 色。
+- 修复公共 `AppSelectField` 下拉选择框圆角异常：阻止内层 `DropdownButtonFormField` 继承全局输入框的不透明填充，并为弹出菜单传入同一 `AppRadii.control` 圆角，关闭态与展开态保持一致。
+- 调整 `AppTextField` 尾部图标按钮样式：输入框内的店铺名称/销售方名称历史下拉箭头不再继承全局高亮 `IconButtonTheme`，改为透明背景、无描边和中性色普通下拉样式。
+- 移除首页“报销材料概览”卡片，首页保留订单/发票统计、快捷功能与“报销材料导出”入口，减少首屏重复信息。
+- 移除首页右上角搜索按钮，并将订单/发票列表页面标题改为左对齐的首页同款 `headlineMedium`、`FontWeight.w800` 与 `AppPalette.textPrimary` 样式。本次仅涉及 UI 布局与标题样式，不影响数据、版本或备份还原逻辑。
 - 本次仅涉及视觉 token 与控件样式，不修改数据模型、数据库版本、应用版本号，也不影响备份与还原逻辑。

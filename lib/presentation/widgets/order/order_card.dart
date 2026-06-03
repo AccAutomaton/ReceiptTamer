@@ -51,63 +51,68 @@ class OrderCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Shop name
-                Text(
-                  order.shopName.isEmpty ? '未命名店铺' : order.shopName,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-
-                // Order date and meal time
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      Icons.calendar_today,
-                      size: 14,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        '$formattedDate $formattedMealTime',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
+                        order.shopName.isEmpty ? '未命名店铺' : order.shopName,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    const SizedBox(width: 12),
+                    Text(
+                      DateFormatter.formatAmount(order.amount),
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: AppPalette.amountMuted,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.calendar_today,
+                            size: 14,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              '$formattedDate $formattedMealTime',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    MutedStatusChip(
+                      label: order.hasInvoice ? '已关联发票' : '未关联发票',
+                      icon: order.hasInvoice ? Icons.link : Icons.link_off,
+                      color: order.hasInvoice
+                          ? AppPalette.successMuted
+                          : AppPalette.errorMuted,
+                      compact: true,
+                    ),
                   ],
                 ),
               ],
             ),
-          ),
-
-          // Amount
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                DateFormatter.formatAmount(order.amount),
-                style: theme.textTheme.titleLarge?.copyWith(
-                  color: AppPalette.amountMuted,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              MutedStatusChip(
-                label: order.hasInvoice ? '已关联发票' : '未关联发票',
-                icon: order.hasInvoice ? Icons.link : Icons.link_off,
-                color: order.hasInvoice
-                    ? AppPalette.successMuted
-                    : AppPalette.errorMuted,
-              ),
-            ],
           ),
         ],
       ),

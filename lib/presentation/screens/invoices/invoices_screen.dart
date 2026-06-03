@@ -179,7 +179,10 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
       extendBody: true,
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: Text(
+        centerTitle: false,
+        titleSpacing: 16,
+        title: _buildPageTitle(
+          context,
           _filterOrder != null
               ? '${_filterOrder!.shopName} 的发票'
               : AppConstants.titleInvoices,
@@ -220,27 +223,31 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
                     _monthGroups = _groupInvoicesByMonth(invoiceState.invoices);
                   }
 
-                  return Row(
-                    children: [
-                      // Main list takes remaining space
-                      Expanded(child: _buildGroupedList()),
-                      // Fast scroll bar on the right (non-overlapping)
-                      if (_monthGroups.length > 1)
-                        MonthFastScrollBar(
-                          items: _monthGroups
-                              .map(
-                                (g) => MonthScrollItem(
-                                  year: g.year,
-                                  month: g.month,
-                                ),
-                              )
-                              .toList(),
-                          onJumpToIndex: _scrollToGroup,
-                        ),
-                    ],
+                  return MonthFastScrollLayout(
+                    items: _monthGroups
+                        .map(
+                          (g) => MonthScrollItem(year: g.year, month: g.month),
+                        )
+                        .toList(),
+                    onJumpToIndex: _scrollToGroup,
+                    child: _buildGroupedList(),
                   );
                 },
               ),
+      ),
+    );
+  }
+
+  Widget _buildPageTitle(BuildContext context, String title) {
+    final theme = Theme.of(context);
+
+    return Text(
+      title,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: theme.textTheme.headlineMedium?.copyWith(
+        color: AppPalette.textPrimary,
+        fontWeight: FontWeight.w800,
       ),
     );
   }

@@ -116,6 +116,7 @@ class _AppTextFieldState extends State<AppTextField> {
   Widget _buildFieldContent(BuildContext context, {required bool glass}) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final suffixIcon = _buildSuffixIcon(colorScheme);
 
     final effectivePadding =
         widget.contentPadding ??
@@ -165,7 +166,7 @@ class _AppTextFieldState extends State<AppTextField> {
                 ? AppGlassTokens.contentFill
                 : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
             prefixIcon: widget.prefixIcon,
-            suffixIcon: widget.suffixIcon,
+            suffixIcon: suffixIcon,
             contentPadding: effectivePadding,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(effectiveBorderRadius),
@@ -216,6 +217,26 @@ class _AppTextFieldState extends State<AppTextField> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget? _buildSuffixIcon(ColorScheme colorScheme) {
+    final suffixIcon = widget.suffixIcon;
+    if (suffixIcon == null) return null;
+
+    return IconButtonTheme(
+      data: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          disabledBackgroundColor: Colors.transparent,
+          foregroundColor: colorScheme.onSurfaceVariant,
+          disabledForegroundColor: colorScheme.onSurfaceVariant.withValues(
+            alpha: 0.38,
+          ),
+          side: BorderSide.none,
+        ),
+      ),
+      child: suffixIcon,
     );
   }
 
@@ -499,6 +520,11 @@ class AppSelectField<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final controlBorderRadius = BorderRadius.circular(AppRadii.control);
+    final transparentControlBorder = OutlineInputBorder(
+      borderRadius: controlBorderRadius,
+      borderSide: BorderSide.none,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -540,7 +566,7 @@ class AppSelectField<T> extends StatelessWidget {
             color: enabled
                 ? colorScheme.surfaceContainerHighest
                 : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(AppRadii.control),
+            borderRadius: controlBorderRadius,
             border: Border.all(
               color: errorText != null
                   ? Colors.red
@@ -562,6 +588,7 @@ class AppSelectField<T> extends StatelessWidget {
                 );
               }).toList(),
               onChanged: enabled ? onChanged : null,
+              borderRadius: controlBorderRadius,
               hint: Text(
                 hint ?? '请选择',
                 style: theme.textTheme.bodyLarge?.copyWith(
@@ -571,16 +598,18 @@ class AppSelectField<T> extends StatelessWidget {
               decoration: InputDecoration(
                 errorText: errorText,
                 helperText: helperText,
+                filled: true,
+                fillColor: Colors.transparent,
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 14,
                 ),
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                errorBorder: InputBorder.none,
-                focusedErrorBorder: InputBorder.none,
-                disabledBorder: InputBorder.none,
+                border: transparentControlBorder,
+                enabledBorder: transparentControlBorder,
+                focusedBorder: transparentControlBorder,
+                errorBorder: transparentControlBorder,
+                focusedErrorBorder: transparentControlBorder,
+                disabledBorder: transparentControlBorder,
               ),
               focusNode: focusNode,
             ),
