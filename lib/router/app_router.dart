@@ -278,7 +278,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'privacy_policy',
         builder: (context, state) => const InfoScreen(
           title: '隐私政策',
-          content: SettingsScreen.privacyPolicyContent,
+          markdownAssetPath: 'assets/docs/privacy_policy.md',
         ),
       ),
       GoRoute(
@@ -286,7 +286,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'open_source_info',
         builder: (context, state) => const InfoScreen(
           title: '开源信息',
-          content: SettingsScreen.openSourceContent,
+          markdownAssetPath: 'assets/docs/open_source.md',
         ),
       ),
       GoRoute(

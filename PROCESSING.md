@@ -31,7 +31,7 @@
 | 首页统计      | ✅  | 数据概览页面                                                  |
 | 分享功能      | ✅  | 图片、PDF、导出文件分享                                           |
 | PDF预览     | ✅  | syncfusion_flutter_pdfviewer                            |
-| 设置页面      | ✅  | 应用信息、存储统计、缓存清理、模型管理、云端模型提供商预置（Xiaomi MiMo/Deepseek/其它 OpenAI 风格接口）、按供应商独立保存配置、/v1/models 模型列表、本地模型逐文件下载（可选 hf-mirror/Hugging Face、断点续传、取消）/ZIP 导入/删除 |
+| 设置页面      | ✅  | 应用信息、隐私政策/开源信息 Markdown 文档渲染、存储统计、缓存清理、模型管理、云端模型提供商预置（Xiaomi MiMo/Deepseek/其它 OpenAI 风格接口）、按供应商独立保存配置、/v1/models 模型列表、本地模型逐文件下载（可选 hf-mirror/Hugging Face、断点续传、取消）/ZIP 导入/删除 |
 | 数据清理      | ✅  | 根据订单/发票清理数据、级联选择删除关联、文件清理                        |
 | OCR引擎     | ✅  | RapidOcrAndroidOnnx (ONNX格式，内置模型)                       |
 | LLM推理     | ✅  | 本地 MNN 或 OpenAI-compatible 云端模型                         |
@@ -140,6 +140,11 @@ lib/
 │       └── main_shell.dart         # 主导航外壳
 └── router/
     └── app_router.dart
+
+assets/
+└── docs/
+    ├── privacy_policy.md          # 隐私政策 Markdown 文档
+    └── open_source.md             # 开源信息 Markdown 文档
 
 android/app/src/main/
 ├── cpp/
