@@ -60,12 +60,18 @@ class InvoiceRepository {
       final relationTable = await _relationTable;
 
       // Get current order IDs for this invoice
-      final currentOrderIds = await relationTable.getOrderIdsForInvoice(invoice.id!);
+      final currentOrderIds = await relationTable.getOrderIdsForInvoice(
+        invoice.id!,
+      );
 
       // Find orders to remove (in current but not in new list)
-      final ordersToRemove = currentOrderIds.where((id) => !orderIds.contains(id)).toList();
+      final ordersToRemove = currentOrderIds
+          .where((id) => !orderIds.contains(id))
+          .toList();
       // Find orders to add (in new list but not in current)
-      final ordersToAdd = orderIds.where((id) => !currentOrderIds.contains(id)).toList();
+      final ordersToAdd = orderIds
+          .where((id) => !currentOrderIds.contains(id))
+          .toList();
 
       // Remove orders that are no longer selected
       for (final orderId in ordersToRemove) {
@@ -85,9 +91,9 @@ class InvoiceRepository {
       }
     }
 
-    return await table.update(invoice.copyWith(
-      updatedAt: DateTime.now().toIso8601String(),
-    ));
+    return await table.update(
+      invoice.copyWith(updatedAt: DateTime.now().toIso8601String()),
+    );
   }
 
   /// Delete an invoice by ID
@@ -117,9 +123,13 @@ class InvoiceRepository {
   }
 
   /// Get invoices by order ID
-  Future<List<Invoice>> getByOrderId(int orderId) async {
+  Future<List<Invoice>> getByOrderId(
+    int orderId, {
+    int? limit,
+    int? offset,
+  }) async {
     final table = await _invoiceTable;
-    return await table.getByOrderId(orderId);
+    return await table.getByOrderId(orderId, limit: limit, offset: offset);
   }
 
   /// Get invoices by invoice number (exact match)
@@ -224,6 +234,12 @@ class InvoiceRepository {
     return await relationTable.getOrderCountForInvoice(invoiceId);
   }
 
+  /// Get order counts for multiple invoices
+  Future<Map<int, int>> getOrderCountsForInvoices(List<int> invoiceIds) async {
+    final relationTable = await _relationTable;
+    return await relationTable.getOrderCountsForInvoices(invoiceIds);
+  }
+
   /// Update order relations for an invoice
   /// Note: This will remove any existing relations the orders have with other invoices.
   /// This ensures one order can only be associated with one invoice at a time.
@@ -231,11 +247,17 @@ class InvoiceRepository {
     final relationTable = await _relationTable;
 
     // Get current order IDs for this invoice
-    final currentOrderIds = await relationTable.getOrderIdsForInvoice(invoiceId);
+    final currentOrderIds = await relationTable.getOrderIdsForInvoice(
+      invoiceId,
+    );
 
     // Find orders to remove and add
-    final ordersToRemove = currentOrderIds.where((id) => !orderIds.contains(id)).toList();
-    final ordersToAdd = orderIds.where((id) => !currentOrderIds.contains(id)).toList();
+    final ordersToRemove = currentOrderIds
+        .where((id) => !orderIds.contains(id))
+        .toList();
+    final ordersToAdd = orderIds
+        .where((id) => !currentOrderIds.contains(id))
+        .toList();
 
     // Remove orders that are no longer selected
     for (final orderId in ordersToRemove) {

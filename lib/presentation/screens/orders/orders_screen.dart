@@ -30,6 +30,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     // Load orders when screen initializes
     Future.microtask(() {
       ref.read(orderProvider.notifier).loadOrders();
@@ -38,8 +39,15 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    if (_scrollController.position.extentAfter > 600) return;
+    ref.read(orderProvider.notifier).loadMoreOrders();
   }
 
   /// Group orders by year and month (descending order)
@@ -162,7 +170,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                     .map((g) => MonthScrollItem(year: g.year, month: g.month))
                     .toList(),
                 onJumpToIndex: _scrollToGroup,
-                child: _buildGroupedList(),
+                child: _buildGroupedList(orderState),
               ),
       ),
     );
@@ -182,11 +190,18 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
     );
   }
 
-  Widget _buildGroupedList() {
+  Widget _buildGroupedList(OrderState orderState) {
     return CustomScrollView(
       controller: _scrollController,
       slivers: [
         ..._buildSliverGroups(),
+        if (orderState.isLoading && orderState.orders.isNotEmpty)
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          ),
         const SliverPadding(padding: EdgeInsets.only(bottom: 112)),
       ],
     );

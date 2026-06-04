@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -33,17 +34,40 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
   Order? _filterOrder;
   List<InvoiceMonthGroup> _monthGroups = [];
   Map<int, int> _invoiceOrderCounts = {}; // invoiceId -> order count
+  InvoiceState? _invoiceOrderCountState;
+  List<int> _invoiceOrderCountIds = const [];
+  Future<Map<int, int>>? _invoiceOrderCountsFuture;
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     _init();
   }
 
   @override
+  void didUpdateWidget(covariant InvoicesScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.filterOrderId != widget.filterOrderId) {
+      _filterOrder = null;
+      _monthGroups = [];
+      _invoiceOrderCounts = {};
+      _resetInvoiceOrderCountsFuture();
+      _init();
+    }
+  }
+
+  @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    if (_scrollController.position.extentAfter > 600) return;
+    ref.read(invoiceProvider.notifier).loadMoreInvoices();
   }
 
   Future<void> _init() async {
@@ -62,6 +86,31 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
     ref
         .read(invoiceProvider.notifier)
         .loadInvoices(filterOrderId: widget.filterOrderId);
+  }
+
+  void _resetInvoiceOrderCountsFuture() {
+    _invoiceOrderCountState = null;
+    _invoiceOrderCountIds = const [];
+    _invoiceOrderCountsFuture = null;
+  }
+
+  Future<Map<int, int>> _orderCountsFutureFor(InvoiceState invoiceState) {
+    final ids = invoiceState.invoices
+        .map((invoice) => invoice.id)
+        .whereType<int>()
+        .toList(growable: false);
+
+    if (!identical(_invoiceOrderCountState, invoiceState) ||
+        !listEquals(_invoiceOrderCountIds, ids) ||
+        _invoiceOrderCountsFuture == null) {
+      _invoiceOrderCountState = invoiceState;
+      _invoiceOrderCountIds = ids;
+      _invoiceOrderCountsFuture = _loadInvoiceOrderCounts(
+        invoiceState.invoices,
+      );
+    }
+
+    return _invoiceOrderCountsFuture!;
   }
 
   void _handleAddInvoice() {
@@ -158,18 +207,13 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
 
   /// Load order counts for all invoices
   Future<Map<int, int>> _loadInvoiceOrderCounts(List<Invoice> invoices) async {
-    final invoiceOrderCounts = <int, int>{};
-
-    for (final invoice in invoices) {
-      if (invoice.id != null) {
-        final orderIds = await ref
-            .read(invoiceProvider.notifier)
-            .getOrderIdsForInvoice(invoice.id!);
-        invoiceOrderCounts[invoice.id!] = orderIds.length;
-      }
-    }
-
-    return invoiceOrderCounts;
+    final invoiceIds = invoices
+        .map((invoice) => invoice.id)
+        .whereType<int>()
+        .toList(growable: false);
+    return await ref
+        .read(invoiceProvider.notifier)
+        .getOrderCountsForInvoices(invoiceIds);
   }
 
   @override
@@ -217,7 +261,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
             : invoiceState.invoices.isEmpty
             ? EmptyInvoices(onAdd: _handleAddInvoice)
             : FutureBuilder<Map<int, int>>(
-                future: _loadInvoiceOrderCounts(invoiceState.invoices),
+                future: _orderCountsFutureFor(invoiceState),
                 builder: (context, snapshot) {
                   if (snapshot.hasData) {
                     _invoiceOrderCounts = snapshot.data!;
@@ -231,7 +275,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
                         )
                         .toList(),
                     onJumpToIndex: _scrollToGroup,
-                    child: _buildGroupedList(),
+                    child: _buildGroupedList(invoiceState),
                   );
                 },
               ),
@@ -253,11 +297,18 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
     );
   }
 
-  Widget _buildGroupedList() {
+  Widget _buildGroupedList(InvoiceState invoiceState) {
     return CustomScrollView(
       controller: _scrollController,
       slivers: [
         ..._buildSliverGroups(),
+        if (invoiceState.isLoading && invoiceState.invoices.isNotEmpty)
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          ),
         const SliverPadding(padding: EdgeInsets.only(bottom: 112)),
       ],
     );

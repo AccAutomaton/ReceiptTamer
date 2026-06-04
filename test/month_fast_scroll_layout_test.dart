@@ -151,8 +151,17 @@ class _FakeInvoiceRepository extends InvoiceRepository {
   Future<List<Invoice>> getAll({int? limit, int? offset}) async => _invoices;
 
   @override
-  Future<List<Invoice>> getByOrderId(int orderId) async => _invoices;
+  Future<List<Invoice>> getByOrderId(
+    int orderId, {
+    int? limit,
+    int? offset,
+  }) async => _invoices;
 
   @override
   Future<List<int>> getOrderIdsForInvoice(int invoiceId) async => [1];
+
+  @override
+  Future<Map<int, int>> getOrderCountsForInvoices(List<int> invoiceIds) async {
+    return {for (final invoiceId in invoiceIds) invoiceId: 1};
+  }
 }

@@ -46,6 +46,24 @@ void main() {
     expect(container.read(orderProvider).orders.single.hasInvoice, isTrue);
   });
 
+  test('updating invoice relations refreshes invoice list state', () async {
+    final orderRepository = _FakeOrderRepository([
+      _order(id: 1, hasInvoice: false),
+    ]);
+    final invoiceRepository = _FakeInvoiceRepository(orderRepository)
+      ..seedInvoice(id: 7);
+    final container = _container(orderRepository, invoiceRepository);
+    addTearDown(container.dispose);
+
+    await container.read(invoiceProvider.notifier).loadInvoices();
+    expect(invoiceRepository.getAllCalls, 1);
+
+    await container.read(invoiceProvider.notifier).updateOrderRelations(7, [1]);
+
+    expect(invoiceRepository.getAllCalls, 2);
+    expect(container.read(invoiceProvider).invoices.single.id, 7);
+  });
+
   test('deleting a linked invoice refreshes order invoice status', () async {
     final orderRepository = _FakeOrderRepository([
       _order(id: 1, hasInvoice: true),
@@ -65,6 +83,24 @@ void main() {
     expect(success, isTrue);
     expect(orderRepository.getAllCalls, 2);
     expect(container.read(orderProvider).orders.single.hasInvoice, isFalse);
+  });
+
+  test('deleting a linked order refreshes invoice list state', () async {
+    final orderRepository = _FakeOrderRepository([
+      _order(id: 1, hasInvoice: true),
+    ])..linkInvoice(orderId: 1, invoiceId: 7);
+    final invoiceRepository = _FakeInvoiceRepository(orderRepository)
+      ..seedInvoice(id: 7, orderIds: [1]);
+    final container = _container(orderRepository, invoiceRepository);
+    addTearDown(container.dispose);
+
+    await container.read(invoiceProvider.notifier).loadInvoices();
+    expect(invoiceRepository.getAllCalls, 1);
+
+    final success = await container.read(orderProvider.notifier).deleteOrder(1);
+
+    expect(success, isTrue);
+    expect(invoiceRepository.getAllCalls, 2);
   });
 }
 
@@ -113,11 +149,29 @@ class _FakeOrderRepository extends OrderRepository {
 
   List<Order> _orders;
   int getAllCalls = 0;
+  final Map<int, List<int>> _invoiceIdsByOrderId = {};
 
   @override
   Future<List<Order>> getAll({int? limit, int? offset}) async {
     getAllCalls++;
     return _orders;
+  }
+
+  @override
+  Future<int> delete(int id) async {
+    final before = _orders.length;
+    _orders = _orders.where((order) => order.id != id).toList();
+    _invoiceIdsByOrderId.remove(id);
+    return before == _orders.length ? 0 : 1;
+  }
+
+  @override
+  Future<List<int>> getInvoiceIdsForOrder(int orderId) async {
+    return [...?_invoiceIdsByOrderId[orderId]];
+  }
+
+  void linkInvoice({required int orderId, required int invoiceId}) {
+    _invoiceIdsByOrderId[orderId] = [invoiceId];
   }
 
   void setHasInvoice(int orderId, bool hasInvoice) {
@@ -138,6 +192,7 @@ class _FakeInvoiceRepository extends InvoiceRepository {
   final Map<int, Invoice> _invoices = {};
   final Map<int, List<int>> _relations = {};
   int _nextInvoiceId = 1;
+  int getAllCalls = 0;
 
   void seedInvoice({required int id, List<int> orderIds = const []}) {
     _invoices[id] = _invoice(id: id);
@@ -163,11 +218,16 @@ class _FakeInvoiceRepository extends InvoiceRepository {
 
   @override
   Future<List<Invoice>> getAll({int? limit, int? offset}) async {
+    getAllCalls++;
     return _invoices.values.toList();
   }
 
   @override
-  Future<List<Invoice>> getByOrderId(int orderId) async {
+  Future<List<Invoice>> getByOrderId(
+    int orderId, {
+    int? limit,
+    int? offset,
+  }) async {
     return [
       for (final entry in _relations.entries)
         if (entry.value.contains(orderId)) _invoices[entry.key]!,
@@ -187,6 +247,14 @@ class _FakeInvoiceRepository extends InvoiceRepository {
   @override
   Future<int> getOrderCountForInvoice(int invoiceId) async {
     return _relations[invoiceId]?.length ?? 0;
+  }
+
+  @override
+  Future<Map<int, int>> getOrderCountsForInvoices(List<int> invoiceIds) async {
+    return {
+      for (final invoiceId in invoiceIds)
+        invoiceId: _relations[invoiceId]?.length ?? 0,
+    };
   }
 
   @override

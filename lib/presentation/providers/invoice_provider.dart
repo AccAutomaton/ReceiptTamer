@@ -4,6 +4,9 @@ import '../../data/models/invoice.dart';
 import '../../data/repositories/invoice_repository.dart';
 import 'order_provider.dart';
 
+const _unset = Object();
+const _pageSize = 20;
+
 /// Invoice state
 class InvoiceState {
   final List<Invoice> invoices;
@@ -25,18 +28,22 @@ class InvoiceState {
   InvoiceState copyWith({
     List<Invoice>? invoices,
     bool? isLoading,
-    String? errorMessage,
+    Object? errorMessage = _unset,
     bool? hasMore,
     int? currentPage,
-    int? filterOrderId,
+    Object? filterOrderId = _unset,
   }) {
     return InvoiceState(
       invoices: invoices ?? this.invoices,
       isLoading: isLoading ?? this.isLoading,
-      errorMessage: errorMessage,
+      errorMessage: errorMessage == _unset
+          ? this.errorMessage
+          : errorMessage as String?,
       hasMore: hasMore ?? this.hasMore,
       currentPage: currentPage ?? this.currentPage,
-      filterOrderId: filterOrderId ?? this.filterOrderId,
+      filterOrderId: filterOrderId == _unset
+          ? this.filterOrderId
+          : filterOrderId as int?,
     );
   }
 }
@@ -74,22 +81,23 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
       List<Invoice> invoices;
 
       if (filterOrderId != null) {
-        invoices = await _repository.getByOrderId(filterOrderId);
+        invoices = await _repository.getByOrderId(
+          filterOrderId,
+          limit: _pageSize,
+          offset: 0,
+        );
       } else {
-        invoices = await _repository.getAll();
+        invoices = await _repository.getAll(limit: _pageSize, offset: 0);
       }
 
       state = state.copyWith(
         invoices: invoices,
         isLoading: false,
-        hasMore: false,
+        hasMore: invoices.length == _pageSize,
         currentPage: 0,
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
 
@@ -100,20 +108,23 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
     state = state.copyWith(isLoading: true);
 
     try {
-      final offset = (state.currentPage + 1) * 20; // Page size
-      final invoices = await _repository.getAll(limit: 20, offset: offset);
+      final offset = state.invoices.length;
+      final invoices = state.filterOrderId != null
+          ? await _repository.getByOrderId(
+              state.filterOrderId!,
+              limit: _pageSize,
+              offset: offset,
+            )
+          : await _repository.getAll(limit: _pageSize, offset: offset);
 
       state = state.copyWith(
         invoices: [...state.invoices, ...invoices],
         isLoading: false,
-        hasMore: invoices.length == 20,
+        hasMore: invoices.length == _pageSize,
         currentPage: state.currentPage + 1,
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
 
@@ -145,10 +156,7 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
       }
       return id > 0;
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
       return false;
     }
   }
@@ -161,7 +169,10 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
       final previousOrderIds = invoice.id != null && orderIds != null
           ? await _repository.getOrderIdsForInvoice(invoice.id!)
           : const <int>[];
-      final rowsAffected = await _repository.update(invoice, orderIds: orderIds);
+      final rowsAffected = await _repository.update(
+        invoice,
+        orderIds: orderIds,
+      );
       if (rowsAffected > 0) {
         // Update the invoice in the list
         final updatedInvoices = state.invoices.map((i) {
@@ -179,10 +190,7 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
       state = state.copyWith(isLoading: false);
       return false;
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
       return false;
     }
   }
@@ -195,7 +203,9 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
       final linkedOrderIds = await _repository.getOrderIdsForInvoice(id);
       final rowsAffected = await _repository.delete(id);
       if (rowsAffected > 0) {
-        final updatedInvoices = state.invoices.where((i) => i.id != id).toList();
+        final updatedInvoices = state.invoices
+            .where((i) => i.id != id)
+            .toList();
         state = state.copyWith(invoices: updatedInvoices, isLoading: false);
         // Invalidate count provider to refresh statistics
         ref.invalidate(invoiceCountProvider);
@@ -205,10 +215,7 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
       state = state.copyWith(isLoading: false);
       return false;
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
       return false;
     }
   }
@@ -241,12 +248,12 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
       state = state.copyWith(
         invoices: invoices,
         isLoading: false,
+        hasMore: false,
+        currentPage: 0,
+        filterOrderId: null,
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
 
@@ -259,12 +266,12 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
       state = state.copyWith(
         invoices: invoices,
         isLoading: false,
+        hasMore: false,
+        currentPage: 0,
+        filterOrderId: null,
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
 
@@ -277,12 +284,12 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
       state = state.copyWith(
         invoices: invoices,
         isLoading: false,
+        hasMore: false,
+        currentPage: 0,
+        filterOrderId: null,
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
 
@@ -295,12 +302,12 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
       state = state.copyWith(
         invoices: invoices,
         isLoading: false,
+        hasMore: false,
+        currentPage: 0,
+        filterOrderId: null,
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
 
@@ -328,7 +335,10 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
     return await _repository.getAll();
   }
 
-  Future<List<Invoice>> getByDateRangeForExport(DateTime start, DateTime end) async {
+  Future<List<Invoice>> getByDateRangeForExport(
+    DateTime start,
+    DateTime end,
+  ) async {
     return await _repository.getByDateRange(start, end);
   }
 
@@ -342,11 +352,17 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
     return await _repository.getOrderCountForInvoice(invoiceId);
   }
 
+  /// Get order counts for multiple invoices
+  Future<Map<int, int>> getOrderCountsForInvoices(List<int> invoiceIds) async {
+    return await _repository.getOrderCountsForInvoices(invoiceIds);
+  }
+
   /// Update order relations for an invoice
   Future<void> updateOrderRelations(int invoiceId, List<int> orderIds) async {
     final previousOrderIds = await _repository.getOrderIdsForInvoice(invoiceId);
     await _repository.updateOrderRelations(invoiceId, orderIds);
     await _refreshOrdersAfterRelationChange([...previousOrderIds, ...orderIds]);
+    await loadInvoices(filterOrderId: state.filterOrderId);
   }
 
   /// Get seller names with count, ordered by count (highest first)
@@ -356,7 +372,10 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
 
   /// Check if an invoice number already exists (excluding a specific invoice ID)
   /// Returns the existing invoice if found, null otherwise
-  Future<Invoice?> checkInvoiceNumberExists(String invoiceNumber, {int? excludeId}) async {
+  Future<Invoice?> checkInvoiceNumberExists(
+    String invoiceNumber, {
+    int? excludeId,
+  }) async {
     if (invoiceNumber.trim().isEmpty) return null;
     final invoices = await _repository.getByInvoiceNumber(invoiceNumber.trim());
     // Exclude the current invoice if editing
@@ -378,19 +397,28 @@ final invoiceProvider = NotifierProvider<InvoiceNotifier, InvoiceState>(() {
 });
 
 /// Provider for a specific invoice by ID
-final invoiceByIdProvider = FutureProvider.family<Invoice?, int>((ref, id) async {
+final invoiceByIdProvider = FutureProvider.family<Invoice?, int>((
+  ref,
+  id,
+) async {
   final repository = ref.watch(invoiceRepositoryProvider);
   return await repository.getById(id);
 });
 
 /// Provider for invoices by order ID
-final invoicesByOrderIdProvider = FutureProvider.family<List<Invoice>, int>((ref, orderId) async {
+final invoicesByOrderIdProvider = FutureProvider.family<List<Invoice>, int>((
+  ref,
+  orderId,
+) async {
   final repository = ref.watch(invoiceRepositoryProvider);
   return await repository.getByOrderId(orderId);
 });
 
 /// Provider for invoice count by order ID
-final invoiceCountByOrderIdProvider = FutureProvider.family<int, int>((ref, orderId) async {
+final invoiceCountByOrderIdProvider = FutureProvider.family<int, int>((
+  ref,
+  orderId,
+) async {
   final repository = ref.watch(invoiceRepositoryProvider);
   return await repository.getCountByOrderId(orderId);
 });

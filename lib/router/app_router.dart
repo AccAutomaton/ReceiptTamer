@@ -38,34 +38,51 @@ final routerProvider = Provider<GoRouter>((ref) {
     debugLogDiagnostics: true,
     initialLocation: '/',
     routes: [
-      // Main shell with bottom navigation
-      ShellRoute(
-        builder: (context, state, child) => MainShell(child: child),
-        routes: [
-          GoRoute(
-            path: '/',
-            name: 'home',
-            builder: (context, state) => const HomeScreen(),
+      // Main shell with cached bottom navigation branches.
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            MainShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/',
+                name: 'home',
+                builder: (context, state) => const HomeScreen(),
+              ),
+            ],
           ),
-          GoRoute(
-            path: '/orders',
-            name: 'orders',
-            builder: (context, state) => const OrdersScreen(),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/orders',
+                name: 'orders',
+                builder: (context, state) => const OrdersScreen(),
+              ),
+            ],
           ),
-          GoRoute(
-            path: '/invoices',
-            name: 'invoices',
-            builder: (context, state) {
-              final orderId = state.uri.queryParameters['orderId'] != null
-                  ? int.tryParse(state.uri.queryParameters['orderId']!)
-                  : null;
-              return InvoicesScreen(filterOrderId: orderId);
-            },
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/invoices',
+                name: 'invoices',
+                builder: (context, state) {
+                  final orderId = state.uri.queryParameters['orderId'] != null
+                      ? int.tryParse(state.uri.queryParameters['orderId']!)
+                      : null;
+                  return InvoicesScreen(filterOrderId: orderId);
+                },
+              ),
+            ],
           ),
-          GoRoute(
-            path: '/settings',
-            name: 'settings',
-            builder: (context, state) => const SettingsScreen(),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/settings',
+                name: 'settings',
+                builder: (context, state) => const SettingsScreen(),
+              ),
+            ],
           ),
         ],
       ),

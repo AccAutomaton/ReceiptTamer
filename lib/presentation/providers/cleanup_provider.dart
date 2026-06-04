@@ -5,21 +5,20 @@ import '../../data/models/invoice.dart';
 import '../../data/services/cleanup_service.dart';
 import '../../data/repositories/order_repository.dart';
 import '../../data/repositories/invoice_repository.dart';
+import 'invoice_provider.dart' as invoice_providers;
+import 'order_provider.dart' as order_providers;
 
 /// Cleanup mode selection
-enum CleanupMode {
-  orders,
-  invoices,
-}
+enum CleanupMode { orders, invoices }
 
 /// State for cleanup operations
 class CleanupState {
   final CleanupMode mode;
   final DateTime? startDate;
   final DateTime? endDate;
-  final Set<int> selectedIds;            // User directly selected IDs
-  final Set<int> cascadeIds;             // Auto-selected via cascade
-  final bool deleteRelatedItems;         // Delete invoices when orders, or vice versa
+  final Set<int> selectedIds; // User directly selected IDs
+  final Set<int> cascadeIds; // Auto-selected via cascade
+  final bool deleteRelatedItems; // Delete invoices when orders, or vice versa
   final bool isLoading;
   final bool isDeleting;
   final String? errorMessage;
@@ -42,10 +41,10 @@ class CleanupState {
     this.availableInvoices = const [],
     Map<int, int>? orderInvoiceCount,
     Map<int, int>? invoiceOrderCount,
-  })  : selectedIds = selectedIds ?? const {},
-        cascadeIds = cascadeIds ?? const {},
-        orderInvoiceCount = orderInvoiceCount ?? const {},
-        invoiceOrderCount = invoiceOrderCount ?? const {};
+  }) : selectedIds = selectedIds ?? const {},
+       cascadeIds = cascadeIds ?? const {},
+       orderInvoiceCount = orderInvoiceCount ?? const {},
+       invoiceOrderCount = invoiceOrderCount ?? const {};
 
   CleanupState copyWith({
     CleanupMode? mode,
@@ -85,7 +84,8 @@ class CleanupState {
   int get totalSelectedCount => selectedIds.length + cascadeIds.length;
 
   /// Check if an ID is selected (directly or cascade)
-  bool isSelected(int id) => selectedIds.contains(id) || cascadeIds.contains(id);
+  bool isSelected(int id) =>
+      selectedIds.contains(id) || cascadeIds.contains(id);
 
   /// Check if an ID is cascade selected
   bool isCascadeSelected(int id) => cascadeIds.contains(id);
@@ -103,7 +103,8 @@ class CleanupNotifier extends Notifier<CleanupState> {
 
   CleanupService get _cleanupService => ref.read(cleanupServiceProvider);
   OrderRepository get _orderRepository => ref.read(orderRepositoryProvider);
-  InvoiceRepository get _invoiceRepository => ref.read(invoiceRepositoryProvider);
+  InvoiceRepository get _invoiceRepository =>
+      ref.read(invoiceRepositoryProvider);
 
   /// Set cleanup mode
   void setMode(CleanupMode mode) {
@@ -163,7 +164,9 @@ class CleanupNotifier extends Notifier<CleanupState> {
         final orderInvoiceCount = <int, int>{};
         for (final order in orders) {
           if (order.id != null) {
-            final invoiceIds = await _orderRepository.getInvoiceIdsForOrder(order.id!);
+            final invoiceIds = await _orderRepository.getInvoiceIdsForOrder(
+              order.id!,
+            );
             orderInvoiceCount[order.id!] = invoiceIds.length;
           }
         }
@@ -190,7 +193,9 @@ class CleanupNotifier extends Notifier<CleanupState> {
         final invoiceOrderCount = <int, int>{};
         for (final invoice in invoices) {
           if (invoice.id != null) {
-            final orderIds = await _invoiceRepository.getOrderIdsForInvoice(invoice.id!);
+            final orderIds = await _invoiceRepository.getOrderIdsForInvoice(
+              invoice.id!,
+            );
             invoiceOrderCount[invoice.id!] = orderIds.length;
           }
         }
@@ -204,10 +209,7 @@ class CleanupNotifier extends Notifier<CleanupState> {
         );
       }
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
 
@@ -235,9 +237,7 @@ class CleanupNotifier extends Notifier<CleanupState> {
 
   /// Select an item with cascade
   Future<String?> _selectWithCascade(int id) async {
-    state = state.copyWith(
-      selectedIds: {...state.selectedIds, id},
-    );
+    state = state.copyWith(selectedIds: {...state.selectedIds, id});
 
     if (!state.deleteRelatedItems) return null;
 
@@ -256,7 +256,9 @@ class CleanupNotifier extends Notifier<CleanupState> {
     }
 
     // Filter out already selected IDs
-    final newCascadeIds = cascadeIds.where((i) => !state.selectedIds.contains(i)).toSet();
+    final newCascadeIds = cascadeIds
+        .where((i) => !state.selectedIds.contains(i))
+        .toSet();
 
     // Add cascade items to available list if not already there
     await _addCascadeItemsToList(newCascadeIds);
@@ -275,7 +277,10 @@ class CleanupNotifier extends Notifier<CleanupState> {
 
     if (state.mode == CleanupMode.orders) {
       // Find cascade orders not in available list
-      final availableIds = state.availableOrders.where((o) => o.id != null).map((o) => o.id!).toSet();
+      final availableIds = state.availableOrders
+          .where((o) => o.id != null)
+          .map((o) => o.id!)
+          .toSet();
       final missingIds = cascadeIds.where((id) => !availableIds.contains(id));
 
       if (missingIds.isEmpty) return;
@@ -288,7 +293,9 @@ class CleanupNotifier extends Notifier<CleanupState> {
         final order = await _cleanupService.getOrderById(orderId);
         if (order != null) {
           newOrders.add(order);
-          final invoiceIds = await _cleanupService.getInvoiceIdsForOrder(orderId);
+          final invoiceIds = await _cleanupService.getInvoiceIdsForOrder(
+            orderId,
+          );
           newInvoiceCounts[orderId] = invoiceIds.length;
         }
       }
@@ -299,7 +306,10 @@ class CleanupNotifier extends Notifier<CleanupState> {
       );
     } else {
       // Find cascade invoices not in available list
-      final availableIds = state.availableInvoices.where((i) => i.id != null).map((i) => i.id!).toSet();
+      final availableIds = state.availableInvoices
+          .where((i) => i.id != null)
+          .map((i) => i.id!)
+          .toSet();
       final missingIds = cascadeIds.where((id) => !availableIds.contains(id));
 
       if (missingIds.isEmpty) return;
@@ -312,7 +322,9 @@ class CleanupNotifier extends Notifier<CleanupState> {
         final invoice = await _cleanupService.getInvoiceById(invoiceId);
         if (invoice != null) {
           newInvoices.add(invoice);
-          final orderIds = await _cleanupService.getOrderIdsForInvoice(invoiceId);
+          final orderIds = await _cleanupService.getOrderIdsForInvoice(
+            invoiceId,
+          );
           newOrderCounts[invoiceId] = orderIds.length;
         }
       }
@@ -334,13 +346,17 @@ class CleanupNotifier extends Notifier<CleanupState> {
       if (state.mode == CleanupMode.orders) {
         final invoiceIds = await _cleanupService.getInvoiceIdsForOrder(id);
         for (final invoiceId in invoiceIds) {
-          final orderIds = await _cleanupService.getOrderIdsForInvoice(invoiceId);
+          final orderIds = await _cleanupService.getOrderIdsForInvoice(
+            invoiceId,
+          );
           idsToUnselect.addAll(orderIds);
         }
       } else {
         final orderIds = await _cleanupService.getOrderIdsForInvoice(id);
         for (final orderId in orderIds) {
-          final invoiceIds = await _cleanupService.getInvoiceIdsForOrder(orderId);
+          final invoiceIds = await _cleanupService.getInvoiceIdsForOrder(
+            orderId,
+          );
           idsToUnselect.addAll(invoiceIds);
         }
       }
@@ -349,8 +365,12 @@ class CleanupNotifier extends Notifier<CleanupState> {
     }
 
     state = state.copyWith(
-      selectedIds: state.selectedIds.where((i) => !idsToUnselect.contains(i)).toSet(),
-      cascadeIds: state.cascadeIds.where((i) => !idsToUnselect.contains(i)).toSet(),
+      selectedIds: state.selectedIds
+          .where((i) => !idsToUnselect.contains(i))
+          .toSet(),
+      cascadeIds: state.cascadeIds
+          .where((i) => !idsToUnselect.contains(i))
+          .toSet(),
     );
 
     if (cascadeCount > 0) {
@@ -372,14 +392,17 @@ class CleanupNotifier extends Notifier<CleanupState> {
         selectedOrderIds: state.selectedIds,
         deleteInvoices: true,
       );
-    } else if (state.mode == CleanupMode.invoices && state.selectedIds.isNotEmpty) {
+    } else if (state.mode == CleanupMode.invoices &&
+        state.selectedIds.isNotEmpty) {
       cascadeIds = await _cleanupService.calculateCascadeInvoices(
         selectedInvoiceIds: state.selectedIds,
         deleteOrders: true,
       );
     }
 
-    final newCascadeIds = cascadeIds.where((i) => !state.selectedIds.contains(i)).toSet();
+    final newCascadeIds = cascadeIds
+        .where((i) => !state.selectedIds.contains(i))
+        .toSet();
     state = state.copyWith(cascadeIds: newCascadeIds);
   }
 
@@ -413,14 +436,18 @@ class CleanupNotifier extends Notifier<CleanupState> {
           .where((o) => o.id != null)
           .map((o) => o.id!)
           .toSet();
-      final newSelectedIds = allIds.where((id) => !state.isSelected(id)).toSet();
+      final newSelectedIds = allIds
+          .where((id) => !state.isSelected(id))
+          .toSet();
       state = state.copyWith(selectedIds: newSelectedIds, cascadeIds: {});
     } else {
       final allIds = state.availableInvoices
           .where((i) => i.id != null)
           .map((i) => i.id!)
           .toSet();
-      final newSelectedIds = allIds.where((id) => !state.isSelected(id)).toSet();
+      final newSelectedIds = allIds
+          .where((id) => !state.isSelected(id))
+          .toSet();
       state = state.copyWith(selectedIds: newSelectedIds, cascadeIds: {});
     }
 
@@ -462,6 +489,7 @@ class CleanupNotifier extends Notifier<CleanupState> {
 
       // Refresh data
       await _loadAvailableItems();
+      await _refreshMainDataProviders();
 
       // Invalidate other providers
       ref.invalidate(orderCountProvider);
@@ -475,12 +503,36 @@ class CleanupNotifier extends Notifier<CleanupState> {
 
       return result;
     } catch (e) {
-      state = state.copyWith(
-        isDeleting: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isDeleting: false, errorMessage: e.toString());
       return null;
     }
+  }
+
+  Future<void> _refreshMainDataProviders() async {
+    final currentInvoiceFilter = ref
+        .read(invoice_providers.invoiceProvider)
+        .filterOrderId;
+
+    await Future.wait([
+      ref
+          .read(order_providers.orderProvider.notifier)
+          .loadOrders(refresh: true),
+      ref
+          .read(invoice_providers.invoiceProvider.notifier)
+          .loadInvoices(refresh: true, filterOrderId: currentInvoiceFilter),
+    ]);
+
+    ref.invalidate(order_providers.orderCountProvider);
+    ref.invalidate(order_providers.todayOrderCountProvider);
+    ref.invalidate(order_providers.totalOrderAmountProvider);
+    ref.invalidate(order_providers.orderByIdProvider);
+
+    ref.invalidate(invoice_providers.invoiceCountProvider);
+    ref.invalidate(invoice_providers.todayInvoiceCountProvider);
+    ref.invalidate(invoice_providers.totalInvoiceAmountProvider);
+    ref.invalidate(invoice_providers.invoiceByIdProvider);
+    ref.invalidate(invoice_providers.invoicesByOrderIdProvider);
+    ref.invalidate(invoice_providers.invoiceCountByOrderIdProvider);
   }
 
   /// Clear error

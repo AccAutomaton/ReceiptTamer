@@ -21,7 +21,10 @@ class InvoiceTable {
         invoice.toJson(),
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
-      logService.i(LogConfig.moduleDb, '发票已插入: id=$id, invoiceNum="${invoice.invoiceNumber}", amount=${invoice.totalAmount}');
+      logService.i(
+        LogConfig.moduleDb,
+        '发票已插入: id=$id, invoiceNum="${invoice.invoiceNumber}", amount=${invoice.totalAmount}',
+      );
       return id;
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleDb, '发票插入失败', e, stackTrace);
@@ -38,7 +41,10 @@ class InvoiceTable {
         where: '${AppConstants.colId} = ?',
         whereArgs: [invoice.id],
       );
-      logService.i(LogConfig.moduleDb, '发票已更新: id=${invoice.id}, rowsAffected=$count');
+      logService.i(
+        LogConfig.moduleDb,
+        '发票已更新: id=${invoice.id}, rowsAffected=$count',
+      );
       return count;
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleDb, '发票更新失败', e, stackTrace);
@@ -110,8 +116,14 @@ class InvoiceTable {
   }
 
   /// Get invoices by order ID (through relation table)
-  Future<List<Invoice>> getByOrderId(int orderId) async {
+  Future<List<Invoice>> getByOrderId(
+    int orderId, {
+    int? limit,
+    int? offset,
+  }) async {
     try {
+      final limitClause = limit != null ? 'LIMIT $limit' : '';
+      final offsetClause = offset != null ? 'OFFSET $offset' : '';
       final List<Map<String, dynamic>> maps = await database.rawQuery(
         '''
         SELECT i.* FROM ${AppConstants.invoicesTable} i
@@ -119,13 +131,19 @@ class InvoiceTable {
         ON i.${AppConstants.colId} = r.${AppConstants.colInvoiceId}
         WHERE r.${AppConstants.colOrderId} = ?
         ORDER BY i.${AppConstants.colCreatedAt} DESC
+        $limitClause $offsetClause
         ''',
         [orderId],
       );
 
       return maps.map((map) => Invoice.fromJson(map)).toList();
     } catch (e, stackTrace) {
-      logService.e(LogConfig.moduleDb, '按订单ID获取发票失败: orderId=$orderId', e, stackTrace);
+      logService.e(
+        LogConfig.moduleDb,
+        '按订单ID获取发票失败: orderId=$orderId',
+        e,
+        stackTrace,
+      );
       rethrow;
     }
   }
@@ -142,7 +160,12 @@ class InvoiceTable {
 
       return maps.map((map) => Invoice.fromJson(map)).toList();
     } catch (e, stackTrace) {
-      logService.e(LogConfig.moduleDb, '按发票号码获取发票失败: invoiceNumber="$invoiceNumber"', e, stackTrace);
+      logService.e(
+        LogConfig.moduleDb,
+        '按发票号码获取发票失败: invoiceNumber="$invoiceNumber"',
+        e,
+        stackTrace,
+      );
       rethrow;
     }
   }
@@ -159,7 +182,12 @@ class InvoiceTable {
 
       return maps.map((map) => Invoice.fromJson(map)).toList();
     } catch (e, stackTrace) {
-      logService.e(LogConfig.moduleDb, '按发票号码搜索发票失败: invoiceNumber="$invoiceNumber"', e, stackTrace);
+      logService.e(
+        LogConfig.moduleDb,
+        '按发票号码搜索发票失败: invoiceNumber="$invoiceNumber"',
+        e,
+        stackTrace,
+      );
       rethrow;
     }
   }
@@ -177,7 +205,8 @@ class InvoiceTable {
       // Or use substr() to get first 10 characters (YYYY-MM-DD)
       final List<Map<String, dynamic>> maps = await database.query(
         AppConstants.invoicesTable,
-        where: 'substr(${AppConstants.colInvoiceDate}, 1, 10) >= ? AND substr(${AppConstants.colInvoiceDate}, 1, 10) <= ?',
+        where:
+            'substr(${AppConstants.colInvoiceDate}, 1, 10) >= ? AND substr(${AppConstants.colInvoiceDate}, 1, 10) <= ?',
         whereArgs: [startDate, endDate],
         orderBy: '${AppConstants.colInvoiceDate} ASC',
       );
@@ -219,7 +248,11 @@ class InvoiceTable {
   Future<List<Invoice>> getThisMonthInvoices() async {
     final now = DateTime.now();
     final startOfMonth = DateTime(now.year, now.month, 1);
-    final endOfMonth = DateTime(now.year, now.month + 1, 0); // Last day of month
+    final endOfMonth = DateTime(
+      now.year,
+      now.month + 1,
+      0,
+    ); // Last day of month
 
     return getByDateRange(startOfMonth, endOfMonth);
   }
@@ -227,15 +260,13 @@ class InvoiceTable {
   /// Get invoices without linked orders (no relations in the relation table)
   Future<List<Invoice>> getWithoutOrders() async {
     try {
-      final List<Map<String, dynamic>> maps = await database.rawQuery(
-        '''
+      final List<Map<String, dynamic>> maps = await database.rawQuery('''
         SELECT * FROM ${AppConstants.invoicesTable}
         WHERE ${AppConstants.colId} NOT IN (
           SELECT DISTINCT ${AppConstants.colInvoiceId} FROM ${AppConstants.invoiceOrderRelationsTable}
         )
         ORDER BY ${AppConstants.colCreatedAt} DESC
-        ''',
-      );
+        ''');
 
       return maps.map((map) => Invoice.fromJson(map)).toList();
     } catch (e, stackTrace) {
@@ -317,7 +348,12 @@ class InvoiceTable {
       }
       return 0;
     } catch (e, stackTrace) {
-      logService.e(LogConfig.moduleDb, '按订单ID获取发票数量失败: orderId=$orderId', e, stackTrace);
+      logService.e(
+        LogConfig.moduleDb,
+        '按订单ID获取发票数量失败: orderId=$orderId',
+        e,
+        stackTrace,
+      );
       rethrow;
     }
   }
@@ -368,22 +404,27 @@ class InvoiceTable {
         args.add(_formatDate(endDate));
       }
 
-      String whereClause = conditions.isNotEmpty ? 'WHERE ${conditions.join(' AND ')}' : '';
+      String whereClause = conditions.isNotEmpty
+          ? 'WHERE ${conditions.join(' AND ')}'
+          : '';
 
       // Handle orderId filter through relation table
       if (orderId != null) {
         whereClause += conditions.isNotEmpty ? ' AND ' : 'WHERE ';
-        whereClause += '${AppConstants.colId} IN (SELECT ${AppConstants.colInvoiceId} FROM ${AppConstants.invoiceOrderRelationsTable} WHERE ${AppConstants.colOrderId} = ?)';
+        whereClause +=
+            '${AppConstants.colId} IN (SELECT ${AppConstants.colInvoiceId} FROM ${AppConstants.invoiceOrderRelationsTable} WHERE ${AppConstants.colOrderId} = ?)';
         args.add(orderId);
       }
 
       // Handle hasLinkedOrder filter through relation table
       if (hasLinkedOrder == true) {
         whereClause += conditions.isNotEmpty ? ' AND ' : 'WHERE ';
-        whereClause += '${AppConstants.colId} IN (SELECT DISTINCT ${AppConstants.colInvoiceId} FROM ${AppConstants.invoiceOrderRelationsTable})';
+        whereClause +=
+            '${AppConstants.colId} IN (SELECT DISTINCT ${AppConstants.colInvoiceId} FROM ${AppConstants.invoiceOrderRelationsTable})';
       } else if (hasLinkedOrder == false) {
         whereClause += conditions.isNotEmpty ? ' AND ' : 'WHERE ';
-        whereClause += '${AppConstants.colId} NOT IN (SELECT DISTINCT ${AppConstants.colInvoiceId} FROM ${AppConstants.invoiceOrderRelationsTable})';
+        whereClause +=
+            '${AppConstants.colId} NOT IN (SELECT DISTINCT ${AppConstants.colInvoiceId} FROM ${AppConstants.invoiceOrderRelationsTable})';
       }
 
       final List<Map<String, dynamic>> maps = await database.rawQuery(
@@ -402,16 +443,14 @@ class InvoiceTable {
   /// Returns one row per invoice-order pair, so an invoice with multiple orders will appear multiple times
   Future<List<Map<String, dynamic>>> getWithOrderInfo() async {
     try {
-      final List<Map<String, dynamic>> maps = await database.rawQuery(
-        '''
+      final List<Map<String, dynamic>> maps = await database.rawQuery('''
         SELECT i.*, o.${AppConstants.colShopName}, o.${AppConstants.colAmount} as order_amount,
                o.${AppConstants.colOrderDate}, o.${AppConstants.colMealTime}, o.${AppConstants.colOrderNumber}
         FROM ${AppConstants.invoicesTable} i
         LEFT JOIN ${AppConstants.invoiceOrderRelationsTable} r ON i.${AppConstants.colId} = r.${AppConstants.colInvoiceId}
         LEFT JOIN ${AppConstants.ordersTable} o ON r.${AppConstants.colOrderId} = o.${AppConstants.colId}
         ORDER BY i.${AppConstants.colCreatedAt} DESC
-        ''',
-      );
+        ''');
 
       return maps;
     } catch (e, stackTrace) {
@@ -419,7 +458,6 @@ class InvoiceTable {
       rethrow;
     }
   }
-
 
   /// Get seller names with count, ordered by count (highest first)
   /// Returns a list of maps with 'seller_name' and 'count' keys

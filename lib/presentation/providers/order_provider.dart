@@ -2,6 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/order.dart';
 import '../../data/repositories/order_repository.dart';
+import 'invoice_provider.dart' as invoice_providers;
+
+const _unset = Object();
+const _pageSize = 20;
 
 /// Order state
 class OrderState {
@@ -22,14 +26,16 @@ class OrderState {
   OrderState copyWith({
     List<Order>? orders,
     bool? isLoading,
-    String? errorMessage,
+    Object? errorMessage = _unset,
     bool? hasMore,
     int? currentPage,
   }) {
     return OrderState(
       orders: orders ?? this.orders,
       isLoading: isLoading ?? this.isLoading,
-      errorMessage: errorMessage,
+      errorMessage: errorMessage == _unset
+          ? this.errorMessage
+          : errorMessage as String?,
       hasMore: hasMore ?? this.hasMore,
       currentPage: currentPage ?? this.currentPage,
     );
@@ -47,29 +53,18 @@ class OrderNotifier extends Notifier<OrderState> {
 
   /// Load all orders
   Future<void> loadOrders({bool refresh = false}) async {
-    if (refresh) {
-      state = state.copyWith(
-        isLoading: true,
-        errorMessage: null,
-        currentPage: 0,
-      );
-    } else {
-      state = state.copyWith(isLoading: true);
-    }
+    state = state.copyWith(isLoading: true, errorMessage: null, currentPage: 0);
 
     try {
-      final orders = await _repository.getAll();
+      final orders = await _repository.getAll(limit: _pageSize, offset: 0);
       state = state.copyWith(
         orders: orders,
         isLoading: false,
-        hasMore: false,
+        hasMore: orders.length == _pageSize,
         currentPage: 0,
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
 
@@ -80,20 +75,17 @@ class OrderNotifier extends Notifier<OrderState> {
     state = state.copyWith(isLoading: true);
 
     try {
-      final offset = (state.currentPage + 1) * 20; // Page size
-      final orders = await _repository.getAll(limit: 20, offset: offset);
+      final offset = state.orders.length;
+      final orders = await _repository.getAll(limit: _pageSize, offset: offset);
 
       state = state.copyWith(
         orders: [...state.orders, ...orders],
         isLoading: false,
-        hasMore: orders.length == 20,
+        hasMore: orders.length == _pageSize,
         currentPage: state.currentPage + 1,
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
 
@@ -118,10 +110,7 @@ class OrderNotifier extends Notifier<OrderState> {
       ref.invalidate(orderCountProvider);
       return id > 0;
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
       return false;
     }
   }
@@ -143,10 +132,7 @@ class OrderNotifier extends Notifier<OrderState> {
       state = state.copyWith(isLoading: false);
       return false;
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
       return false;
     }
   }
@@ -156,22 +142,39 @@ class OrderNotifier extends Notifier<OrderState> {
     state = state.copyWith(isLoading: true);
 
     try {
+      final linkedInvoiceIds = await _repository.getInvoiceIdsForOrder(id);
       final rowsAffected = await _repository.delete(id);
       if (rowsAffected > 0) {
         final updatedOrders = state.orders.where((o) => o.id != id).toList();
         state = state.copyWith(orders: updatedOrders, isLoading: false);
         // Invalidate count provider to refresh statistics
         ref.invalidate(orderCountProvider);
+        await _refreshInvoicesAfterOrderDeletion(linkedInvoiceIds);
         return true;
       }
       state = state.copyWith(isLoading: false);
       return false;
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
       return false;
+    }
+  }
+
+  Future<void> _refreshInvoicesAfterOrderDeletion(
+    Iterable<int> invoiceIds,
+  ) async {
+    final affectedInvoiceIds = invoiceIds.toSet();
+    if (affectedInvoiceIds.isEmpty) return;
+
+    final currentInvoiceFilter = ref
+        .read(invoice_providers.invoiceProvider)
+        .filterOrderId;
+    await ref
+        .read(invoice_providers.invoiceProvider.notifier)
+        .loadInvoices(refresh: true, filterOrderId: currentInvoiceFilter);
+
+    for (final invoiceId in affectedInvoiceIds) {
+      ref.invalidate(invoice_providers.invoiceByIdProvider(invoiceId));
     }
   }
 
@@ -201,12 +204,11 @@ class OrderNotifier extends Notifier<OrderState> {
       state = state.copyWith(
         orders: orders,
         isLoading: false,
+        hasMore: false,
+        currentPage: 0,
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
 
@@ -219,12 +221,11 @@ class OrderNotifier extends Notifier<OrderState> {
       state = state.copyWith(
         orders: orders,
         isLoading: false,
+        hasMore: false,
+        currentPage: 0,
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
 
@@ -237,12 +238,11 @@ class OrderNotifier extends Notifier<OrderState> {
       state = state.copyWith(
         orders: orders,
         isLoading: false,
+        hasMore: false,
+        currentPage: 0,
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
 
@@ -270,7 +270,10 @@ class OrderNotifier extends Notifier<OrderState> {
     return await _repository.getAll();
   }
 
-  Future<List<Order>> getByDateRangeForExport(DateTime start, DateTime end) async {
+  Future<List<Order>> getByDateRangeForExport(
+    DateTime start,
+    DateTime end,
+  ) async {
     return await _repository.getByDateRange(start, end);
   }
 
@@ -306,7 +309,9 @@ class OrderNotifier extends Notifier<OrderState> {
     int? excludeInvoiceId,
   }) async {
     try {
-      return await _repository.getOrdersWithInvoiceInfo(excludeInvoiceId: excludeInvoiceId);
+      return await _repository.getOrdersWithInvoiceInfo(
+        excludeInvoiceId: excludeInvoiceId,
+      );
     } catch (e) {
       state = state.copyWith(errorMessage: e.toString());
       return [];

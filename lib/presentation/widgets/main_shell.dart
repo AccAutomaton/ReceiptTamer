@@ -4,8 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:receipt_tamer/data/services/update_preferences.dart';
 import 'package:receipt_tamer/data/services/update_service.dart';
-import 'package:receipt_tamer/core/services/log_service.dart';
-import 'package:receipt_tamer/core/services/log_config.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_bottom_sheet.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_navigation_bar.dart';
 import 'package:receipt_tamer/presentation/widgets/common/liquid_glass_background.dart';
@@ -13,9 +11,9 @@ import 'package:receipt_tamer/presentation/widgets/common/update_dialog.dart';
 
 /// Shell widget that provides bottom navigation bar
 class MainShell extends ConsumerStatefulWidget {
-  final Widget child;
+  final StatefulNavigationShell navigationShell;
 
-  const MainShell({super.key, required this.child});
+  const MainShell({super.key, required this.navigationShell});
 
   @override
   ConsumerState<MainShell> createState() => _MainShellState();
@@ -23,7 +21,6 @@ class MainShell extends ConsumerStatefulWidget {
 
 class _MainShellState extends ConsumerState<MainShell>
     with WidgetsBindingObserver {
-  int _currentIndex = 0;
   DateTime? _lastPressedTime;
   bool _updateChecked = false;
 
@@ -61,19 +58,10 @@ class _MainShellState extends ConsumerState<MainShell>
   ];
 
   void _onDestinationSelected(int index) {
-    setState(() => _currentIndex = index);
-    context.go(_destinations[index].path);
-  }
-
-  int _destinationIndexForPath(String path) {
-    if (path == '/') return 0;
-    for (var index = 1; index < _destinations.length; index++) {
-      final destinationPath = _destinations[index].path;
-      if (path == destinationPath || path.startsWith('$destinationPath/')) {
-        return index;
-      }
-    }
-    return _currentIndex;
+    widget.navigationShell.goBranch(
+      index,
+      initialLocation: index == widget.navigationShell.currentIndex,
+    );
   }
 
   void _onAddPressed() {
@@ -178,8 +166,6 @@ class _MainShellState extends ConsumerState<MainShell>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Use SchedulerBinding to defer state update to after build
-    _updateCurrentIndex();
     // Auto check for updates once
     _autoCheckForUpdates();
   }
@@ -233,30 +219,9 @@ class _MainShellState extends ConsumerState<MainShell>
     super.dispose();
   }
 
-  void _updateCurrentIndex() {
-    try {
-      final state = GoRouterState.of(context);
-      final destIndex = _destinationIndexForPath(state.uri.path);
-      if (destIndex != _currentIndex) {
-        // Use WidgetsBinding to defer setState to after the current build frame
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            setState(() => _currentIndex = destIndex);
-          }
-        });
-      }
-    } catch (e) {
-      // Ignore errors during route state access
-      // This can happen during initial build before router is fully initialized
-      logService.e(LogConfig.moduleUi, '更新当前索引失败', e);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final selectedIndex = _destinationIndexForPath(
-      GoRouterState.of(context).uri.path,
-    );
+    final selectedIndex = widget.navigationShell.currentIndex;
 
     return PopScope(
       canPop: false,
@@ -276,7 +241,9 @@ class _MainShellState extends ConsumerState<MainShell>
         backgroundColor: Colors.transparent,
         body: Stack(
           children: [
-            Positioned.fill(child: LiquidGlassBackground(child: widget.child)),
+            Positioned.fill(
+              child: LiquidGlassBackground(child: widget.navigationShell),
+            ),
             Positioned(
               left: 0,
               right: 0,
