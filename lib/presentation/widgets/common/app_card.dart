@@ -37,14 +37,15 @@ class AppCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isInteractive = onTap != null || onLongPress != null;
+    final contentFill = AppGlassTokens.contentFillFor(context);
     final effectiveBackgroundColor =
         backgroundColor ??
         (isInteractive
             ? Color.alphaBlend(
-                AppPalette.actionSoftFill.withValues(alpha: 0.28),
-                AppGlassTokens.contentFill,
+                AppPalette.actionSoftFillFor(context, alpha: 0.28),
+                contentFill,
               )
-            : AppGlassTokens.contentFill);
+            : contentFill);
     final effectivePadding =
         padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 12);
     final effectiveMargin =
@@ -55,7 +56,7 @@ class AppCard extends StatelessWidget {
         borderSide ??
         (isInteractive
             ? BorderSide(
-                color: AppPalette.actionOutline.withValues(alpha: 0.24),
+                color: AppPalette.actionOutlineFor(context, alpha: 0.24),
               )
             : BorderSide.none);
     final effectiveShadows =

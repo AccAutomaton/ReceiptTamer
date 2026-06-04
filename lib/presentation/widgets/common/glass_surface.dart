@@ -34,12 +34,9 @@ class GlassSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final effectiveRadius =
         borderRadius ?? BorderRadius.circular(AppRadii.glassLarge);
-    final effectiveFill =
-        fillColor ??
-        (isDark ? AppGlassTokens.darkFill : AppGlassTokens.lightFill);
+    final effectiveFill = fillColor ?? AppGlassTokens.panelFillFor(context);
     final content = Padding(padding: padding ?? EdgeInsets.zero, child: child);
 
     final fallback = _GlassSurfaceFallback(

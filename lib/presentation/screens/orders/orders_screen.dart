@@ -5,6 +5,7 @@ import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/empty_state.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_bottom_sheet.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_search_dialog.dart';
 import 'package:receipt_tamer/presentation/widgets/common/syncfusion_month_range_picker.dart';
 import 'package:receipt_tamer/presentation/widgets/order/month_group.dart';
 import 'package:receipt_tamer/presentation/widgets/order/month_section_header.dart';
@@ -175,7 +176,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: theme.textTheme.headlineMedium?.copyWith(
-        color: AppPalette.textPrimary,
+        color: AppPalette.textPrimaryFor(context),
         fontWeight: FontWeight.w800,
       ),
     );
@@ -315,41 +316,23 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
     );
   }
 
-  void _showSearchDialog(BuildContext context) {
-    final searchController = TextEditingController();
-
-    showDialog(
+  Future<void> _showSearchDialog(BuildContext context) async {
+    final query = await showGlassSearchDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('搜索订单'),
-        content: TextField(
-          controller: searchController,
-          decoration: const InputDecoration(hintText: '输入店铺名称或订单号'),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () {
-              final query = searchController.text.trim();
-              Navigator.pop(context);
-              if (query.isNotEmpty) {
-                ref
-                    .read(orderProvider.notifier)
-                    .searchOrders(shopName: query, orderNumber: query);
-              } else {
-                // Empty search returns all orders
-                ref.read(orderProvider.notifier).loadOrders();
-              }
-            },
-            child: const Text('搜索'),
-          ),
-        ],
-      ),
+      title: '搜索订单',
+      hint: '输入店铺名称或订单号',
     );
+
+    if (query == null) return;
+
+    if (query.isNotEmpty) {
+      ref
+          .read(orderProvider.notifier)
+          .searchOrders(shopName: query, orderNumber: query);
+    } else {
+      // Empty search returns all orders
+      ref.read(orderProvider.notifier).loadOrders();
+    }
   }
 }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_alert_dialog.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../data/services/file_service.dart';
@@ -42,7 +43,7 @@ class _StorageManagementScreenState extends State<StorageManagementScreen> {
   Future<void> _clearCache() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => GlassAlertDialog(
         title: const Text('确认清理'),
         content: const Text('确定要清理缓存文件吗？这不会删除您的订单和发票数据。'),
         actions: [

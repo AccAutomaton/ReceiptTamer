@@ -226,10 +226,13 @@ class AppButton extends StatelessWidget {
       side:
           borderSide ??
           BorderSide(
-            color: AppPalette.actionOutline.withValues(alpha: 0.72),
+            color: AppPalette.actionOutlineFor(context, alpha: 0.72),
             width: 1.2,
           ),
-      backgroundColor: AppPalette.actionSoftFill.withValues(alpha: 0.42),
+      backgroundColor: AppPalette.actionSoftFillFor(
+        context,
+        alpha: AppPalette.isDark(context) ? 0.72 : 0.42,
+      ),
       padding: EdgeInsets.symmetric(
         horizontal: isDense ? 16 : 24,
         vertical: isDense ? 8 : 12,
@@ -304,10 +307,15 @@ class AppIconButton extends StatelessWidget {
             )
           : Icon(icon),
       style: IconButton.styleFrom(
-        backgroundColor: backgroundColor ?? AppPalette.actionSoftFill,
+        backgroundColor:
+            backgroundColor ??
+            AppPalette.actionSoftFillFor(
+              context,
+              alpha: AppPalette.isDark(context) ? 0.72 : 1,
+            ),
         foregroundColor: foregroundColor ?? colorScheme.primary,
         side: BorderSide(
-          color: AppPalette.actionOutline.withValues(alpha: 0.46),
+          color: AppPalette.actionOutlineFor(context, alpha: 0.46),
         ),
         minimumSize: Size(size, size),
         maximumSize: Size(size, size),

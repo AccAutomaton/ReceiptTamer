@@ -31,7 +31,7 @@ class GlassBottomSheet extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
       child: GlassSurface(
-        fillColor: AppGlassTokens.sheetFill,
+        fillColor: AppGlassTokens.sheetFillFor(context),
         preset: GlassSurfacePreset.sheet,
         borderRadius: const BorderRadius.vertical(
           top: Radius.circular(AppRadii.sheet),
@@ -62,6 +62,10 @@ class GlassActionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final actionColor = AppPalette.actionPrimaryFor(context);
+    final actionFill = AppPalette.actionSoftFillFor(context, alpha: 0.58);
+    final actionContainer = AppPalette.actionContainerFor(context);
+    final selectedFill = AppPalette.selectedFillFor(context);
 
     Widget buildTile({required bool glass}) {
       return Material(
@@ -73,9 +77,7 @@ class GlassActionTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadii.card),
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: glass
-                  ? AppPalette.actionSoftFill.withValues(alpha: 0.58)
-                  : Colors.transparent,
+              color: glass ? actionFill : Colors.transparent,
               borderRadius: BorderRadius.circular(AppRadii.card),
             ),
             child: Padding(
@@ -86,13 +88,12 @@ class GlassActionTile extends StatelessWidget {
                     width: 46,
                     height: 46,
                     decoration: BoxDecoration(
-                      color: glass
-                          ? AppPalette.actionContainer
-                          : AppPalette.selectedFill,
+                      color: glass ? actionContainer : selectedFill,
                       borderRadius: BorderRadius.circular(16),
                       border: glass
                           ? Border.all(
-                              color: AppPalette.actionOutline.withValues(
+                              color: AppPalette.actionOutlineFor(
+                                context,
                                 alpha: 0.46,
                               ),
                             )
@@ -102,7 +103,7 @@ class GlassActionTile extends StatelessWidget {
                               ),
                             ),
                     ),
-                    child: Icon(icon, color: AppPalette.actionPrimary),
+                    child: Icon(icon, color: actionColor),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -114,23 +115,20 @@ class GlassActionTile extends StatelessWidget {
                           title,
                           style: theme.textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w700,
-                            color: AppPalette.textPrimary,
+                            color: AppPalette.textPrimaryFor(context),
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           subtitle,
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppPalette.textSecondary,
+                            color: AppPalette.textSecondaryFor(context),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(
-                    Icons.chevron_right,
-                    color: AppPalette.actionPrimary,
-                  ),
+                  Icon(Icons.chevron_right, color: actionColor),
                 ],
               ),
             ),

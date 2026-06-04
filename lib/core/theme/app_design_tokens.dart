@@ -27,6 +27,58 @@ class AppPalette {
   static const frostHighlight = Color(0xBFFFFFFF);
   static const frostLine = Color(0x66B9C9D0);
   static const darkSurface = Color(0xFF131B22);
+
+  static bool isDark(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark;
+
+  static Color textPrimaryFor(BuildContext context) =>
+      isDark(context) ? Theme.of(context).colorScheme.onSurface : textPrimary;
+
+  static Color textSecondaryFor(BuildContext context) => isDark(context)
+      ? Theme.of(context).colorScheme.onSurfaceVariant
+      : textSecondary;
+
+  static Color amountFor(BuildContext context) =>
+      isDark(context) ? Theme.of(context).colorScheme.primary : amountMuted;
+
+  static Color actionPrimaryFor(BuildContext context) =>
+      isDark(context) ? Theme.of(context).colorScheme.primary : actionPrimary;
+
+  static Color actionSecondaryFor(BuildContext context) => isDark(context)
+      ? Theme.of(context).colorScheme.secondary
+      : actionSecondary;
+
+  static Color actionOutlineFor(BuildContext context, {double alpha = 1}) =>
+      (isDark(context) ? Theme.of(context).colorScheme.primary : actionOutline)
+          .withValues(alpha: alpha);
+
+  static Color actionContainerFor(BuildContext context, {double alpha = 1}) =>
+      (isDark(context)
+              ? Theme.of(context).colorScheme.primaryContainer
+              : actionContainer)
+          .withValues(alpha: alpha);
+
+  static Color actionSoftFillFor(BuildContext context, {double alpha = 1}) =>
+      (isDark(context)
+              ? Theme.of(context).colorScheme.secondaryContainer
+              : actionSoftFill)
+          .withValues(alpha: alpha);
+
+  static Color selectedFillFor(BuildContext context) => isDark(context)
+      ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.7)
+      : selectedFill;
+
+  static Color cardFillFor(BuildContext context) => isDark(context)
+      ? Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.36)
+      : cardFill;
+
+  static Color elevatedFillFor(BuildContext context, {double alpha = 1}) =>
+      (isDark(context)
+              ? Theme.of(context).colorScheme.surfaceContainerHighest
+              : elevatedFill)
+          .withValues(alpha: alpha);
 }
 
 class AppRadii {
@@ -55,6 +107,15 @@ class AppGlassTokens {
   static const navHeight = 62.0;
   static const navCenterSlotWidth = 74.0;
   static const navCenterButtonSize = 68.0;
+
+  static Color panelFillFor(BuildContext context) =>
+      AppPalette.isDark(context) ? darkFill : lightFill;
+
+  static Color contentFillFor(BuildContext context) =>
+      AppPalette.isDark(context) ? darkFill : contentFill;
+
+  static Color sheetFillFor(BuildContext context) =>
+      AppPalette.isDark(context) ? darkFill : sheetFill;
 }
 
 class AppShadows {

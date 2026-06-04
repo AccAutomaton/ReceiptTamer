@@ -73,7 +73,7 @@ class InvoiceCard extends StatelessWidget {
                     Text(
                       DateFormatter.formatAmount(invoice.totalAmount),
                       style: theme.textTheme.titleLarge?.copyWith(
-                        color: AppPalette.amountMuted,
+                        color: AppPalette.amountFor(context),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -211,7 +211,7 @@ class InvoiceCardCompact extends StatelessWidget {
             Text(
               DateFormatter.formatAmount(invoice.totalAmount),
               style: theme.textTheme.titleMedium?.copyWith(
-                color: AppPalette.amountMuted,
+                color: AppPalette.amountFor(context),
                 fontWeight: FontWeight.bold,
               ),
             ),

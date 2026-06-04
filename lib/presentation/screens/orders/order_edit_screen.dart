@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_alert_dialog.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -245,7 +246,7 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
 
     final goToSettings = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => GlassAlertDialog(
         title: const Text('选择 AI 分析方式'),
         content: const Text('请先在设置中选择本地模型或云端模型，然后再进行 OCR 识别。'),
         actions: [
@@ -356,7 +357,7 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogContext) => GlassAlertDialog(
         title: const Text('继续添加'),
         content: Text('还有 ${items.length} 个待处理的图片。\n\n是否继续添加下一个订单？'),
         actions: [
@@ -810,7 +811,7 @@ class _OcrProgressDialogState extends ConsumerState<_OcrProgressDialog> {
 
     final isDirectVisionStage = ocrState.stage == OcrStage.imageRecognizing;
 
-    return AlertDialog(
+    return GlassAlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       content: Padding(
         padding: const EdgeInsets.symmetric(vertical: 16),

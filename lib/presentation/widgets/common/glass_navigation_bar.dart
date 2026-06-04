@@ -30,6 +30,8 @@ class GlassNavigationBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return SafeArea(
       top: false,
       minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -93,8 +95,8 @@ class GlassNavigationBar extends StatelessWidget {
               height: AppGlassTokens.navCenterButtonSize,
               child: GlassSurface(
                 borderRadius: BorderRadius.circular(AppRadii.nav),
-                fillColor: AppPalette.actionPrimary,
-                borderColor: Colors.white.withValues(alpha: 0.84),
+                fillColor: AppPalette.actionPrimaryFor(context),
+                borderColor: colorScheme.onPrimary.withValues(alpha: 0.84),
                 blurSigma: 30,
                 child: Material(
                   color: Colors.transparent,
@@ -102,7 +104,11 @@ class GlassNavigationBar extends StatelessWidget {
                   child: InkWell(
                     customBorder: const CircleBorder(),
                     onTap: onCenterPressed,
-                    child: const Icon(Icons.add, color: Colors.white, size: 31),
+                    child: Icon(
+                      Icons.add,
+                      color: colorScheme.onPrimary,
+                      size: 31,
+                    ),
                   ),
                 ),
               ),
@@ -130,6 +136,10 @@ class _NavButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = index == selectedIndex;
+    final selectedColor = AppPalette.actionPrimaryFor(context);
+    final unselectedColor = AppPalette.actionSecondaryFor(
+      context,
+    ).withValues(alpha: 0.82);
 
     return InkWell(
       borderRadius: BorderRadius.circular(AppRadii.nav),
@@ -140,12 +150,12 @@ class _NavButton extends StatelessWidget {
         height: 50,
         decoration: BoxDecoration(
           color: selected
-              ? AppPalette.actionContainer.withValues(alpha: 0.86)
+              ? AppPalette.actionContainerFor(context, alpha: 0.86)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(AppRadii.nav),
           border: selected
               ? Border.all(
-                  color: AppPalette.actionOutline.withValues(alpha: 0.36),
+                  color: AppPalette.actionOutlineFor(context, alpha: 0.36),
                 )
               : null,
         ),
@@ -155,9 +165,7 @@ class _NavButton extends StatelessWidget {
             Icon(
               selected ? item.selectedIcon : item.icon,
               size: 20,
-              color: selected
-                  ? AppPalette.actionPrimary
-                  : AppPalette.actionSecondary.withValues(alpha: 0.82),
+              color: selected ? selectedColor : unselectedColor,
             ),
             const SizedBox(height: 2),
             Text(
@@ -165,9 +173,7 @@ class _NavButton extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: selected
-                    ? AppPalette.actionPrimary
-                    : AppPalette.actionSecondary.withValues(alpha: 0.82),
+                color: selected ? selectedColor : unselectedColor,
                 fontWeight: FontWeight.w700,
               ),
             ),

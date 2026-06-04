@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_alert_dialog.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:receipt_tamer/data/models/app_version.dart';
@@ -27,7 +28,7 @@ class UpdateDialog {
     await showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogContext) => GlassAlertDialog(
         title: Row(
           children: [
             const Icon(Icons.system_update, color: Colors.blue),
@@ -44,10 +45,7 @@ class UpdateDialog {
               if (latestVersion.formattedFileSize != null)
                 Text(
                   '安装包大小: ${latestVersion.formattedFileSize}',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 13,
-                  ),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
                 ),
               const SizedBox(height: 12),
               if (latestVersion.changelog != null &&
@@ -65,12 +63,20 @@ class UpdateDialog {
                       selectable: true,
                       styleSheet: MarkdownStyleSheet(
                         p: const TextStyle(fontSize: 14),
-                        h2: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        h3: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                        h2: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        h3: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
                         listBullet: const TextStyle(fontSize: 14),
                         code: TextStyle(
                           fontSize: 12,
-                          backgroundColor: Colors.grey[200],
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
                         ),
                       ),
                     ),
@@ -90,7 +96,9 @@ class UpdateDialog {
                   if (onIgnore != null) {
                     onIgnore();
                   } else {
-                    await UpdatePreferences.setIgnoredVersion(latestVersion.version);
+                    await UpdatePreferences.setIgnoredVersion(
+                      latestVersion.version,
+                    );
                   }
                 },
                 child: const Text('忽略此版本'),
@@ -136,12 +144,12 @@ class UpdateDialog {
     void Function(String? apkPath)? onApkDownloaded,
   }) async {
     final service = updateService ?? UpdateService();
-    final shouldDisposeService = updateService == null;  // 只 dispose 自己创建的实例
+    final shouldDisposeService = updateService == null; // 只 dispose 自己创建的实例
 
     if (version.downloadUrl == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('下载地址不可用')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('下载地址不可用')));
       if (shouldDisposeService) service.dispose();
       return;
     }
@@ -177,31 +185,32 @@ class UpdateDialog {
     AppVersion version,
   ) async {
     return await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.warning_amber, color: Colors.orange[700]),
-            const SizedBox(width: 8),
-            const Text('网络提示'),
-          ],
-        ),
-        content: Text(
-          '当前未连接WiFi，继续下载将使用移动数据流量。\n'
-          '安装包大小: ${version.formattedFileSize ?? "未知"}',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+          context: context,
+          builder: (context) => GlassAlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.warning_amber, color: Colors.orange[700]),
+                const SizedBox(width: 8),
+                const Text('网络提示'),
+              ],
+            ),
+            content: Text(
+              '当前未连接WiFi，继续下载将使用移动数据流量。\n'
+              '安装包大小: ${version.formattedFileSize ?? "未知"}',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('继续下载'),
+              ),
+            ],
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('继续下载'),
-          ),
-        ],
-      ),
-    ) ?? false;
+        ) ??
+        false;
   }
 
   /// 下载APK（支持重试）
@@ -223,7 +232,9 @@ class UpdateDialog {
       progressInfo = null;
 
       // Check for existing partial download
-      final existingSize = await updateService.getExistingDownloadSize(version.downloadUrl!);
+      final existingSize = await updateService.getExistingDownloadSize(
+        version.downloadUrl!,
+      );
       final hasPartialDownload = existingSize > 0;
 
       if (!context.mounted) return;
@@ -235,7 +246,7 @@ class UpdateDialog {
         builder: (dialogContext) => StatefulBuilder(
           builder: (context, setDialogState) {
             dialogSetState = setDialogState;
-            return AlertDialog(
+            return GlassAlertDialog(
               title: Row(
                 children: [
                   const SizedBox(
@@ -260,7 +271,10 @@ class UpdateDialog {
                   const SizedBox(height: 16),
                   Text(
                     '${((progressInfo?.progress ?? 0) * 100).toStringAsFixed(1)}%',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   if (progressInfo != null) ...[
@@ -312,7 +326,8 @@ class UpdateDialog {
         onApkDownloaded?.call(result.filePath);
 
         // Request install permission
-        final permissionResult = await Permission.requestInstallPackages.request();
+        final permissionResult = await Permission.requestInstallPackages
+            .request();
         if (!permissionResult.isGranted && context.mounted) {
           await _showInstallPermissionDialog(context);
           return;
@@ -321,13 +336,16 @@ class UpdateDialog {
         // Install APK
         final installed = await updateService.installApk(result.filePath!);
         if (!installed && context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('安装失败，请重试')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('安装失败，请重试')));
         }
       } else if (!downloadCancelled && context.mounted) {
         // Show error dialog with retry option
-        final retry = await _showDownloadErrorDialog(context, result.errorMessage);
+        final retry = await _showDownloadErrorDialog(
+          context,
+          result.errorMessage,
+        );
         if (retry == true) {
           shouldRetry = true;
         }
@@ -342,7 +360,7 @@ class UpdateDialog {
   ) {
     return showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => GlassAlertDialog(
         title: Row(
           children: [
             Icon(Icons.error_outline, color: Colors.red[400]),
@@ -380,7 +398,7 @@ class UpdateDialog {
   static Future<void> _showInstallPermissionDialog(BuildContext context) async {
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => GlassAlertDialog(
         title: Row(
           children: [
             Icon(Icons.settings, color: Theme.of(context).colorScheme.primary),
@@ -388,16 +406,14 @@ class UpdateDialog {
             const Text('需要安装权限'),
           ],
         ),
-        content: const Text(
-          '为了安装应用更新，需要允许安装未知应用。请在设置中开启此权限后重试。',
-        ),
+        content: const Text('为了安装应用更新，需要允许安装未知应用。请在设置中开启此权限后重试。'),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('安装失败，请手动打开下载的文件')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('安装失败，请手动打开下载的文件')));
             },
             child: const Text('取消'),
           ),

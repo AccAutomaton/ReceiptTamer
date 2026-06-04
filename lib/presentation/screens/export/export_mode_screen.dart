@@ -4,7 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
-import 'package:receipt_tamer/presentation/widgets/common/liquid_glass_background.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_page_scaffold.dart';
 
 /// Export mode selection
 /// 导出模式选择
@@ -43,29 +43,26 @@ class _ExportModeScreenState extends State<ExportModeScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      backgroundColor: AppPalette.coldBackground,
+    return GlassPageScaffold(
       appBar: AppBar(title: const Text('导出报销材料')),
-      body: LiquidGlassBackground(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Mode selection card
-              _buildModeSelectionCard(colorScheme),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Mode selection card
+            _buildModeSelectionCard(colorScheme),
 
-              const SizedBox(height: 32),
+            const SizedBox(height: 32),
 
-              // Next button
-              AppButton(
-                text: '下一步',
-                onPressed: _navigateToExportScreen,
-                icon: const Icon(Icons.arrow_forward),
-                isFullWidth: true,
-              ),
-            ],
-          ),
+            // Next button
+            AppButton(
+              text: '下一步',
+              onPressed: _navigateToExportScreen,
+              icon: const Icon(Icons.arrow_forward),
+              isFullWidth: true,
+            ),
+          ],
         ),
       ),
     );
@@ -119,6 +116,7 @@ class _ExportModeScreenState extends State<ExportModeScreen> {
     required ColorScheme colorScheme,
   }) {
     final isSelected = _selectedMode == mode;
+    final actionColor = AppPalette.actionPrimaryFor(context);
 
     return InkWell(
       onTap: () {
@@ -128,11 +126,13 @@ class _ExportModeScreenState extends State<ExportModeScreen> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected ? AppPalette.selectedFill : AppPalette.cardFill,
+          color: isSelected
+              ? AppPalette.selectedFillFor(context)
+              : AppPalette.cardFillFor(context),
           borderRadius: BorderRadius.circular(AppRadii.card),
           border: Border.all(
             color: isSelected
-                ? AppPalette.actionPrimary
+                ? actionColor
                 : colorScheme.outline.withValues(alpha: 0.3),
             width: isSelected ? 1.4 : 1,
           ),
@@ -145,18 +145,16 @@ class _ExportModeScreenState extends State<ExportModeScreen> {
               height: 22,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isSelected
-                    ? AppPalette.actionPrimary
-                    : Colors.transparent,
+                color: isSelected ? actionColor : Colors.transparent,
                 border: Border.all(
                   color: isSelected
-                      ? AppPalette.actionPrimary
+                      ? actionColor
                       : colorScheme.outline.withValues(alpha: 0.55),
                   width: 2,
                 ),
               ),
               child: isSelected
-                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                  ? Icon(Icons.check, size: 14, color: colorScheme.onPrimary)
                   : null,
             ),
             const SizedBox(width: 8),
@@ -168,7 +166,7 @@ class _ExportModeScreenState extends State<ExportModeScreen> {
                 color: colorScheme.primaryContainer.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: FaIcon(icon, size: 20, color: AppPalette.actionPrimary),
+              child: FaIcon(icon, size: 20, color: actionColor),
             ),
             const SizedBox(width: 12),
 

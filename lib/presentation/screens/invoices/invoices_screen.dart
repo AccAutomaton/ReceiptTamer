@@ -11,6 +11,7 @@ import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/empty_state.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_bottom_sheet.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_search_dialog.dart';
 import 'package:receipt_tamer/presentation/widgets/common/syncfusion_month_range_picker.dart';
 import 'package:receipt_tamer/presentation/widgets/invoice/invoice_card.dart';
 import 'package:receipt_tamer/presentation/widgets/invoice/invoice_month_group.dart';
@@ -246,7 +247,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: theme.textTheme.headlineMedium?.copyWith(
-        color: AppPalette.textPrimary,
+        color: AppPalette.textPrimaryFor(context),
         fontWeight: FontWeight.w800,
       ),
     );
@@ -382,41 +383,21 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
     );
   }
 
-  void _showSearchDialog(BuildContext context) {
-    final searchController = TextEditingController();
-
-    showDialog(
+  Future<void> _showSearchDialog(BuildContext context) async {
+    final query = await showGlassSearchDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('搜索发票'),
-        content: TextField(
-          controller: searchController,
-          decoration: const InputDecoration(hintText: '输入销售方名称'),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () {
-              final query = searchController.text.trim();
-              Navigator.pop(context);
-              if (query.isNotEmpty) {
-                ref
-                    .read(invoiceProvider.notifier)
-                    .searchInvoices(sellerName: query);
-              } else {
-                // Empty search returns all invoices
-                ref.read(invoiceProvider.notifier).loadInvoices();
-              }
-            },
-            child: const Text('搜索'),
-          ),
-        ],
-      ),
+      title: '搜索发票',
+      hint: '输入销售方名称',
     );
+
+    if (query == null) return;
+
+    if (query.isNotEmpty) {
+      ref.read(invoiceProvider.notifier).searchInvoices(sellerName: query);
+    } else {
+      // Empty search returns all invoices
+      ref.read(invoiceProvider.notifier).loadInvoices();
+    }
   }
 }
 

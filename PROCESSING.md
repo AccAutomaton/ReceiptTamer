@@ -476,38 +476,3 @@ backup.zip
 | 备份数据库版本 < 当前版本，应用版本相同 | 执行数据库升级后还原 |
 | 备份数据库版本 < 当前版本，应用版本不同 | 警告后执行数据库升级再还原 |
 | 备份数据库版本 == 当前版本，应用版本不同 | 警告后允许还原 |
-
----
-
-## 2026-06-01 视觉改造记录
-
-- 继续推进 iOS 26 风格冷调液态玻璃改造：保留冷调低饱和设计 token 与冷调雾面背景；移除第三方真实 shader/refraction 方案，回到第一版纯 Flutter 仿液态玻璃视觉。
-- 因全量控件 shader 在长列表与弹层中性能开销过高，已回滚到公共控件的非 shader 结构：移除页面级 `LiquidGlassHost`、弹层 host、`LiquidGlassSlot` 与 app 自有控件真实镜片；AppCard、GlassSurface、AppButton、AppIconButton、AppTextField、MutedStatusChip、GlassBottomSheet、GlassActionTile 等继续使用非 shader 冷调玻璃样式。
-- 修正底部导航透明命中层与液态玻璃镜片的定位一致性，确保导航栏内加号按钮点击区域与视觉位置一致。
-- 移除公共玻璃 preset 的硬 optical border 宽度，改用低饱和 tint、柔和 distortion 与内容底色保证可读性，避免硬白边与子内容 0.x 像素溢出。
-- 首页快捷功能入口改为与统计卡片一致的冷调玻璃卡片质感，并补齐同款内容高度；快捷卡片保持同款白玻璃底色，同时加深下方投影来贴近统计卡片的托底感；保留完整单行文案，全宽的报销材料导出入口居中呈现，避免拆分后的大号“导出”造成视觉突兀。
-- 当前性能预算：页面、底部导航、卡片、按钮、输入框、chip、底部弹层、Dialog 外壳等均不创建真实 shader 镜片，统一使用纯 Flutter 仿玻璃效果。
-
----
-
-## 2026-06-03 交互控件可点击感优化记录
-
-- 修正订单/发票列表右侧月份快速滚动条布局：改为右侧浮层并避让底部导航栏，列表仅预留半个滚动条宽度以平衡卡片右侧间距；移除月份文字背后的固定页面底色，避免滚动条区域与列表背景不一致。本次不涉及数据模型、数据库版本、应用版本号或备份还原逻辑。
-- 调整订单列表关系状态 tag：将“已关联发票/未关联发票”缩小一号，并把左侧订单日期餐次与右侧 tag 放在同一水平行，改善订单卡片信息层级与对齐。本次仅涉及 UI 布局，不影响数据、版本或备份还原逻辑。
-- 同步调整发票列表关系状态 tag：将“已关联订单/未关联订单”移到右侧，与左侧发票日期保持同一水平行，并复用订单列表的紧凑 tag 尺寸与位置规则。本次仅涉及 UI 布局，不影响数据、版本或备份还原逻辑。
-- 修正公共玻璃底部弹层的层级：`showGlassBottomSheet` 改为挂载到 root navigator，避免订单/发票列表筛选选项卡片落在 ShellRoute 内层 Navigator 中而被底部导航栏覆盖。本次仅涉及 UI 弹层层级，不影响数据、版本或备份还原逻辑。
-
-- 新增 `AppPalette.actionPrimary/actionSecondary/actionTertiary/actionOutline/actionContainer/actionSoftFill` 交互色 token，将浅色主题主色从低饱和灰蓝提升为更明确的高饱和青蓝，并同步深色主题交互色。
-- 全局提升可点击控件启用态颜色：Filled/Elevated/Outlined/Text/Icon Button、FAB、Checkbox、Radio、Switch、SegmentedButton、Chip、ListTile 选中态统一使用 action 色系，避免可用控件被误认为禁用。
-- 同步公共组件与主要页面自绘控件：AppButton、AppIconButton、AppCard 可点击态、GlassActionTile、GlassNavigationBar、首页快捷入口、设置列表入口、导出/清理选择卡与备注开关的选中/可点击状态改用 action 色。
-- 修复公共 `AppSelectField` 下拉选择框圆角异常：阻止内层 `DropdownButtonFormField` 继承全局输入框的不透明填充，并为弹出菜单传入同一 `AppRadii.control` 圆角，关闭态与展开态保持一致。
-- 调整 `AppTextField` 尾部图标按钮样式：输入框内的店铺名称/销售方名称历史下拉箭头不再继承全局高亮 `IconButtonTheme`，改为透明背景、无描边和中性色普通下拉样式。
-- 移除首页“报销材料概览”卡片，首页保留订单/发票统计、快捷功能与“报销材料导出”入口，减少首屏重复信息。
-- 移除首页右上角搜索按钮，并将订单/发票列表页面标题改为左对齐的首页同款 `headlineMedium`、`FontWeight.w800` 与 `AppPalette.textPrimary` 样式。本次仅涉及 UI 布局与标题样式，不影响数据、版本或备份还原逻辑。
-- 本次仅涉及视觉 token 与控件样式，不修改数据模型、数据库版本、应用版本号，也不影响备份与还原逻辑。
-
----
-
-## 2026-06-04 关于页标题样式调整记录
-
-- “关于”页保留居中标题与居中应用信息卡布局，仅将标题字体同步为首页/订单/发票列表同款 `headlineMedium`、`FontWeight.w800` 与 `AppPalette.textPrimary` 样式，保持关于页的中轴视觉重心。本次仅涉及 UI 标题样式，不修改数据模型、数据库版本、应用版本号，也不影响备份与还原逻辑。

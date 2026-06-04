@@ -315,7 +315,7 @@ class FullScreenPdfPreview extends StatelessWidget {
     final file = File(filePath);
     if (!file.existsSync()) {
       return Scaffold(
-        backgroundColor: Colors.grey[200],
+        backgroundColor: Theme.of(context).colorScheme.surface,
         appBar: AppBar(title: const Text('PDF 预览')),
         body: const Center(child: Text('PDF文件不存在')),
       );

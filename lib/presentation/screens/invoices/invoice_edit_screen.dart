@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_alert_dialog.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -284,7 +285,7 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
 
     final goToSettings = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => GlassAlertDialog(
         title: const Text('选择 AI 分析方式'),
         content: const Text('请先在设置中选择本地模型或云端模型，然后再进行 OCR 识别。'),
         actions: [
@@ -363,7 +364,7 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
       if (existingInvoice != null && mounted) {
         final shouldContinue = await showDialog<bool>(
           context: context,
-          builder: (context) => AlertDialog(
+          builder: (context) => GlassAlertDialog(
             title: const Text('发票号码已存在'),
             content: Text('发票号码 "$invoiceNumber" 已存在，是否继续保存？'),
             actions: [
@@ -569,7 +570,7 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogContext) => GlassAlertDialog(
         title: const Text('继续添加'),
         content: Text('还有 ${items.length} 个待处理的文件。\n\n是否继续添加下一个发票？'),
         actions: [
@@ -933,7 +934,7 @@ class _InvoiceOcrProgressDialogState
 
     final isDirectVisionStage = ocrState.stage == OcrStage.imageRecognizing;
 
-    return AlertDialog(
+    return GlassAlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       content: Padding(
         padding: const EdgeInsets.symmetric(vertical: 16),

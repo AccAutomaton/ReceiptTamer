@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_alert_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
@@ -56,12 +57,14 @@ class _BackupDialogState extends ConsumerState<BackupDialog> {
       });
 
       final now = DateTime.now();
-      final dateDir = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+      final dateDir =
+          '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
       final subDir = 'backup/$dateDir';
 
       // Create backup in temp directory first
       final tempDir = await getTemporaryDirectory();
-      final fileName = 'ReceiptTamer_Backup_${now.toString().substring(0, 10)}.zip';
+      final fileName =
+          'ReceiptTamer_Backup_${now.toString().substring(0, 10)}.zip';
       tempPath = '${tempDir.path}/$fileName';
 
       final result = await _backupService.createBackup(
@@ -175,7 +178,9 @@ class _BackupDialogState extends ConsumerState<BackupDialog> {
 
       // Show version warning if needed
       if (validation.needsVersionWarning && validation.metadata != null) {
-        final shouldContinue = await _showVersionWarningDialog(validation.metadata!);
+        final shouldContinue = await _showVersionWarningDialog(
+          validation.metadata!,
+        );
         if (!shouldContinue) {
           setState(() => _isLoading = false);
           await fileService.cleanTempFiles();
@@ -251,7 +256,7 @@ class _BackupDialogState extends ConsumerState<BackupDialog> {
     return await showDialog<bool>(
           context: context,
           barrierDismissible: false,
-          builder: (context) => AlertDialog(
+          builder: (context) => GlassAlertDialog(
             title: const Row(
               children: [
                 Icon(Icons.warning_amber, color: Colors.orange),
@@ -296,7 +301,7 @@ class _BackupDialogState extends ConsumerState<BackupDialog> {
     return await showDialog<RestoreMode>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
+      builder: (context) => GlassAlertDialog(
         title: const Text('选择还原模式'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -332,7 +337,7 @@ class _BackupDialogState extends ConsumerState<BackupDialog> {
 
     return await showDialog<bool>(
           context: context,
-          builder: (context) => AlertDialog(
+          builder: (context) => GlassAlertDialog(
             title: const Text('确认还原'),
             content: Text(message),
             actions: [
@@ -351,9 +356,9 @@ class _BackupDialogState extends ConsumerState<BackupDialog> {
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   /// Refresh all providers after restore
@@ -374,7 +379,7 @@ class _BackupDialogState extends ConsumerState<BackupDialog> {
   void _showErrorDialog(String title, String message) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => GlassAlertDialog(
         title: Row(
           children: [
             Icon(Icons.error_outline, color: Colors.red[400]),
@@ -397,7 +402,7 @@ class _BackupDialogState extends ConsumerState<BackupDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return AlertDialog(
+    return GlassAlertDialog(
       title: const Text('备份与还原'),
       content: _isLoading
           ? Column(

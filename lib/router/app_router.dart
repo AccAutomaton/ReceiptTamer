@@ -19,7 +19,9 @@ import '../presentation/screens/export/meal_proof_order_select_screen.dart';
 import '../presentation/screens/export/invoice_quick_select_screen.dart';
 import '../presentation/screens/settings/settings_screen.dart';
 import '../presentation/screens/settings/data_cleanup_screen.dart';
+import '../presentation/screens/settings/info_screen.dart';
 import '../presentation/screens/settings/model_management_screen.dart';
+import '../presentation/screens/settings/release_history_screen.dart';
 import '../presentation/screens/settings/storage_management_screen.dart';
 import '../presentation/screens/cleanup/order_cleanup_screen.dart';
 import '../presentation/screens/cleanup/invoice_cleanup_screen.dart';
@@ -270,6 +272,27 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/settings/storage',
         name: 'storage_management',
         builder: (context, state) => const StorageManagementScreen(),
+      ),
+      GoRoute(
+        path: '/settings/privacy',
+        name: 'privacy_policy',
+        builder: (context, state) => const InfoScreen(
+          title: '隐私政策',
+          content: SettingsScreen.privacyPolicyContent,
+        ),
+      ),
+      GoRoute(
+        path: '/settings/open-source',
+        name: 'open_source_info',
+        builder: (context, state) => const InfoScreen(
+          title: '开源信息',
+          content: SettingsScreen.openSourceContent,
+        ),
+      ),
+      GoRoute(
+        path: '/settings/release-history',
+        name: 'release_history',
+        builder: (context, state) => const ReleaseHistoryScreen(),
       ),
       GoRoute(
         path: '/settings/cleanup',

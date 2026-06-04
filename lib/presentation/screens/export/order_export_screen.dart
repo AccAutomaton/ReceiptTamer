@@ -8,8 +8,8 @@ import 'package:receipt_tamer/presentation/providers/export_provider.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
 import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_page_scaffold.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
-import 'package:receipt_tamer/presentation/widgets/common/liquid_glass_background.dart';
 
 /// Order export screen for selecting orders to export
 /// 支持级联选择（关联同一发票的订单会被一并选中）
@@ -108,31 +108,28 @@ class _OrderExportScreenState extends ConsumerState<OrderExportScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final state = ref.watch(exportProvider);
 
-    return Scaffold(
-      backgroundColor: AppPalette.coldBackground,
+    return GlassPageScaffold(
       appBar: AppBar(title: const Text('选择要导出的订单')),
-      body: LiquidGlassBackground(
-        child: Column(
-          children: [
-            // Options and filters
-            _buildOptionsSection(state, colorScheme),
+      body: Column(
+        children: [
+          // Options and filters
+          _buildOptionsSection(state, colorScheme),
 
-            // Statistics card
-            _buildStatisticsCard(state, colorScheme),
+          // Statistics card
+          _buildStatisticsCard(state, colorScheme),
 
-            // Order list
-            Expanded(
-              child: state.isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : state.availableOrders.isEmpty
-                  ? _buildEmptyState(colorScheme)
-                  : _buildOrderList(state, colorScheme),
-            ),
+          // Order list
+          Expanded(
+            child: state.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : state.availableOrders.isEmpty
+                ? _buildEmptyState(colorScheme)
+                : _buildOrderList(state, colorScheme),
+          ),
 
-            // Bottom action bar
-            _buildBottomBar(state, colorScheme),
-          ],
-        ),
+          // Bottom action bar
+          _buildBottomBar(state, colorScheme),
+        ],
       ),
     );
   }
@@ -143,7 +140,7 @@ class _OrderExportScreenState extends ConsumerState<OrderExportScreen> {
       child: GlassSurface(
         padding: const EdgeInsets.all(14),
         borderRadius: BorderRadius.circular(AppRadii.card),
-        fillColor: AppGlassTokens.lightFill,
+        fillColor: AppGlassTokens.panelFillFor(context),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -221,14 +218,14 @@ class _OrderExportScreenState extends ConsumerState<OrderExportScreen> {
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(12),
       backgroundColor: selectedCount > 0
-          ? AppPalette.selectedFill
-          : AppPalette.cardFill,
+          ? AppPalette.selectedFillFor(context)
+          : AppPalette.cardFillFor(context),
       child: Row(
         children: [
           Icon(
             Icons.info_outline,
             color: selectedCount > 0
-                ? AppPalette.amountMuted
+                ? AppPalette.amountFor(context)
                 : colorScheme.onSurfaceVariant,
           ),
           const SizedBox(width: 8),
@@ -307,14 +304,14 @@ class _OrderExportScreenState extends ConsumerState<OrderExportScreen> {
         .read(exportProvider.notifier)
         .getSelectedTotalAmount();
 
-    return GlassSurface(
-      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      fillColor: AppGlassTokens.sheetFill,
-      borderRadius: BorderRadius.circular(AppRadii.glassLarge),
-      boxShadow: AppShadows.glass,
-      child: SafeArea(
-        top: false,
+    return SafeArea(
+      top: false,
+      child: GlassSurface(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        fillColor: AppGlassTokens.sheetFillFor(context),
+        borderRadius: BorderRadius.circular(AppRadii.glassLarge),
+        boxShadow: AppShadows.glass,
         child: Row(
           children: [
             Column(
@@ -387,22 +384,22 @@ class _OrderExportCard extends StatelessWidget {
 
     if (!isSelectable) {
       // Unselectable: gray semi-transparent
-      backgroundColor = AppPalette.elevatedFill.withValues(alpha: 0.76);
+      backgroundColor = AppPalette.elevatedFillFor(context, alpha: 0.76);
       borderColor = colorScheme.outlineVariant.withValues(alpha: 0.3);
       borderWidth = 1;
     } else if (isCascadeSelected) {
       // Cascade selected: orange/tertiary
-      backgroundColor = AppPalette.selectedFill;
+      backgroundColor = AppPalette.selectedFillFor(context);
       borderColor = AppPalette.warningMuted;
       borderWidth = 2;
     } else if (isSelected) {
       // Directly selected: blue/primary
-      backgroundColor = AppPalette.selectedFill;
-      borderColor = AppPalette.actionPrimary;
+      backgroundColor = AppPalette.selectedFillFor(context);
+      borderColor = AppPalette.actionPrimaryFor(context);
       borderWidth = 2;
     } else {
       // Unselected: white background
-      backgroundColor = AppPalette.cardFill;
+      backgroundColor = AppPalette.cardFillFor(context);
       borderColor = colorScheme.outlineVariant.withValues(alpha: 0.3);
       borderWidth = 1;
     }
@@ -524,7 +521,7 @@ class _OrderExportCard extends StatelessWidget {
                               : Icons.link_off,
                           size: 14,
                           color: invoiceCount > 0
-                              ? AppPalette.amountMuted
+                              ? AppPalette.amountFor(context)
                               : colorScheme.error.withValues(alpha: 0.7),
                         ),
                         const SizedBox(width: 4),
@@ -532,7 +529,7 @@ class _OrderExportCard extends StatelessWidget {
                           invoiceCount > 0 ? '关联 $invoiceCount 张发票' : '未关联发票',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: invoiceCount > 0
-                                ? AppPalette.amountMuted
+                                ? AppPalette.amountFor(context)
                                 : colorScheme.error.withValues(alpha: 0.7),
                           ),
                         ),
@@ -547,7 +544,7 @@ class _OrderExportCard extends StatelessWidget {
                 DateFormatter.formatAmount(order.amount),
                 style: theme.textTheme.titleMedium?.copyWith(
                   color: isSelectable
-                      ? AppPalette.amountMuted
+                      ? AppPalette.amountFor(context)
                       : colorScheme.onSurface.withValues(alpha: 0.5),
                   fontWeight: FontWeight.bold,
                 ),
@@ -597,7 +594,7 @@ class _OrderExportCard extends StatelessWidget {
         width: checkboxSize,
         height: checkboxSize,
         decoration: BoxDecoration(
-          color: AppPalette.actionPrimary,
+          color: colorScheme.primary,
           borderRadius: BorderRadius.circular(2),
         ),
         child: Icon(Icons.check, size: iconSize, color: colorScheme.onPrimary),

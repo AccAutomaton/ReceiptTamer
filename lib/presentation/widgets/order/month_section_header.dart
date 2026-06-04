@@ -27,7 +27,9 @@ class MonthSectionHeader extends StatelessWidget {
     return GlassSurface(
       margin: const EdgeInsets.symmetric(horizontal: 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      fillColor: isPinned ? AppGlassTokens.sheetFill : AppGlassTokens.lightFill,
+      fillColor: isPinned
+          ? AppGlassTokens.sheetFillFor(context)
+          : AppGlassTokens.panelFillFor(context),
       borderRadius: BorderRadius.circular(AppRadii.control),
       boxShadow: isPinned ? AppShadows.glass : null,
       child: Row(
@@ -56,7 +58,7 @@ class MonthSectionHeader extends StatelessWidget {
                 '$month',
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: AppPalette.amountMuted,
+                  color: AppPalette.amountFor(context),
                 ),
               ),
               const SizedBox(width: 2),
@@ -107,7 +109,7 @@ class MonthSectionHeader extends StatelessWidget {
           icon,
           size: 16,
           color: isHighlight
-              ? AppPalette.amountMuted
+              ? AppPalette.amountFor(context)
               : colorScheme.onSurfaceVariant,
         ),
         const SizedBox(width: 4),
@@ -116,7 +118,7 @@ class MonthSectionHeader extends StatelessWidget {
           style: theme.textTheme.bodyMedium?.copyWith(
             fontWeight: isHighlight ? FontWeight.w600 : FontWeight.normal,
             color: isHighlight
-                ? AppPalette.amountMuted
+                ? AppPalette.amountFor(context)
                 : colorScheme.onSurfaceVariant,
           ),
         ),

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_alert_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -18,10 +19,7 @@ import 'package:receipt_tamer/presentation/widgets/invoice/invoice_image_preview
 class InvoiceDetailScreen extends ConsumerStatefulWidget {
   final int invoiceId;
 
-  const InvoiceDetailScreen({
-    super.key,
-    required this.invoiceId,
-  });
+  const InvoiceDetailScreen({super.key, required this.invoiceId});
 
   @override
   ConsumerState<InvoiceDetailScreen> createState() =>
@@ -40,14 +38,19 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
 
   Future<void> _loadInvoice() async {
     try {
-      final invoice =
-          await ref.read(invoiceProvider.notifier).getInvoiceById(widget.invoiceId);
+      final invoice = await ref
+          .read(invoiceProvider.notifier)
+          .getInvoiceById(widget.invoiceId);
       if (mounted && invoice != null) {
         // Load related orders
-        final orderIds = await ref.read(invoiceProvider.notifier).getOrderIdsForInvoice(widget.invoiceId);
+        final orderIds = await ref
+            .read(invoiceProvider.notifier)
+            .getOrderIdsForInvoice(widget.invoiceId);
         final orders = <Order>[];
         for (final orderId in orderIds) {
-          final order = await ref.read(orderProvider.notifier).getOrderById(orderId);
+          final order = await ref
+              .read(orderProvider.notifier)
+              .getOrderById(orderId);
           if (order != null) {
             orders.add(order);
           }
@@ -73,7 +76,7 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
   Future<void> _handleDelete() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => GlassAlertDialog(
         title: const Text(AppConstants.confirmDelete),
         content: const Text(AppConstants.confirmDeleteInvoice),
         actions: [
@@ -93,8 +96,9 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
     );
 
     if (confirmed == true) {
-      final success =
-          await ref.read(invoiceProvider.notifier).deleteInvoice(widget.invoiceId);
+      final success = await ref
+          .read(invoiceProvider.notifier)
+          .deleteInvoice(widget.invoiceId);
       if (mounted) {
         if (success) {
           logService.i(LogConfig.moduleUi, '发票已删除: id=${widget.invoiceId}');
@@ -118,19 +122,15 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
 
     if (_invoice == null) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text(AppConstants.titleInvoiceDetail),
-        ),
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        appBar: AppBar(title: const Text(AppConstants.titleInvoiceDetail)),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     final invoice = _invoice!;
 
-    final invoiceDate = invoice.invoiceDate != null &&
-            invoice.invoiceDate!.isNotEmpty
+    final invoiceDate =
+        invoice.invoiceDate != null && invoice.invoiceDate!.isNotEmpty
         ? DateTime.tryParse(invoice.invoiceDate!)
         : null;
 
@@ -158,10 +158,7 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
             // Image preview
             if (invoice.imagePath.isNotEmpty &&
                 File(invoice.imagePath).existsSync())
-              InvoiceImagePreview(
-                imagePath: invoice.imagePath,
-                height: 250,
-              ),
+              InvoiceImagePreview(imagePath: invoice.imagePath, height: 250),
 
             // Invoice details
             Padding(
@@ -175,12 +172,7 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
                   const SizedBox(height: 16),
 
                   // Details card
-                  _buildDetailsCard(
-                    context,
-                    invoice,
-                    invoiceDate,
-                    colorScheme,
-                  ),
+                  _buildDetailsCard(context, invoice, invoiceDate, colorScheme),
 
                   const SizedBox(height: 16),
 
@@ -202,7 +194,10 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
   }
 
   Widget _buildAmountCard(
-      BuildContext context, Invoice invoice, ColorScheme colorScheme) {
+    BuildContext context,
+    Invoice invoice,
+    ColorScheme colorScheme,
+  ) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -214,25 +209,23 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
           ],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colorScheme.secondary.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: colorScheme.secondary.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
           Text(
             AppConstants.labelTotalAmount,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
+              color: colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             DateFormatter.formatAmount(invoice.totalAmount),
             style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  color: colorScheme.onSecondaryContainer,
-                  fontWeight: FontWeight.bold,
-                ),
+              color: colorScheme.onSecondaryContainer,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -253,9 +246,9 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
           children: [
             Text(
               '发票信息',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             _buildDetailRow(
@@ -287,7 +280,10 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
   }
 
   Widget _buildOrderCard(
-      BuildContext context, Order order, ColorScheme colorScheme) {
+    BuildContext context,
+    Order order,
+    ColorScheme colorScheme,
+  ) {
     final orderDate = order.orderDate != null && order.orderDate!.isNotEmpty
         ? DateTime.tryParse(order.orderDate!)
         : null;
@@ -304,11 +300,7 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              Icon(
-                Icons.receipt_long,
-                size: 24,
-                color: colorScheme.primary,
-              ),
+              Icon(Icons.receipt_long, size: 24, color: colorScheme.primary),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -318,23 +310,23 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
                     Text(
                       '关联订单',
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
+                        color: colorScheme.onSurfaceVariant,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       order.shopName.isEmpty ? '未命名店铺' : order.shopName,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     if (orderDate != null) ...[
                       const SizedBox(height: 2),
                       Text(
                         '${DateFormatter.formatDisplay(orderDate)} ${DateFormatter.mealTimeToDisplayName(mealTime)}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                            ),
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ],
@@ -343,15 +335,12 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
               Text(
                 DateFormatter.formatAmount(order.amount),
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(width: 8),
-              Icon(
-                Icons.chevron_right,
-                color: colorScheme.onSurfaceVariant,
-              ),
+              Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
             ],
           ),
         ),
@@ -360,7 +349,11 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
   }
 
   Widget _buildDetailRow(
-      String label, String value, IconData icon, ColorScheme colorScheme) {
+    String label,
+    String value,
+    IconData icon,
+    ColorScheme colorScheme,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -370,9 +363,7 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
           Expanded(
             child: Text(
               label,
-              style: TextStyle(
-                color: colorScheme.onSurfaceVariant,
-              ),
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
             ),
           ),
           Expanded(
@@ -380,9 +371,7 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
             child: Text(
               value,
               textAlign: TextAlign.right,
-              style: const TextStyle(
-                fontWeight: FontWeight.w500,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w500),
             ),
           ),
         ],

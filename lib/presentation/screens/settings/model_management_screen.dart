@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_alert_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/llm_backend.dart';
@@ -256,7 +257,7 @@ class _ModelManagementScreenState extends ConsumerState<ModelManagementScreen> {
     if (value && _selectedProvider == OpenAiModelProvider.deepSeek) {
       final confirmed = await showDialog<bool>(
         context: context,
-        builder: (context) => AlertDialog(
+        builder: (context) => GlassAlertDialog(
           title: const Text('Deepseek 多模态提示'),
           content: const Text('Deepseek 目前不支持多模态，继续开启可能导致问题。'),
           actions: [
@@ -433,7 +434,7 @@ class _ModelManagementScreenState extends ConsumerState<ModelManagementScreen> {
   Future<void> _showInstallOptions() async {
     final choice = await showDialog<_ModelInstallChoice>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => GlassAlertDialog(
         title: const Text('安装本地模型'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -522,7 +523,7 @@ class _ModelManagementScreenState extends ConsumerState<ModelManagementScreen> {
             final currentFileText = progressInfo == null
                 ? '下载源：$sourceLabel'
                 : '下载源：$sourceLabel\n正在下载第 ${progressInfo!.fileIndex} / ${progressInfo!.fileCount} 个模型文件：${progressInfo!.fileName}';
-            return AlertDialog(
+            return GlassAlertDialog(
               title: Row(
                 children: [
                   const SizedBox(
@@ -617,7 +618,7 @@ class _ModelManagementScreenState extends ConsumerState<ModelManagementScreen> {
       if (dialogShown) Navigator.of(context, rootNavigator: true).pop();
       final retry = await showDialog<bool>(
         context: context,
-        builder: (context) => AlertDialog(
+        builder: (context) => GlassAlertDialog(
           title: const Text('下载失败'),
           content: Text('模型下载失败: $e\n\n已下载的部分会保留，重试时将从断点继续。'),
           actions: [
@@ -665,7 +666,7 @@ class _ModelManagementScreenState extends ConsumerState<ModelManagementScreen> {
   Future<void> _deleteDownloadedModel() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => GlassAlertDialog(
         title: const Text('删除本地模型'),
         content: const Text('将删除已下载或导入的本地 MNN 模型，不会删除订单和发票数据。'),
         actions: [
@@ -902,10 +903,10 @@ class _ModelManagementScreenState extends ConsumerState<ModelManagementScreen> {
               label: 'extra_body',
               hint: _selectedProvider.usesPreset
                   ? _selectedProvider.disabledThinkingExtraBodyJson
-                  : '可选 JSON，例如 {"temperature":0}',
+                  : 'e.g. {"thinking":{"type":"disabled"}}',
               helperText: _selectedProvider.usesPreset
                   ? null
-                  : '其它 OpenAI 风格接口不会自动预填写 extra_body',
+                  : '如您不明白该参数的作用，请不要填写',
               prefixIcon: const Icon(Icons.data_object),
               textCapitalization: TextCapitalization.none,
               enabled: !_selectedProvider.usesPreset,

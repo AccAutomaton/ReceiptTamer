@@ -145,7 +145,7 @@ class _MonthFastScrollBarState extends State<MonthFastScrollBar> {
     return Material(
       elevation: 0,
       borderRadius: BorderRadius.circular(18),
-      color: AppGlassTokens.sheetFill,
+      color: AppGlassTokens.sheetFillFor(context),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Column(
@@ -153,14 +153,17 @@ class _MonthFastScrollBarState extends State<MonthFastScrollBar> {
           children: [
             Text(
               '${item.year}年',
-              style: TextStyle(fontSize: 12, color: AppPalette.textSecondary),
+              style: TextStyle(
+                fontSize: 12,
+                color: AppPalette.textSecondaryFor(context),
+              ),
             ),
             Text(
               '${item.month}月',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppPalette.amountMuted,
+                color: AppPalette.amountFor(context),
               ),
             ),
           ],
@@ -248,7 +251,7 @@ class _ScrollBarPainter extends CustomPainter {
 
     // Draw the center rail line
     final railPaint = Paint()
-      ..color = AppPalette.outlineMuted.withValues(alpha: 0.62)
+      ..color = colorScheme.outlineVariant.withValues(alpha: 0.62)
       ..strokeWidth = 1.0
       ..style = PaintingStyle.stroke;
 
@@ -268,19 +271,19 @@ class _ScrollBarPainter extends CustomPainter {
     final normalStyle = TextStyle(
       fontSize: 8,
       fontWeight: FontWeight.w400,
-      color: AppPalette.textSecondary.withValues(alpha: 0.72),
+      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.72),
     );
 
     final yearMarkerStyle = TextStyle(
       fontSize: 10,
       fontWeight: FontWeight.w600,
-      color: AppPalette.amountMuted,
+      color: colorScheme.primary,
     );
 
     final hoveredStyle = TextStyle(
       fontSize: 11,
       fontWeight: FontWeight.bold,
-      color: AppPalette.amountMuted,
+      color: colorScheme.primary,
     );
 
     int? currentYear;
@@ -301,7 +304,7 @@ class _ScrollBarPainter extends CustomPainter {
           style: TextStyle(
             fontSize: 7,
             fontWeight: FontWeight.w500,
-            color: AppPalette.amountMuted.withValues(alpha: 0.8),
+            color: colorScheme.primary.withValues(alpha: 0.8),
           ),
         );
         final yearPainter = TextPainter(

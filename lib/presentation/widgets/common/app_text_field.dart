@@ -163,7 +163,7 @@ class _AppTextFieldState extends State<AppTextField> {
             fillColor: glass
                 ? Colors.transparent
                 : widget.enabled
-                ? AppGlassTokens.contentFill
+                ? AppGlassTokens.contentFillFor(context)
                 : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
             prefixIcon: widget.prefixIcon,
             suffixIcon: suffixIcon,
@@ -188,7 +188,7 @@ class _AppTextFieldState extends State<AppTextField> {
               borderRadius: BorderRadius.circular(effectiveBorderRadius),
               borderSide: glass
                   ? BorderSide(
-                      color: AppPalette.actionOutline.withValues(alpha: 0.72),
+                      color: AppPalette.actionOutlineFor(context, alpha: 0.72),
                       width: 1.2,
                     )
                   : BorderSide(color: colorScheme.primary, width: 2),

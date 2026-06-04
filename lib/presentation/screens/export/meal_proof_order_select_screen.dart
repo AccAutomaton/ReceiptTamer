@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_alert_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
@@ -17,8 +18,8 @@ import 'package:receipt_tamer/presentation/widgets/common/empty_state.dart';
 import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_page_scaffold.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
-import 'package:receipt_tamer/presentation/widgets/common/liquid_glass_background.dart';
 import 'package:receipt_tamer/presentation/screens/export/saved_files_screen.dart';
 
 /// Invoice relation filter enum for local use
@@ -195,7 +196,7 @@ class _MealProofOrderSelectScreenState
 
     final result = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => GlassAlertDialog(
         title: const Text('用餐证明备注'),
         content: TextField(
           controller: controller,
@@ -328,32 +329,29 @@ class _MealProofOrderSelectScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppPalette.coldBackground,
+    return GlassPageScaffold(
       appBar: AppBar(title: const Text('用餐证明导出'), elevation: 0),
-      body: LiquidGlassBackground(
-        child: Column(
-          children: [
-            // Search and filter section
-            _buildFilterSection(context),
+      body: Column(
+        children: [
+          // Search and filter section
+          _buildFilterSection(context),
 
-            // Date filter chip
-            if (_startDate != null || _endDate != null)
-              _buildDateFilterChip(context),
+          // Date filter chip
+          if (_startDate != null || _endDate != null)
+            _buildDateFilterChip(context),
 
-            // Select buttons row
-            _buildSelectButtonsRow(context),
+          // Select buttons row
+          _buildSelectButtonsRow(context),
 
-            // Order list
-            Expanded(child: _buildOrderList(context)),
+          // Order list
+          Expanded(child: _buildOrderList(context)),
 
-            // 导出选项卡片
-            _buildExportOptions(context),
+          // 导出选项卡片
+          _buildExportOptions(context),
 
-            // Bottom confirm bar
-            _buildBottomBar(context),
-          ],
-        ),
+          // Bottom confirm bar
+          _buildBottomBar(context),
+        ],
       ),
     );
   }
@@ -362,7 +360,7 @@ class _MealProofOrderSelectScreenState
     return GlassSurface(
       margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       padding: const EdgeInsets.all(12),
-      fillColor: AppGlassTokens.lightFill,
+      fillColor: AppGlassTokens.panelFillFor(context),
       borderRadius: BorderRadius.circular(AppRadii.card),
       child: Column(
         children: [
@@ -497,7 +495,7 @@ class _MealProofOrderSelectScreenState
                   : '已选 ${_selectedOrderIds.length}/$_totalOrderCount',
               style: TextStyle(
                 color: hasSelection
-                    ? AppPalette.amountMuted
+                    ? AppPalette.amountFor(context)
                     : colorScheme.onSurfaceVariant,
                 fontSize: 14,
               ),
@@ -553,7 +551,7 @@ class _MealProofOrderSelectScreenState
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: AppCard(
         margin: EdgeInsets.zero,
-        backgroundColor: AppPalette.cardFill,
+        backgroundColor: AppPalette.cardFillFor(context),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -592,10 +590,12 @@ class _MealProofOrderSelectScreenState
             height: 20,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _addRemark ? AppPalette.actionPrimary : Colors.transparent,
+              color: _addRemark
+                  ? AppPalette.actionPrimaryFor(context)
+                  : Colors.transparent,
               border: Border.all(
                 color: _addRemark
-                    ? AppPalette.actionPrimary
+                    ? AppPalette.actionPrimaryFor(context)
                     : colorScheme.outline,
                 width: 2,
               ),
@@ -617,7 +617,7 @@ class _MealProofOrderSelectScreenState
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppPalette.selectedFill,
+                  color: AppPalette.selectedFillFor(context),
                   borderRadius: BorderRadius.circular(AppRadii.control),
                 ),
                 child: Text(
@@ -646,14 +646,14 @@ class _MealProofOrderSelectScreenState
 
     final hasSelection = _selectedOrderIds.isNotEmpty;
 
-    return GlassSurface(
-      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      fillColor: AppGlassTokens.sheetFill,
-      borderRadius: BorderRadius.circular(AppRadii.glassLarge),
-      boxShadow: AppShadows.glass,
-      child: SafeArea(
-        top: false,
+    return SafeArea(
+      top: false,
+      child: GlassSurface(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        fillColor: AppGlassTokens.sheetFillFor(context),
+        borderRadius: BorderRadius.circular(AppRadii.glassLarge),
+        boxShadow: AppShadows.glass,
         child: Row(
           children: [
             Column(
@@ -674,7 +674,7 @@ class _MealProofOrderSelectScreenState
                       : '请选择订单后导出',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: hasSelection
-                        ? AppPalette.amountMuted
+                        ? AppPalette.amountFor(context)
                         : colorScheme.onSurfaceVariant,
                   ),
                 ),
@@ -739,11 +739,13 @@ class _MealProofOrderCard extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: isSelected ? AppPalette.selectedFill : AppPalette.cardFill,
+            color: isSelected
+                ? AppPalette.selectedFillFor(context)
+                : AppPalette.cardFillFor(context),
             borderRadius: BorderRadius.circular(AppRadii.card),
             border: Border.all(
               color: isSelected
-                  ? AppPalette.actionPrimary
+                  ? AppPalette.actionPrimaryFor(context)
                   : colorScheme.outlineVariant.withValues(alpha: 0.3),
               width: isSelected ? 2 : 1,
             ),
@@ -832,7 +834,7 @@ class _MealProofOrderCard extends StatelessWidget {
                   Text(
                     DateFormatter.formatAmount(order.amount),
                     style: theme.textTheme.titleMedium?.copyWith(
-                      color: AppPalette.amountMuted,
+                      color: AppPalette.amountFor(context),
                       fontWeight: FontWeight.bold,
                     ),
                   ),

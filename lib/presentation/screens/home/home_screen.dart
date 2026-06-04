@@ -141,7 +141,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 '快捷功能',
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w800,
-                  color: AppPalette.textPrimary,
+                  color: AppPalette.textPrimaryFor(context),
                 ),
               ),
               const SizedBox(height: 12),
@@ -157,7 +157,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     '最近订单',
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: AppPalette.textPrimary,
+                      color: AppPalette.textPrimaryFor(context),
                     ),
                   ),
                   TextButton(
@@ -181,7 +181,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Text(
       AppConstants.titleHome,
       style: theme.textTheme.headlineMedium?.copyWith(
-        color: AppPalette.textPrimary,
+        color: AppPalette.textPrimaryFor(context),
         fontWeight: FontWeight.w800,
       ),
     );
@@ -199,7 +199,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             title: '订单总数',
             value: orderCount.value?.toString() ?? '-',
             icon: Icons.receipt_long,
-            color: AppPalette.amountMuted,
+            color: AppPalette.amountFor(context),
           ),
         ),
         const SizedBox(width: 12),
@@ -208,7 +208,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             title: '发票总数',
             value: invoiceCount.value?.toString() ?? '-',
             icon: Icons.description,
-            color: AppPalette.primaryMuted,
+            color: AppPalette.actionSecondaryFor(context),
           ),
         ),
       ],
@@ -225,7 +225,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: _QuickAccessButton(
                 icon: Icons.restaurant_menu,
                 label: '用餐证明导出',
-                color: AppPalette.actionPrimary,
+                color: AppPalette.actionPrimaryFor(context),
                 onTap: () => context.push('/export/meal-proof'),
               ),
             ),
@@ -234,7 +234,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: _QuickAccessButton(
                 icon: Icons.receipt_long,
                 label: '发票导出',
-                color: AppPalette.actionSecondary,
+                color: AppPalette.actionSecondaryFor(context),
                 onTap: () => context.push('/export/invoice'),
               ),
             ),
@@ -248,7 +248,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: _QuickAccessButton(
                 icon: Icons.file_download_outlined,
                 label: '报销材料导出',
-                color: AppPalette.actionPrimary,
+                color: AppPalette.actionPrimaryFor(context),
                 centerContent: true,
                 onTap: () => context.push('/export'),
               ),
@@ -332,12 +332,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: AppPalette.elevatedFill,
+                      color: AppPalette.elevatedFillFor(context),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Icon(
                       Icons.receipt_long,
-                      color: AppPalette.amountMuted,
+                      color: AppPalette.amountFor(context),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -372,7 +372,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   Text(
                     DateFormatter.formatAmount(order.amount),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppPalette.amountMuted,
+                      color: AppPalette.amountFor(context),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -436,7 +436,7 @@ class _StatCard extends StatelessWidget {
                 Text(
                   value,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: AppPalette.amountMuted,
+                    color: AppPalette.amountFor(context),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -468,6 +468,7 @@ class _QuickAccessButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = AppPalette.isDark(context);
     final iconChip = Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
@@ -482,7 +483,7 @@ class _QuickAccessButton extends StatelessWidget {
       child: Text(
         label,
         style: theme.textTheme.bodyMedium?.copyWith(
-          color: AppPalette.textPrimary,
+          color: AppPalette.textPrimaryFor(context),
           fontWeight: FontWeight.w700,
         ),
         maxLines: 1,
@@ -494,10 +495,10 @@ class _QuickAccessButton extends StatelessWidget {
       margin: EdgeInsets.zero,
       backgroundColor: Color.alphaBlend(
         color.withValues(alpha: 0.08),
-        AppGlassTokens.contentFill,
+        AppGlassTokens.contentFillFor(context),
       ),
       borderRadius: BorderRadius.circular(AppRadii.card),
-      boxShadow: _quickAccessCardShadows,
+      boxShadow: isDark ? AppShadows.card : _quickAccessCardShadows,
       onTap: onTap,
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 58),

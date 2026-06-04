@@ -5,8 +5,6 @@ import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 import 'package:receipt_tamer/data/services/update_preferences.dart';
 import 'package:receipt_tamer/data/services/update_service.dart';
 import 'package:receipt_tamer/presentation/screens/export/saved_files_screen.dart';
-import 'package:receipt_tamer/presentation/screens/settings/info_screen.dart';
-import 'package:receipt_tamer/presentation/screens/settings/release_history_screen.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
 import 'package:receipt_tamer/presentation/widgets/common/receipt_icon.dart';
@@ -22,6 +20,11 @@ import 'package:url_launcher/url_launcher.dart';
 /// About screen
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
+
+  static const String privacyPolicyContent =
+      _SettingsScreenState._privacyPolicyContent;
+  static const String openSourceContent =
+      _SettingsScreenState._openSourceContent;
 
   @override
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
@@ -192,28 +195,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   }
 
   void _navigateToInfo(BuildContext context, String type) {
-    String title;
-    String content;
-
     switch (type) {
       case 'privacy':
-        title = '隐私政策';
-        content = _privacyPolicyContent;
+        context.push('/settings/privacy');
         break;
       case 'opensource':
-        title = '开源信息';
-        content = _openSourceContent;
+        context.push('/settings/open-source');
         break;
       default:
         return;
     }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => InfoScreen(title: title, content: content),
-      ),
-    );
   }
 
   Future<void> _launchGitHubUrl(BuildContext context) async {
@@ -245,7 +236,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   static const String _privacyPolicyContent = '''
 ReceiptTamer 隐私政策
 
-更新日期：2026年3月
+更新日期：2026年6月
 
 感谢您使用ReceiptTamer（以下简称"本应用"）。我们非常重视您的隐私保护，本隐私政策旨在向您说明我们如何收集、使用和保护您的信息。
 
@@ -478,7 +469,7 @@ Licensed under the Apache License 2.0
         title: Text(
           '关于',
           style: theme.textTheme.headlineMedium?.copyWith(
-            color: AppPalette.textPrimary,
+            color: AppPalette.textPrimaryFor(context),
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -510,7 +501,7 @@ Licensed under the Apache License 2.0
               context,
               icon: Icons.privacy_tip_outlined,
               title: '隐私政策',
-              subtitle: '本地存储，可选云端 AI 分析',
+              subtitle: '查看隐私政策',
               onTap: () => _navigateToInfo(context, 'privacy'),
             ),
             _buildListTile(
@@ -525,12 +516,7 @@ Licensed under the Apache License 2.0
               icon: Icons.history_outlined,
               title: '更新历史',
               subtitle: '查看版本发布记录',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ReleaseHistoryScreen(),
-                ),
-              ),
+              onTap: () => context.push('/settings/release-history'),
             ),
             _buildListTile(
               context,
@@ -600,7 +586,7 @@ Licensed under the Apache License 2.0
     return GlassSurface(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
-      fillColor: AppGlassTokens.sheetFill,
+      fillColor: AppGlassTokens.sheetFillFor(context),
       borderRadius: BorderRadius.circular(AppRadii.glassLarge),
       boxShadow: AppShadows.glass,
       child: Column(
@@ -613,7 +599,7 @@ Licensed under the Apache License 2.0
             AppConstants.appName,
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w800,
-              color: AppPalette.textPrimary,
+              color: AppPalette.textPrimaryFor(context),
             ),
             textAlign: TextAlign.center,
           ),
@@ -622,7 +608,7 @@ Licensed under the Apache License 2.0
           Text(
             '版本 ${_currentVersion.isNotEmpty ? _currentVersion : '...'}',
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: AppPalette.textSecondary,
+              color: AppPalette.textSecondaryFor(context),
             ),
           ),
           // 检查更新按钮
@@ -690,10 +676,14 @@ Licensed under the Apache License 2.0
         width: 42,
         height: 42,
         decoration: BoxDecoration(
-          color: AppPalette.selectedFill,
+          color: AppPalette.selectedFillFor(context),
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Icon(icon, color: AppPalette.actionPrimary, size: 21),
+        child: Icon(
+          icon,
+          color: AppPalette.actionPrimaryFor(context),
+          size: 21,
+        ),
       ),
       title: Text(title),
       subtitle: Text(

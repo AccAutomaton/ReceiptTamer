@@ -9,8 +9,9 @@ import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
 import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
-import 'package:receipt_tamer/presentation/widgets/common/liquid_glass_background.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_page_scaffold.dart';
 import 'package:flutter/material.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_alert_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -48,31 +49,28 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Scaffold(
-      backgroundColor: AppPalette.coldBackground,
+    return GlassPageScaffold(
       appBar: AppBar(title: const Text(AppConstants.titleExport), elevation: 0),
-      body: LiquidGlassBackground(
-        child: Column(
-          children: [
-            // Options and filters section
-            _buildOptionsSection(theme, colorScheme),
+      body: Column(
+        children: [
+          // Options and filters section
+          _buildOptionsSection(theme, colorScheme),
 
-            // Statistics card
-            _buildStatisticsCard(theme, colorScheme),
+          // Statistics card
+          _buildStatisticsCard(theme, colorScheme),
 
-            // Invoice list
-            Expanded(
-              child: _isLoadingInvoices
-                  ? const Center(child: CircularProgressIndicator())
-                  : _availableInvoices.isEmpty
-                  ? _buildEmptyState(colorScheme)
-                  : _buildInvoiceList(colorScheme),
-            ),
+          // Invoice list
+          Expanded(
+            child: _isLoadingInvoices
+                ? const Center(child: CircularProgressIndicator())
+                : _availableInvoices.isEmpty
+                ? _buildEmptyState(colorScheme)
+                : _buildInvoiceList(colorScheme),
+          ),
 
-            // Fixed export button at bottom
-            _buildBottomBar(theme, colorScheme),
-          ],
-        ),
+          // Fixed export button at bottom
+          _buildBottomBar(theme, colorScheme),
+        ],
       ),
     );
   }
@@ -87,7 +85,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       child: GlassSurface(
         padding: const EdgeInsets.all(14),
         borderRadius: BorderRadius.circular(AppRadii.card),
-        fillColor: AppGlassTokens.lightFill,
+        fillColor: AppGlassTokens.panelFillFor(context),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -160,14 +158,14 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(12),
       backgroundColor: selectedCount > 0
-          ? AppPalette.selectedFill
-          : AppPalette.cardFill,
+          ? AppPalette.selectedFillFor(context)
+          : AppPalette.cardFillFor(context),
       child: Row(
         children: [
           Icon(
             Icons.info_outline,
             color: selectedCount > 0
-                ? AppPalette.amountMuted
+                ? AppPalette.amountFor(context)
                 : colorScheme.onSurfaceVariant,
           ),
           const SizedBox(width: 8),
@@ -258,14 +256,14 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       (sum, invoice) => sum + invoice.totalAmount,
     );
 
-    return GlassSurface(
-      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      fillColor: AppGlassTokens.sheetFill,
-      borderRadius: BorderRadius.circular(AppRadii.glassLarge),
-      boxShadow: AppShadows.glass,
-      child: SafeArea(
-        top: false,
+    return SafeArea(
+      top: false,
+      child: GlassSurface(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        fillColor: AppGlassTokens.sheetFillFor(context),
+        borderRadius: BorderRadius.circular(AppRadii.glassLarge),
+        boxShadow: AppShadows.glass,
         child: Row(
           children: [
             Column(
@@ -466,7 +464,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => GlassAlertDialog(
         title: const Text('快速筛选'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -615,11 +613,13 @@ class _InvoiceSelectorCard extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: isSelected ? AppPalette.selectedFill : AppPalette.cardFill,
+              color: isSelected
+                  ? AppPalette.selectedFillFor(context)
+                  : AppPalette.cardFillFor(context),
               borderRadius: BorderRadius.circular(AppRadii.card),
               border: Border.all(
                 color: isSelected
-                    ? AppPalette.actionPrimary
+                    ? AppPalette.actionPrimaryFor(context)
                     : colorScheme.outlineVariant.withValues(alpha: 0.3),
                 width: isSelected ? 2 : 1,
               ),
@@ -663,7 +663,7 @@ class _InvoiceSelectorCard extends StatelessWidget {
                             DateFormatter.formatAmount(invoice.totalAmount),
                             style: theme.textTheme.titleMedium?.copyWith(
                               color: isSelectable
-                                  ? AppPalette.amountMuted
+                                  ? AppPalette.amountFor(context)
                                   : disabledColor,
                               fontWeight: FontWeight.bold,
                             ),

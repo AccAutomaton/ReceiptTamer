@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_alert_dialog.dart';
 
 /// 月份范围选择结果
 class MonthRangeResult {
-  final DateTime startDate;  // 开始月份第一天
-  final DateTime endDate;    // 结束月份最后一天
+  final DateTime startDate; // 开始月份第一天
+  final DateTime endDate; // 结束月份最后一天
 
   MonthRangeResult({required this.startDate, required this.endDate});
 }
@@ -35,10 +36,12 @@ class SyncfusionMonthRangePicker extends StatefulWidget {
   }
 
   @override
-  State<SyncfusionMonthRangePicker> createState() => _SyncfusionMonthRangePickerState();
+  State<SyncfusionMonthRangePicker> createState() =>
+      _SyncfusionMonthRangePickerState();
 }
 
-class _SyncfusionMonthRangePickerState extends State<SyncfusionMonthRangePicker> {
+class _SyncfusionMonthRangePickerState
+    extends State<SyncfusionMonthRangePicker> {
   DateTime? _startMonth;
   DateTime? _endMonth;
 
@@ -53,7 +56,10 @@ class _SyncfusionMonthRangePickerState extends State<SyncfusionMonthRangePicker>
   bool get _isValidRange {
     if (_startMonth == null || _endMonth == null) return false;
     if (_startMonth!.year > _endMonth!.year) return false;
-    if (_startMonth!.year == _endMonth!.year && _startMonth!.month > _endMonth!.month) return false;
+    if (_startMonth!.year == _endMonth!.year &&
+        _startMonth!.month > _endMonth!.month) {
+      return false;
+    }
     return true;
   }
 
@@ -67,9 +73,8 @@ class _SyncfusionMonthRangePickerState extends State<SyncfusionMonthRangePicker>
   Future<void> _showMonthPicker(bool isStart) async {
     final result = await showDialog<DateTime>(
       context: context,
-      builder: (context) => _MonthPickerDialog(
-        initialMonth: isStart ? _startMonth : _endMonth,
-      ),
+      builder: (context) =>
+          _MonthPickerDialog(initialMonth: isStart ? _startMonth : _endMonth),
     );
 
     if (result != null) {
@@ -102,7 +107,7 @@ class _SyncfusionMonthRangePickerState extends State<SyncfusionMonthRangePicker>
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return AlertDialog(
+    return GlassAlertDialog(
       title: const Text('选择月份范围'),
       titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
       contentPadding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
@@ -131,10 +136,7 @@ class _SyncfusionMonthRangePickerState extends State<SyncfusionMonthRangePicker>
               padding: const EdgeInsets.only(top: 12),
               child: Text(
                 '开始月份不能晚于结束月份',
-                style: TextStyle(
-                  color: colorScheme.error,
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: colorScheme.error, fontSize: 13),
               ),
             ),
         ],
@@ -161,10 +163,7 @@ class _SyncfusionMonthRangePickerState extends State<SyncfusionMonthRangePicker>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        Text(title, style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         InkWell(
           onTap: onTap,
@@ -186,13 +185,12 @@ class _SyncfusionMonthRangePickerState extends State<SyncfusionMonthRangePicker>
                 Text(
                   _formatMonth(month),
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: month != null ? colorScheme.onSurface : colorScheme.onSurfaceVariant,
+                    color: month != null
+                        ? colorScheme.onSurface
+                        : colorScheme.onSurfaceVariant,
                   ),
                 ),
-                Icon(
-                  Icons.calendar_month,
-                  color: colorScheme.primary,
-                ),
+                Icon(Icons.calendar_month, color: colorScheme.primary),
               ],
             ),
           ),
@@ -250,9 +248,22 @@ class _MonthPickerDialogState extends State<_MonthPickerDialog> {
     final maxYear = now.year + 1;
 
     // 月份名称列表
-    const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+    const monthNames = [
+      '1月',
+      '2月',
+      '3月',
+      '4月',
+      '5月',
+      '6月',
+      '7月',
+      '8月',
+      '9月',
+      '10月',
+      '11月',
+      '12月',
+    ];
 
-    return AlertDialog(
+    return GlassAlertDialog(
       title: const Text('选择月份'),
       titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
       contentPadding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
@@ -266,12 +277,17 @@ class _MonthPickerDialogState extends State<_MonthPickerDialog> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 IconButton(
-                  onPressed: _selectedYear > _minYear ? () => _changeYear(-1) : null,
+                  onPressed: _selectedYear > _minYear
+                      ? () => _changeYear(-1)
+                      : null,
                   icon: const Icon(Icons.chevron_left),
                   iconSize: 28,
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: colorScheme.primaryContainer.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(8),
@@ -286,7 +302,9 @@ class _MonthPickerDialogState extends State<_MonthPickerDialog> {
                   ),
                 ),
                 IconButton(
-                  onPressed: _selectedYear < maxYear ? () => _changeYear(1) : null,
+                  onPressed: _selectedYear < maxYear
+                      ? () => _changeYear(1)
+                      : null,
                   icon: const Icon(Icons.chevron_right),
                   iconSize: 28,
                 ),
@@ -303,7 +321,8 @@ class _MonthPickerDialogState extends State<_MonthPickerDialog> {
 
                 // 检查月份是否可选（不能选择未来月份）
                 final monthDate = DateTime(_selectedYear, month, 1);
-                final isDisabled = monthDate.year > now.year ||
+                final isDisabled =
+                    monthDate.year > now.year ||
                     (monthDate.year == now.year && month > now.month);
 
                 return SizedBox(
@@ -317,8 +336,10 @@ class _MonthPickerDialogState extends State<_MonthPickerDialog> {
                         color: isSelected
                             ? colorScheme.primary
                             : (isDisabled
-                                ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)
-                                : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)),
+                                  ? colorScheme.surfaceContainerHighest
+                                        .withValues(alpha: 0.3)
+                                  : colorScheme.surfaceContainerHighest
+                                        .withValues(alpha: 0.5)),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Center(
@@ -328,9 +349,13 @@ class _MonthPickerDialogState extends State<_MonthPickerDialog> {
                             color: isSelected
                                 ? colorScheme.onPrimary
                                 : (isDisabled
-                                    ? colorScheme.onSurface.withValues(alpha: 0.3)
-                                    : colorScheme.onSurface),
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                                      ? colorScheme.onSurface.withValues(
+                                          alpha: 0.3,
+                                        )
+                                      : colorScheme.onSurface),
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.normal,
                           ),
                         ),
                       ),

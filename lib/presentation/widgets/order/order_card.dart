@@ -68,7 +68,7 @@ class OrderCard extends StatelessWidget {
                     Text(
                       DateFormatter.formatAmount(order.amount),
                       style: theme.textTheme.titleLarge?.copyWith(
-                        color: AppPalette.amountMuted,
+                        color: AppPalette.amountFor(context),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -199,7 +199,7 @@ class OrderCardCompact extends StatelessWidget {
             Text(
               DateFormatter.formatAmount(order.amount),
               style: theme.textTheme.titleMedium?.copyWith(
-                color: AppPalette.amountMuted,
+                color: AppPalette.amountFor(context),
                 fontWeight: FontWeight.bold,
               ),
             ),

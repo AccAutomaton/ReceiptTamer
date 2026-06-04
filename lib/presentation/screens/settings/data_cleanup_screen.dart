@@ -173,17 +173,17 @@ class _DataCleanupScreenState extends ConsumerState<DataCleanupScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: isSelected
-                    ? AppPalette.actionPrimary
+                    ? AppPalette.actionPrimaryFor(context)
                     : Colors.transparent,
                 border: Border.all(
                   color: isSelected
-                      ? AppPalette.actionPrimary
+                      ? AppPalette.actionPrimaryFor(context)
                       : colorScheme.outline.withValues(alpha: 0.55),
                   width: 2,
                 ),
               ),
               child: isSelected
-                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                  ? Icon(Icons.check, size: 14, color: colorScheme.onPrimary)
                   : null,
             ),
             const SizedBox(width: 8),

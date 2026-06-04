@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_alert_dialog.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 
 /// Result of date range selection
@@ -36,7 +37,8 @@ class SyncfusionDateRangePicker extends StatefulWidget {
   }
 
   @override
-  State<SyncfusionDateRangePicker> createState() => _SyncfusionDateRangePickerState();
+  State<SyncfusionDateRangePicker> createState() =>
+      _SyncfusionDateRangePickerState();
 }
 
 class _SyncfusionDateRangePickerState extends State<SyncfusionDateRangePicker> {
@@ -73,14 +75,12 @@ class _SyncfusionDateRangePickerState extends State<SyncfusionDateRangePicker> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return AlertDialog(
+    return GlassAlertDialog(
       title: const Text('选择日期范围'),
       titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
       contentPadding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
       content: Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: colorScheme,
-        ),
+        data: Theme.of(context).copyWith(colorScheme: colorScheme),
         child: Container(
           width: 320,
           height: 350,
@@ -121,17 +121,15 @@ class _SyncfusionDateRangePickerState extends State<SyncfusionDateRangePicker> {
               color: colorScheme.onPrimary,
               fontWeight: FontWeight.w600,
             ),
-            rangeTextStyle: TextStyle(
-              color: colorScheme.onPrimaryContainer,
-            ),
+            rangeTextStyle: TextStyle(color: colorScheme.onPrimaryContainer),
             startRangeSelectionColor: colorScheme.primary,
             endRangeSelectionColor: colorScheme.primary,
-            rangeSelectionColor: colorScheme.primaryContainer.withValues(alpha: 0.5),
+            rangeSelectionColor: colorScheme.primaryContainer.withValues(
+              alpha: 0.5,
+            ),
             todayHighlightColor: colorScheme.primary,
             monthCellStyle: DateRangePickerMonthCellStyle(
-              textStyle: TextStyle(
-                color: colorScheme.onSurface,
-              ),
+              textStyle: TextStyle(color: colorScheme.onSurface),
               todayTextStyle: TextStyle(
                 color: colorScheme.primary,
                 fontWeight: FontWeight.w600,
