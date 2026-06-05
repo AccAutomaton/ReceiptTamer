@@ -70,16 +70,9 @@ void main() {
     expect(
       find.descendant(
         of: find.byType(LiquidGlassBackground),
-        matching: find.byType(CustomPaint),
+        matching: find.byType(DecoratedBox),
       ),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(
-        of: find.byType(LiquidGlassBackground),
-        matching: find.byType(RepaintBoundary),
-      ),
-      findsOneWidget,
+      findsWidgets,
     );
   });
 }

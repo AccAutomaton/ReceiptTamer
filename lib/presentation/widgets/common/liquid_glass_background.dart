@@ -26,13 +26,7 @@ class LiquidGlassBackground extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          Positioned.fill(
-            child: RepaintBoundary(
-              child: CustomPaint(
-                painter: _LiquidGlassBackgroundPainter(isDark: isDark),
-              ),
-            ),
-          ),
+          Positioned.fill(child: _LiquidGlassBackdrop(isDark: isDark)),
           Positioned.fill(child: child),
         ],
       ),
@@ -40,50 +34,66 @@ class LiquidGlassBackground extends StatelessWidget {
   }
 }
 
-class _LiquidGlassBackgroundPainter extends CustomPainter {
-  const _LiquidGlassBackgroundPainter({required this.isDark});
+class _LiquidGlassBackdrop extends StatelessWidget {
+  const _LiquidGlassBackdrop({required this.isDark});
 
   final bool isDark;
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-
-    _drawMist(canvas, rect, Alignment.topRight, isDark ? 0.06 : 0.18);
-    _drawMist(canvas, rect, Alignment.bottomLeft, isDark ? 0.04 : 0.12);
-
-    final veilPaint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          Colors.white.withValues(alpha: isDark ? 0.00 : 0.16),
-          Colors.white.withValues(alpha: 0),
-          AppPalette.coldBackground.withValues(alpha: isDark ? 0.00 : 0.36),
-        ],
-        stops: const [0, 0.46, 1],
-      ).createShader(rect);
-    canvas.drawRect(rect, veilPaint);
-  }
-
-  void _drawMist(Canvas canvas, Rect rect, Alignment center, double opacity) {
-    final paint = Paint()
-      ..shader = RadialGradient(
-        center: center,
-        radius: 0.88,
-        colors: [
-          AppPalette.mistBlue.withValues(alpha: opacity),
-          Colors.white.withValues(alpha: opacity * 0.55),
-          Colors.white.withValues(alpha: 0),
-        ],
-        stops: const [0, 0.46, 1],
-      ).createShader(rect);
-
-    canvas.drawRect(rect, paint);
-  }
-
-  @override
-  bool shouldRepaint(_LiquidGlassBackgroundPainter oldDelegate) {
-    return oldDelegate.isDark != isDark;
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment.topRight,
+                radius: 0.88,
+                colors: [
+                  AppPalette.mistBlue.withValues(alpha: isDark ? 0.06 : 0.18),
+                  Colors.white.withValues(alpha: isDark ? 0.03 : 0.10),
+                  Colors.white.withValues(alpha: 0),
+                ],
+                stops: const [0, 0.46, 1],
+              ),
+            ),
+          ),
+        ),
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment.bottomLeft,
+                radius: 0.88,
+                colors: [
+                  AppPalette.mistBlue.withValues(alpha: isDark ? 0.04 : 0.12),
+                  Colors.white.withValues(alpha: isDark ? 0.02 : 0.07),
+                  Colors.white.withValues(alpha: 0),
+                ],
+                stops: const [0, 0.46, 1],
+              ),
+            ),
+          ),
+        ),
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.white.withValues(alpha: isDark ? 0.00 : 0.16),
+                  Colors.white.withValues(alpha: 0),
+                  AppPalette.coldBackground.withValues(
+                    alpha: isDark ? 0.00 : 0.36,
+                  ),
+                ],
+                stops: const [0, 0.46, 1],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }

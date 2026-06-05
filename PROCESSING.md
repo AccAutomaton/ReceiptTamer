@@ -475,3 +475,11 @@ backup.zip
 | 备份数据库版本 < 当前版本，应用版本相同 | 执行数据库升级后还原 |
 | 备份数据库版本 < 当前版本，应用版本不同 | 警告后执行数据库升级再还原 |
 | 备份数据库版本 == 当前版本，应用版本不同 | 警告后允许还原 |
+
+---
+
+## 2026-06-06 原生装饰玻璃控件记录
+
+- 基于 `main` 迁出 `codex/native-glass-decoration` 分支，降低仿液态玻璃控件的自绘开销，未引入第三方 UI 库。
+- `LiquidGlassEdge` 移除 `CustomPainter`、`MaskFilter` 与手动 shader 边缘绘制，改为 Flutter 原生 `Stack`、`DecoratedBox`、`BoxDecoration`、渐变、边框和阴影组合。
+- `LiquidGlassBackground` 移除背景 `CustomPaint` 与单独 `RepaintBoundary`，改为多层 `DecoratedBox` 渐变雾面背景，保持冷调非纯色底图效果。
