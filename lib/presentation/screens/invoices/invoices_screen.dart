@@ -41,7 +41,6 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_onScroll);
     _init();
   }
 
@@ -59,15 +58,8 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
 
   @override
   void dispose() {
-    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
-  }
-
-  void _onScroll() {
-    if (!_scrollController.hasClients) return;
-    if (_scrollController.position.extentAfter > 600) return;
-    ref.read(invoiceProvider.notifier).loadMoreInvoices();
   }
 
   Future<void> _init() async {
@@ -275,7 +267,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
                         )
                         .toList(),
                     onJumpToIndex: _scrollToGroup,
-                    child: _buildGroupedList(invoiceState),
+                    child: _buildGroupedList(),
                   );
                 },
               ),
@@ -297,18 +289,11 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
     );
   }
 
-  Widget _buildGroupedList(InvoiceState invoiceState) {
+  Widget _buildGroupedList() {
     return CustomScrollView(
       controller: _scrollController,
       slivers: [
         ..._buildSliverGroups(),
-        if (invoiceState.isLoading && invoiceState.invoices.isNotEmpty)
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-          ),
         const SliverPadding(padding: EdgeInsets.only(bottom: 112)),
       ],
     );

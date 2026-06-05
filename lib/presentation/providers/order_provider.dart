@@ -5,7 +5,6 @@ import '../../data/repositories/order_repository.dart';
 import 'invoice_provider.dart' as invoice_providers;
 
 const _unset = Object();
-const _pageSize = 20;
 
 /// Order state
 class OrderState {
@@ -56,11 +55,11 @@ class OrderNotifier extends Notifier<OrderState> {
     state = state.copyWith(isLoading: true, errorMessage: null, currentPage: 0);
 
     try {
-      final orders = await _repository.getAll(limit: _pageSize, offset: 0);
+      final orders = await _repository.getAll();
       state = state.copyWith(
         orders: orders,
         isLoading: false,
-        hasMore: orders.length == _pageSize,
+        hasMore: false,
         currentPage: 0,
       );
     } catch (e) {
@@ -75,13 +74,13 @@ class OrderNotifier extends Notifier<OrderState> {
     state = state.copyWith(isLoading: true);
 
     try {
-      final offset = state.orders.length;
-      final orders = await _repository.getAll(limit: _pageSize, offset: offset);
+      final offset = (state.currentPage + 1) * 20; // Page size
+      final orders = await _repository.getAll(limit: 20, offset: offset);
 
       state = state.copyWith(
         orders: [...state.orders, ...orders],
         isLoading: false,
-        hasMore: orders.length == _pageSize,
+        hasMore: orders.length == 20,
         currentPage: state.currentPage + 1,
       );
     } catch (e) {

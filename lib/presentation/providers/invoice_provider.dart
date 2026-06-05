@@ -5,7 +5,6 @@ import '../../data/repositories/invoice_repository.dart';
 import 'order_provider.dart';
 
 const _unset = Object();
-const _pageSize = 20;
 
 /// Invoice state
 class InvoiceState {
@@ -81,19 +80,15 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
       List<Invoice> invoices;
 
       if (filterOrderId != null) {
-        invoices = await _repository.getByOrderId(
-          filterOrderId,
-          limit: _pageSize,
-          offset: 0,
-        );
+        invoices = await _repository.getByOrderId(filterOrderId);
       } else {
-        invoices = await _repository.getAll(limit: _pageSize, offset: 0);
+        invoices = await _repository.getAll();
       }
 
       state = state.copyWith(
         invoices: invoices,
         isLoading: false,
-        hasMore: invoices.length == _pageSize,
+        hasMore: false,
         currentPage: 0,
       );
     } catch (e) {
@@ -108,19 +103,13 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
     state = state.copyWith(isLoading: true);
 
     try {
-      final offset = state.invoices.length;
-      final invoices = state.filterOrderId != null
-          ? await _repository.getByOrderId(
-              state.filterOrderId!,
-              limit: _pageSize,
-              offset: offset,
-            )
-          : await _repository.getAll(limit: _pageSize, offset: offset);
+      final offset = (state.currentPage + 1) * 20; // Page size
+      final invoices = await _repository.getAll(limit: 20, offset: offset);
 
       state = state.copyWith(
         invoices: [...state.invoices, ...invoices],
         isLoading: false,
-        hasMore: invoices.length == _pageSize,
+        hasMore: invoices.length == 20,
         currentPage: state.currentPage + 1,
       );
     } catch (e) {
