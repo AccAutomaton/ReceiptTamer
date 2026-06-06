@@ -27,6 +27,8 @@ class AppTextField extends StatefulWidget {
   final String? counterText;
   final bool enabled;
   final bool required;
+  final bool autocorrect;
+  final bool enableSuggestions;
   final FocusNode? focusNode;
   final TextCapitalization textCapitalization;
   final EdgeInsetsGeometry? contentPadding;
@@ -57,6 +59,8 @@ class AppTextField extends StatefulWidget {
     this.counterText,
     this.enabled = true,
     this.required = false,
+    this.autocorrect = true,
+    this.enableSuggestions = true,
     this.focusNode,
     this.textCapitalization = TextCapitalization.sentences,
     this.contentPadding,
@@ -144,6 +148,8 @@ class _AppTextFieldState extends State<AppTextField> {
           inputFormatters: widget.inputFormatters,
           textInputAction: widget.textInputAction,
           enabled: widget.enabled,
+          autocorrect: widget.autocorrect,
+          enableSuggestions: widget.enableSuggestions,
           focusNode: widget.focusNode,
           textCapitalization: widget.textCapitalization,
           onEditingComplete: widget.onEditingComplete,
