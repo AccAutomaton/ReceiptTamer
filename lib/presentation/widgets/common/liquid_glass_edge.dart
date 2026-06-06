@@ -6,17 +6,24 @@ class LiquidGlassEdge extends StatelessWidget {
     super.key,
     required this.borderRadius,
     required this.child,
-  });
+    this.edgeIntensity = 1,
+  }) : assert(
+         edgeIntensity >= 0 && edgeIntensity <= 1,
+         'edgeIntensity must be between 0 and 1.',
+       );
 
   final BorderRadius borderRadius;
+  final double edgeIntensity;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final softGlow = Colors.white.withValues(alpha: isDark ? 0.04 : 0.14);
+    final softGlow = Colors.white.withValues(
+      alpha: (isDark ? 0.04 : 0.14) * edgeIntensity,
+    );
     final edgeTint = AppPalette.primaryMuted.withValues(
-      alpha: isDark ? 0.05 : 0.10,
+      alpha: (isDark ? 0.05 : 0.10) * edgeIntensity,
     );
 
     return Stack(
@@ -31,8 +38,8 @@ class LiquidGlassEdge extends StatelessWidget {
                 boxShadow: [
                   BoxShadow(
                     color: softGlow,
-                    blurRadius: 10,
-                    spreadRadius: 1,
+                    blurRadius: 10 * edgeIntensity,
+                    spreadRadius: edgeIntensity,
                     offset: const Offset(0, -1),
                   ),
                 ],
@@ -47,15 +54,21 @@ class LiquidGlassEdge extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: borderRadius,
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: isDark ? 0.07 : 0.24),
+                  color: Colors.white.withValues(
+                    alpha: (isDark ? 0.07 : 0.24) * edgeIntensity,
+                  ),
                   width: 0.8,
                 ),
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Colors.white.withValues(alpha: isDark ? 0.08 : 0.30),
-                    Colors.white.withValues(alpha: isDark ? 0.02 : 0.06),
+                    Colors.white.withValues(
+                      alpha: (isDark ? 0.08 : 0.30) * edgeIntensity,
+                    ),
+                    Colors.white.withValues(
+                      alpha: (isDark ? 0.02 : 0.06) * edgeIntensity,
+                    ),
                     edgeTint,
                     Colors.white.withValues(alpha: 0),
                   ],

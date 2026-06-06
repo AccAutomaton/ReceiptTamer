@@ -31,6 +31,24 @@ class GlassNavigationBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final navShadow = [
+      BoxShadow(
+        color: AppPalette.shadowDeep.withValues(alpha: isDark ? 0.56 : 0.44),
+        blurRadius: 36,
+        spreadRadius: -8,
+        offset: const Offset(0, 18),
+      ),
+      BoxShadow(
+        color: AppPalette.actionOutlineFor(
+          context,
+          alpha: isDark ? 0.20 : 0.26,
+        ),
+        blurRadius: 22,
+        spreadRadius: -10,
+        offset: const Offset(0, -2),
+      ),
+    ];
 
     return SafeArea(
       top: false,
@@ -47,6 +65,9 @@ class GlassNavigationBar extends StatelessWidget {
               bottom: 3,
               child: GlassSurface(
                 borderRadius: BorderRadius.circular(AppRadii.nav),
+                boxShadow: navShadow,
+                edgeIntensity: 0.32,
+                showHighlights: false,
                 child: Padding(
                   padding: const EdgeInsets.all(5),
                   child: Row(
@@ -96,8 +117,9 @@ class GlassNavigationBar extends StatelessWidget {
               child: GlassSurface(
                 borderRadius: BorderRadius.circular(AppRadii.nav),
                 fillColor: AppPalette.actionPrimaryFor(context),
-                borderColor: colorScheme.onPrimary.withValues(alpha: 0.84),
+                borderColor: colorScheme.onPrimary.withValues(alpha: 0.54),
                 blurSigma: 30,
+                edgeIntensity: 0.54,
                 child: Material(
                   color: Colors.transparent,
                   shape: const CircleBorder(),

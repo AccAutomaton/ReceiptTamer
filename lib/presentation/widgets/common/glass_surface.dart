@@ -18,8 +18,12 @@ class GlassSurface extends StatelessWidget {
     this.blurSigma = AppGlassTokens.blurSigma,
     this.boxShadow,
     this.showHighlights = true,
+    this.edgeIntensity = 1,
     this.preset = GlassSurfacePreset.panel,
-  });
+  }) : assert(
+         edgeIntensity >= 0 && edgeIntensity <= 1,
+         'edgeIntensity must be between 0 and 1.',
+       );
 
   final Widget child;
   final BorderRadius? borderRadius;
@@ -30,6 +34,7 @@ class GlassSurface extends StatelessWidget {
   final double blurSigma;
   final List<BoxShadow>? boxShadow;
   final bool showHighlights;
+  final double edgeIntensity;
   final GlassSurfacePreset preset;
 
   @override
@@ -46,6 +51,7 @@ class GlassSurface extends StatelessWidget {
       blurSigma: blurSigma,
       boxShadow: boxShadow,
       showHighlights: showHighlights,
+      edgeIntensity: edgeIntensity,
       child: content,
     );
 
@@ -62,6 +68,7 @@ class _GlassSurfaceFallback extends StatelessWidget {
     this.blurSigma = AppGlassTokens.blurSigma,
     this.boxShadow,
     this.showHighlights = true,
+    this.edgeIntensity = 1,
   });
 
   final BorderRadius borderRadius;
@@ -70,6 +77,7 @@ class _GlassSurfaceFallback extends StatelessWidget {
   final double blurSigma;
   final List<BoxShadow>? boxShadow;
   final bool showHighlights;
+  final double edgeIntensity;
   final Widget child;
 
   @override
@@ -89,6 +97,7 @@ class _GlassSurfaceFallback extends StatelessWidget {
       ),
       child: LiquidGlassEdge(
         borderRadius: borderRadius,
+        edgeIntensity: edgeIntensity,
         child: ClipRRect(
           borderRadius: borderRadius,
           child: BackdropFilter(
