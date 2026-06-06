@@ -878,6 +878,7 @@ class _ModelManagementScreenState extends ConsumerState<ModelManagementScreen> {
               textCapitalization: TextCapitalization.none,
               autocorrect: false,
               enableSuggestions: false,
+              manualPasteContextMenu: true,
               onChanged: (_) => _updateCurrentProviderConfig(),
               onSubmitted: (_) => _loadPresetModels(),
             ),

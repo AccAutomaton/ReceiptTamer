@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -29,6 +31,7 @@ class AppTextField extends StatefulWidget {
   final bool required;
   final bool autocorrect;
   final bool enableSuggestions;
+  final bool manualPasteContextMenu;
   final FocusNode? focusNode;
   final TextCapitalization textCapitalization;
   final EdgeInsetsGeometry? contentPadding;
@@ -61,6 +64,7 @@ class AppTextField extends StatefulWidget {
     this.required = false,
     this.autocorrect = true,
     this.enableSuggestions = true,
+    this.manualPasteContextMenu = false,
     this.focusNode,
     this.textCapitalization = TextCapitalization.sentences,
     this.contentPadding,
@@ -126,6 +130,9 @@ class _AppTextFieldState extends State<AppTextField> {
         widget.contentPadding ??
         const EdgeInsets.symmetric(horizontal: 16, vertical: 14);
     final effectiveBorderRadius = widget.borderRadius ?? AppRadii.control;
+    final contextMenuBuilder = widget.manualPasteContextMenu
+        ? _buildManualPasteContextMenu
+        : _buildDefaultContextMenu;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,6 +157,7 @@ class _AppTextFieldState extends State<AppTextField> {
           enabled: widget.enabled,
           autocorrect: widget.autocorrect,
           enableSuggestions: widget.enableSuggestions,
+          contextMenuBuilder: contextMenuBuilder,
           focusNode: widget.focusNode,
           textCapitalization: widget.textCapitalization,
           onEditingComplete: widget.onEditingComplete,
@@ -243,6 +251,48 @@ class _AppTextFieldState extends State<AppTextField> {
         ),
       ),
       child: suffixIcon,
+    );
+  }
+
+  Widget _buildDefaultContextMenu(
+    BuildContext context,
+    EditableTextState editableTextState,
+  ) {
+    if (SystemContextMenu.isSupportedByField(editableTextState)) {
+      return SystemContextMenu.editableText(
+        editableTextState: editableTextState,
+      );
+    }
+    return AdaptiveTextSelectionToolbar.editableText(
+      editableTextState: editableTextState,
+    );
+  }
+
+  Widget _buildManualPasteContextMenu(
+    BuildContext context,
+    EditableTextState editableTextState,
+  ) {
+    final buttonItems = editableTextState.contextMenuButtonItems
+        .where((item) => item.type != ContextMenuButtonType.paste)
+        .toList();
+
+    buttonItems.insert(
+      0,
+      ContextMenuButtonItem(
+        label: '粘贴',
+        type: ContextMenuButtonType.paste,
+        onPressed: () {
+          editableTextState.hideToolbar();
+          unawaited(
+            editableTextState.pasteText(SelectionChangedCause.toolbar),
+          );
+        },
+      ),
+    );
+
+    return AdaptiveTextSelectionToolbar.buttonItems(
+      anchors: editableTextState.contextMenuAnchors,
+      buttonItems: buttonItems,
     );
   }
 
