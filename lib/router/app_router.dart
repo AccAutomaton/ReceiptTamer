@@ -39,9 +39,15 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/',
     routes: [
       // Main shell with cached bottom navigation branches.
-      StatefulShellRoute.indexedStack(
+      StatefulShellRoute(
         builder: (context, state, navigationShell) =>
             MainShell(navigationShell: navigationShell),
+        navigatorContainerBuilder: (context, navigationShell, children) {
+          return _AnimatedBranchContainer(
+            currentIndex: navigationShell.currentIndex,
+            children: children,
+          );
+        },
         branches: [
           StatefulShellBranch(
             routes: [
@@ -380,6 +386,126 @@ class _ErrorScreen extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AnimatedBranchContainer extends StatefulWidget {
+  const _AnimatedBranchContainer({
+    required this.currentIndex,
+    required this.children,
+  });
+
+  static const _duration = Duration(milliseconds: 320);
+
+  final int currentIndex;
+  final List<Widget> children;
+
+  @override
+  State<_AnimatedBranchContainer> createState() =>
+      _AnimatedBranchContainerState();
+}
+
+class _AnimatedBranchContainerState extends State<_AnimatedBranchContainer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+  var _slideDirection = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: _AnimatedBranchContainer._duration,
+      value: 1,
+    );
+    _updateAnimations();
+  }
+
+  @override
+  void didUpdateWidget(_AnimatedBranchContainer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.currentIndex == oldWidget.currentIndex) {
+      return;
+    }
+
+    _slideDirection = widget.currentIndex > oldWidget.currentIndex ? 1 : -1;
+    _updateAnimations();
+    _controller
+      ..stop()
+      ..value = 0
+      ..forward();
+  }
+
+  void _updateAnimations() {
+    _fadeAnimation = _controller.drive(
+      Tween<double>(
+        begin: 0.88,
+        end: 1,
+      ).chain(CurveTween(curve: Curves.easeOutCubic)),
+    );
+    _slideAnimation = _controller.drive(
+      Tween<Offset>(
+        begin: Offset(_slideDirection * 0.12, 0),
+        end: Offset.zero,
+      ).chain(CurveTween(curve: Curves.easeOutCubic)),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IndexedStack(
+      index: widget.currentIndex,
+      children: [
+        for (var index = 0; index < widget.children.length; index++)
+          _AnimatedBranch(
+            index: index,
+            currentIndex: widget.currentIndex,
+            fadeAnimation: _fadeAnimation,
+            slideAnimation: _slideAnimation,
+            child: widget.children[index],
+          ),
+      ],
+    );
+  }
+}
+
+class _AnimatedBranch extends StatelessWidget {
+  const _AnimatedBranch({
+    required this.index,
+    required this.currentIndex,
+    required this.fadeAnimation,
+    required this.slideAnimation,
+    required this.child,
+  });
+
+  final int index;
+  final int currentIndex;
+  final Animation<double> fadeAnimation;
+  final Animation<Offset> slideAnimation;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = index == currentIndex;
+
+    return Offstage(
+      offstage: !active,
+      child: TickerMode(
+        enabled: active,
+        child: FadeTransition(
+          opacity: fadeAnimation,
+          child: SlideTransition(position: slideAnimation, child: child),
         ),
       ),
     );
