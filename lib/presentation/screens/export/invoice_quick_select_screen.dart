@@ -17,9 +17,8 @@ import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/widgets/common/empty_state.dart';
 import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
-import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
+import 'package:receipt_tamer/presentation/widgets/common/floating_overlay_layout.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_page_scaffold.dart';
-import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
 import 'package:receipt_tamer/presentation/screens/export/saved_files_screen.dart';
 
 /// Order relation filter enum for invoice export
@@ -379,117 +378,108 @@ class _InvoiceQuickSelectScreenState
   Widget build(BuildContext context) {
     return GlassPageScaffold(
       appBar: AppBar(title: const Text('发票导出'), elevation: 0),
-      body: Column(
-        children: [
-          // Search and filter section
-          _buildFilterSection(context),
-
-          // Date filter chip
-          if (_startDate != null || _endDate != null)
-            _buildDateFilterChip(context),
-
-          // Select buttons row
-          _buildSelectButtonsRow(context),
-
-          // Invoice list
-          Expanded(child: _buildInvoiceList(context)),
-
-          // Export options card
-          _buildExportOptions(context),
-
-          // Bottom confirm bar
-          _buildBottomBar(context),
-        ],
+      body: FloatingOverlayLayout(
+        top: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildFilterSection(context),
+            if (_startDate != null || _endDate != null)
+              _buildDateFilterChip(context),
+            _buildSelectButtonsRow(context),
+          ],
+        ),
+        bodyBuilder: (context, contentPadding) =>
+            _buildInvoiceList(context, contentPadding),
+        bottom: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildExportOptions(context),
+            const SizedBox(height: 12),
+            _buildBottomBar(context),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildFilterSection(BuildContext context) {
-    return GlassSurface(
-      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-      padding: const EdgeInsets.all(12),
-      fillColor: AppGlassTokens.panelFillFor(context),
-      borderRadius: BorderRadius.circular(AppRadii.card),
-      child: Column(
-        children: [
-          // Search field
-          TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              hintText: '搜索销售方名称或发票号码',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _searchKeyword.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () {
-                        _searchController.clear();
-                        _searchKeyword = '';
-                        _loadInvoices();
-                      },
-                    )
-                  : null,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
-              ),
-              isDense: true,
+    return Column(
+      children: [
+        // Search field
+        TextField(
+          controller: _searchController,
+          decoration: InputDecoration(
+            hintText: '搜索销售方名称或发票号码',
+            prefixIcon: const Icon(Icons.search),
+            suffixIcon: _searchKeyword.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      _searchController.clear();
+                      _searchKeyword = '';
+                      _loadInvoices();
+                    },
+                  )
+                : null,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 8,
             ),
-            onChanged: _onSearchChanged,
-            textInputAction: TextInputAction.search,
-            onSubmitted: (_) => _loadInvoices(),
+            isDense: true,
           ),
+          onChanged: _onSearchChanged,
+          textInputAction: TextInputAction.search,
+          onSubmitted: (_) => _loadInvoices(),
+        ),
 
-          const SizedBox(height: 12),
+        const SizedBox(height: 12),
 
-          // Filter chips row - 三段式筛选 + 日期筛选按钮
-          Row(
-            children: [
-              // Order relation filter - 三段式筛选
-              Expanded(
-                child: SegmentedButton<OrderRelationFilter>(
-                  segments: const [
-                    ButtonSegment(
-                      value: OrderRelationFilter.all,
-                      label: Text('全部'),
-                    ),
-                    ButtonSegment(
-                      value: OrderRelationFilter.withOrder,
-                      label: Text('已关联订单'),
-                    ),
-                    ButtonSegment(
-                      value: OrderRelationFilter.withoutOrder,
-                      label: Text('未关联订单'),
-                    ),
-                  ],
-                  selected: {_orderRelationFilter},
-                  onSelectionChanged: (Set<OrderRelationFilter> selection) {
-                    setState(() => _orderRelationFilter = selection.first);
-                    _loadInvoices();
-                  },
-                  style: ButtonStyle(
-                    visualDensity: VisualDensity.compact,
-                    textStyle: WidgetStateProperty.all(
-                      const TextStyle(fontSize: 12),
-                    ),
+        // Filter chips row - 三段式筛选 + 日期筛选按钮
+        Row(
+          children: [
+            // Order relation filter - 三段式筛选
+            Expanded(
+              child: SegmentedButton<OrderRelationFilter>(
+                segments: const [
+                  ButtonSegment(
+                    value: OrderRelationFilter.all,
+                    label: Text('全部'),
+                  ),
+                  ButtonSegment(
+                    value: OrderRelationFilter.withOrder,
+                    label: Text('已关联订单'),
+                  ),
+                  ButtonSegment(
+                    value: OrderRelationFilter.withoutOrder,
+                    label: Text('未关联订单'),
+                  ),
+                ],
+                selected: {_orderRelationFilter},
+                onSelectionChanged: (Set<OrderRelationFilter> selection) {
+                  setState(() => _orderRelationFilter = selection.first);
+                  _loadInvoices();
+                },
+                style: ButtonStyle(
+                  visualDensity: VisualDensity.compact,
+                  textStyle: WidgetStateProperty.all(
+                    const TextStyle(fontSize: 12),
                   ),
                 ),
               ),
+            ),
 
-              const SizedBox(width: 8),
+            const SizedBox(width: 8),
 
-              // Date filter button
-              IconButton.outlined(
-                onPressed: _showDateRangePicker,
-                icon: const Icon(Icons.date_range),
-                tooltip: '日期筛选',
-              ),
-            ],
-          ),
-        ],
-      ),
+            // Date filter button
+            IconButton.outlined(
+              onPressed: _showDateRangePicker,
+              icon: const Icon(Icons.date_range),
+              tooltip: '日期筛选',
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -502,16 +492,15 @@ class _InvoiceQuickSelectScreenState
         : '';
     final dateRangeStr = startStr == endStr ? startStr : '$startStr - $endStr';
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Row(
-        children: [
-          Chip(
-            label: Text(dateRangeStr),
-            deleteIcon: const Icon(Icons.close, size: 16),
-            onDeleted: _clearDateFilter,
-          ),
-        ],
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Chip(
+          label: Text(dateRangeStr),
+          deleteIcon: const Icon(Icons.close, size: 16),
+          onDeleted: _clearDateFilter,
+        ),
       ),
     );
   }
@@ -520,8 +509,8 @@ class _InvoiceQuickSelectScreenState
     final colorScheme = Theme.of(context).colorScheme;
     final hasSelection = _selectedInvoiceIds.isNotEmpty;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
       child: Row(
         children: [
           TextButton.icon(
@@ -559,31 +548,21 @@ class _InvoiceQuickSelectScreenState
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: AppCard(
-        margin: EdgeInsets.zero,
-        backgroundColor: AppPalette.cardFillFor(context),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '导出选项',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 12),
-              _buildTimeLabelOptionRow(context),
-              const SizedBox(height: 8),
-              _buildRemarkOptionRow(context),
-            ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '导出选项',
+          style: theme.textTheme.titleSmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w500,
           ),
         ),
-      ),
+        const SizedBox(height: 12),
+        _buildTimeLabelOptionRow(context),
+        const SizedBox(height: 8),
+        _buildRemarkOptionRow(context),
+      ],
     );
   }
 
@@ -692,25 +671,36 @@ class _InvoiceQuickSelectScreenState
     );
   }
 
-  Widget _buildInvoiceList(BuildContext context) {
+  Widget _buildInvoiceList(BuildContext context, EdgeInsets contentPadding) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return Padding(
+        padding: contentPadding,
+        child: const Center(child: CircularProgressIndicator()),
+      );
     }
 
     if (_invoices.isEmpty) {
-      return EmptyState(
-        icon: Icons.receipt_long,
-        title:
-            _searchKeyword.isNotEmpty ||
-                _startDate != null ||
-                _orderRelationFilter != OrderRelationFilter.all
-            ? '没有找到符合条件的发票'
-            : '暂无发票',
+      return Padding(
+        padding: contentPadding,
+        child: EmptyState(
+          icon: Icons.receipt_long,
+          title:
+              _searchKeyword.isNotEmpty ||
+                  _startDate != null ||
+                  _orderRelationFilter != OrderRelationFilter.all
+              ? '没有找到符合条件的发票'
+              : '暂无发票',
+        ),
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.fromLTRB(
+        0,
+        contentPadding.top + 8,
+        0,
+        contentPadding.bottom + 8,
+      ),
       itemCount: _invoices.length,
       itemBuilder: (context, index) {
         final invoice = _invoices[index];
@@ -743,50 +733,41 @@ class _InvoiceQuickSelectScreenState
 
     final hasSelection = _selectedInvoiceIds.isNotEmpty;
 
-    return SafeArea(
-      top: false,
-      child: GlassSurface(
-        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        fillColor: AppGlassTokens.sheetFillFor(context),
-        borderRadius: BorderRadius.circular(AppRadii.glassLarge),
-        boxShadow: AppShadows.glass,
-        child: Row(
-          children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  hasSelection
-                      ? '已选择 ${_selectedInvoiceIds.length} 张发票'
-                      : '未选择发票',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                hasSelection
+                    ? '已选择 ${_selectedInvoiceIds.length} 张发票'
+                    : '未选择发票',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
                 ),
-                Text(
-                  hasSelection
-                      ? '合计: ${DateFormatter.formatAmount(totalAmount)}'
-                      : '请选择发票后导出',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: hasSelection
-                        ? AppPalette.amountFor(context)
-                        : colorScheme.onSurfaceVariant,
-                  ),
+              ),
+              Text(
+                hasSelection
+                    ? '合计: ${DateFormatter.formatAmount(totalAmount)}'
+                    : '请选择发票后导出',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: hasSelection
+                      ? AppPalette.amountFor(context)
+                      : colorScheme.onSurfaceVariant,
                 ),
-              ],
-            ),
-            const Spacer(),
-            AppButton(
-              text: '导出发票',
-              onPressed: _isExporting ? null : _confirmAndExport,
-              type: AppButtonType.primary,
-              isLoading: _isExporting,
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
-      ),
+        AppButton(
+          text: '导出发票',
+          onPressed: _isExporting ? null : _confirmAndExport,
+          type: AppButtonType.primary,
+          isLoading: _isExporting,
+        ),
+      ],
     );
   }
 

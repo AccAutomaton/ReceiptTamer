@@ -10,6 +10,7 @@ import 'package:receipt_tamer/presentation/providers/invoice_assistant_provider.
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart';
 import 'package:receipt_tamer/presentation/widgets/common/empty_state.dart';
+import 'package:receipt_tamer/presentation/widgets/common/floating_overlay_layout.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_page_scaffold.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
 
@@ -73,16 +74,20 @@ class _InvoiceAssistantScreenState
 
     return GlassPageScaffold(
       appBar: AppBar(title: const Text('开票助手'), elevation: 0),
-      body: Column(
-        children: [
-          _buildFilterSection(context, state),
-          if (state.startDate != null || state.endDate != null)
-            _buildDateFilterChip(context, state),
-          if (state.errorMessage != null)
-            _buildErrorBanner(context, state.errorMessage!),
-          Expanded(child: _buildShopList(context, state)),
-          _buildBottomBar(context, state),
-        ],
+      body: FloatingOverlayLayout(
+        top: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildFilterSection(context, state),
+            if (state.startDate != null || state.endDate != null)
+              _buildDateFilterChip(context, state),
+            if (state.errorMessage != null)
+              _buildErrorBanner(context, state.errorMessage!),
+          ],
+        ),
+        bodyBuilder: (context, contentPadding) =>
+            _buildShopList(context, state, contentPadding),
+        bottom: _buildBottomBar(context, state),
       ),
     );
   }
@@ -101,55 +106,49 @@ class _InvoiceAssistantScreenState
       (sum, summary) => sum + summary.totalAmount,
     );
 
-    return GlassSurface(
-      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-      padding: const EdgeInsets.all(14),
-      fillColor: AppGlassTokens.panelFillFor(context),
-      borderRadius: BorderRadius.circular(AppRadii.card),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: AppPalette.actionSoftFillFor(context),
-              borderRadius: BorderRadius.circular(AppRadii.control),
-            ),
-            child: Icon(
-              Icons.storefront,
-              color: AppPalette.actionPrimaryFor(context),
-            ),
+    return Row(
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: AppPalette.actionSoftFillFor(context),
+            borderRadius: BorderRadius.circular(AppRadii.control),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${state.summaries.length} 个店铺 / $totalOrders 条订单',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+          child: Icon(
+            Icons.storefront,
+            color: AppPalette.actionPrimaryFor(context),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${state.summaries.length} 个店铺 / $totalOrders 条订单',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  DateFormatter.formatAmount(totalAmount),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: AppPalette.amountFor(context),
-                    fontWeight: FontWeight.w700,
-                  ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                DateFormatter.formatAmount(totalAmount),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: AppPalette.amountFor(context),
+                  fontWeight: FontWeight.w700,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          IconButton.outlined(
-            onPressed: state.isLoadingSummaries ? null : _showDateRangePicker,
-            icon: const Icon(Icons.date_range),
-            tooltip: '日期筛选',
-          ),
-        ],
-      ),
+        ),
+        IconButton.outlined(
+          onPressed: state.isLoadingSummaries ? null : _showDateRangePicker,
+          icon: const Icon(Icons.date_range),
+          tooltip: '日期筛选',
+        ),
+      ],
     );
   }
 
@@ -166,27 +165,28 @@ class _InvoiceAssistantScreenState
     final dateRangeStr = startStr == endStr ? startStr : '$startStr - $endStr';
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-      child: Row(
-        children: [
-          Chip(
-            label: Text(dateRangeStr),
-            deleteIcon: const Icon(Icons.close, size: 16),
-            onDeleted: () =>
-                ref.read(invoiceAssistantProvider.notifier).clearDateRange(),
-          ),
-        ],
+      padding: const EdgeInsets.only(top: 8),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Chip(
+          label: Text(dateRangeStr),
+          deleteIcon: const Icon(Icons.close, size: 16),
+          onDeleted: () =>
+              ref.read(invoiceAssistantProvider.notifier).clearDateRange(),
+        ),
       ),
     );
   }
 
   Widget _buildErrorBanner(BuildContext context, String message) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-      child: GlassSurface(
+      padding: const EdgeInsets.only(top: 8),
+      child: Container(
         padding: const EdgeInsets.all(12),
-        fillColor: Theme.of(context).colorScheme.errorContainer,
-        borderRadius: BorderRadius.circular(AppRadii.card),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.errorContainer,
+          borderRadius: BorderRadius.circular(AppRadii.card),
+        ),
         child: Row(
           children: [
             Icon(
@@ -201,16 +201,26 @@ class _InvoiceAssistantScreenState
     );
   }
 
-  Widget _buildShopList(BuildContext context, InvoiceAssistantState state) {
+  Widget _buildShopList(
+    BuildContext context,
+    InvoiceAssistantState state,
+    EdgeInsets contentPadding,
+  ) {
     if (state.isLoadingSummaries && state.summaries.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return Padding(
+        padding: contentPadding,
+        child: const Center(child: CircularProgressIndicator()),
+      );
     }
 
     if (state.summaries.isEmpty) {
-      return EmptyState(
-        icon: Icons.receipt_long,
-        title: '没有未开票订单',
-        subtitle: '可以调整日期范围后再查看',
+      return Padding(
+        padding: contentPadding,
+        child: EmptyState(
+          icon: Icons.receipt_long,
+          title: '没有未开票订单',
+          subtitle: '可以调整日期范围后再查看',
+        ),
       );
     }
 
@@ -218,7 +228,12 @@ class _InvoiceAssistantScreenState
       onRefresh: () =>
           ref.read(invoiceAssistantProvider.notifier).loadSummaries(),
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 104),
+        padding: EdgeInsets.fromLTRB(
+          12,
+          contentPadding.top + 8,
+          12,
+          contentPadding.bottom + 8,
+        ),
         itemCount: state.summaries.length,
         itemBuilder: (context, index) {
           final summary = state.summaries[index];
@@ -257,52 +272,42 @@ class _InvoiceAssistantScreenState
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return SafeArea(
-      top: false,
-      child: GlassSurface(
-        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        fillColor: AppGlassTokens.sheetFillFor(context),
-        borderRadius: BorderRadius.circular(AppRadii.glassLarge),
-        boxShadow: AppShadows.glass,
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    state.hasSelection
-                        ? '已选择 ${state.selectedOrderIds.length} 条订单'
-                        : '未选择订单',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    state.hasSelection
-                        ? '合计: ${DateFormatter.formatAmount(state.selectedTotalAmount)}'
-                        : '选择订单后关联发票',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: state.hasSelection
-                          ? AppPalette.amountFor(context)
-                          : colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                state.hasSelection
+                    ? '已选择 ${state.selectedOrderIds.length} 条订单'
+                    : '未选择订单',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
-            AppButton(
-              text: '关联发票',
-              onPressed: state.hasSelection ? _openInvoiceEditor : null,
-              icon: const Icon(Icons.add),
-              width: 148,
-            ),
-          ],
+              const SizedBox(height: 2),
+              Text(
+                state.hasSelection
+                    ? '合计: ${DateFormatter.formatAmount(state.selectedTotalAmount)}'
+                    : '选择订单后关联发票',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: state.hasSelection
+                      ? AppPalette.amountFor(context)
+                      : colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
+        AppButton(
+          text: '关联发票',
+          onPressed: state.hasSelection ? _openInvoiceEditor : null,
+          icon: const Icon(Icons.add),
+          width: 148,
+        ),
+      ],
     );
   }
 }

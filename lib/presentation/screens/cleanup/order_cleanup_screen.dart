@@ -7,6 +7,7 @@ import 'package:receipt_tamer/data/models/order.dart';
 import 'package:receipt_tamer/data/services/cleanup_service.dart';
 import 'package:receipt_tamer/presentation/providers/cleanup_provider.dart';
 import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart';
+import 'package:receipt_tamer/presentation/widgets/common/floating_overlay_layout.dart';
 
 /// Order cleanup screen for selecting and deleting orders
 class OrderCleanupScreen extends ConsumerStatefulWidget {
@@ -173,124 +174,114 @@ class _OrderCleanupScreenState extends ConsumerState<OrderCleanupScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('选择要删除的订单')),
-      body: Column(
-        children: [
-          // Options and filters
-          _buildOptionsSection(state, colorScheme),
-
-          // Statistics card
-          _buildStatisticsCard(state, colorScheme),
-
-          // Order list
-          Expanded(
-            child: state.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : state.availableOrders.isEmpty
-                ? _buildEmptyState(colorScheme)
-                : _buildOrderList(state, colorScheme),
-          ),
-
-          // Bottom action bar
-          _buildBottomBar(state, colorScheme),
-        ],
+      body: FloatingOverlayLayout(
+        top: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildOptionsSection(state, colorScheme),
+            _buildStatisticsCard(state, colorScheme),
+          ],
+        ),
+        bodyBuilder: (context, contentPadding) {
+          if (state.isLoading) {
+            return Padding(
+              padding: contentPadding,
+              child: const Center(child: CircularProgressIndicator()),
+            );
+          }
+          if (state.availableOrders.isEmpty) {
+            return Padding(
+              padding: contentPadding,
+              child: _buildEmptyState(colorScheme),
+            );
+          }
+          return _buildOrderList(state, colorScheme, contentPadding);
+        },
+        bottom: _buildBottomBar(state, colorScheme),
       ),
     );
   }
 
   Widget _buildOptionsSection(CleanupState state, ColorScheme colorScheme) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        border: Border(
-          bottom: BorderSide(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-          ),
-        ),
-      ),
-      child: Column(
-        children: [
-          // Delete related invoices toggle
-          Row(
-            children: [
-              Checkbox(
-                value: state.deleteRelatedItems,
-                onChanged: (_) {
+    return Column(
+      children: [
+        // Delete related invoices toggle
+        Row(
+          children: [
+            Checkbox(
+              value: state.deleteRelatedItems,
+              onChanged: (_) {
+                ref.read(cleanupProvider.notifier).toggleDeleteRelatedItems();
+              },
+            ),
+            Expanded(
+              child: InkWell(
+                onTap: () {
                   ref.read(cleanupProvider.notifier).toggleDeleteRelatedItems();
                 },
-              ),
-              Expanded(
-                child: InkWell(
-                  onTap: () {
-                    ref
-                        .read(cleanupProvider.notifier)
-                        .toggleDeleteRelatedItems();
-                  },
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('同时删除关联发票'),
-                      Text(
-                        '勾选后，关联同一发票的订单将自动选中',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('同时删除关联发票'),
+                    Text(
+                      '勾选后，关联同一发票的订单将自动选中',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
+        ),
 
-          const SizedBox(height: 12),
+        const SizedBox(height: 12),
 
-          // Action buttons
-          Row(
-            children: [
-              TextButton.icon(
-                onPressed: state.availableOrders.isEmpty ? null : _selectAll,
-                icon: const Icon(Icons.select_all, size: 18),
-                label: const Text('全选'),
-              ),
-              const SizedBox(width: 8),
-              TextButton.icon(
-                onPressed: state.availableOrders.isEmpty
-                    ? null
-                    : _invertSelection,
-                icon: const Icon(Icons.flip, size: 18),
-                label: const Text('反选'),
-              ),
-              const SizedBox(width: 8),
-              TextButton.icon(
-                onPressed: _showDateRangePicker,
-                icon: const Icon(Icons.calendar_month, size: 18),
-                label: Text(state.startDate != null ? '修改日期' : '日期筛选'),
-              ),
-            ],
-          ),
+        // Action buttons
+        Row(
+          children: [
+            TextButton.icon(
+              onPressed: state.availableOrders.isEmpty ? null : _selectAll,
+              icon: const Icon(Icons.select_all, size: 18),
+              label: const Text('全选'),
+            ),
+            const SizedBox(width: 8),
+            TextButton.icon(
+              onPressed: state.availableOrders.isEmpty
+                  ? null
+                  : _invertSelection,
+              icon: const Icon(Icons.flip, size: 18),
+              label: const Text('反选'),
+            ),
+            const SizedBox(width: 8),
+            TextButton.icon(
+              onPressed: _showDateRangePicker,
+              icon: const Icon(Icons.calendar_month, size: 18),
+              label: Text(state.startDate != null ? '修改日期' : '日期筛选'),
+            ),
+          ],
+        ),
 
-          // Date range chip
-          if (state.startDate != null && state.endDate != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Row(
-                children: [
-                  Chip(
-                    label: Text(
-                      '${DateFormatter.formatDisplay(state.startDate!)} - ${DateFormatter.formatDisplay(state.endDate!)}',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    deleteIcon: const Icon(Icons.close, size: 16),
-                    onDeleted: () {
-                      ref.read(cleanupProvider.notifier).clearDateRange();
-                    },
-                  ),
-                ],
+        // Date range chip
+        if (state.startDate != null && state.endDate != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Chip(
+                label: Text(
+                  '${DateFormatter.formatDisplay(state.startDate!)} - ${DateFormatter.formatDisplay(state.endDate!)}',
+                  style: const TextStyle(fontSize: 12),
+                ),
+                deleteIcon: const Icon(Icons.close, size: 16),
+                onDeleted: () {
+                  ref.read(cleanupProvider.notifier).clearDateRange();
+                },
               ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 
@@ -302,7 +293,7 @@ class _OrderCleanupScreenState extends ConsumerState<OrderCleanupScreen> {
     });
 
     return Container(
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: selectedCount > 0
@@ -362,8 +353,16 @@ class _OrderCleanupScreenState extends ConsumerState<OrderCleanupScreen> {
     );
   }
 
-  Widget _buildOrderList(CleanupState state, ColorScheme colorScheme) {
+  Widget _buildOrderList(
+    CleanupState state,
+    ColorScheme colorScheme,
+    EdgeInsets contentPadding,
+  ) {
     return ListView.builder(
+      padding: EdgeInsets.only(
+        top: contentPadding.top,
+        bottom: contentPadding.bottom,
+      ),
       itemCount: state.availableOrders.length,
       itemBuilder: (context, index) {
         final order = state.availableOrders[index];
@@ -390,59 +389,43 @@ class _OrderCleanupScreenState extends ConsumerState<OrderCleanupScreen> {
         .where((o) => o.id != null && state.isSelected(o.id!))
         .fold<double>(0, (sum, o) => sum + o.amount);
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 4,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Row(
+    return Row(
+      children: [
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '已选择 $selectedCount 条订单',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                Text(
-                  '合计: ${DateFormatter.formatAmount(totalAmount)}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
+            Text(
+              '已选择 $selectedCount 条订单',
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
-            const Spacer(),
-            FilledButton.icon(
-              onPressed: selectedCount > 0 && !state.isDeleting
-                  ? _confirmDelete
-                  : null,
-              icon: state.isDeleting
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.delete),
-              label: Text(state.isDeleting ? '删除中...' : '确认删除'),
-              style: FilledButton.styleFrom(backgroundColor: colorScheme.error),
+            Text(
+              '合计: ${DateFormatter.formatAmount(totalAmount)}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
-      ),
+        const Spacer(),
+        FilledButton.icon(
+          onPressed: selectedCount > 0 && !state.isDeleting
+              ? _confirmDelete
+              : null,
+          icon: state.isDeleting
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Icon(Icons.delete),
+          label: Text(state.isDeleting ? '删除中...' : '确认删除'),
+          style: FilledButton.styleFrom(backgroundColor: colorScheme.error),
+        ),
+      ],
     );
   }
 }

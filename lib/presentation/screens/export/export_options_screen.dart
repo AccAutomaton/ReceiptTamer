@@ -13,8 +13,8 @@ import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/screens/export/saved_files_screen.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
+import 'package:receipt_tamer/presentation/widgets/common/floating_overlay_layout.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_page_scaffold.dart';
-import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
 import 'package:flutter/material.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_alert_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -63,129 +63,118 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
 
     return GlassPageScaffold(
       appBar: AppBar(title: const Text('导出选项'), elevation: 0),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
+      body: FloatingOverlayLayout(
+        bodyBuilder: (context, contentPadding) => ListView(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, contentPadding.bottom + 16),
+          children: [
+            // Summary card
+            AppCard(
+              margin: EdgeInsets.zero,
               padding: const EdgeInsets.all(16),
-              children: [
-                // Summary card
-                AppCard(
-                  margin: EdgeInsets.zero,
-                  padding: const EdgeInsets.all(16),
-                  child: Padding(
-                    padding: EdgeInsets.zero,
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.description_outlined,
-                          color: colorScheme.primary,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '报销材料',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${widget.invoiceIds.length} 张发票 · ${widget.orderIds.length} 条订单',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+              child: Padding(
+                padding: EdgeInsets.zero,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.description_outlined,
+                      color: colorScheme.primary,
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '报销材料',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${widget.invoiceIds.length} 张发票 · ${widget.orderIds.length} 条订单',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-
-                const SizedBox(height: 24),
-
-                // Export options
-                Text(
-                  '选择导出内容',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // Meal proof option
-                _buildExportOptionCard(
-                  title: '用餐证明',
-                  subtitle: '订单截图汇总文档',
-                  icon: Icons.restaurant_menu,
-                  value: _exportMealProof,
-                  formatLabel: 'PDF',
-                  onToggle: (v) => setState(() => _exportMealProof = v),
-                ),
-
-                const SizedBox(height: 12),
-
-                // Invoice option
-                _buildExportOptionCard(
-                  title: '发票',
-                  subtitle: '发票信息汇总文档',
-                  icon: Icons.receipt_long,
-                  value: _exportInvoice,
-                  formatLabel: 'PDF',
-                  onToggle: (v) => setState(() => _exportInvoice = v),
-                ),
-
-                const SizedBox(height: 12),
-
-                // Meal details option
-                _buildExportOptionCard(
-                  title: '用餐明细',
-                  subtitle: '订单和发票明细表格',
-                  icon: Icons.table_chart,
-                  value: _exportMealDetails,
-                  formatLabel: 'XLSX',
-                  onToggle: (v) => setState(() => _exportMealDetails = v),
-                ),
-
-                const SizedBox(height: 24),
-              ],
-            ),
-          ),
-
-          // Meal proof export options group (新增)
-          _buildMealProofExportOptions(context),
-
-          // Invoice export options group (only visible when invoice export is enabled)
-          _buildInvoiceExportOptions(context),
-
-          // Meal details export options group
-          _buildMealDetailsExportOptions(context),
-
-          // Export button
-          SafeArea(
-            top: false,
-            child: GlassSurface(
-              margin: const EdgeInsets.fromLTRB(12, 6, 12, 12),
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-              fillColor: AppGlassTokens.sheetFillFor(context),
-              borderRadius: BorderRadius.circular(AppRadii.glassLarge),
-              boxShadow: AppShadows.glass,
-              child: AppButton(
-                text: '开始导出',
-                onPressed: _canExport() ? _handleExport : null,
-                isLoading: _isExporting,
-                isFullWidth: true,
-                type: AppButtonType.primary,
               ),
             ),
-          ),
-        ],
+
+            const SizedBox(height: 24),
+
+            // Export options
+            Text(
+              '选择导出内容',
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Meal proof option
+            _buildExportOptionCard(
+              title: '用餐证明',
+              subtitle: '订单截图汇总文档',
+              icon: Icons.restaurant_menu,
+              value: _exportMealProof,
+              formatLabel: 'PDF',
+              onToggle: (v) => setState(() => _exportMealProof = v),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Invoice option
+            _buildExportOptionCard(
+              title: '发票',
+              subtitle: '发票信息汇总文档',
+              icon: Icons.receipt_long,
+              value: _exportInvoice,
+              formatLabel: 'PDF',
+              onToggle: (v) => setState(() => _exportInvoice = v),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Meal details option
+            _buildExportOptionCard(
+              title: '用餐明细',
+              subtitle: '订单和发票明细表格',
+              icon: Icons.table_chart,
+              value: _exportMealDetails,
+              formatLabel: 'XLSX',
+              onToggle: (v) => setState(() => _exportMealDetails = v),
+            ),
+          ],
+        ),
+        bottom: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Meal proof export options group (新增)
+            _buildMealProofExportOptions(context),
+
+            // Invoice export options group (only visible when invoice export is enabled)
+            _buildInvoiceExportOptions(context),
+
+            // Meal details export options group
+            _buildMealDetailsExportOptions(context),
+
+            // Export button
+            AppButton(
+              text: '开始导出',
+              onPressed: _canExport() ? _handleExport : null,
+              isLoading: _isExporting,
+              isFullWidth: true,
+              type: AppButtonType.primary,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -402,27 +391,20 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: AppCard(
-        margin: EdgeInsets.zero,
-        backgroundColor: AppPalette.cardFillFor(context),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '用餐证明导出选项',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 12),
-              _buildMealProofRemarkOptionRow(context),
-            ],
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '用餐证明导出选项',
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
+          const SizedBox(height: 12),
+          _buildMealProofRemarkOptionRow(context),
+        ],
       ),
     );
   }
@@ -502,34 +484,27 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: AppCard(
-        margin: EdgeInsets.zero,
-        backgroundColor: AppPalette.cardFillFor(context),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '发票导出选项',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 12),
-              _buildInvoiceOptionRow(
-                context: context,
-                label: '标注订单时间',
-                value: _showInvoiceTimeLabel,
-                onToggle: (v) => setState(() => _showInvoiceTimeLabel = v),
-              ),
-              const SizedBox(height: 8),
-              _buildInvoiceRemarkOptionRow(context),
-            ],
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '发票导出选项',
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
+          const SizedBox(height: 12),
+          _buildInvoiceOptionRow(
+            context: context,
+            label: '标注订单时间',
+            value: _showInvoiceTimeLabel,
+            onToggle: (v) => setState(() => _showInvoiceTimeLabel = v),
+          ),
+          const SizedBox(height: 8),
+          _buildInvoiceRemarkOptionRow(context),
+        ],
       ),
     );
   }
@@ -544,32 +519,25 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: AppCard(
-        margin: EdgeInsets.zero,
-        backgroundColor: AppPalette.cardFillFor(context),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '用餐明细导出选项',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 12),
-              _buildInvoiceOptionRow(
-                context: context,
-                label: '忽略无用餐记录的日期',
-                value: _skipEmptyDays,
-                onToggle: (v) => setState(() => _skipEmptyDays = v),
-              ),
-            ],
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '用餐明细导出选项',
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
+          const SizedBox(height: 12),
+          _buildInvoiceOptionRow(
+            context: context,
+            label: '忽略无用餐记录的日期',
+            value: _skipEmptyDays,
+            onToggle: (v) => setState(() => _skipEmptyDays = v),
+          ),
+        ],
       ),
     );
   }

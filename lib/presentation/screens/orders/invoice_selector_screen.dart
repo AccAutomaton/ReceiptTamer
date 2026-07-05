@@ -8,7 +8,9 @@ import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
 import 'package:receipt_tamer/presentation/widgets/common/empty_state.dart';
 import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart';
+import 'package:receipt_tamer/presentation/widgets/common/floating_overlay_layout.dart';
 import 'package:receipt_tamer/presentation/widgets/order/invoice_selector_card.dart';
+
 enum OrderRelationFilter {
   all, // 全部
   withoutOrder, // 未关联订单
@@ -35,13 +37,11 @@ class InvoiceSelectorScreen extends ConsumerStatefulWidget {
   /// Order ID that will be linked to the selected invoice
   final int orderId;
 
-  const InvoiceSelectorScreen({
-    super.key,
-    required this.orderId,
-  });
+  const InvoiceSelectorScreen({super.key, required this.orderId});
 
   @override
-  ConsumerState<InvoiceSelectorScreen> createState() => _InvoiceSelectorScreenState();
+  ConsumerState<InvoiceSelectorScreen> createState() =>
+      _InvoiceSelectorScreenState();
 }
 
 class _InvoiceSelectorScreenState extends ConsumerState<InvoiceSelectorScreen> {
@@ -72,23 +72,29 @@ class _InvoiceSelectorScreenState extends ConsumerState<InvoiceSelectorScreen> {
 
     try {
       // Search invoices with filters
-      final invoices = await ref.read(invoiceRepositoryProvider).search(
-        sellerName: _searchKeyword.isNotEmpty ? _searchKeyword : null,
-        startDate: _startDate,
-        endDate: _endDate,
-        hasLinkedOrder: _relationFilter == OrderRelationFilter.withOrder
-            ? true
-            : _relationFilter == OrderRelationFilter.withoutOrder
+      final invoices = await ref
+          .read(invoiceRepositoryProvider)
+          .search(
+            sellerName: _searchKeyword.isNotEmpty ? _searchKeyword : null,
+            startDate: _startDate,
+            endDate: _endDate,
+            hasLinkedOrder: _relationFilter == OrderRelationFilter.withOrder
+                ? true
+                : _relationFilter == OrderRelationFilter.withoutOrder
                 ? false
                 : null,
-      );
+          );
 
       // Get order count for each invoice
       final invoicesWithCount = <InvoiceWithCount>[];
       for (final invoice in invoices) {
         if (invoice.id != null) {
-          final count = await ref.read(invoiceProvider.notifier).getOrderCountForInvoice(invoice.id!);
-          invoicesWithCount.add(InvoiceWithCount(invoice: invoice, orderCount: count));
+          final count = await ref
+              .read(invoiceProvider.notifier)
+              .getOrderCountForInvoice(invoice.id!);
+          invoicesWithCount.add(
+            InvoiceWithCount(invoice: invoice, orderCount: count),
+          );
         }
       }
 
@@ -102,9 +108,9 @@ class _InvoiceSelectorScreenState extends ConsumerState<InvoiceSelectorScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
         logService.e(LogConfig.moduleUi, '加载发票失败', e, stackTrace);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('加载发票失败: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('加载发票失败: $e')));
       }
     }
   }
@@ -140,7 +146,9 @@ class _InvoiceSelectorScreenState extends ConsumerState<InvoiceSelectorScreen> {
 
   Future<void> _selectInvoice(Invoice invoice) async {
     // Get current order IDs for this invoice
-    final currentOrderIds = await ref.read(invoiceProvider.notifier).getOrderIdsForInvoice(invoice.id!);
+    final currentOrderIds = await ref
+        .read(invoiceProvider.notifier)
+        .getOrderIdsForInvoice(invoice.id!);
 
     // Add the new order ID if not already present
     if (!currentOrderIds.contains(widget.orderId)) {
@@ -148,171 +156,169 @@ class _InvoiceSelectorScreenState extends ConsumerState<InvoiceSelectorScreen> {
     }
 
     // Update the invoice's order relations
-    await ref.read(invoiceProvider.notifier).updateOrderRelations(invoice.id!, currentOrderIds);
+    await ref
+        .read(invoiceProvider.notifier)
+        .updateOrderRelations(invoice.id!, currentOrderIds);
 
     if (mounted) {
-      Navigator.of(context).pop(InvoiceSelectorResult(selectedInvoiceId: invoice.id));
+      Navigator.of(
+        context,
+      ).pop(InvoiceSelectorResult(selectedInvoiceId: invoice.id));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('选择发票'),
-        elevation: 0,
-      ),
-      body: Column(
-        children: [
-          // Search and filter section
-          _buildFilterSection(context),
-
-          // Date filter chip
-          if (_startDate != null || _endDate != null)
-            _buildDateFilterChip(context),
-
-          // Invoice list
-          Expanded(
-            child: _buildInvoiceList(context),
-          ),
-        ],
+      appBar: AppBar(title: const Text('选择发票'), elevation: 0),
+      body: FloatingOverlayLayout(
+        top: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildFilterSection(context),
+            if (_startDate != null || _endDate != null)
+              _buildDateFilterChip(context),
+          ],
+        ),
+        bodyBuilder: (context, contentPadding) =>
+            _buildInvoiceList(context, contentPadding),
       ),
     );
   }
 
   Widget _buildFilterSection(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Search field
-          TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              hintText: '搜索销售方名称',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _searchKeyword.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () {
-                        _searchController.clear();
-                        _searchKeyword = '';
-                        _loadInvoices();
-                      },
-                    )
-                  : null,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              isDense: true,
+    return Column(
+      children: [
+        // Search field
+        TextField(
+          controller: _searchController,
+          decoration: InputDecoration(
+            hintText: '搜索销售方名称',
+            prefixIcon: const Icon(Icons.search),
+            suffixIcon: _searchKeyword.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      _searchController.clear();
+                      _searchKeyword = '';
+                      _loadInvoices();
+                    },
+                  )
+                : null,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 8,
             ),
-            onChanged: _onSearchChanged,
-            textInputAction: TextInputAction.search,
-            onSubmitted: (_) => _loadInvoices(),
+            isDense: true,
           ),
+          onChanged: _onSearchChanged,
+          textInputAction: TextInputAction.search,
+          onSubmitted: (_) => _loadInvoices(),
+        ),
 
-          const SizedBox(height: 12),
+        const SizedBox(height: 12),
 
-          // Filter chips row
-          Row(
-            children: [
-              // Order relation filter
-              Expanded(
-                child: SegmentedButton<OrderRelationFilter>(
-                  segments: const [
-                    ButtonSegment(
-                      value: OrderRelationFilter.all,
-                      label: Text('全部'),
-                    ),
-                    ButtonSegment(
-                      value: OrderRelationFilter.withoutOrder,
-                      label: Text('未关联'),
-                    ),
-                    ButtonSegment(
-                      value: OrderRelationFilter.withOrder,
-                      label: Text('已关联'),
-                    ),
-                  ],
-                  selected: {_relationFilter},
-                  onSelectionChanged: (Set<OrderRelationFilter> selection) {
-                    setState(() => _relationFilter = selection.first);
-                    _loadInvoices();
-                  },
-                  style: ButtonStyle(
-                    visualDensity: VisualDensity.compact,
-                    textStyle: WidgetStateProperty.all(
-                      const TextStyle(fontSize: 12),
-                    ),
+        // Filter chips row
+        Row(
+          children: [
+            // Order relation filter
+            Expanded(
+              child: SegmentedButton<OrderRelationFilter>(
+                segments: const [
+                  ButtonSegment(
+                    value: OrderRelationFilter.all,
+                    label: Text('全部'),
+                  ),
+                  ButtonSegment(
+                    value: OrderRelationFilter.withoutOrder,
+                    label: Text('未关联'),
+                  ),
+                  ButtonSegment(
+                    value: OrderRelationFilter.withOrder,
+                    label: Text('已关联'),
+                  ),
+                ],
+                selected: {_relationFilter},
+                onSelectionChanged: (Set<OrderRelationFilter> selection) {
+                  setState(() => _relationFilter = selection.first);
+                  _loadInvoices();
+                },
+                style: ButtonStyle(
+                  visualDensity: VisualDensity.compact,
+                  textStyle: WidgetStateProperty.all(
+                    const TextStyle(fontSize: 12),
                   ),
                 ),
               ),
+            ),
 
-              const SizedBox(width: 8),
+            const SizedBox(width: 8),
 
-              // Date filter button
-              IconButton.outlined(
-                onPressed: _showDateRangePicker,
-                icon: const Icon(Icons.date_range),
-                tooltip: '日期筛选',
-              ),
-            ],
-          ),
-        ],
-      ),
+            // Date filter button
+            IconButton.outlined(
+              onPressed: _showDateRangePicker,
+              icon: const Icon(Icons.date_range),
+              tooltip: '日期筛选',
+            ),
+          ],
+        ),
+      ],
     );
   }
 
   Widget _buildDateFilterChip(BuildContext context) {
-    final startStr = _startDate != null ? DateFormatter.formatDisplay(_startDate!) : '';
-    final endStr = _endDate != null ? DateFormatter.formatDisplay(_endDate!) : '';
+    final startStr = _startDate != null
+        ? DateFormatter.formatDisplay(_startDate!)
+        : '';
+    final endStr = _endDate != null
+        ? DateFormatter.formatDisplay(_endDate!)
+        : '';
     final dateRangeStr = startStr == endStr ? startStr : '$startStr - $endStr';
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Row(
-        children: [
-          Chip(
-            label: Text(dateRangeStr),
-            deleteIcon: const Icon(Icons.close, size: 16),
-            onDeleted: _clearDateFilter,
-          ),
-        ],
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Chip(
+          label: Text(dateRangeStr),
+          deleteIcon: const Icon(Icons.close, size: 16),
+          onDeleted: _clearDateFilter,
+        ),
       ),
     );
   }
 
-  Widget _buildInvoiceList(BuildContext context) {
+  Widget _buildInvoiceList(BuildContext context, EdgeInsets contentPadding) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return Padding(
+        padding: contentPadding,
+        child: const Center(child: CircularProgressIndicator()),
+      );
     }
 
     if (_invoicesWithCount.isEmpty) {
-      return EmptyState(
-        icon: Icons.description_outlined,
-        title: _searchKeyword.isNotEmpty ||
-                _startDate != null ||
-                _relationFilter != OrderRelationFilter.all
-            ? '没有找到符合条件的发票'
-            : '暂无发票',
+      return Padding(
+        padding: contentPadding,
+        child: EmptyState(
+          icon: Icons.description_outlined,
+          title:
+              _searchKeyword.isNotEmpty ||
+                  _startDate != null ||
+                  _relationFilter != OrderRelationFilter.all
+              ? '没有找到符合条件的发票'
+              : '暂无发票',
+        ),
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.fromLTRB(
+        0,
+        contentPadding.top + 8,
+        0,
+        contentPadding.bottom + 8,
+      ),
       itemCount: _invoicesWithCount.length,
       itemBuilder: (context, index) {
         final item = _invoicesWithCount[index];

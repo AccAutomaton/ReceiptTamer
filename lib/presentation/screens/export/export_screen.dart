@@ -8,7 +8,7 @@ import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
 import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart';
-import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
+import 'package:receipt_tamer/presentation/widgets/common/floating_overlay_layout.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_page_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_alert_dialog.dart';
@@ -51,26 +51,30 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
 
     return GlassPageScaffold(
       appBar: AppBar(title: const Text(AppConstants.titleExport), elevation: 0),
-      body: Column(
-        children: [
-          // Options and filters section
-          _buildOptionsSection(theme, colorScheme),
-
-          // Statistics card
-          _buildStatisticsCard(theme, colorScheme),
-
-          // Invoice list
-          Expanded(
-            child: _isLoadingInvoices
-                ? const Center(child: CircularProgressIndicator())
-                : _availableInvoices.isEmpty
-                ? _buildEmptyState(colorScheme)
-                : _buildInvoiceList(colorScheme),
-          ),
-
-          // Fixed export button at bottom
-          _buildBottomBar(theme, colorScheme),
-        ],
+      body: FloatingOverlayLayout(
+        top: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildOptionsSection(theme, colorScheme),
+            _buildStatisticsCard(theme, colorScheme),
+          ],
+        ),
+        bodyBuilder: (context, contentPadding) {
+          if (_isLoadingInvoices) {
+            return Padding(
+              padding: contentPadding,
+              child: const Center(child: CircularProgressIndicator()),
+            );
+          }
+          if (_availableInvoices.isEmpty) {
+            return Padding(
+              padding: contentPadding,
+              child: _buildEmptyState(colorScheme),
+            );
+          }
+          return _buildInvoiceList(colorScheme, contentPadding);
+        },
+        bottom: _buildBottomBar(theme, colorScheme),
       ),
     );
   }
@@ -80,70 +84,59 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         .where((i) => i.id != null && (_invoiceOrderCounts[i.id] ?? 0) > 0)
         .toList();
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      child: GlassSurface(
-        padding: const EdgeInsets.all(14),
-        borderRadius: BorderRadius.circular(AppRadii.card),
-        fillColor: AppGlassTokens.panelFillFor(context),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Hint text
+        Text(
+          '选择发票后，关联订单将被自动选中',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // Action buttons row
+        Row(
           children: [
-            // Hint text
-            Text(
-              '选择发票后，关联订单将被自动选中',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
+            TextButton.icon(
+              onPressed: selectableInvoices.isEmpty ? null : _selectAll,
+              icon: const Icon(Icons.select_all, size: 18),
+              label: const Text('全选'),
             ),
-
-            const SizedBox(height: 12),
-
-            // Action buttons row
-            Row(
-              children: [
-                TextButton.icon(
-                  onPressed: selectableInvoices.isEmpty ? null : _selectAll,
-                  icon: const Icon(Icons.select_all, size: 18),
-                  label: const Text('全选'),
-                ),
-                const SizedBox(width: 8),
-                TextButton.icon(
-                  onPressed: selectableInvoices.isEmpty
-                      ? null
-                      : _invertSelection,
-                  icon: const Icon(Icons.flip, size: 18),
-                  label: const Text('反选'),
-                ),
-                const SizedBox(width: 8),
-                TextButton.icon(
-                  onPressed: _showDateRangePicker,
-                  icon: const Icon(Icons.calendar_month, size: 18),
-                  label: const Text('日期筛选'),
-                ),
-              ],
+            const SizedBox(width: 8),
+            TextButton.icon(
+              onPressed: selectableInvoices.isEmpty ? null : _invertSelection,
+              icon: const Icon(Icons.flip, size: 18),
+              label: const Text('反选'),
             ),
-
-            // Date range chip
-            if (_startDate != null && _endDate != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Row(
-                  children: [
-                    Chip(
-                      label: Text(
-                        '${DateFormatter.formatDisplay(_startDate!)} - ${DateFormatter.formatDisplay(_endDate!)}',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                      deleteIcon: const Icon(Icons.close, size: 16),
-                      onDeleted: _clearDateRange,
-                    ),
-                  ],
-                ),
-              ),
+            const SizedBox(width: 8),
+            TextButton.icon(
+              onPressed: _showDateRangePicker,
+              icon: const Icon(Icons.calendar_month, size: 18),
+              label: const Text('日期筛选'),
+            ),
           ],
         ),
-      ),
+
+        // Date range chip
+        if (_startDate != null && _endDate != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Chip(
+                label: Text(
+                  '${DateFormatter.formatDisplay(_startDate!)} - ${DateFormatter.formatDisplay(_endDate!)}',
+                  style: const TextStyle(fontSize: 12),
+                ),
+                deleteIcon: const Icon(Icons.close, size: 16),
+                onDeleted: _clearDateRange,
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -155,7 +148,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     final selectedCount = _selectedInvoiceIds.length;
 
     return AppCard(
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.all(12),
       backgroundColor: selectedCount > 0
           ? AppPalette.selectedFillFor(context)
@@ -222,9 +215,12 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     );
   }
 
-  Widget _buildInvoiceList(ColorScheme colorScheme) {
+  Widget _buildInvoiceList(ColorScheme colorScheme, EdgeInsets contentPadding) {
     return ListView.builder(
-      padding: EdgeInsets.zero,
+      padding: EdgeInsets.only(
+        top: contentPadding.top,
+        bottom: contentPadding.bottom,
+      ),
       itemCount: _availableInvoices.length,
       itemBuilder: (context, index) {
         final invoice = _availableInvoices[index];
@@ -256,44 +252,34 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       (sum, invoice) => sum + invoice.totalAmount,
     );
 
-    return SafeArea(
-      top: false,
-      child: GlassSurface(
-        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        fillColor: AppGlassTokens.sheetFillFor(context),
-        borderRadius: BorderRadius.circular(AppRadii.glassLarge),
-        boxShadow: AppShadows.glass,
-        child: Row(
+    return Row(
+      children: [
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '已选择 ${_selectedInvoiceIds.length} 张发票',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                Text(
-                  '合计: ${DateFormatter.formatAmount(invoiceTotal)}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
+            Text(
+              '已选择 ${_selectedInvoiceIds.length} 张发票',
+              style: theme.textTheme.bodyMedium,
             ),
-            const Spacer(),
-            AppButton(
-              text: '导出',
-              onPressed: _selectedInvoiceIds.isEmpty
-                  ? null
-                  : _navigateToExportOptions,
-              icon: const Icon(Icons.file_download),
-              width: 112,
+            Text(
+              '合计: ${DateFormatter.formatAmount(invoiceTotal)}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
-      ),
+        const Spacer(),
+        AppButton(
+          text: '导出',
+          onPressed: _selectedInvoiceIds.isEmpty
+              ? null
+              : _navigateToExportOptions,
+          icon: const Icon(Icons.file_download),
+          width: 112,
+        ),
+      ],
     );
   }
 
