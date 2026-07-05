@@ -1,6 +1,7 @@
 import '../datasources/database/database_helper.dart';
 import '../datasources/database/order_table.dart';
 import '../models/order.dart';
+import '../models/uninvoiced_shop_summary.dart';
 
 /// Order repository
 /// Provides data access methods for orders using the order table
@@ -24,9 +25,9 @@ class OrderRepository {
   /// Update an existing order
   Future<int> update(Order order) async {
     final table = await _orderTable;
-    return await table.update(order.copyWith(
-      updatedAt: DateTime.now().toIso8601String(),
-    ));
+    return await table.update(
+      order.copyWith(updatedAt: DateTime.now().toIso8601String()),
+    );
   }
 
   /// Delete an order by ID
@@ -107,6 +108,32 @@ class OrderRepository {
     return await table.getWithoutInvoices();
   }
 
+  /// Get uninvoiced order summaries grouped by shop.
+  Future<List<UninvoicedShopSummary>> getUninvoicedShopSummaries({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final table = await _orderTable;
+    return await table.getUninvoicedShopSummaries(
+      startDate: startDate,
+      endDate: endDate,
+    );
+  }
+
+  /// Get uninvoiced order details for a shop.
+  Future<List<Order>> getUninvoicedOrdersForShop(
+    String shopKey, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final table = await _orderTable;
+    return await table.getUninvoicedOrdersForShop(
+      shopKey,
+      startDate: startDate,
+      endDate: endDate,
+    );
+  }
+
   /// Search orders by multiple criteria
   /// [hasLinkedInvoice] - null: all orders, true: only orders with invoices, false: only orders without invoices
   Future<List<Order>> search({
@@ -160,7 +187,9 @@ class OrderRepository {
     int? excludeInvoiceId,
   }) async {
     final table = await _orderTable;
-    return await table.getOrdersWithInvoiceInfo(excludeInvoiceId: excludeInvoiceId);
+    return await table.getOrdersWithInvoiceInfo(
+      excludeInvoiceId: excludeInvoiceId,
+    );
   }
 
   /// Get invoice IDs linked to a specific order

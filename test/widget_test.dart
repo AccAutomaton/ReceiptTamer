@@ -13,8 +13,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:receipt_tamer/app.dart';
 import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
+import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/data/models/llm_backend.dart';
+import 'package:receipt_tamer/data/models/order.dart';
+import 'package:receipt_tamer/data/repositories/invoice_repository.dart';
+import 'package:receipt_tamer/data/repositories/order_repository.dart';
 import 'package:receipt_tamer/data/services/llm_config_service.dart';
+import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
+import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 
 void main() {
   const llmChannel = MethodChannel('com.acautomaton.receipt.tamer/llm');
@@ -45,9 +51,7 @@ void main() {
 
   testWidgets('App smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(
-      const ProviderScope(child: App(enableBackgroundInitialization: false)),
-    );
+    await tester.pumpWidget(_testApp(enableBackgroundInitialization: false));
 
     // Render one frame; background services are covered outside this smoke test.
     await tester.pump();
@@ -58,14 +62,14 @@ void main() {
       find.byKey(const ValueKey('glass_nav_center_action')),
       findsOneWidget,
     );
+
+    await _unmountApp(tester);
   });
 
   testWidgets('Center action opens glass add sheet', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(
-      const ProviderScope(child: App(enableBackgroundInitialization: false)),
-    );
+    await tester.pumpWidget(_testApp(enableBackgroundInitialization: false));
     await tester.pump();
 
     await tester.tap(find.byKey(const ValueKey('glass_nav_center_action')));
@@ -73,16 +77,28 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
 
     expect(find.byKey(const ValueKey('glass_add_sheet')), findsOneWidget);
-    expect(find.text('添加订单'), findsOneWidget);
-    expect(find.text('添加发票'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('glass_add_sheet')),
+        matching: find.text('添加订单'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('glass_add_sheet')),
+        matching: find.text('添加发票'),
+      ),
+      findsOneWidget,
+    );
+
+    await _unmountApp(tester);
   });
 
   testWidgets('App uses cold action-forward visual palette', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(
-      const ProviderScope(child: App(enableBackgroundInitialization: false)),
-    );
+    await tester.pumpWidget(_testApp(enableBackgroundInitialization: false));
     await tester.pump();
 
     final context = tester.element(find.byType(Scaffold).first);
@@ -90,6 +106,8 @@ void main() {
 
     expect(colorScheme.primary, AppPalette.actionPrimary);
     expect(colorScheme.surface, AppPalette.coldBackground);
+
+    await _unmountApp(tester);
   });
 
   testWidgets('App preloads local model after startup when configured', (
@@ -112,7 +130,7 @@ void main() {
           return null;
         });
 
-    await tester.pumpWidget(const ProviderScope(child: App()));
+    await tester.pumpWidget(_testApp());
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 150));
     await tester.pump();
@@ -120,5 +138,37 @@ void main() {
     expect(calls, contains('initialize'));
 
     await tester.pump(const Duration(milliseconds: 700));
+    await _unmountApp(tester);
   });
+}
+
+Future<void> _unmountApp(WidgetTester tester) async {
+  await tester.pumpWidget(const SizedBox.shrink());
+  await tester.pump(const Duration(milliseconds: 1));
+}
+
+ProviderScope _testApp({bool enableBackgroundInitialization = true}) {
+  return ProviderScope(
+    overrides: [
+      orderRepositoryProvider.overrideWithValue(_FakeOrderRepository()),
+      invoiceRepositoryProvider.overrideWithValue(_FakeInvoiceRepository()),
+    ],
+    child: App(enableBackgroundInitialization: enableBackgroundInitialization),
+  );
+}
+
+class _FakeOrderRepository extends OrderRepository {
+  @override
+  Future<List<Order>> getAll({int? limit, int? offset}) async => const [];
+
+  @override
+  Future<int> getCount() async => 0;
+}
+
+class _FakeInvoiceRepository extends InvoiceRepository {
+  @override
+  Future<List<Invoice>> getAll({int? limit, int? offset}) async => const [];
+
+  @override
+  Future<int> getCount() async => 0;
 }

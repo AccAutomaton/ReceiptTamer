@@ -17,6 +17,7 @@ import '../presentation/screens/export/export_mode_screen.dart';
 import '../presentation/screens/export/order_export_screen.dart';
 import '../presentation/screens/export/meal_proof_order_select_screen.dart';
 import '../presentation/screens/export/invoice_quick_select_screen.dart';
+import '../presentation/screens/invoice_assistant/invoice_assistant_screen.dart';
 import '../presentation/screens/settings/settings_screen.dart';
 import '../presentation/screens/settings/data_cleanup_screen.dart';
 import '../presentation/screens/settings/info_screen.dart';
@@ -187,6 +188,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           final orderId = state.uri.queryParameters['orderId'] != null
               ? int.tryParse(state.uri.queryParameters['orderId']!)
               : null;
+          final orderIdsStr = state.uri.queryParameters['orderIds'] ?? '';
+          final orderIds = orderIdsStr.isEmpty
+              ? <int>[]
+              : orderIdsStr
+                    .split(',')
+                    .map((id) => int.tryParse(id))
+                    .whereType<int>()
+                    .toList();
           final sharedPath = state.uri.queryParameters['sharedPath'];
           final remainingCount =
               state.uri.queryParameters['remainingCount'] != null
@@ -203,6 +212,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           }
           return InvoiceEditScreen(
             initialOrderId: orderId,
+            initialOrderIds: orderIds,
             initialFilePath: decodedPath,
             remainingSharedCount: remainingCount ?? 0,
           );
@@ -284,6 +294,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/export/invoice',
         name: 'invoice_export',
         builder: (context, state) => const InvoiceQuickSelectScreen(),
+      ),
+      GoRoute(
+        path: '/invoice-assistant',
+        name: 'invoice_assistant',
+        builder: (context, state) => const InvoiceAssistantScreen(),
       ),
       // Data cleanup routes
       GoRoute(

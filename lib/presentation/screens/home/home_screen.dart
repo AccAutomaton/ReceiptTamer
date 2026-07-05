@@ -241,15 +241,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        // 第二行：报销材料导出
+        // 第二行：开票助手 + 报销材料导出
         Row(
           children: [
+            Expanded(
+              child: _QuickAccessButton(
+                icon: Icons.storefront,
+                label: '开票助手',
+                color: AppPalette.actionSecondaryFor(context),
+                onTap: () => context.push('/invoice-assistant'),
+              ),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: _QuickAccessButton(
                 icon: Icons.file_download_outlined,
                 label: '报销材料导出',
                 color: AppPalette.actionPrimaryFor(context),
-                centerContent: true,
                 onTap: () => context.push('/export'),
               ),
             ),
@@ -455,14 +463,12 @@ class _QuickAccessButton extends StatelessWidget {
   final String label;
   final Color color;
   final VoidCallback onTap;
-  final bool centerContent;
 
   const _QuickAccessButton({
     required this.icon,
     required this.label,
     required this.color,
     required this.onTap,
-    this.centerContent = false,
   });
 
   @override
@@ -479,7 +485,7 @@ class _QuickAccessButton extends StatelessWidget {
     );
     final labelText = FittedBox(
       fit: BoxFit.scaleDown,
-      alignment: centerContent ? Alignment.center : Alignment.centerLeft,
+      alignment: Alignment.centerLeft,
       child: Text(
         label,
         style: theme.textTheme.bodyMedium?.copyWith(
@@ -503,14 +509,11 @@ class _QuickAccessButton extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 58),
         child: Row(
-          mainAxisAlignment: centerContent
-              ? MainAxisAlignment.center
-              : MainAxisAlignment.start,
-          mainAxisSize: centerContent ? MainAxisSize.min : MainAxisSize.max,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             iconChip,
             const SizedBox(width: 12),
-            if (centerContent) labelText else Expanded(child: labelText),
+            Expanded(child: labelText),
           ],
         ),
       ),

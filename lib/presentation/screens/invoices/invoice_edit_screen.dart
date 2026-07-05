@@ -29,6 +29,7 @@ import 'package:receipt_tamer/presentation/widgets/invoice/invoice_image_preview
 class InvoiceEditScreen extends ConsumerStatefulWidget {
   final int? invoiceId; // If null, creating new invoice
   final int? initialOrderId; // Optional initial order ID
+  final List<int> initialOrderIds; // Optional initial order IDs
   final String? initialFilePath; // Optional initial file path (image or PDF)
   final int remainingSharedCount; // Remaining shared files to process
 
@@ -36,9 +37,21 @@ class InvoiceEditScreen extends ConsumerStatefulWidget {
     super.key,
     this.invoiceId,
     this.initialOrderId,
+    this.initialOrderIds = const [],
     this.initialFilePath,
     this.remainingSharedCount = 0,
   });
+
+  List<int> get effectiveInitialOrderIds {
+    final ids = <int>[];
+    for (final orderId in initialOrderIds) {
+      if (!ids.contains(orderId)) ids.add(orderId);
+    }
+    if (initialOrderId != null && !ids.contains(initialOrderId)) {
+      ids.add(initialOrderId!);
+    }
+    return ids;
+  }
 
   @override
   ConsumerState<InvoiceEditScreen> createState() => _InvoiceEditScreenState();
@@ -65,9 +78,7 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
   void initState() {
     super.initState();
     _loadSellerNames();
-    if (widget.initialOrderId != null) {
-      _selectedOrderIds = [widget.initialOrderId!];
-    }
+    _selectedOrderIds = widget.effectiveInitialOrderIds;
     // Handle initial file path from share
     if (widget.initialFilePath != null) {
       _filePath = widget.initialFilePath;
@@ -83,7 +94,10 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
     super.didUpdateWidget(oldWidget);
     // 当导航到新的发票时（例如继续添加下一个），重置所有状态
     if (oldWidget.initialFilePath != widget.initialFilePath ||
-        oldWidget.invoiceId != widget.invoiceId) {
+        oldWidget.invoiceId != widget.invoiceId ||
+        oldWidget.initialOrderId != widget.initialOrderId ||
+        oldWidget.initialOrderIds.join(',') !=
+            widget.initialOrderIds.join(',')) {
       _resetState();
     }
   }
@@ -97,9 +111,7 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
     // 重置状态
     setState(() {
       _invoiceDate = null;
-      _selectedOrderIds = widget.initialOrderId != null
-          ? [widget.initialOrderId!]
-          : [];
+      _selectedOrderIds = widget.effectiveInitialOrderIds;
       _filePath = widget.initialFilePath;
       _isPdf = widget.initialFilePath?.toLowerCase().endsWith('.pdf') ?? false;
       _hasOcrResult = false;

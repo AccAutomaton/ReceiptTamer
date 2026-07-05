@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 
 import '../../models/order.dart';
+import '../../models/uninvoiced_shop_summary.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/services/log_service.dart';
 import '../../../core/services/log_config.dart';
@@ -30,11 +31,14 @@ class OrderTable {
       "WHEN 'breakfast' THEN 3 "
       'ELSE 4 END ASC';
 
+  static const String _normalizedShopKeyExpression =
+      "trim(coalesce(o.${AppConstants.colShopName}, ''))";
+
   /// Parse order from query result with has_invoice field
   Order _parseOrderWithInvoice(Map<String, dynamic> map) {
-    return Order.fromJson(map).copyWith(
-      hasInvoice: (map['has_invoice'] as int?) == 1,
-    );
+    return Order.fromJson(
+      map,
+    ).copyWith(hasInvoice: (map['has_invoice'] as int?) == 1);
   }
 
   /// Insert a new order into the database
@@ -45,7 +49,10 @@ class OrderTable {
         order.toJson(),
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
-      logService.i(LogConfig.moduleDb, '订单已插入: id=$id, shop="${order.shopName}", amount=${order.amount}');
+      logService.i(
+        LogConfig.moduleDb,
+        '订单已插入: id=$id, shop="${order.shopName}", amount=${order.amount}',
+      );
       return id;
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleDb, '订单插入失败', e, stackTrace);
@@ -62,7 +69,10 @@ class OrderTable {
         where: '${AppConstants.colId} = ?',
         whereArgs: [order.id],
       );
-      logService.i(LogConfig.moduleDb, '订单已更新: id=${order.id}, rowsAffected=$count');
+      logService.i(
+        LogConfig.moduleDb,
+        '订单已更新: id=${order.id}, rowsAffected=$count',
+      );
       return count;
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleDb, '订单更新失败', e, stackTrace);
@@ -146,7 +156,8 @@ class OrderTable {
         AppConstants.ordersTable,
         where: '${AppConstants.colShopName} LIKE ?',
         whereArgs: ['%$shopName%'],
-        orderBy: '${AppConstants.colOrderDate} DESC, '
+        orderBy:
+            '${AppConstants.colOrderDate} DESC, '
             'CASE ${AppConstants.colMealTime} '
             "WHEN 'dinner' THEN 1 "
             "WHEN 'lunch' THEN 2 "
@@ -156,7 +167,12 @@ class OrderTable {
 
       return maps.map((map) => Order.fromJson(map)).toList();
     } catch (e, stackTrace) {
-      logService.e(LogConfig.moduleDb, '按店铺名称查询订单失败: shopName="$shopName"', e, stackTrace);
+      logService.e(
+        LogConfig.moduleDb,
+        '按店铺名称查询订单失败: shopName="$shopName"',
+        e,
+        stackTrace,
+      );
       rethrow;
     }
   }
@@ -168,7 +184,8 @@ class OrderTable {
         AppConstants.ordersTable,
         where: '${AppConstants.colOrderNumber} = ?',
         whereArgs: [orderNumber],
-        orderBy: '${AppConstants.colOrderDate} DESC, '
+        orderBy:
+            '${AppConstants.colOrderDate} DESC, '
             'CASE ${AppConstants.colMealTime} '
             "WHEN 'dinner' THEN 1 "
             "WHEN 'lunch' THEN 2 "
@@ -178,7 +195,12 @@ class OrderTable {
 
       return maps.map((map) => Order.fromJson(map)).toList();
     } catch (e, stackTrace) {
-      logService.e(LogConfig.moduleDb, '按订单号查询订单失败: orderNumber="$orderNumber"', e, stackTrace);
+      logService.e(
+        LogConfig.moduleDb,
+        '按订单号查询订单失败: orderNumber="$orderNumber"',
+        e,
+        stackTrace,
+      );
       rethrow;
     }
   }
@@ -236,7 +258,11 @@ class OrderTable {
   Future<List<Order>> getThisMonthOrders() async {
     final now = DateTime.now();
     final startOfMonth = DateTime(now.year, now.month, 1);
-    final endOfMonth = DateTime(now.year, now.month + 1, 0); // Last day of month
+    final endOfMonth = DateTime(
+      now.year,
+      now.month + 1,
+      0,
+    ); // Last day of month
 
     return getByDateRange(startOfMonth, endOfMonth);
   }
@@ -320,6 +346,99 @@ class OrderTable {
     }
   }
 
+  /// Get uninvoiced order summaries grouped by shop.
+  Future<List<UninvoicedShopSummary>> getUninvoicedShopSummaries({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      final conditions = <String>['r.${AppConstants.colOrderId} IS NULL'];
+      final args = <dynamic>[];
+
+      if (startDate != null) {
+        conditions.add('substr(o.${AppConstants.colOrderDate}, 1, 10) >= ?');
+        args.add(_formatDate(startDate));
+      }
+      if (endDate != null) {
+        conditions.add('substr(o.${AppConstants.colOrderDate}, 1, 10) <= ?');
+        args.add(_formatDate(endDate));
+      }
+
+      final whereClause = 'WHERE ${conditions.join(' AND ')}';
+
+      final maps = await database.rawQuery('''
+        SELECT
+          $_normalizedShopKeyExpression AS shop_key,
+          CASE
+            WHEN $_normalizedShopKeyExpression = '' THEN '未命名店铺'
+            ELSE $_normalizedShopKeyExpression
+          END AS display_name,
+          COUNT(*) AS order_count,
+          COALESCE(SUM(o.${AppConstants.colAmount}), 0) AS total_amount
+        FROM ${AppConstants.ordersTable} o
+        $_invoiceJoinClause
+        $whereClause
+        GROUP BY shop_key
+        ORDER BY total_amount DESC, order_count DESC, display_name ASC
+        ''', args);
+
+      return maps.map((map) {
+        return UninvoicedShopSummary(
+          shopKey: map['shop_key'] as String? ?? '',
+          displayName: map['display_name'] as String? ?? '未命名店铺',
+          orderCount: (map['order_count'] as num?)?.toInt() ?? 0,
+          totalAmount: (map['total_amount'] as num?)?.toDouble() ?? 0.0,
+        );
+      }).toList();
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleDb, '获取未开票店铺汇总失败', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  /// Get uninvoiced order details for a shop.
+  Future<List<Order>> getUninvoicedOrdersForShop(
+    String shopKey, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      final conditions = <String>[
+        'r.${AppConstants.colOrderId} IS NULL',
+        '$_normalizedShopKeyExpression = ?',
+      ];
+      final args = <dynamic>[shopKey.trim()];
+
+      if (startDate != null) {
+        conditions.add('substr(o.${AppConstants.colOrderDate}, 1, 10) >= ?');
+        args.add(_formatDate(startDate));
+      }
+      if (endDate != null) {
+        conditions.add('substr(o.${AppConstants.colOrderDate}, 1, 10) <= ?');
+        args.add(_formatDate(endDate));
+      }
+
+      final whereClause = 'WHERE ${conditions.join(' AND ')}';
+      final maps = await database.rawQuery('''
+        SELECT o.*, $_hasInvoiceColumn
+        FROM ${AppConstants.ordersTable} o
+        $_invoiceJoinClause
+        $whereClause
+        $_orderByClause
+        ''', args);
+
+      return maps.map(_parseOrderWithInvoice).toList();
+    } catch (e, stackTrace) {
+      logService.e(
+        LogConfig.moduleDb,
+        '获取店铺未开票订单失败: shopKey="$shopKey"',
+        e,
+        stackTrace,
+      );
+      rethrow;
+    }
+  }
+
   /// Search orders by multiple criteria
   /// [hasLinkedInvoice] - null: all orders, true: only orders with invoices, false: only orders without invoices
   /// When both shopName and orderNumber are provided with the same value (keyword search),
@@ -344,7 +463,9 @@ class OrderTable {
           orderNumber != null &&
           orderNumber.isNotEmpty &&
           shopName == orderNumber) {
-        conditions.add('(o.${AppConstants.colShopName} LIKE ? OR o.${AppConstants.colOrderNumber} LIKE ?)');
+        conditions.add(
+          '(o.${AppConstants.colShopName} LIKE ? OR o.${AppConstants.colOrderNumber} LIKE ?)',
+        );
         args.add('%$shopName%');
         args.add('%$orderNumber%');
       } else {
@@ -430,7 +551,9 @@ class OrderTable {
 
       // Keyword search (shopName OR orderNumber)
       if (keyword != null && keyword.isNotEmpty) {
-        conditions.add('(${AppConstants.colShopName} LIKE ? OR ${AppConstants.colOrderNumber} LIKE ?)');
+        conditions.add(
+          '(${AppConstants.colShopName} LIKE ? OR ${AppConstants.colOrderNumber} LIKE ?)',
+        );
         args.add('%$keyword%');
         args.add('%$keyword%');
       }
@@ -459,10 +582,12 @@ class OrderTable {
       String invoiceRelationClause = '';
       if (hasInvoice == true) {
         // "已关联": Show orders with invoices (including current invoice's orders)
-        invoiceRelationClause = 'o.${AppConstants.colId} IN (SELECT DISTINCT ${AppConstants.colOrderId} FROM ${AppConstants.invoiceOrderRelationsTable})';
+        invoiceRelationClause =
+            'o.${AppConstants.colId} IN (SELECT DISTINCT ${AppConstants.colOrderId} FROM ${AppConstants.invoiceOrderRelationsTable})';
       } else if (hasInvoice == false) {
         // "未关联": Only show orders without ANY invoices (not including current invoice's orders)
-        invoiceRelationClause = 'o.${AppConstants.colId} NOT IN (SELECT DISTINCT ${AppConstants.colOrderId} FROM ${AppConstants.invoiceOrderRelationsTable})';
+        invoiceRelationClause =
+            'o.${AppConstants.colId} NOT IN (SELECT DISTINCT ${AppConstants.colOrderId} FROM ${AppConstants.invoiceOrderRelationsTable})';
       }
       // When hasInvoice is null ("全部"), no filter - all orders are shown
 
@@ -475,12 +600,15 @@ class OrderTable {
         allConditions.add(invoiceRelationClause);
       }
 
-      final whereClause = allConditions.isNotEmpty ? 'WHERE ${allConditions.join(' AND ')}' : '';
+      final whereClause = allConditions.isNotEmpty
+          ? 'WHERE ${allConditions.join(' AND ')}'
+          : '';
 
       // Build ORDER BY clause - put orders linked to current invoice first
       String orderByClause;
       if (excludeInvoiceId != null) {
-        orderByClause = '''
+        orderByClause =
+            '''
           CASE WHEN o.${AppConstants.colId} IN (SELECT ${AppConstants.colOrderId} FROM ${AppConstants.invoiceOrderRelationsTable} WHERE ${AppConstants.colInvoiceId} = ?) THEN 0 ELSE 1 END,
           o.${AppConstants.colOrderDate} DESC,
           CASE o.${AppConstants.colMealTime}
@@ -491,7 +619,8 @@ class OrderTable {
         ''';
         args.add(excludeInvoiceId);
       } else {
-        orderByClause = '''
+        orderByClause =
+            '''
           o.${AppConstants.colOrderDate} DESC,
           CASE o.${AppConstants.colMealTime}
           WHEN 'dinner' THEN 1
@@ -525,7 +654,8 @@ class OrderTable {
       final args = <dynamic>[];
 
       if (excludeInvoiceId != null) {
-        excludeClause = 'WHERE o.${AppConstants.colId} NOT IN (SELECT ${AppConstants.colOrderId} FROM ${AppConstants.invoiceOrderRelationsTable} WHERE ${AppConstants.colInvoiceId} = ?)';
+        excludeClause =
+            'WHERE o.${AppConstants.colId} NOT IN (SELECT ${AppConstants.colOrderId} FROM ${AppConstants.invoiceOrderRelationsTable} WHERE ${AppConstants.colInvoiceId} = ?)';
         args.add(excludeInvoiceId);
       }
 
@@ -562,7 +692,12 @@ class OrderTable {
 
       return maps.map((map) => map[AppConstants.colInvoiceId] as int).toList();
     } catch (e, stackTrace) {
-      logService.e(LogConfig.moduleDb, '获取订单关联的发票ID失败: orderId=$orderId', e, stackTrace);
+      logService.e(
+        LogConfig.moduleDb,
+        '获取订单关联的发票ID失败: orderId=$orderId',
+        e,
+        stackTrace,
+      );
       rethrow;
     }
   }
