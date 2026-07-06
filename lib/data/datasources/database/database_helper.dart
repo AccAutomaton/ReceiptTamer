@@ -6,6 +6,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/services/log_service.dart';
 import '../../../core/services/log_config.dart';
+import 'invoice_order_relation_table.dart';
 
 /// Database helper class for managing SQLite database
 class DatabaseHelper {
@@ -40,9 +41,20 @@ class DatabaseHelper {
     return await openDatabase(
       path,
       version: AppConstants.databaseVersion,
+      onConfigure: _onConfigure,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
+      onOpen: _onOpen,
     );
+  }
+
+  Future<void> _onConfigure(Database db) async {
+    await db.execute('PRAGMA foreign_keys = ON');
+    logService.i(LogConfig.moduleDb, 'SQLite 外键约束已启用');
+  }
+
+  Future<void> _onOpen(Database db) async {
+    await InvoiceOrderRelationTable(database: db).deleteOrphanedRelations();
   }
 
   /// Create tables when database is first created
@@ -91,7 +103,10 @@ class DatabaseHelper {
         FOREIGN KEY (${AppConstants.colOrderId}) REFERENCES ${AppConstants.ordersTable}(${AppConstants.colId}) ON DELETE CASCADE
       )
     ''');
-    logService.i(LogConfig.moduleDb, '已创建 ${AppConstants.invoiceOrderRelationsTable} 表');
+    logService.i(
+      LogConfig.moduleDb,
+      '已创建 ${AppConstants.invoiceOrderRelationsTable} 表',
+    );
 
     // Create indexes for better query performance
     await db.execute('''
@@ -113,7 +128,10 @@ class DatabaseHelper {
     ''');
 
     stopwatch.stop();
-    logService.i(LogConfig.moduleDb, '数据库表创建成功，耗时: ${stopwatch.elapsedMilliseconds}ms');
+    logService.i(
+      LogConfig.moduleDb,
+      '数据库表创建成功，耗时: ${stopwatch.elapsedMilliseconds}ms',
+    );
   }
 
   /// Upgrade database when version changes

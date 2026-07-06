@@ -13,6 +13,12 @@ class InvoiceTable {
 
   InvoiceTable({required this.database});
 
+  static const String _validInvoiceIdWithOrderSubquery =
+      'SELECT DISTINCT r.${AppConstants.colInvoiceId} '
+      'FROM ${AppConstants.invoiceOrderRelationsTable} r '
+      'INNER JOIN ${AppConstants.ordersTable} o '
+      'ON r.${AppConstants.colOrderId} = o.${AppConstants.colId}';
+
   /// Insert a new invoice into the database
   Future<int> insert(Invoice invoice) async {
     try {
@@ -263,7 +269,7 @@ class InvoiceTable {
       final List<Map<String, dynamic>> maps = await database.rawQuery('''
         SELECT * FROM ${AppConstants.invoicesTable}
         WHERE ${AppConstants.colId} NOT IN (
-          SELECT DISTINCT ${AppConstants.colInvoiceId} FROM ${AppConstants.invoiceOrderRelationsTable}
+          $_validInvoiceIdWithOrderSubquery
         )
         ORDER BY ${AppConstants.colCreatedAt} DESC
         ''');
@@ -337,8 +343,11 @@ class InvoiceTable {
     try {
       final result = await database.rawQuery(
         '''
-        SELECT COUNT(*) as count FROM ${AppConstants.invoiceOrderRelationsTable}
-        WHERE ${AppConstants.colOrderId} = ?
+        SELECT COUNT(*) as count
+        FROM ${AppConstants.invoiceOrderRelationsTable} r
+        INNER JOIN ${AppConstants.invoicesTable} i
+        ON r.${AppConstants.colInvoiceId} = i.${AppConstants.colId}
+        WHERE r.${AppConstants.colOrderId} = ?
         ''',
         [orderId],
       );
@@ -420,11 +429,11 @@ class InvoiceTable {
       if (hasLinkedOrder == true) {
         whereClause += conditions.isNotEmpty ? ' AND ' : 'WHERE ';
         whereClause +=
-            '${AppConstants.colId} IN (SELECT DISTINCT ${AppConstants.colInvoiceId} FROM ${AppConstants.invoiceOrderRelationsTable})';
+            '${AppConstants.colId} IN ($_validInvoiceIdWithOrderSubquery)';
       } else if (hasLinkedOrder == false) {
         whereClause += conditions.isNotEmpty ? ' AND ' : 'WHERE ';
         whereClause +=
-            '${AppConstants.colId} NOT IN (SELECT DISTINCT ${AppConstants.colInvoiceId} FROM ${AppConstants.invoiceOrderRelationsTable})';
+            '${AppConstants.colId} NOT IN ($_validInvoiceIdWithOrderSubquery)';
       }
 
       final List<Map<String, dynamic>> maps = await database.rawQuery(
@@ -447,7 +456,12 @@ class InvoiceTable {
         SELECT i.*, o.${AppConstants.colShopName}, o.${AppConstants.colAmount} as order_amount,
                o.${AppConstants.colOrderDate}, o.${AppConstants.colMealTime}, o.${AppConstants.colOrderNumber}
         FROM ${AppConstants.invoicesTable} i
-        LEFT JOIN ${AppConstants.invoiceOrderRelationsTable} r ON i.${AppConstants.colId} = r.${AppConstants.colInvoiceId}
+        LEFT JOIN (
+          SELECT r.${AppConstants.colInvoiceId}, r.${AppConstants.colOrderId}
+          FROM ${AppConstants.invoiceOrderRelationsTable} r
+          INNER JOIN ${AppConstants.ordersTable} linked_o
+          ON r.${AppConstants.colOrderId} = linked_o.${AppConstants.colId}
+        ) r ON i.${AppConstants.colId} = r.${AppConstants.colInvoiceId}
         LEFT JOIN ${AppConstants.ordersTable} o ON r.${AppConstants.colOrderId} = o.${AppConstants.colId}
         ORDER BY i.${AppConstants.colCreatedAt} DESC
         ''');

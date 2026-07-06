@@ -107,6 +107,57 @@ void main() {
     expect(orders.map((order) => order.id), [newerOrderId, 1]);
     expect(orders.map((order) => order.hasInvoice), everyElement(isFalse));
   });
+
+  test(
+    'shows an order as uninvoiced when its linked invoice was deleted',
+    () async {
+      final orderId = await _insertOrder(
+        table,
+        shopName: '残留关系餐厅',
+        amount: 18,
+        orderDate: '2026-06-18',
+      );
+      final invoiceId = await _linkInvoice(db, orderId);
+      await db.delete(
+        AppConstants.invoicesTable,
+        where: '${AppConstants.colId} = ?',
+        whereArgs: [invoiceId],
+      );
+
+      final orders = await table.getAll();
+
+      expect(orders.single.id, orderId);
+      expect(orders.single.hasInvoice, isFalse);
+    },
+  );
+
+  test(
+    'invoice relation filters ignore relations to deleted invoices',
+    () async {
+      final orderId = await _insertOrder(
+        table,
+        shopName: '筛选残留关系餐厅',
+        amount: 22,
+        orderDate: '2026-06-19',
+      );
+      final invoiceId = await _linkInvoice(db, orderId);
+      await db.delete(
+        AppConstants.invoicesTable,
+        where: '${AppConstants.colId} = ?',
+        whereArgs: [invoiceId],
+      );
+
+      final withInvoice = await table.searchWithInvoiceRelation(
+        hasInvoice: true,
+      );
+      final withoutInvoice = await table.searchWithInvoiceRelation(
+        hasInvoice: false,
+      );
+
+      expect(withInvoice, isEmpty);
+      expect(withoutInvoice.map((order) => order.id), [orderId]);
+    },
+  );
 }
 
 Future<int> _insertOrder(
@@ -129,7 +180,7 @@ Future<int> _insertOrder(
   );
 }
 
-Future<void> _linkInvoice(Database db, int orderId) async {
+Future<int> _linkInvoice(Database db, int orderId) async {
   final invoiceId = await db.insert(AppConstants.invoicesTable, {
     AppConstants.colImagePath: 'invoice.pdf',
     AppConstants.colInvoiceNumber: 'invoice-$orderId',
@@ -143,6 +194,7 @@ Future<void> _linkInvoice(Database db, int orderId) async {
     AppConstants.colInvoiceId: invoiceId,
     AppConstants.colOrderId: orderId,
   });
+  return invoiceId;
 }
 
 Future<void> _createSchema(Database db) async {

@@ -14,8 +14,14 @@ class OrderTable {
   OrderTable({required this.database});
 
   /// SQL fragment for LEFT JOIN with invoice relations to check if order has linked invoice
+  static const String _validInvoiceOrderIdSubquery =
+      'SELECT DISTINCT r.${AppConstants.colOrderId} '
+      'FROM ${AppConstants.invoiceOrderRelationsTable} r '
+      'INNER JOIN ${AppConstants.invoicesTable} i '
+      'ON r.${AppConstants.colInvoiceId} = i.${AppConstants.colId}';
+
   static const String _invoiceJoinClause =
-      'LEFT JOIN (SELECT DISTINCT ${AppConstants.colOrderId} FROM ${AppConstants.invoiceOrderRelationsTable}) r '
+      'LEFT JOIN ($_validInvoiceOrderIdSubquery) r '
       'ON o.${AppConstants.colId} = r.${AppConstants.colOrderId}';
 
   /// SQL fragment for has_invoice computed column
@@ -329,7 +335,7 @@ class OrderTable {
       final List<Map<String, dynamic>> maps = await database.rawQuery(
         'SELECT o.* FROM ${AppConstants.ordersTable} o '
         'WHERE o.${AppConstants.colId} NOT IN ('
-        '  SELECT DISTINCT ${AppConstants.colOrderId} FROM ${AppConstants.invoiceOrderRelationsTable}'
+        '  $_validInvoiceOrderIdSubquery'
         ') '
         'ORDER BY o.${AppConstants.colOrderDate} DESC, '
         'CASE o.${AppConstants.colMealTime} '
@@ -583,11 +589,11 @@ class OrderTable {
       if (hasInvoice == true) {
         // "已关联": Show orders with invoices (including current invoice's orders)
         invoiceRelationClause =
-            'o.${AppConstants.colId} IN (SELECT DISTINCT ${AppConstants.colOrderId} FROM ${AppConstants.invoiceOrderRelationsTable})';
+            'o.${AppConstants.colId} IN ($_validInvoiceOrderIdSubquery)';
       } else if (hasInvoice == false) {
         // "未关联": Only show orders without ANY invoices (not including current invoice's orders)
         invoiceRelationClause =
-            'o.${AppConstants.colId} NOT IN (SELECT DISTINCT ${AppConstants.colOrderId} FROM ${AppConstants.invoiceOrderRelationsTable})';
+            'o.${AppConstants.colId} NOT IN ($_validInvoiceOrderIdSubquery)';
       }
       // When hasInvoice is null ("全部"), no filter - all orders are shown
 
@@ -662,7 +668,12 @@ class OrderTable {
       final List<Map<String, dynamic>> maps = await database.rawQuery(
         'SELECT o.*, r.${AppConstants.colInvoiceId} as linked_invoice_id '
         'FROM ${AppConstants.ordersTable} o '
-        'LEFT JOIN ${AppConstants.invoiceOrderRelationsTable} r ON o.${AppConstants.colId} = r.${AppConstants.colOrderId} '
+        'LEFT JOIN ('
+        '  SELECT r.${AppConstants.colOrderId}, r.${AppConstants.colInvoiceId} '
+        '  FROM ${AppConstants.invoiceOrderRelationsTable} r '
+        '  INNER JOIN ${AppConstants.invoicesTable} i '
+        '  ON r.${AppConstants.colInvoiceId} = i.${AppConstants.colId}'
+        ') r ON o.${AppConstants.colId} = r.${AppConstants.colOrderId} '
         '$excludeClause '
         'ORDER BY o.${AppConstants.colOrderDate} DESC, '
         'CASE o.${AppConstants.colMealTime} '
@@ -683,11 +694,15 @@ class OrderTable {
   /// Get invoice IDs linked to a specific order
   Future<List<int>> getInvoiceIdsForOrder(int orderId) async {
     try {
-      final List<Map<String, dynamic>> maps = await database.query(
-        AppConstants.invoiceOrderRelationsTable,
-        columns: [AppConstants.colInvoiceId],
-        where: '${AppConstants.colOrderId} = ?',
-        whereArgs: [orderId],
+      final List<Map<String, dynamic>> maps = await database.rawQuery(
+        '''
+        SELECT r.${AppConstants.colInvoiceId}
+        FROM ${AppConstants.invoiceOrderRelationsTable} r
+        INNER JOIN ${AppConstants.invoicesTable} i
+        ON r.${AppConstants.colInvoiceId} = i.${AppConstants.colId}
+        WHERE r.${AppConstants.colOrderId} = ?
+        ''',
+        [orderId],
       );
 
       return maps.map((map) => map[AppConstants.colInvoiceId] as int).toList();

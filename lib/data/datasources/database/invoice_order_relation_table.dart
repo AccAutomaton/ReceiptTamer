@@ -12,6 +12,17 @@ class InvoiceOrderRelationTable {
 
   InvoiceOrderRelationTable({required this.database});
 
+  static const String _validRelationFromClause =
+      'FROM ${AppConstants.invoiceOrderRelationsTable} r '
+      'INNER JOIN ${AppConstants.invoicesTable} i '
+      'ON r.${AppConstants.colInvoiceId} = i.${AppConstants.colId} '
+      'INNER JOIN ${AppConstants.ordersTable} o '
+      'ON r.${AppConstants.colOrderId} = o.${AppConstants.colId}';
+
+  static const String _orphanedRelationWhereClause =
+      '${AppConstants.colInvoiceId} NOT IN (SELECT ${AppConstants.colId} FROM ${AppConstants.invoicesTable}) '
+      'OR ${AppConstants.colOrderId} NOT IN (SELECT ${AppConstants.colId} FROM ${AppConstants.ordersTable})';
+
   /// Insert a new relation
   Future<int> insert(InvoiceOrderRelation relation) async {
     try {
@@ -134,13 +145,33 @@ class InvoiceOrderRelationTable {
     }
   }
 
+  /// Delete relations whose invoice or order row no longer exists.
+  Future<int> deleteOrphanedRelations() async {
+    try {
+      final count = await database.delete(
+        AppConstants.invoiceOrderRelationsTable,
+        where: _orphanedRelationWhereClause,
+      );
+      if (count > 0) {
+        logService.i(LogConfig.moduleDb, '已清理孤儿发票关联: count=$count');
+      }
+      return count;
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleDb, '清理孤儿发票关联失败', e, stackTrace);
+      rethrow;
+    }
+  }
+
   /// Get all order IDs for an invoice
   Future<List<int>> getOrderIdsForInvoice(int invoiceId) async {
     try {
-      final List<Map<String, dynamic>> maps = await database.query(
-        AppConstants.invoiceOrderRelationsTable,
-        where: '${AppConstants.colInvoiceId} = ?',
-        whereArgs: [invoiceId],
+      final List<Map<String, dynamic>> maps = await database.rawQuery(
+        '''
+        SELECT r.${AppConstants.colOrderId}
+        $_validRelationFromClause
+        WHERE r.${AppConstants.colInvoiceId} = ?
+        ''',
+        [invoiceId],
       );
 
       return maps.map((map) => map[AppConstants.colOrderId] as int).toList();
@@ -158,10 +189,13 @@ class InvoiceOrderRelationTable {
   /// Get all invoice IDs for an order
   Future<List<int>> getInvoiceIdsForOrder(int orderId) async {
     try {
-      final List<Map<String, dynamic>> maps = await database.query(
-        AppConstants.invoiceOrderRelationsTable,
-        where: '${AppConstants.colOrderId} = ?',
-        whereArgs: [orderId],
+      final List<Map<String, dynamic>> maps = await database.rawQuery(
+        '''
+        SELECT r.${AppConstants.colInvoiceId}
+        $_validRelationFromClause
+        WHERE r.${AppConstants.colOrderId} = ?
+        ''',
+        [orderId],
       );
 
       return maps.map((map) => map[AppConstants.colInvoiceId] as int).toList();
@@ -181,10 +215,13 @@ class InvoiceOrderRelationTable {
     int invoiceId,
   ) async {
     try {
-      final List<Map<String, dynamic>> maps = await database.query(
-        AppConstants.invoiceOrderRelationsTable,
-        where: '${AppConstants.colInvoiceId} = ?',
-        whereArgs: [invoiceId],
+      final List<Map<String, dynamic>> maps = await database.rawQuery(
+        '''
+        SELECT r.*
+        $_validRelationFromClause
+        WHERE r.${AppConstants.colInvoiceId} = ?
+        ''',
+        [invoiceId],
       );
 
       return maps.map((map) => InvoiceOrderRelation.fromJson(map)).toList();
@@ -202,10 +239,13 @@ class InvoiceOrderRelationTable {
   /// Get all relations for an order
   Future<List<InvoiceOrderRelation>> getRelationsForOrder(int orderId) async {
     try {
-      final List<Map<String, dynamic>> maps = await database.query(
-        AppConstants.invoiceOrderRelationsTable,
-        where: '${AppConstants.colOrderId} = ?',
-        whereArgs: [orderId],
+      final List<Map<String, dynamic>> maps = await database.rawQuery(
+        '''
+        SELECT r.*
+        $_validRelationFromClause
+        WHERE r.${AppConstants.colOrderId} = ?
+        ''',
+        [orderId],
       );
 
       return maps.map((map) => InvoiceOrderRelation.fromJson(map)).toList();
@@ -223,12 +263,15 @@ class InvoiceOrderRelationTable {
   /// Check if a relation exists
   Future<bool> relationExists(int invoiceId, int orderId) async {
     try {
-      final List<Map<String, dynamic>> maps = await database.query(
-        AppConstants.invoiceOrderRelationsTable,
-        where:
-            '${AppConstants.colInvoiceId} = ? AND ${AppConstants.colOrderId} = ?',
-        whereArgs: [invoiceId, orderId],
-        limit: 1,
+      final List<Map<String, dynamic>> maps = await database.rawQuery(
+        '''
+        SELECT 1
+        $_validRelationFromClause
+        WHERE r.${AppConstants.colInvoiceId} = ?
+          AND r.${AppConstants.colOrderId} = ?
+        LIMIT 1
+        ''',
+        [invoiceId, orderId],
       );
 
       return maps.isNotEmpty;
@@ -247,8 +290,9 @@ class InvoiceOrderRelationTable {
   Future<int> getOrderCountForInvoice(int invoiceId) async {
     try {
       final result = await database.rawQuery(
-        'SELECT COUNT(*) as count FROM ${AppConstants.invoiceOrderRelationsTable} '
-        'WHERE ${AppConstants.colInvoiceId} = ?',
+        'SELECT COUNT(*) as count '
+        '$_validRelationFromClause '
+        'WHERE r.${AppConstants.colInvoiceId} = ?',
         [invoiceId],
       );
 
@@ -275,10 +319,10 @@ class InvoiceOrderRelationTable {
       final uniqueInvoiceIds = invoiceIds.toSet().toList(growable: false);
       final placeholders = List.filled(uniqueInvoiceIds.length, '?').join(', ');
       final result = await database.rawQuery(
-        'SELECT ${AppConstants.colInvoiceId}, COUNT(*) as count '
-        'FROM ${AppConstants.invoiceOrderRelationsTable} '
-        'WHERE ${AppConstants.colInvoiceId} IN ($placeholders) '
-        'GROUP BY ${AppConstants.colInvoiceId}',
+        'SELECT r.${AppConstants.colInvoiceId}, COUNT(*) as count '
+        '$_validRelationFromClause '
+        'WHERE r.${AppConstants.colInvoiceId} IN ($placeholders) '
+        'GROUP BY r.${AppConstants.colInvoiceId}',
         uniqueInvoiceIds,
       );
 
@@ -296,8 +340,9 @@ class InvoiceOrderRelationTable {
   Future<int> getInvoiceCountForOrder(int orderId) async {
     try {
       final result = await database.rawQuery(
-        'SELECT COUNT(*) as count FROM ${AppConstants.invoiceOrderRelationsTable} '
-        'WHERE ${AppConstants.colOrderId} = ?',
+        'SELECT COUNT(*) as count '
+        '$_validRelationFromClause '
+        'WHERE r.${AppConstants.colOrderId} = ?',
         [orderId],
       );
 

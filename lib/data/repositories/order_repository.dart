@@ -1,4 +1,5 @@
 import '../datasources/database/database_helper.dart';
+import '../datasources/database/invoice_order_relation_table.dart';
 import '../datasources/database/order_table.dart';
 import '../models/order.dart';
 import '../models/uninvoiced_shop_summary.dart';
@@ -14,6 +15,12 @@ class OrderRepository {
   Future<OrderTable> get _orderTable async {
     final db = await _dbHelper.database;
     return OrderTable(database: db);
+  }
+
+  /// Get the invoice-order relation table instance
+  Future<InvoiceOrderRelationTable> get _relationTable async {
+    final db = await _dbHelper.database;
+    return InvoiceOrderRelationTable(database: db);
   }
 
   /// Create a new order
@@ -33,7 +40,12 @@ class OrderRepository {
   /// Delete an order by ID
   Future<int> delete(int id) async {
     final table = await _orderTable;
-    return await table.delete(id);
+    final count = await table.delete(id);
+    if (count > 0) {
+      final relationTable = await _relationTable;
+      await relationTable.deleteByOrderId(id);
+    }
+    return count;
   }
 
   /// Delete all orders

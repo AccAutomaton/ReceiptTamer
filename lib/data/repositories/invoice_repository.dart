@@ -101,7 +101,12 @@ class InvoiceRepository {
   /// but linked orders will NOT be deleted - they remain independent.
   Future<int> delete(int id) async {
     final table = await _invoiceTable;
-    return await table.delete(id);
+    final count = await table.delete(id);
+    if (count > 0) {
+      final relationTable = await _relationTable;
+      await relationTable.deleteByInvoiceId(id);
+    }
+    return count;
   }
 
   /// Delete all invoices
