@@ -1,0 +1,279 @@
+{
+  "schemaVersion": 2,
+  "contentBaseline": {
+    "sourceCommit": "ce04b3c6457f444645a4bd6cca98d5e71707115d",
+    "policy": "keep_page_content_copy_routes_and_features_unchanged"
+  },
+  "visualStyle": {
+    "id": "morning_mist_ledger",
+    "name": "晨雾账簿",
+    "scope": "visual_skin_only"
+  },
+  "fixedClock": "2026-07-10T10:24:00+08:00",
+  "fixture": "ledger_july_redacted_v1",
+  "matrix": {
+    "viewports": [
+      {"id": "android_regular", "width": 412, "height": 915},
+      {"id": "android_compact", "width": 360, "height": 800}
+    ],
+    "themes": ["light", "dark"],
+    "textScales": [1.0, 1.3, 2.0],
+    "representativeVariants": [
+      "android_regular-light-1.0",
+      "android_compact-light-1.3",
+      "android_regular-dark-2.0"
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "01-home",
+      "kind": "route",
+      "location": "/",
+      "title": "首页",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["ready", "initial-loading", "recent-orders-empty", "refresh-failure", "dark"]
+    },
+    {
+      "id": "02-orders",
+      "kind": "route",
+      "location": "/orders",
+      "title": "订单管理",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["ready", "initial-loading", "search-dialog", "filter-sheet", "empty", "error", "month-fast-scroll"]
+    },
+    {
+      "id": "03-invoices",
+      "kind": "route",
+      "location": "/invoices",
+      "title": "发票管理",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["ready", "initial-loading", "search-dialog", "filter-sheet", "order-filter", "empty", "error", "month-fast-scroll"]
+    },
+    {
+      "id": "04-settings",
+      "kind": "route",
+      "location": "/settings",
+      "title": "关于",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["ready", "checking-update", "update-available", "dark"]
+    },
+    {
+      "id": "05-order-new",
+      "kind": "route",
+      "location": "/orders/new",
+      "title": "添加订单",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["empty-source", "image-source-sheet", "ocr-running", "ocr-success", "model-unconfigured", "validation-error", "save-error"]
+    },
+    {
+      "id": "06-order-selector",
+      "kind": "route",
+      "location": "/orders/select?selectedIds=101,102",
+      "routePattern": "/orders/select",
+      "title": "选择关联订单",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["ready", "search", "relation-filter", "date-filter", "selected", "empty", "error"]
+    },
+    {
+      "id": "07-invoice-selector",
+      "kind": "route",
+      "location": "/invoices/select?orderId=101",
+      "routePattern": "/invoices/select",
+      "title": "选择发票",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["ready", "search", "relation-filter", "date-filter", "linked-counts", "empty", "error"]
+    },
+    {
+      "id": "08-order-detail",
+      "kind": "route",
+      "location": "/orders/101",
+      "routePattern": "/orders/:id",
+      "title": "订单详情",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["unlinked", "linked", "add-invoice-sheet", "image-fullscreen", "file-missing", "delete-confirm", "relation-error"]
+    },
+    {
+      "id": "09-order-edit",
+      "kind": "route",
+      "location": "/orders/101/edit",
+      "routePattern": "/orders/:id/edit",
+      "title": "编辑订单",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["ready", "image-source-sheet", "ocr-running", "ocr-success", "model-unconfigured", "saving", "save-error", "dark"]
+    },
+    {
+      "id": "10-invoice-new",
+      "kind": "route",
+      "location": "/invoices/new?orderIds=101,102",
+      "routePattern": "/invoices/new",
+      "title": "添加发票",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["empty-source", "image-source", "pdf-source", "ocr-running", "duplicate-number-confirm", "order-selection", "validation-error"]
+    },
+    {
+      "id": "11-invoice-detail",
+      "kind": "route",
+      "location": "/invoices/201",
+      "routePattern": "/invoices/:id",
+      "title": "发票详情",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["linked", "unlinked", "image-fullscreen", "pdf-fullscreen", "file-missing", "delete-confirm"]
+    },
+    {
+      "id": "12-invoice-edit",
+      "kind": "route",
+      "location": "/invoices/201/edit",
+      "routePattern": "/invoices/:id/edit",
+      "title": "编辑发票",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["ready", "image-source", "pdf-source", "ocr-running", "duplicate-number-confirm", "order-selection", "saving", "save-error", "dark"]
+    },
+    {
+      "id": "13-export-mode",
+      "kind": "route",
+      "location": "/export",
+      "title": "导出报销材料",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["invoice-mode", "order-mode", "dark"]
+    },
+    {
+      "id": "14-export-invoices",
+      "kind": "route",
+      "location": "/export/invoices",
+      "title": "报销材料导出",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["loading", "selection", "date-filter", "quick-top-n", "relation-auto-selection", "empty", "load-error"]
+    },
+    {
+      "id": "15-export-orders",
+      "kind": "route",
+      "location": "/export/orders",
+      "title": "选择要导出的订单",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["loading", "selection", "date-filter", "relation-auto-selection", "empty", "load-error"]
+    },
+    {
+      "id": "16-export-options",
+      "kind": "route",
+      "location": "/export/options?invoiceIds=201&orderIds=101,102",
+      "routePattern": "/export/options",
+      "title": "导出选项",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["options", "invoice-remark-dialog", "meal-proof-remark-dialog", "exporting", "saved-files-navigation", "partial-error", "export-error"]
+    },
+    {
+      "id": "17-meal-proof-quick",
+      "kind": "route",
+      "location": "/export/meal-proof",
+      "title": "用餐证明导出",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["loading", "selection", "date-filter", "remark-dialog", "exporting", "saved-files-navigation", "export-error"]
+    },
+    {
+      "id": "18-invoice-quick",
+      "kind": "route",
+      "location": "/export/invoice",
+      "title": "发票导出",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["loading", "selection", "date-filter", "remark-dialog", "timestamp-option", "exporting", "saved-files-navigation", "export-error"]
+    },
+    {
+      "id": "19-invoice-assistant",
+      "kind": "route",
+      "location": "/invoice-assistant",
+      "title": "开票助手",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["loading", "shops-collapsed", "shop-expanded", "multi-select", "date-filter", "empty", "error"]
+    },
+    {
+      "id": "20-model-management",
+      "kind": "route",
+      "location": "/settings/model-management",
+      "title": "模型管理",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["checking-local", "missing", "install-choice", "download-progress", "installed", "cloud-config", "model-list-loading", "rate-limited", "install-failure"]
+    },
+    {
+      "id": "21-storage-management",
+      "kind": "route",
+      "location": "/settings/storage",
+      "title": "存储管理",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["calculating", "ready", "clear-cache-confirm", "clearing", "result"]
+    },
+    {
+      "id": "22-privacy",
+      "kind": "route",
+      "location": "/settings/privacy",
+      "title": "隐私政策",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["loading", "ready", "scrolled", "asset-error"]
+    },
+    {
+      "id": "23-open-source",
+      "kind": "route",
+      "location": "/settings/open-source",
+      "title": "开源信息",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["loading", "ready", "scrolled", "asset-error"]
+    },
+    {
+      "id": "24-release-history",
+      "kind": "route",
+      "location": "/settings/release-history",
+      "title": "更新历史",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["loading", "cached-list", "refreshing", "loading-more", "empty", "rate-limited", "network-error"]
+    },
+    {
+      "id": "25-cleanup-mode",
+      "kind": "route",
+      "location": "/settings/cleanup",
+      "title": "清理数据",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["ready", "warning", "dark"]
+    },
+    {
+      "id": "26-order-cleanup",
+      "kind": "route",
+      "location": "/settings/cleanup/orders",
+      "title": "选择要删除的订单",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["loading", "selection", "date-filter", "cascade-option", "confirm", "deleting", "result", "empty", "error"]
+    },
+    {
+      "id": "27-invoice-cleanup",
+      "kind": "route",
+      "location": "/settings/cleanup/invoices",
+      "title": "选择要删除的发票",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["loading", "selection", "date-filter", "cascade-option", "confirm", "deleting", "result", "empty", "error"]
+    },
+    {
+      "id": "28-share-target",
+      "kind": "route",
+      "location": "/share",
+      "title": "导入分享内容",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["image-list", "pdf-list", "mixed-list", "empty", "preview-error"]
+    },
+    {
+      "id": "29-saved-files",
+      "kind": "screen",
+      "location": "dialog://saved-files",
+      "title": "导出的文件",
+      "fixture": "ledger_july_redacted_v1",
+      "notes": "legacy location identifier; the app opens SavedFilesScreen with MaterialPageRoute",
+      "states": ["loading", "root", "directories", "files", "empty", "share", "share-failure"]
+    },
+    {
+      "id": "30-add-receipt-sheet",
+      "kind": "overlay",
+      "location": "sheet://add-receipt",
+      "title": "添加订单 / 添加发票面板",
+      "fixture": "ledger_july_redacted_v1",
+      "notes": "仅包含 ce04b3c 原有的“添加订单 / 通过订单截图导入”和“添加发票 / 通过图片或PDF导入”",
+      "states": ["two-original-actions", "compact", "dark"]
+    }
+  ]
+}

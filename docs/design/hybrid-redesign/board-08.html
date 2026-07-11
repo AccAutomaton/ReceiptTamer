@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="zh-CN" data-preview-theme="fresh-dense">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1450, initial-scale=1">
+  <title>ReceiptTamer 晨雾账簿｜08 设置与信息</title>
+  <link rel="stylesheet" href="../ledger-redesign/shared.css">
+  <style>
+    .settings-intro { display:flex; align-items:center; gap:13px; margin-bottom:14px; padding:14px; border:1px solid var(--rule); border-radius:14px; background:var(--paper-raised); }
+    .app-monogram { display:grid; place-items:center; width:52px; height:52px; flex:0 0 auto; border:1px solid var(--ink); border-radius:15px; background:var(--ink); color:var(--paper); font:760 20px "RT Serif",serif; }
+    .settings-intro b { display:block; font:730 16px "RT Serif",serif; }
+    .settings-intro small { display:block; margin-top:5px; color:var(--graphite); font-size:10px; }
+    .settings-section { margin:14px 2px 7px; color:var(--graphite); font:10px "RT Mono",monospace; letter-spacing:.08em; }
+    .setting-row > span:last-child { color:var(--graphite); font-size:16px; }
+    .setting-row .status-chip { font-size:8px; }
+    .engine-card { margin-bottom:13px; padding:15px; border:1px solid var(--teal); border-radius:14px; background:var(--teal-soft); }
+    .engine-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+    .engine-head b { display:block; font:730 17px "RT Serif",serif; }
+    .engine-head small { display:block; margin-top:5px; color:var(--graphite); font-size:10px; }
+    .engine-meta { display:grid; grid-template-columns:repeat(3,1fr); margin-top:14px; padding-top:12px; border-top:1px dashed var(--rule-strong); }
+    .engine-meta div { padding:0 8px; border-right:1px solid var(--rule); }
+    .engine-meta div:first-child { padding-left:0; }
+    .engine-meta div:last-child { border-right:0; }
+    .engine-meta span { display:block; color:var(--graphite); font-size:9px; }
+    .engine-meta b { display:block; margin-top:4px; font:500 12px "RT MiSans",sans-serif; }
+    .source-line { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:11px; padding:10px 12px; border:1px dashed var(--rule-strong); border-radius:10px; color:var(--graphite); font-size:9px; }
+    .storage-hero { margin-bottom:14px; padding:17px; border-top:2px solid var(--ink); border-bottom:1px solid var(--rule); background:var(--paper-raised); }
+    .storage-hero .amount { margin:5px 0 14px; font:500 32px "RT MiSans",sans-serif; font-variant-numeric:tabular-nums; }
+    .storage-legend { display:flex; justify-content:space-between; margin-top:7px; color:var(--graphite); font-size:9px; }
+    .storage-row { display:grid; grid-template-columns:10px minmax(0,1fr) auto; align-items:center; gap:10px; min-height:48px; padding:8px 2px; border-bottom:1px solid var(--rule); }
+    .storage-dot { width:8px; height:8px; border-radius:50%; background:var(--teal); }
+    .storage-dot.ink { background:var(--ink); }
+    .storage-dot.copy { background:var(--rule-strong); }
+    .storage-dot.seal { background:var(--seal); }
+    .storage-row b { font-size:12px; }
+    .storage-row span:last-child { font:500 12px "RT MiSans",sans-serif; font-variant-numeric:tabular-nums; }
+    .policy-lead { margin-bottom:13px; padding:16px; border-left:3px solid var(--teal); background:var(--paper-raised); color:var(--graphite); font-size:11px; line-height:1.65; }
+    .policy-lead b { display:block; margin-bottom:6px; color:var(--ink); font:730 17px "RT Serif",serif; }
+    .policy-point { display:grid; grid-template-columns:30px minmax(0,1fr); gap:10px; padding:13px 2px; border-bottom:1px solid var(--rule); }
+    .policy-point i { display:grid; place-items:center; width:28px; height:28px; border:1px solid var(--rule); border-radius:9px; color:var(--teal); font-style:normal; font-size:11px; }
+    .policy-point b { display:block; font-size:12px; }
+    .policy-point p { margin:4px 0 0; color:var(--graphite); font-size:9px; line-height:1.55; }
+    .license-summary { display:grid; grid-template-columns:1fr auto; gap:14px; margin-bottom:12px; padding:14px; border:1px solid var(--rule); border-radius:14px; background:var(--paper-raised); }
+    .license-summary b { display:block; font:730 16px "RT Serif",serif; }
+    .license-summary small { display:block; margin-top:5px; color:var(--graphite); font-size:9px; }
+    .license-count { align-self:center; font:500 25px "RT MiSans",sans-serif; color:var(--teal); }
+    .license-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; min-height:58px; padding:11px 13px; border-bottom:1px solid var(--rule); }
+    .license-row:last-child { border-bottom:0; }
+    .license-row b { display:block; font-size:12px; }
+    .license-row small { display:block; margin-top:4px; color:var(--graphite); font-size:9px; }
+    .license-row span { align-self:center; color:var(--teal); font:9px "RT Mono",monospace; }
+    .pagination { display:flex; align-items:center; justify-content:space-between; margin-top:11px; color:var(--graphite); font:10px "RT Mono",monospace; }
+    .page-buttons { display:flex; gap:6px; }
+    .page-buttons i { display:grid; place-items:center; width:32px; height:32px; border:1px solid var(--rule); border-radius:9px; background:var(--paper-raised); color:var(--ink); font-style:normal; }
+    .release { position:relative; margin-left:12px; padding:0 0 20px 24px; border-left:1px solid var(--rule-strong); }
+    .release::before { content:""; position:absolute; top:3px; left:-5px; width:9px; height:9px; border-radius:50%; background:var(--paper); border:2px solid var(--teal); }
+    .release.current::before { background:var(--teal); }
+    .release-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .release-head b { font:730 15px "RT Serif",serif; }
+    .release-head time { color:var(--graphite); font:9px "RT Mono",monospace; }
+    .release p { margin:7px 0 0; color:var(--graphite); font-size:10px; line-height:1.55; }
+    .release ul { margin:8px 0 0; padding-left:16px; color:var(--graphite); font-size:9px; line-height:1.7; }
+  </style>
+    <link rel="stylesheet" href="hybrid.css" />
+  </head>
+<body>
+  <main class="board-page">
+    <header class="board-header">
+      <div>
+        <div class="board-kicker">Board 08 · Settings / Information</div>
+        <h1 class="board-title">设置与信息</h1>
+      </div>
+      <div class="board-note">弱化应用宣传，把模型、存储与数据安全放到最短路径；所有容量、版本与服务状态都有清晰来源，长文档用可定位的目录和分页承载。</div>
+    </header>
+
+    <section class="phone-grid" aria-label="设置与信息界面预览">
+      <article class="phone-card">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+          <header class="appbar"><div><span class="eyebrow">ReceiptTamer · v1.4.0</span><h2 class="screen-title">设置</h2></div><div class="icon-button">?</div></header>
+          <div class="content">
+            <div class="settings-intro"><div class="app-monogram">收</div><div><b>把报销材料收拾妥当</b><small>本机账簿 · 最近备份于 7 月 8 日</small></div></div>
+            <div class="settings-section">AI / RECOGNITION</div>
+            <div class="ledger-panel">
+              <div class="setting-row"><div class="row-mark">AI</div><div><b>模型管理</b><small>Qwen3.5 0.8B · 本地运行</small></div><span class="status-chip">可用</span></div>
+              <div class="setting-row"><div class="row-mark">云</div><div><b>云端模型</b><small>Xiaomi MiMo · 多模态已开启</small></div><span>›</span></div>
+            </div>
+            <div class="settings-section">DATA / STORAGE</div>
+            <div class="ledger-panel">
+              <div class="setting-row"><div class="row-mark">存</div><div><b>存储空间</b><small>凭证与导出文件共 1.84 GB</small></div><span>›</span></div>
+              <div class="setting-row"><div class="row-mark">备</div><div><b>备份与还原</b><small>最近备份 · 2026-07-08 22:16</small></div><span>›</span></div>
+              <div class="setting-row"><div class="row-mark" style="background:var(--seal-soft);color:var(--seal)">清</div><div><b>数据清理</b><small>删除记录及其本地文件</small></div><span>›</span></div>
+            </div>
+            <div class="settings-section">ABOUT / LEGAL</div>
+            <div class="ledger-panel">
+              <div class="setting-row"><div class="row-mark">隐</div><div><b>隐私政策</b><small>数据去向与权限说明</small></div><span>›</span></div>
+              <div class="setting-row"><div class="row-mark">源</div><div><b>开源信息</b><small>72 个依赖与许可证</small></div><span>›</span></div>
+              <div class="setting-row"><div class="row-mark">更</div><div><b>更新历史</b><small>当前已是最新正式版</small></div><span>›</span></div>
+            </div>
+          </div>
+          <nav class="bottom-nav" aria-label="主导航"><div class="nav-item"><div><b>⌂</b>首页</div></div><div class="nav-item"><div><b>≡</b>订单</div></div><div class="nav-add">＋</div><div class="nav-item"><div><b>▱</b>发票</div></div><div class="nav-item active"><div><b>⚙</b>设置</div></div></nav>
+        </div></div>
+        <div class="phone-label"><strong>设置 · 职责首页</strong><span>状态可见 / 最短路径</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>09:41</span><span>Wi-Fi&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+          <header class="appbar compact"><div class="back-button">‹</div><div style="flex:1"><span class="eyebrow">AI / MODEL</span><h2 class="screen-title small">模型管理</h2></div><div class="icon-button">⋮</div></header>
+          <div class="content no-nav">
+            <section class="engine-card">
+              <div class="engine-head"><div><b>Qwen3.5 · 0.8B</b><small>本地 MNN 推理 · 数据不离开设备</small></div><span class="status-chip">运行中</span></div>
+              <div class="engine-meta"><div><span>模型大小</span><b>847 MB</b></div><div><span>完整文件</span><b>4 / 4</b></div><div><span>最近预热</span><b>1.8 s</b></div></div>
+            </section>
+            <div class="section-heading"><h3>本地模型</h3><span>完整性已校验</span></div>
+            <div class="ledger-panel">
+              <div class="file-row"><div class="row-mark">CFG</div><div><b>llm_config.json</b><small>18 KB · SHA256 匹配</small></div><span class="status-chip">完整</span></div>
+              <div class="file-row"><div class="row-mark">MNN</div><div><b>llm.mnn</b><small>27.4 MB · 结构文件</small></div><span class="status-chip">完整</span></div>
+              <div class="file-row"><div class="row-mark">WT</div><div><b>llm.mnn.weight</b><small>812 MB · 量化权重</small></div><span class="status-chip">完整</span></div>
+              <div class="file-row"><div class="row-mark">TXT</div><div><b>tokenizer.txt</b><small>7.6 MB · 分词词表</small></div><span class="status-chip">完整</span></div>
+            </div>
+            <div class="section-heading"><h3>下载与导入</h3><span>可断点续传</span></div>
+            <div class="filter-row"><span class="filter-chip active">hf-mirror</span><span class="filter-chip">Hugging Face</span><span class="filter-chip">导入 ZIP</span></div>
+            <div class="source-line"><span>备用下载源会保留已完成分片</span><b class="text-teal">检查更新 →</b></div>
+            <div class="section-heading"><h3>识别引擎</h3><span>切换</span></div>
+            <div class="ledger-panel">
+              <div class="setting-row"><div class="row-mark">本</div><div><b>本地模型</b><small>当前选择 · 离线可用</small></div><div class="toggle on"></div></div>
+              <div class="setting-row"><div class="row-mark">云</div><div><b>Xiaomi MiMo</b><small>API Key 已保存 · 8 个模型</small></div><span>›</span></div>
+            </div>
+          </div>
+        </div></div>
+        <div class="phone-label"><strong>模型管理 · 已安装</strong><span>校验 / 下载源 / 云端入口</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;78%</span></div>
+          <header class="appbar compact"><div class="back-button">‹</div><div style="flex:1"><span class="eyebrow">DATA / STORAGE</span><h2 class="screen-title small">存储空间</h2></div><div class="icon-button">↻</div></header>
+          <div class="content no-nav">
+            <section class="storage-hero">
+              <span class="micro-label">ReceiptTamer 已使用</span><div class="amount">1.84 GB</div>
+              <div class="progress-track"><div class="progress-fill" style="width:61%"></div></div>
+              <div class="storage-legend"><span>应用数据 61%</span><span>设备可用 18.6 GB</span></div>
+            </section>
+            <div class="section-heading"><h3>占用明细</h3><span>刚刚扫描</span></div>
+            <div class="storage-row"><i class="storage-dot"></i><b>订单原图 · 286 张</b><span>682 MB</span></div>
+            <div class="storage-row"><i class="storage-dot ink"></i><b>发票文件 · 118 份</b><span>294 MB</span></div>
+            <div class="storage-row"><i class="storage-dot copy"></i><b>本地 AI 模型</b><span>847 MB</span></div>
+            <div class="storage-row"><i class="storage-dot seal"></i><b>临时缓存</b><span>21.4 MB</span></div>
+            <div class="section-heading"><h3>保存位置</h3><span>Android 公共下载</span></div>
+            <div class="form-section"><h3 style="font-size:14px">导出与备份</h3><div class="field-box mono" style="font-size:9px">Download/ReceiptTamer/ <span>↗</span></div><div class="spacer-8"></div><div class="row-between"><span class="muted" style="font-size:10px">材料按日期分目录保存</span><span class="status-chip">可访问</span></div></div>
+            <div class="section-heading"><h3>可安全释放</h3><span class="text-seal">21.4 MB</span></div>
+            <div class="danger-panel"><b>只清除可重新生成的缓存</b><p>不会删除订单、发票、导出文件或模型。清除后首次打开 PDF 可能稍慢。</p></div>
+            <div class="spacer-12"></div><div class="button secondary block">查看并清除缓存</div>
+          </div>
+        </div></div>
+        <div class="phone-label"><strong>存储 · 容量账单</strong><span>占用来源 / 安全清理</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;76%</span></div>
+          <header class="appbar compact"><div class="back-button">‹</div><div style="flex:1"><span class="eyebrow">LEGAL / PRIVACY</span><h2 class="screen-title small">隐私政策</h2></div><div class="icon-button">⌕</div></header>
+          <div class="content no-nav">
+            <div class="policy-lead"><b>你的凭证，默认只留在本机</b>订单图片、发票、识别结果与关联关系保存在设备中。仅当你主动选择云端模型时，识别所需内容才会发送到所选服务商。</div>
+            <div class="filter-row"><span class="filter-chip active">摘要</span><span class="filter-chip">数据清单</span><span class="filter-chip">第三方服务</span><span class="filter-chip">删除方式</span></div>
+            <div class="policy-point"><i>本</i><div><b>本地存储</b><p>数据库、原始凭证与导出结果由你控制，可随时备份、导出或删除。</p></div></div>
+            <div class="policy-point"><i>云</i><div><b>云端识别由你开启</b><p>界面会在调用前标注服务商、模型与是否发送图片；API Key 仅保存在应用私有目录。</p></div></div>
+            <div class="policy-point"><i>权</i><div><b>按需请求权限</b><p>相册只用于选择凭证；通知只用于长任务进度；Android 10+ 保存文件无需存储权限。</p></div></div>
+            <div class="policy-point"><i>删</i><div><b>删除立即生效</b><p>删除记录时会明确列出关联关系和本地文件影响，不进行隐式云端备份。</p></div></div>
+            <div class="section-heading"><h3>当前权限</h3><span>系统设置 →</span></div>
+            <div class="ledger-panel">
+              <div class="setting-row"><div class="row-mark">图</div><div><b>照片与视频</b><small>仅已选择的照片</small></div><span class="status-chip">受限</span></div>
+              <div class="setting-row"><div class="row-mark">通</div><div><b>任务通知</b><small>模型下载与导出进度</small></div><div class="toggle on"></div></div>
+            </div>
+            <div class="pagination"><span>生效日期 2026-06-18</span><b class="text-teal">阅读完整条款 →</b></div>
+          </div>
+        </div></div>
+        <div class="phone-label"><strong>隐私 · 可执行摘要</strong><span>去向、权限与删除说明</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;76%</span></div>
+          <header class="appbar compact"><div class="back-button">‹</div><div style="flex:1"><span class="eyebrow">LEGAL / OPEN SOURCE</span><h2 class="screen-title small">开源信息</h2></div><div class="icon-button">⌕</div></header>
+          <div class="content no-nav">
+            <div class="license-summary"><div><b>感谢开源社区</b><small>应用包含 Flutter、MNN 与 70 个 Dart / Android 依赖。</small></div><span class="license-count">72</span></div>
+            <div class="filter-row"><span class="filter-chip active">全部 72</span><span class="filter-chip">Apache 2.0</span><span class="filter-chip">MIT</span><span class="filter-chip">BSD</span></div>
+            <div class="ledger-panel">
+              <div class="license-row"><div><b>Flutter</b><small>Google · UI framework</small></div><span>BSD-3</span></div>
+              <div class="license-row"><div><b>MNN 3.4.1</b><small>Alibaba · Local LLM runtime</small></div><span>Apache-2.0</span></div>
+              <div class="license-row"><div><b>Riverpod</b><small>Remi Rousselet · State management</small></div><span>MIT</span></div>
+              <div class="license-row"><div><b>RapidOcrAndroidOnnx</b><small>OCR engine · Android AAR</small></div><span>Apache-2.0</span></div>
+              <div class="license-row"><div><b>Syncfusion PDF Viewer</b><small>PDF preview component</small></div><span>COMMUNITY</span></div>
+              <div class="license-row"><div><b>Noto Serif SC</b><small>Google Fonts · Display typography</small></div><span>OFL-1.1</span></div>
+              <div class="license-row"><div><b>Courier Prime</b><small>Quote-Unquote Apps · Data typography</small></div><span>OFL-1.1</span></div>
+            </div>
+            <div class="pagination"><span>第 1 / 7 页 · 每页 10 项</span><div class="page-buttons"><i>‹</i><i>›</i></div></div>
+            <div class="source-line"><span>许可证文本已随应用离线保存</span><b class="text-teal">导出清单</b></div>
+          </div>
+        </div></div>
+        <div class="phone-label"><strong>开源 · 可检索清单</strong><span>筛选 / 分页 / 离线条款</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone dark"><div class="screen">
+          <div class="statusbar"><span>09:41</span><span>Wi-Fi&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;74%</span></div>
+          <header class="appbar compact"><div class="back-button">‹</div><div style="flex:1"><span class="eyebrow">APP / RELEASES</span><h2 class="screen-title small">更新历史</h2></div><div class="icon-button">↻</div></header>
+          <div class="content no-nav">
+            <div class="engine-card">
+              <div class="engine-head"><div><b>v1.4.0 · 当前版本</b><small>正式通道 · 构建号 41 · arm64-v8a</small></div><span class="status-chip">最新</span></div>
+              <div class="source-line"><span>GitHub 检查余量</span><b class="mono">54 / 60</b></div>
+            </div>
+            <div class="filter-row"><span class="filter-chip active">正式版</span><span class="filter-chip">测试版</span><span class="filter-chip">仅重要更新</span></div>
+            <div class="section-heading"><h3>版本记录</h3><span>最近检查 09:38</span></div>
+            <div class="release current"><div class="release-head"><b>v1.4.0 · 墨色账簿</b><time>2026-07-02</time></div><p>重整订单、发票与设置界面，识别与导出状态更清晰。</p><ul><li>新增本地模型断点续传与文件校验</li><li>优化大列表月份跳转和缩略图载入</li><li>修复部分 PDF 字体缺失</li></ul></div>
+            <div class="release"><div class="release-head"><b>v1.3.2 · 备份校验</b><time>2026-06-18</time></div><p>还原前显示版本兼容性、记录与媒体文件差异。</p></div>
+            <div class="release"><div class="release-head"><b>v1.3.1 · 云端模型</b><time>2026-05-29</time></div><p>新增 Xiaomi MiMo 与 Deepseek 提供商，配置按供应商独立保存。</p></div>
+            <div class="release"><div class="release-head"><b>v1.3.0 · 发票识别</b><time>2026-05-06</time></div><p>支持图片与 PDF 发票识别、重复号码提示。</p></div>
+            <div class="pagination"><span>第 1 / 3 页</span><div class="page-buttons"><i>‹</i><i>›</i></div></div>
+            <div class="source-line"><span>请求受限时沿用本地历史，不阻塞应用</span><span class="status-chip warning">60 次 / 小时</span></div>
+          </div>
+        </div></div>
+        <div class="phone-label"><strong>更新历史 · 暗色</strong><span>通道 / 分页 / 限流可见</span></div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

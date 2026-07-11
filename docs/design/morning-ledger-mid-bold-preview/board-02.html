@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>晨雾编目 · 骑缝索引 · 凭证详情与编辑</title>
+    <link rel="stylesheet" href="shared.css" />
+    <style>
+      .detail-phone .content,
+      .form-phone .content {
+        padding-top: 2px;
+      }
+
+      .detail-phone .media-preview {
+        height: 132px;
+      }
+
+      .detail-phone .amount-band {
+        min-height: 70px;
+      }
+
+      .detail-phone .field-row {
+        min-height: 43px;
+      }
+
+      .relation-empty {
+        min-height: 64px;
+        margin-left: 24px;
+        padding: 10px 16px 12px 14px;
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        border-top: 1px solid var(--screen-line);
+        color: var(--screen-graphite);
+        font-size: 12px;
+      }
+
+      .relation-empty .row-mark {
+        width: 34px;
+        height: 34px;
+      }
+
+      .form-phone .section-heading {
+        min-height: 40px;
+        padding-top: 9px;
+        padding-bottom: 5px;
+      }
+
+      .form-phone .file-block {
+        padding: 10px;
+      }
+
+      .form-phone .file-placeholder {
+        height: 72px;
+      }
+
+      .form-phone .button-row {
+        margin-top: 8px;
+      }
+
+      .form-phone .button-row .button {
+        min-height: 39px;
+      }
+
+      .form-phone .form-field {
+        margin-top: 8px;
+      }
+
+      .form-phone .form-label {
+        margin-bottom: 4px;
+      }
+
+      .form-phone .field-box {
+        min-height: 40px;
+      }
+
+      .form-phone .button.full {
+        min-height: 42px;
+        margin-top: 11px;
+      }
+
+      .invoice-edit-phone .media-preview {
+        height: 82px;
+        margin-right: 12px;
+        margin-left: 36px;
+      }
+
+      .invoice-edit-phone .selector-row {
+        margin-top: 9px;
+      }
+
+      .selector-row .row-mark {
+        width: 36px;
+        height: 36px;
+      }
+
+      .selector-row .chevron {
+        margin-left: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="board-page">
+      <header class="board-header">
+        <div>
+          <div class="board-kicker">EXPLORATION · BOARD 02</div>
+          <h1 class="board-title">晨雾编目 · 骑缝索引</h1>
+        </div>
+        <p class="board-note">
+          <b>凭证在同一条装订线上被查看与校正。</b> 三屏仅调整材质、留白和视觉节奏；
+          订单详情、添加订单与编辑发票的内容顺序和文案严格沿用 ce04b3c。
+        </p>
+      </header>
+
+      <section class="phone-grid" aria-label="详情与编辑预览">
+        <article class="phone-card">
+          <div class="phone detail-phone">
+            <div class="screen">
+              <div class="statusbar"><span>10:24</span><span>5G · 91%</span></div>
+              <header class="appbar">
+                <div class="appbar-main">
+                  <button class="icon-button" type="button" title="返回">
+                    <svg class="icon" aria-hidden="true"><use href="icons.svg#i-back"></use></svg>
+                  </button>
+                  <h2 class="screen-title">订单详情</h2>
+                </div>
+                <div class="appbar-actions">
+                  <button class="icon-button" type="button" title="编辑">
+                    <svg class="icon" aria-hidden="true"><use href="icons.svg#i-edit"></use></svg>
+                  </button>
+                  <button class="icon-button danger" type="button" title="删除">
+                    <svg class="icon" aria-hidden="true"><use href="icons.svg#i-trash"></use></svg>
+                  </button>
+                </div>
+              </header>
+
+              <div class="content no-nav">
+                <section class="folio">
+                  <span class="index-tab high" aria-hidden="true"></span>
+                  <div class="media-preview" aria-hidden="true"></div>
+                  <div class="amount-band"><span>实付款</span><b>¥42.80</b></div>
+                  <div class="section-heading"><h3>订单信息</h3></div>
+                  <ul class="field-list">
+                    <li class="field-row"><span>店铺名称</span><b>青禾餐食 · 测试店</b></li>
+                    <li class="field-row"><span>订单号</span><b class="mono">RT-FIX-000101</b></li>
+                    <li class="field-row"><span>日期</span><b>2026年07月09日</b></li>
+                    <li class="field-row"><span>时段</span><b>午餐</b></li>
+                    <li class="field-row"><span>录入时间</span><b>2026年07月09日 12:08</b></li>
+                  </ul>
+                  <div class="section-heading"><h3>关联发票</h3><span>添加</span></div>
+                  <div class="relation-empty">
+                    <span class="row-mark">
+                      <svg class="icon" aria-hidden="true"><use href="icons.svg#i-invoice"></use></svg>
+                    </span>
+                    <span>暂无关联发票</span>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+          <div class="phone-label"><strong>订单详情</strong><span>未关联 · 完整字段顺序</span></div>
+        </article>
+
+        <article class="phone-card">
+          <div class="phone form-phone">
+            <div class="screen">
+              <div class="statusbar"><span>10:24</span><span>5G · 91%</span></div>
+              <header class="appbar">
+                <div class="appbar-main">
+                  <button class="icon-button" type="button" title="返回">
+                    <svg class="icon" aria-hidden="true"><use href="icons.svg#i-back"></use></svg>
+                  </button>
+                  <h2 class="screen-title">添加订单</h2>
+                </div>
+              </header>
+
+              <div class="content no-nav">
+                <section class="folio form-folio">
+                  <span class="index-tab high" aria-hidden="true"></span>
+                  <div class="section-heading"><h3>订单图片</h3></div>
+                  <div class="file-block">
+                    <div class="file-placeholder">
+                      <div>
+                        <svg class="icon" aria-hidden="true"><use href="icons.svg#i-image"></use></svg>
+                        <div>点击下方按钮选择图片</div>
+                      </div>
+                    </div>
+                    <div class="button-row">
+                      <button class="button secondary" type="button">
+                        <svg class="icon" aria-hidden="true"><use href="icons.svg#i-image"></use></svg>
+                        选择图片
+                      </button>
+                      <button class="button secondary" type="button">
+                        <svg class="icon" aria-hidden="true"><use href="icons.svg#i-scan"></use></svg>
+                        OCR 识别
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="form-field">
+                    <div class="form-label">日期 <span class="required">*</span></div>
+                    <div class="field-box hint">选择日期<svg class="icon" aria-hidden="true"><use href="icons.svg#i-calendar"></use></svg></div>
+                  </div>
+                  <div class="form-field">
+                    <div class="form-label">时段 <span class="required">*</span></div>
+                    <div class="field-box hint">请选择<svg class="icon chevron" aria-hidden="true"><use href="icons.svg#i-chevron"></use></svg></div>
+                  </div>
+                  <div class="form-field">
+                    <div class="form-label">金额 <span class="required">*</span></div>
+                    <div class="field-box hint"><span>¥&nbsp;&nbsp;请输入金额</span></div>
+                  </div>
+                  <div class="form-field">
+                    <div class="form-label">店铺名称</div>
+                    <div class="field-box hint">请输入/选择店铺名称(选填)<svg class="icon chevron" aria-hidden="true"><use href="icons.svg#i-chevron"></use></svg></div>
+                  </div>
+                  <div class="form-field">
+                    <div class="form-label">订单号</div>
+                    <div class="field-box hint">请输入订单号(选填)</div>
+                  </div>
+                  <button class="button full" type="button">保存</button>
+                </section>
+              </div>
+            </div>
+          </div>
+          <div class="phone-label"><strong>添加订单</strong><span>空来源 · 原表单顺序</span></div>
+        </article>
+
+        <article class="phone-card">
+          <div class="phone form-phone invoice-edit-phone">
+            <div class="screen">
+              <div class="statusbar"><span>10:24</span><span>5G · 91%</span></div>
+              <header class="appbar">
+                <div class="appbar-main">
+                  <button class="icon-button" type="button" title="返回">
+                    <svg class="icon" aria-hidden="true"><use href="icons.svg#i-back"></use></svg>
+                  </button>
+                  <h2 class="screen-title">编辑发票</h2>
+                </div>
+              </header>
+
+              <div class="content no-nav">
+                <section class="folio form-folio">
+                  <span class="index-tab high" aria-hidden="true"></span>
+                  <div class="section-heading"><h3>发票文件</h3></div>
+                  <div class="media-preview" aria-hidden="true"></div>
+                  <div class="button-row" style="margin-right: 12px; margin-left: 36px;">
+                    <button class="button secondary" type="button">
+                      <svg class="icon" aria-hidden="true"><use href="icons.svg#i-file"></use></svg>
+                      选择文件
+                    </button>
+                    <button class="button secondary" type="button">
+                      <svg class="icon" aria-hidden="true"><use href="icons.svg#i-scan"></use></svg>
+                      OCR 识别
+                    </button>
+                  </div>
+
+                  <div class="selector-row">
+                    <span class="row-mark">
+                      <svg class="icon" aria-hidden="true"><use href="icons.svg#i-orders"></use></svg>
+                    </span>
+                    <span class="row-copy"><b>关联订单</b><small>已选择 2 个订单</small></span>
+                    <svg class="icon chevron" aria-hidden="true"><use href="icons.svg#i-chevron"></use></svg>
+                  </div>
+
+                  <div class="form-field">
+                    <div class="form-label">开票日期 <span class="required">*</span></div>
+                    <div class="field-box">2026年07月10日 星期五<svg class="icon" aria-hidden="true"><use href="icons.svg#i-calendar"></use></svg></div>
+                  </div>
+                  <div class="form-field">
+                    <div class="form-label">价税合计 <span class="required">*</span></div>
+                    <div class="field-box mono">¥&nbsp;&nbsp;85.84</div>
+                  </div>
+                  <div class="form-field">
+                    <div class="form-label">销售方名称</div>
+                    <div class="field-box">示例餐饮有限公司（脱敏）<svg class="icon chevron" aria-hidden="true"><use href="icons.svg#i-chevron"></use></svg></div>
+                  </div>
+                  <div class="form-field">
+                    <div class="form-label">发票号码</div>
+                    <div class="field-box mono">FIX2026070001</div>
+                  </div>
+                  <button class="button full" type="button">保存</button>
+                </section>
+              </div>
+            </div>
+          </div>
+          <div class="phone-label"><strong>编辑发票</strong><span>关联订单 · 图片文件</span></div>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

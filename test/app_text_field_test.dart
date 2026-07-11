@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 import 'package:receipt_tamer/core/theme/app_theme.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_text_field.dart';
 
@@ -32,5 +33,22 @@ void main() {
       colorScheme.onSurfaceVariant,
     );
     expect(style.side!.resolve(<WidgetState>{}), BorderSide.none);
+  });
+
+  testWidgets('AppTextField uses an opaque relief field without blur', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme,
+        home: const Scaffold(body: AppTextField(hint: '字段提示')),
+      ),
+    );
+
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.decoration!.fillColor, AppEntityTokens.lightFill);
+    expect(field.decoration!.fillColor!.a, 1);
+    expect(field.decoration!.enabledBorder, isA<AppReliefInputBorder>());
+    expect(find.byType(BackdropFilter), findsNothing);
   });
 }

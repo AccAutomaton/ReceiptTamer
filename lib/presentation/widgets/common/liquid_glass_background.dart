@@ -9,26 +9,36 @@ class LiquidGlassBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = Theme.of(context).colorScheme;
 
     return DecoratedBox(
       decoration: BoxDecoration(
+        color: colors.surface,
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: isDark
-              ? const [Color(0xFF101820), Color(0xFF17232B)]
-              : const [
-                  AppPalette.coldBackground,
-                  Color(0xFFEFF5F7),
-                  Color(0xFFF8FAFA),
-                ],
+          colors: [
+            Color.alphaBlend(
+              colors.primary.withValues(alpha: isDark ? 0.035 : 0.045),
+              colors.surface,
+            ),
+            colors.surface,
+            Color.alphaBlend(
+              colors.surfaceContainerHigh.withValues(
+                alpha: isDark ? 0.16 : 0.34,
+              ),
+              colors.surface,
+            ),
+          ],
         ),
       ),
-      child: Stack(
-        children: [
-          Positioned.fill(child: _LiquidGlassBackdrop(isDark: isDark)),
-          Positioned.fill(child: child),
-        ],
+      child: BackdropGroup(
+        child: Stack(
+          children: [
+            Positioned.fill(child: _LiquidGlassBackdrop(isDark: isDark)),
+            Positioned.fill(child: child),
+          ],
+        ),
       ),
     );
   }
@@ -41,6 +51,8 @@ class _LiquidGlassBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
     return Stack(
       children: [
         Positioned.fill(
@@ -50,9 +62,11 @@ class _LiquidGlassBackdrop extends StatelessWidget {
                 center: Alignment.topRight,
                 radius: 0.88,
                 colors: [
-                  AppPalette.mistBlue.withValues(alpha: isDark ? 0.06 : 0.18),
-                  Colors.white.withValues(alpha: isDark ? 0.03 : 0.10),
-                  Colors.white.withValues(alpha: 0),
+                  colors.primary.withValues(alpha: isDark ? 0.055 : 0.075),
+                  colors.primaryContainer.withValues(
+                    alpha: isDark ? 0.025 : 0.07,
+                  ),
+                  colors.primaryContainer.withValues(alpha: 0),
                 ],
                 stops: const [0, 0.46, 1],
               ),
@@ -66,9 +80,11 @@ class _LiquidGlassBackdrop extends StatelessWidget {
                 center: Alignment.bottomLeft,
                 radius: 0.88,
                 colors: [
-                  AppPalette.mistBlue.withValues(alpha: isDark ? 0.04 : 0.12),
-                  Colors.white.withValues(alpha: isDark ? 0.02 : 0.07),
-                  Colors.white.withValues(alpha: 0),
+                  AppPalette.skyAccent.withValues(alpha: isDark ? 0.045 : 0.12),
+                  colors.surfaceContainerLow.withValues(
+                    alpha: isDark ? 0.02 : 0.08,
+                  ),
+                  colors.surfaceContainerLow.withValues(alpha: 0),
                 ],
                 stops: const [0, 0.46, 1],
               ),
@@ -82,10 +98,10 @@ class _LiquidGlassBackdrop extends StatelessWidget {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.white.withValues(alpha: isDark ? 0.00 : 0.16),
+                  Colors.white.withValues(alpha: isDark ? 0.00 : 0.10),
                   Colors.white.withValues(alpha: 0),
-                  AppPalette.coldBackground.withValues(
-                    alpha: isDark ? 0.00 : 0.36,
+                  colors.surfaceContainerHigh.withValues(
+                    alpha: isDark ? 0.00 : 0.18,
                   ),
                 ],
                 stops: const [0, 0.46, 1],

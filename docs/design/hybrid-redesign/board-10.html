@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="zh-CN" data-preview-theme="fresh-dense">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1450, initial-scale=1">
+  <title>ReceiptTamer 晨雾账簿｜10 维护弹层</title>
+  <link rel="stylesheet" href="../ledger-redesign/shared.css">
+  <style>
+    .source-summary { margin-bottom:12px; padding:15px; border:1px solid var(--rule); border-radius:14px; background:var(--paper-raised); }
+    .source-summary b { display:block; font:730 16px "RT Serif",serif; }
+    .source-summary p { margin:6px 0 0; color:var(--graphite); font-size:10px; line-height:1.5; }
+    .source-summary .meta-line { margin-top:12px; padding-top:10px; border-top:1px dashed var(--rule-strong); font-size:9px; }
+    .maintenance-note { margin-top:11px; padding:11px 12px; border:1px dashed var(--rule-strong); border-radius:11px; color:var(--graphite); font-size:9px; line-height:1.55; }
+    .sheet .sheet-row { display:grid; grid-template-columns:32px minmax(0,1fr) auto; align-items:center; min-height:61px; border-top:1px solid var(--rule); }
+    .sheet-row b { display:block; font-size:12px; }
+    .sheet-row small { display:block; margin-top:4px; color:var(--graphite); font-size:9px; }
+    .sheet-total { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin:13px 0; padding:12px 0; border-top:1px dashed var(--rule-strong); border-bottom:1px dashed var(--rule-strong); }
+    .sheet-total span { color:var(--graphite); font-size:10px; }
+    .sheet-total b { font:500 20px "RT MiSans",sans-serif; }
+    .file-ticket { margin:12px 0; padding:12px; border:1px dashed var(--rule-strong); border-radius:10px; background:var(--paper); }
+    .file-ticket b { display:block; overflow:hidden; font:11px "RT Mono",monospace; text-overflow:ellipsis; white-space:nowrap; }
+    .file-ticket small { display:block; margin-top:6px; color:var(--graphite); font-size:9px; }
+    .restore-mode { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:11px; }
+    .restore-option { padding:11px; border:1px solid var(--rule); border-radius:11px; background:var(--paper); }
+    .restore-option.on { border-color:var(--teal); background:var(--teal-soft); }
+    .restore-option b { display:block; font-size:11px; }
+    .restore-option small { display:block; margin-top:4px; color:var(--graphite); font-size:8px; line-height:1.45; }
+    .release-ticket { margin:11px 0; padding:13px; border:1px solid var(--rule); border-radius:12px; background:var(--paper); }
+    .release-ticket .row-between { align-items:flex-start; }
+    .release-ticket h4 { margin:0; font:730 15px "RT Serif",serif; }
+    .release-ticket p { margin:7px 0 0; font-size:9px; }
+    .release-list { margin:8px 0 0; padding-left:16px; color:var(--graphite); font-size:9px; line-height:1.65; }
+    .progress-caption { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:11px 0 7px; color:var(--graphite); font-size:9px; }
+    .progress-caption b { color:var(--ink); font:500 12px "RT MiSans",sans-serif; }
+    .permission-line { display:grid; grid-template-columns:28px minmax(0,1fr); gap:9px; margin-top:11px; padding:10px; border:1px solid color-mix(in srgb,var(--warning) 42%,var(--rule)); border-radius:10px; background:color-mix(in srgb,var(--warning) 10%,var(--paper-raised)); color:var(--graphite); font-size:9px; line-height:1.45; }
+    .permission-line i { display:grid; place-items:center; width:26px; height:26px; border-radius:8px; background:var(--paper); color:var(--warning); font-style:normal; font-weight:800; }
+    .model-files { margin:10px 0; border-top:1px solid var(--rule); }
+    .model-file { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; min-height:38px; border-bottom:1px solid var(--rule); font-size:9px; }
+    .model-file b { font:9px "RT Mono",monospace; }
+    .model-file span { color:var(--graphite); }
+    .model-file .text-teal, .model-file .text-seal { font-weight:700; }
+    .cache-grid { display:grid; grid-template-columns:1fr auto; margin:12px 0; border-top:1px solid var(--rule); }
+    .cache-grid div { display:contents; }
+    .cache-grid span, .cache-grid b { min-height:39px; padding:11px 0; border-bottom:1px solid var(--rule); font-size:10px; }
+    .cache-grid span { color:var(--graphite); }
+    .cache-grid b { font:500 11px "RT MiSans",sans-serif; text-align:right; }
+    .result-lockup { display:flex; align-items:center; gap:14px; margin-bottom:12px; }
+    .result-lockup .seal-stamp { width:56px; height:56px; flex:0 0 auto; font-size:12px; }
+    .result-lockup h3 { margin:0; }
+    .result-lockup p { margin:4px 0 0; }
+    .dialog.wide-copy p { margin-bottom:10px; }
+    .dialog .button { min-height:42px; }
+  </style>
+    <link rel="stylesheet" href="hybrid.css" />
+  </head>
+<body>
+  <main class="board-page">
+    <header class="board-header">
+      <div>
+        <div class="board-kicker">Board 10 · Maintenance Overlays</div>
+        <h1 class="board-title">维护弹层</h1>
+      </div>
+      <div class="board-note">弹层始终叠在真实来源页面上，保留任务来处与返回路径；备份、还原、更新、模型下载和清缓存都明确进度、权限、失败保留与重试方式。</div>
+    </header>
+
+    <section class="phone-grid" aria-label="维护弹层界面预览">
+      <article class="phone-card">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>09:41</span><span>Wi-Fi&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;81%</span></div>
+          <header class="appbar compact"><div class="back-button">‹</div><div style="flex:1"><span class="eyebrow">DATA / BACKUP</span><h2 class="screen-title small">备份与还原</h2></div><div class="icon-button">?</div></header>
+          <div class="content no-nav">
+            <div class="source-summary"><b>本机账簿</b><p>286 笔订单、118 份发票及 214 条关联关系。</p><div class="meta-line"><span>数据与媒体 1.31 GB</span><span class="status-chip">状态正常</span></div></div>
+            <div class="ledger-panel"><div class="setting-row"><div class="row-mark">备</div><div><b>创建新备份</b><small>保存到 Download/ReceiptTamer/backup</small></div><span>›</span></div><div class="setting-row"><div class="row-mark">还</div><div><b>从备份还原</b><small>选择 ZIP，先进行完整性检查</small></div><span>›</span></div></div>
+            <div class="section-heading"><h3>最近备份</h3><span>全部 4 个 →</span></div>
+            <div class="ledger-panel"><div class="file-row"><div class="row-mark">ZIP</div><div><b>ReceiptTamer_Backup_2026-07-08.zip</b><small>1.31 GB · 完整备份</small></div><span class="status-chip">已校验</span></div><div class="file-row"><div class="row-mark">ZIP</div><div><b>ReceiptTamer_Backup_2026-06-30.zip</b><small>1.22 GB · 完整备份</small></div><span>›</span></div></div>
+          </div>
+          <div class="scrim"></div>
+          <section class="sheet" role="dialog" aria-label="创建数据备份">
+            <div class="sheet-handle"></div><span class="eyebrow">CREATE BACKUP</span><h3>创建数据备份</h3><p>备份会在后台压缩，离开此页后仍会显示任务通知。</p>
+            <div class="sheet-row"><div class="check on">✓</div><div><b>数据库记录</b><small>订单、发票、关联与设置</small></div><b class="mono">4.8 MB</b></div>
+            <div class="sheet-row"><div class="check on">✓</div><div><b>原始凭证</b><small>订单图片、发票图片与 PDF</small></div><b class="mono">976 MB</b></div>
+            <div class="sheet-row"><div class="check on">✓</div><div><b>导出历史</b><small>PDF、Excel 与保存索引</small></div><b class="mono">331 MB</b></div>
+            <div class="sheet-row"><div class="check">✓</div><div><b>本地 AI 模型</b><small>可重新下载，默认不备份</small></div><b class="mono">847 MB</b></div>
+            <div class="sheet-total"><span>预计备份大小<br>设备可用 18.6 GB</span><b>1.31 GB</b></div>
+            <div class="button teal block">开始创建备份</div>
+          </section>
+        </div></div>
+        <div class="phone-label"><strong>备份 · 内容确认</strong><span>真实数据页 / 可后台继续</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>09:41</span><span>Wi-Fi&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;80%</span></div>
+          <header class="appbar compact"><div class="back-button">‹</div><div style="flex:1"><span class="eyebrow">DATA / BACKUP</span><h2 class="screen-title small">备份与还原</h2></div><div class="icon-button">?</div></header>
+          <div class="content no-nav">
+            <div class="source-summary"><b>从 ZIP 还原</b><p>已完成清单读取和文件校验，尚未更改本机数据。</p><div class="meta-line"><span>2026-07-08 · v1.3.2</span><span class="status-chip warning">待确认</span></div></div>
+            <div class="ledger-panel"><div class="file-row"><div class="row-mark">ZIP</div><div><b>ReceiptTamer_Backup_2026-07-08.zip</b><small>1.31 GB · SHA256 已通过</small></div><span class="status-chip">完整</span></div><div class="setting-row"><div class="row-mark">单</div><div><b>订单 286 笔</b><small>其中 18 笔与本机重复</small></div><span>›</span></div><div class="setting-row"><div class="row-mark">票</div><div><b>发票 118 份</b><small>其中 7 份与本机重复</small></div><span>›</span></div></div>
+          </div>
+          <div class="scrim"></div>
+          <section class="dialog wide-copy" role="dialog" aria-label="确认还原备份">
+            <span class="eyebrow text-seal">RESTORE / VERSION CHECK</span><h3>备份来自旧版本</h3><p>备份由 v1.3.2 创建，当前应用为 v1.4.0。格式兼容，但旧设置可能缺少新字段。</p>
+            <div class="file-ticket"><b>ReceiptTamer_Backup_2026-07-08.zip</b><small>2026-07-08 22:16 · 1.31 GB · 校验通过</small></div>
+            <div class="restore-mode"><div class="restore-option on"><b>增量还原</b><small>保留本机新增记录，跳过相同 ID。</small></div><div class="restore-option"><b>覆盖还原</b><small>先清空本机账簿，再写入备份。</small></div></div>
+            <div class="danger-panel" style="margin-top:11px"><b>覆盖还原不可撤销</b><p>开始前会自动创建一份本机快照；空间不足时不会执行。</p></div>
+            <div class="dialog-actions"><div class="button secondary">取消</div><div class="button danger">增量还原</div></div>
+          </section>
+        </div></div>
+        <div class="phone-label"><strong>还原 · 版本警告</strong><span>校验 / 增量 / 覆盖</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;75%</span></div>
+          <header class="appbar"><div><span class="eyebrow">ReceiptTamer · v1.4.0</span><h2 class="screen-title">设置</h2></div><div class="icon-button">?</div></header>
+          <div class="content">
+            <div class="ledger-panel"><div class="setting-row"><div class="row-mark">AI</div><div><b>模型管理</b><small>Qwen3.5 0.8B · 已安装</small></div><span>›</span></div><div class="setting-row"><div class="row-mark">存</div><div><b>存储空间</b><small>已使用 1.84 GB</small></div><span>›</span></div><div class="setting-row"><div class="row-mark">备</div><div><b>备份与还原</b><small>最近备份于 7 月 8 日</small></div><span>›</span></div><div class="setting-row"><div class="row-mark">更</div><div><b>应用更新</b><small>v1.5.0 可用 · 42.8 MB</small></div><span class="status-chip warning">新版本</span></div></div>
+          </div>
+          <nav class="bottom-nav"><div class="nav-item"><div><b>⌂</b>首页</div></div><div class="nav-item"><div><b>≡</b>订单</div></div><div class="nav-add">＋</div><div class="nav-item"><div><b>▱</b>发票</div></div><div class="nav-item active"><div><b>⚙</b>设置</div></div></nav>
+          <div class="scrim"></div>
+          <section class="dialog wide-copy" role="dialog" aria-label="应用更新">
+            <span class="eyebrow">APP UPDATE · v1.5.0</span><h3>安装包已准备好</h3><p>下载曾因移动网络中断，已从 31.4 MB 继续并完成校验。</p>
+            <div class="release-ticket"><div class="row-between"><div><h4>v1.5.0 · 凭证工作台</h4><p>2026-07-10 · 42.8 MB · arm64-v8a</p></div><span class="status-chip">SHA256 通过</span></div><ul class="release-list"><li>新增多文件分享导入队列</li><li>导出任务可在后台继续</li><li>修复 Android 15 文件选择权限提示</li></ul></div>
+            <div class="progress-caption"><span>下载安装包</span><b>42.8 / 42.8 MB</b></div><div class="progress-track"><div class="progress-fill" style="width:100%"></div></div>
+            <div class="step-list"><div class="step done"><i>✓</i>从断点恢复下载</div><div class="step done"><i>✓</i>校验 APK 签名与哈希</div><div class="step"><i>3</i>等待系统安装授权</div></div>
+            <div class="permission-line"><i>!</i><span>尚未允许 ReceiptTamer 安装未知来源应用。授权后会返回这里继续。</span></div>
+            <div class="dialog-actions"><div class="button secondary">稍后</div><div class="button teal">去授权并安装</div></div>
+          </section>
+        </div></div>
+        <div class="phone-label"><strong>更新 · 断点恢复与授权</strong><span>网络中断不丢进度</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>09:41</span><span>Wi-Fi&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;73%</span></div>
+          <header class="appbar compact"><div class="back-button">‹</div><div style="flex:1"><span class="eyebrow">AI / MODEL</span><h2 class="screen-title small">模型管理</h2></div><div class="icon-button">⋮</div></header>
+          <div class="content no-nav">
+            <div class="source-summary"><b>Qwen3.5 · 0.8B</b><p>本地 MNN 推理，模型文件会保存在应用私有目录。</p><div class="meta-line"><span>预计 847 MB</span><span class="status-chip warning">下载未完成</span></div></div>
+            <div class="filter-row"><span class="filter-chip active">hf-mirror</span><span class="filter-chip">Hugging Face</span><span class="filter-chip">导入 ZIP</span></div>
+            <div class="ledger-panel"><div class="file-row"><div class="row-mark">CFG</div><div><b>llm_config.json</b><small>18 KB · 已校验</small></div><span class="status-chip">完整</span></div><div class="file-row"><div class="row-mark">WT</div><div><b>llm.mnn.weight</b><small>306 / 812 MB · 已保留</small></div><span class="status-chip warning">部分</span></div><div class="file-row"><div class="row-mark">TXT</div><div><b>tokenizer.txt</b><small>等待下载</small></div><span>›</span></div></div>
+          </div>
+          <div class="scrim"></div>
+          <section class="dialog wide-copy" role="dialog" aria-label="模型下载失败">
+            <span class="eyebrow">MODEL DOWNLOAD</span><h3>下载暂停在 37%</h3><p>连接 hf-mirror 超时。已完成的 306 MB 会保留，重试时从断点继续。</p>
+            <div class="progress-caption"><span>llm.mnn.weight</span><b>306 / 812 MB</b></div><div class="progress-track"><div class="progress-fill" style="width:37%"></div></div>
+            <div class="model-files"><div class="model-file"><b>llm_config.json</b><span class="text-teal">已校验</span></div><div class="model-file"><b>llm.mnn</b><span class="text-teal">已校验</span></div><div class="model-file"><b>llm.mnn.weight</b><span class="text-seal">网络超时</span></div><div class="model-file"><b>tokenizer.txt</b><span>等待</span></div></div>
+            <div class="danger-panel"><b>模型尚不可用</b><p>可切换到 Hugging Face，或稍后从相同断点重试；取消不会删除分片。</p></div>
+            <div class="dialog-actions"><div class="button secondary">切换下载源</div><div class="button teal">重试</div></div>
+          </section>
+        </div></div>
+        <div class="phone-label"><strong>模型安装 · 失败重试</strong><span>断点保留 / 可换源</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone dark"><div class="screen">
+          <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;71%</span></div>
+          <header class="appbar compact"><div class="back-button">‹</div><div style="flex:1"><span class="eyebrow">DATA / STORAGE</span><h2 class="screen-title small">存储空间</h2></div><div class="icon-button">↻</div></header>
+          <div class="content no-nav">
+            <div class="source-summary"><b>本机已使用 1.84 GB</b><p>缓存可重新生成，订单、发票与导出文件不会被包含。</p><div class="meta-line"><span>可安全释放 21.4 MB</span><span class="status-chip">扫描完成</span></div></div>
+            <div class="ledger-panel"><div class="setting-row"><div class="row-mark">图</div><div><b>缩略图缓存</b><small>412 个文件 · 12.8 MB</small></div><span>›</span></div><div class="setting-row"><div class="row-mark">PDF</div><div><b>PDF 预览缓存</b><small>18 个文件 · 7.9 MB</small></div><span>›</span></div><div class="setting-row"><div class="row-mark">临</div><div><b>未完成任务临时文件</b><small>3 个文件 · 0.7 MB</small></div><span>›</span></div></div>
+          </div>
+          <div class="scrim"></div>
+          <section class="dialog" role="dialog" aria-label="确认清除缓存">
+            <span class="eyebrow text-seal">CLEAR CACHE</span><h3>清除 21.4 MB 缓存？</h3><p>清理后首次打开图片或 PDF 时会重新生成预览。</p>
+            <div class="cache-grid"><div><span>缩略图缓存</span><b>12.8 MB</b></div><div><span>PDF 预览缓存</span><b>7.9 MB</b></div><div><span>任务临时文件</span><b>0.7 MB</b></div></div>
+            <div class="danger-panel"><b>这些内容不会被删除</b><p>订单与发票记录、原始凭证、导出文件、本地 AI 模型。</p></div>
+            <div class="dialog-actions"><div class="button secondary">取消</div><div class="button danger">清除缓存</div></div>
+          </section>
+        </div></div>
+        <div class="phone-label"><strong>清缓存 · 最终确认暗色稿</strong><span>列出删除与保留边界</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>09:42</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;71%</span></div>
+          <header class="appbar compact"><div class="back-button">‹</div><div style="flex:1"><span class="eyebrow">DATA / STORAGE</span><h2 class="screen-title small">存储空间</h2></div><div class="icon-button">↻</div></header>
+          <div class="content no-nav">
+            <div class="source-summary"><b>本机已使用 1.82 GB</b><p>存储统计已重新扫描，所有业务文件均可正常访问。</p><div class="meta-line"><span>刚刚完成清理</span><span class="status-chip">已刷新</span></div></div>
+            <div class="ledger-panel"><div class="setting-row"><div class="row-mark">图</div><div><b>缩略图缓存</b><small>0 个文件 · 0 B</small></div><span class="status-chip">已清空</span></div><div class="setting-row"><div class="row-mark">PDF</div><div><b>PDF 预览缓存</b><small>0 个文件 · 0 B</small></div><span class="status-chip">已清空</span></div><div class="setting-row"><div class="row-mark">临</div><div><b>任务临时文件</b><small>1 个受保护文件 · 0.2 MB</small></div><span class="status-chip warning">保留</span></div></div>
+          </div>
+          <div class="scrim"></div>
+          <section class="dialog" role="dialog" aria-label="缓存清理结果">
+            <div class="result-lockup"><div class="seal-stamp">清理<br>完成</div><div><h3>已释放 21.2 MB</h3><p>存储统计已刷新。</p></div></div>
+            <div class="cache-grid"><div><span>已删除缓存</span><b>430 个文件</b></div><div><span>保留任务文件</span><b>1 个 · 0.2 MB</b></div><div><span>处理耗时</span><b>0.6 秒</b></div></div>
+            <div class="maintenance-note"><b>保留原因</b><br>invoice_export_0710.tmp 正被导出任务使用，任务结束后会自动清理，无需处理。</div>
+            <div class="dialog-actions"><div class="button secondary">查看存储明细</div><div class="button">完成</div></div>
+          </section>
+        </div></div>
+        <div class="phone-label"><strong>清缓存 · 结果</strong><span>释放量 / 受保护文件</span></div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,826 @@
+/*
+ * 晨雾浮签 · 立体悬浮岛候选
+ * 内容面保持实体不透明；只有真实脱离内容流的控件启用背景模糊。
+ * 本文件必须位于画板局部 style 之后。
+ */
+
+:root {
+  --fog: #eef5f2;
+  --folio: #fcfefd;
+  --ink: #193335;
+  --graphite: #52686a;
+  --binding: #2b716c;
+  --binding-soft: #e3f2ee;
+  --binding-wash: #f1f8f6;
+  --exception: #a4473f;
+  --exception-soft: #fbeeea;
+  --line: #d7e4df;
+  --line-strong: #bfd2cc;
+  --shadow: rgba(26, 69, 65, 0.12);
+  --shadow-deep: rgba(24, 59, 57, 0.18);
+}
+
+html,
+body {
+  background: #d9e7e2;
+}
+
+.board-page {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(119, 192, 178, 0.25), transparent 29rem),
+    radial-gradient(circle at 96% 14rem, rgba(112, 164, 180, 0.16), transparent 31rem),
+    linear-gradient(145deg, #edf5f2, #e2ede9 72%, #edf4f1);
+}
+
+.board-kicker::before {
+  width: 24px;
+  height: 7px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2b716c 0 64%, #89cfc4 64% 100%);
+  box-shadow: 0 4px 10px rgba(43, 113, 108, 0.18);
+}
+
+.phone {
+  border-color: rgba(36, 81, 77, 0.16);
+  background: #f9fcfb;
+  box-shadow:
+    0 30px 64px rgba(29, 72, 68, 0.16),
+    inset 0 0 0 4px rgba(255, 255, 255, 0.82);
+}
+
+.screen {
+  --screen-fog: #eef5f2;
+  --screen-folio: #fcfefd;
+  --screen-ink: #193335;
+  --screen-graphite: #52686a;
+  --screen-binding: #2b716c;
+  --screen-binding-soft: #e3f2ee;
+  --screen-binding-wash: #f1f8f6;
+  --screen-exception: #a4473f;
+  --screen-exception-soft: #fbeeea;
+  --screen-line: #d7e4df;
+  --screen-line-strong: #bfd2cc;
+  --entity-fill: #fcfefd;
+  --entity-subtle: #e6f2ee;
+  --entity-line: rgba(42, 93, 88, 0.13);
+  --entity-ridge: #c9dbd5;
+  --float-fill: rgba(252, 254, 253, 0.92);
+  --modal-fill: rgba(252, 254, 253, 0.94);
+  --float-line: rgba(43, 113, 108, 0.2);
+  --top-highlight: rgba(255, 255, 255, 0.88);
+  --entity-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 13px 28px -20px rgba(27, 70, 66, 0.48);
+  --float-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 12px 30px rgba(28, 70, 66, 0.16);
+  background:
+    radial-gradient(circle at 102% -4%, rgba(96, 174, 159, 0.12), transparent 230px),
+    radial-gradient(circle at -10% 68%, rgba(103, 154, 169, 0.075), transparent 250px),
+    var(--screen-fog);
+}
+
+.statusbar,
+.screen-title,
+.row-copy,
+.row-amount,
+.field-row,
+.sheet,
+.dialog {
+  opacity: 1;
+}
+
+.content {
+  inset: 103px 0 0;
+  padding: 8px 14px 106px;
+}
+
+.content.no-nav {
+  bottom: 0;
+  padding-bottom: 20px;
+}
+
+.folio {
+  margin-left: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.folio::before,
+.index-tab {
+  display: none;
+}
+
+.underlay-content .folio {
+  opacity: 1 !important;
+}
+
+.divider {
+  display: none;
+}
+
+.section-heading {
+  min-height: 42px;
+  margin: 9px 0 2px;
+  padding: 9px 5px 7px;
+}
+
+.section-heading h3,
+.section-heading b {
+  font-size: 17px;
+}
+
+/* 实体内容面：100% 不透明且不使用背景模糊。 */
+.stats-strip {
+  height: 101px;
+  padding: 0;
+  grid-template-columns: 1fr 1fr;
+  gap: 11px;
+}
+
+.stats-divider {
+  display: none;
+}
+
+.stat-block {
+  min-width: 0;
+  padding: 16px;
+  display: grid;
+  align-content: center;
+  border: 1px solid var(--entity-line);
+  border-bottom: 3px solid var(--entity-ridge);
+  border-radius: 16px;
+  background: var(--entity-fill);
+  box-shadow: var(--entity-shadow);
+}
+
+.stat-label {
+  font-weight: 650;
+}
+
+.stat-value {
+  margin-top: 6px;
+  color: var(--screen-binding);
+}
+
+.index-list,
+.settings-list,
+.field-list {
+  overflow: hidden;
+  border: 1px solid var(--entity-line);
+  border-bottom: 3px solid var(--entity-ridge);
+  border-radius: 16px;
+  background: var(--entity-fill);
+  box-shadow: var(--entity-shadow);
+}
+
+.index-row,
+.settings-row,
+.relation-row,
+.file-row {
+  margin-left: 0;
+  padding-right: 14px;
+  padding-left: 14px;
+  background: transparent;
+}
+
+.index-row,
+.settings-row,
+.relation-row,
+.sheet-row,
+.choice-row,
+.option-row,
+.selector-row,
+.button,
+.icon-button,
+.nav-item,
+.nav-add {
+  transition:
+    transform 170ms cubic-bezier(0.2, 0.75, 0.25, 1),
+    box-shadow 170ms cubic-bezier(0.2, 0.75, 0.25, 1),
+    background-color 170ms ease-out,
+    color 170ms ease-out;
+}
+
+.index-row:hover,
+.settings-row:hover,
+.relation-row:hover,
+.sheet-row:hover,
+.choice-row:hover,
+.option-row:hover,
+.selector-row:hover {
+  background: color-mix(in srgb, var(--screen-binding-soft) 60%, transparent);
+}
+
+.index-row:active,
+.settings-row:active,
+.relation-row:active,
+.sheet-row:active,
+.choice-row:active,
+.option-row:active,
+.selector-row:active,
+.button:active,
+.icon-button:active,
+.nav-item:active {
+  transform: translateY(1px) scale(0.97);
+  transition-duration: 90ms;
+}
+
+.board-01 .phone-card:first-child .folio > .index-list:first-of-type,
+.compact-check .phone-card:first-child .folio > .index-list:first-of-type {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.board-01 .phone-card:first-child .folio > .index-list:first-of-type .index-row,
+.compact-check .phone-card:first-child .folio > .index-list:first-of-type .index-row {
+  min-height: 82px;
+  margin: 0;
+  padding: 11px 10px;
+  border: 1px solid var(--entity-line);
+  border-bottom: 3px solid var(--entity-ridge);
+  border-radius: 16px;
+  background: var(--entity-fill);
+  box-shadow: var(--entity-shadow);
+}
+
+.board-01 .phone-card:first-child .folio > .index-list:first-of-type .index-row:hover,
+.compact-check .phone-card:first-child .folio > .index-list:first-of-type .index-row:hover {
+  transform: translateY(-2px);
+  background: color-mix(in srgb, var(--entity-fill) 88%, var(--screen-binding-soft));
+  box-shadow:
+    inset 0 1px 0 var(--top-highlight),
+    0 15px 26px -18px rgba(28, 74, 69, 0.58);
+}
+
+.board-01 .phone-card:first-child .folio > .index-list:first-of-type .index-row:active,
+.compact-check .phone-card:first-child .folio > .index-list:first-of-type .index-row:active {
+  transform: translateY(1px) scale(0.97);
+  border-bottom-width: 1px;
+}
+
+.board-01 .phone-card:first-child .folio > .index-list:first-of-type .row-mark,
+.compact-check .phone-card:first-child .folio > .index-list:first-of-type .row-mark {
+  width: 36px;
+  height: 36px;
+}
+
+.board-01 .phone-card:first-child .folio > .index-list:first-of-type .row-copy b,
+.compact-check .phone-card:first-child .folio > .index-list:first-of-type .row-copy b {
+  font-size: 12px;
+  white-space: normal;
+}
+
+.board-01 .phone-card:first-child .folio > .index-list:first-of-type .chevron,
+.compact-check .phone-card:first-child .folio > .index-list:first-of-type .chevron {
+  display: none;
+}
+
+.month-header {
+  min-height: 49px;
+  margin: 13px 0 0;
+  padding: 11px 14px;
+  border: 1px solid var(--entity-line);
+  border-bottom: 0;
+  border-radius: 16px 16px 0 0;
+  background: var(--entity-subtle);
+  box-shadow: none;
+}
+
+.month-header:first-of-type,
+.folio > .month-header:first-of-type {
+  margin-top: 0;
+  border-radius: 16px 16px 0 0;
+}
+
+.ledger-list {
+  margin: 0 0 13px;
+  overflow: hidden;
+  border: 1px solid var(--entity-line);
+  border-top: 0;
+  border-bottom: 3px solid var(--entity-ridge);
+  border-radius: 0 0 16px 16px;
+  background: var(--entity-fill);
+  box-shadow: var(--entity-shadow);
+}
+
+.ledger-row {
+  min-height: 72px;
+  margin-left: 0;
+  padding-right: 13px;
+  padding-left: 13px;
+  background: transparent;
+}
+
+.ledger-row:hover {
+  background: color-mix(in srgb, var(--screen-binding-soft) 52%, transparent);
+}
+
+.rail {
+  right: -2px;
+  border: 1px solid var(--entity-line);
+  border-right: 0;
+  border-radius: 12px 0 0 12px;
+  background: var(--entity-subtle);
+  box-shadow: none;
+}
+
+.media-preview {
+  margin: 0;
+  border: 1px solid var(--entity-line);
+  border-bottom: 3px solid var(--entity-ridge);
+  border-radius: 16px;
+  background:
+    linear-gradient(128deg, rgba(56, 109, 105, 0.1), rgba(255, 255, 255, 0.78)),
+    repeating-linear-gradient(0deg, transparent 0 21px, rgba(58, 97, 94, 0.07) 22px 23px),
+    var(--entity-fill);
+  box-shadow: var(--entity-shadow);
+}
+
+.amount-band {
+  min-height: 78px;
+  margin: 11px 0 0;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--screen-binding) 20%, var(--entity-line));
+  border-bottom: 3px solid color-mix(in srgb, var(--screen-binding) 32%, var(--entity-ridge));
+  border-radius: 16px;
+  background: var(--entity-subtle);
+  box-shadow: var(--entity-shadow);
+}
+
+.field-list {
+  margin-top: 1px;
+}
+
+.field-row {
+  min-height: 50px;
+  margin-left: 0;
+  padding-right: 14px;
+  padding-left: 14px;
+}
+
+.relation-empty {
+  min-height: 62px;
+  margin-left: 0 !important;
+  padding-right: 14px !important;
+  padding-left: 14px !important;
+  border: 1px solid var(--entity-line) !important;
+  border-bottom: 3px solid var(--entity-ridge) !important;
+  border-radius: 16px;
+  background: var(--entity-fill);
+  box-shadow: var(--entity-shadow);
+}
+
+.form-folio {
+  padding-bottom: 0;
+}
+
+.file-block {
+  margin: 0;
+  border: 1px solid var(--entity-line);
+  border-bottom: 3px solid var(--entity-ridge);
+  border-radius: 16px;
+  background: var(--entity-fill);
+  box-shadow: var(--entity-shadow);
+}
+
+.file-placeholder {
+  border-radius: 12px;
+  background: var(--screen-binding-wash);
+}
+
+.selector-row {
+  margin: 11px 0 0;
+  border: 1px solid var(--entity-line);
+  border-bottom: 3px solid var(--entity-ridge);
+  border-radius: 14px;
+  background: var(--entity-fill);
+  box-shadow: var(--entity-shadow);
+}
+
+.notice {
+  margin: 11px 0 0;
+  border: 1px solid color-mix(in srgb, var(--screen-exception) 18%, transparent);
+  background: var(--screen-exception-soft);
+}
+
+.form-field {
+  margin: 11px 0 0;
+}
+
+.field-box {
+  min-height: 45px;
+  border: 1px solid var(--screen-line-strong);
+  border-bottom-width: 3px;
+  border-radius: 12px;
+  background: var(--entity-fill);
+  box-shadow:
+    inset 0 1px 0 var(--top-highlight),
+    0 8px 16px -14px rgba(25, 67, 63, 0.54);
+}
+
+.button {
+  border: 1px solid var(--screen-binding);
+  border-bottom: 3px solid color-mix(in srgb, var(--screen-binding) 74%, #123b38);
+  border-radius: 14px;
+  background: var(--screen-binding);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 11px 20px -14px rgba(22, 67, 63, 0.78);
+}
+
+.button.secondary {
+  border-color: color-mix(in srgb, var(--screen-binding) 55%, var(--screen-line));
+  border-bottom-color: color-mix(in srgb, var(--screen-binding) 35%, var(--screen-line-strong));
+  background: var(--entity-fill);
+  color: var(--screen-binding);
+}
+
+.button:active {
+  transform: translateY(2px) scale(0.97);
+  border-bottom-width: 1px;
+}
+
+.button.full {
+  width: 100%;
+  margin: 14px 0 0;
+}
+
+.brand-block {
+  min-height: 196px;
+  margin-left: 0;
+  border: 1px solid var(--entity-line);
+  border-bottom: 3px solid var(--entity-ridge);
+  border-radius: 16px;
+  background: var(--entity-fill);
+  box-shadow: var(--entity-shadow);
+}
+
+.settings-list {
+  margin-top: 12px;
+}
+
+.settings-row {
+  min-height: 59px;
+}
+
+.footer-copy {
+  padding-right: 8px;
+  padding-left: 8px;
+}
+
+.summary-card {
+  margin-left: 0;
+  border: 1px solid color-mix(in srgb, var(--screen-binding) 18%, var(--entity-line));
+  border-bottom: 3px solid color-mix(in srgb, var(--screen-binding) 30%, var(--entity-ridge));
+  border-radius: 16px;
+  background: var(--entity-subtle);
+  box-shadow: var(--entity-shadow);
+}
+
+.choice-row,
+.option-row {
+  margin: 8px 0 0;
+  border: 1px solid var(--entity-line);
+  border-bottom: 3px solid var(--entity-ridge);
+  border-radius: 14px;
+  background: var(--entity-fill);
+  box-shadow: var(--entity-shadow);
+}
+
+.export-options {
+  margin-top: 12px !important;
+  padding-bottom: 0 !important;
+}
+
+.export-options .section-heading {
+  margin-top: 7px;
+}
+
+/* 真实悬浮控件：高不透明底色 + 有限背景模糊。 */
+.appbar-actions,
+.appbar-main > .icon-button,
+.bottom-nav,
+.sheet,
+.dialog {
+  border: 1px solid var(--float-line);
+  background: var(--float-fill);
+  -webkit-backdrop-filter: blur(12px) saturate(108%);
+  backdrop-filter: blur(12px) saturate(108%);
+  box-shadow: var(--float-shadow);
+}
+
+.appbar-main > .icon-button {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+}
+
+.appbar-actions {
+  min-width: 102px;
+  height: 48px;
+  padding: 2px;
+  gap: 0;
+  overflow: hidden;
+  border-radius: 17px;
+}
+
+.appbar-actions .icon-button {
+  width: 48px;
+  height: 42px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.appbar-actions .icon-button + .icon-button {
+  border-left: 1px solid var(--screen-line);
+  border-radius: 0 14px 14px 0;
+}
+
+.appbar-actions .icon-button:first-child {
+  border-radius: 14px 0 0 14px;
+}
+
+.appbar-actions .icon-button:hover,
+.appbar-main > .icon-button:hover {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--screen-binding-soft) 54%, transparent);
+}
+
+.bottom-nav {
+  right: 14px;
+  bottom: 12px;
+  left: 14px;
+  height: 72px;
+  padding: 7px 9px 8px;
+  grid-template-columns: 1fr 1fr 68px 1fr 1fr;
+  border-radius: 26px 26px 20px 20px;
+}
+
+.bottom-nav::before,
+.sheet::before,
+.dialog::before,
+.appbar-actions::before {
+  position: absolute;
+  z-index: 0;
+  top: 1px;
+  right: 12px;
+  left: 12px;
+  height: 1px;
+  border-radius: 999px;
+  background: var(--top-highlight);
+  content: "";
+  pointer-events: none;
+}
+
+.bottom-nav > *,
+.sheet > *,
+.dialog > *,
+.appbar-actions > * {
+  position: relative;
+  z-index: 1;
+}
+
+.nav-item {
+  position: relative;
+  height: 54px;
+  border-radius: 14px;
+  background: transparent;
+}
+
+.nav-item.active {
+  transform: none;
+  background: transparent;
+  color: var(--screen-binding);
+}
+
+.nav-item.active::after {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  width: 20px;
+  height: 3px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: var(--screen-binding);
+  content: "";
+  box-shadow: 0 3px 7px color-mix(in srgb, var(--screen-binding) 30%, transparent);
+}
+
+.nav-item:hover {
+  transform: translateY(-2px);
+  background: color-mix(in srgb, var(--screen-binding-soft) 45%, transparent);
+}
+
+.nav-add {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto;
+  align-self: center;
+  border: 1px solid color-mix(in srgb, var(--screen-binding) 70%, #ffffff);
+  border-bottom: 3px solid color-mix(in srgb, var(--screen-binding) 72%, #123b38);
+  border-radius: 17px;
+  background: var(--screen-binding);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    0 6px 14px rgba(32, 91, 86, 0.24);
+}
+
+.nav-add:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 8px 16px rgba(32, 91, 86, 0.28);
+}
+
+.nav-add:active {
+  transform: translateY(2px) scale(0.94);
+  border-bottom-width: 1px;
+  transition-duration: 90ms;
+}
+
+.scrim {
+  background: rgba(19, 35, 36, 0.32);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  opacity: 1;
+}
+
+.sheet {
+  right: 8px;
+  bottom: 8px;
+  left: 8px;
+  padding: 11px 16px 20px;
+  overflow: hidden;
+  border-radius: 28px;
+  background: var(--modal-fill);
+  box-shadow:
+    inset 0 1px 0 var(--top-highlight),
+    0 18px 44px rgba(21, 55, 52, 0.24);
+}
+
+.sheet-row {
+  margin-top: 7px;
+  border: 1px solid var(--entity-line);
+  border-bottom: 3px solid var(--entity-ridge);
+  border-radius: 15px;
+  background: var(--entity-fill);
+  box-shadow: var(--entity-shadow);
+}
+
+.sheet-row:first-of-type {
+  border-top: 1px solid var(--entity-line);
+}
+
+.dialog {
+  overflow: hidden;
+  border-radius: 22px;
+  background: var(--modal-fill);
+  box-shadow:
+    inset 0 1px 0 var(--top-highlight),
+    0 22px 48px rgba(18, 47, 45, 0.28);
+}
+
+.dialog .button.danger {
+  border-color: var(--screen-exception);
+  border-bottom-color: color-mix(in srgb, var(--screen-exception) 72%, #5d251f);
+  background: var(--screen-exception);
+}
+
+/* 暗色实体层与浮岛。 */
+.dark {
+  background: #091112;
+  border-color: rgba(145, 211, 201, 0.14);
+  box-shadow:
+    0 30px 64px rgba(2, 9, 10, 0.42),
+    inset 0 0 0 4px rgba(255, 255, 255, 0.025);
+}
+
+.dark .screen {
+  --screen-fog: #0f191a;
+  --screen-folio: #172526;
+  --screen-ink: #eff7f4;
+  --screen-graphite: #b3c3bf;
+  --screen-binding: #8fd3c9;
+  --screen-binding-soft: #203836;
+  --screen-binding-wash: #182d2c;
+  --screen-exception: #ff9b88;
+  --screen-exception-soft: #3d2825;
+  --screen-line: #2b3f3e;
+  --screen-line-strong: #3d5552;
+  --entity-fill: #172526;
+  --entity-subtle: #203836;
+  --entity-line: rgba(150, 211, 201, 0.14);
+  --entity-ridge: #0c1718;
+  --float-fill: rgba(23, 37, 38, 0.94);
+  --modal-fill: rgba(23, 37, 38, 0.94);
+  --float-line: rgba(143, 211, 201, 0.22);
+  --top-highlight: rgba(255, 255, 255, 0.12);
+  --entity-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 15px 28px -18px rgba(0, 0, 0, 0.72);
+  --float-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 16px 34px rgba(0, 0, 0, 0.38);
+  background:
+    radial-gradient(circle at 105% -5%, rgba(111, 192, 177, 0.1), transparent 230px),
+    radial-gradient(circle at -8% 66%, rgba(81, 128, 140, 0.07), transparent 240px),
+    var(--screen-fog);
+}
+
+.dark .media-preview {
+  background:
+    linear-gradient(128deg, rgba(100, 177, 164, 0.12), rgba(20, 34, 35, 0.84)),
+    repeating-linear-gradient(0deg, transparent 0 21px, rgba(154, 209, 200, 0.06) 22px 23px),
+    var(--entity-fill);
+}
+
+.dark .button {
+  color: #102120;
+}
+
+.dark .button.secondary {
+  color: var(--screen-binding);
+}
+
+.dark .scrim {
+  background: rgba(0, 0, 0, 0.48);
+}
+
+/* 360×800：缩小几何，不压缩文字透明度。 */
+.compact-grid .content {
+  bottom: 0;
+  padding: 7px 12px 98px;
+}
+
+.compact-grid .bottom-nav {
+  right: 12px;
+  bottom: 10px;
+  left: 12px;
+  height: 68px;
+  padding: 6px 7px 7px;
+  grid-template-columns: 1fr 1fr 62px 1fr 1fr;
+  border-radius: 24px 24px 18px 18px;
+}
+
+.compact-grid .nav-item {
+  height: 51px;
+}
+
+.compact-grid .nav-add {
+  width: 51px;
+  height: 51px;
+  margin-top: 0;
+  border-radius: 16px;
+}
+
+.compact-grid .folio {
+  margin-left: 0;
+}
+
+.compact-grid .stats-strip {
+  height: 88px;
+}
+
+.compact-grid .stat-block {
+  padding: 13px;
+}
+
+.compact-grid .board-01 .index-row,
+.compact-grid .index-row {
+  min-height: 55px;
+}
+
+.compact-grid .sheet {
+  right: 8px;
+  bottom: 8px;
+  left: 8px;
+  padding-bottom: 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .index-row,
+  .settings-row,
+  .relation-row,
+  .sheet-row,
+  .choice-row,
+  .option-row,
+  .selector-row,
+  .button,
+  .icon-button,
+  .nav-item,
+  .nav-add {
+    transition-duration: 0.001ms !important;
+  }
+}

@@ -4,6 +4,7 @@ import '../../models/invoice.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/services/log_service.dart';
 import '../../../core/services/log_config.dart';
+import '../../../core/models/ledger_month_summary.dart';
 
 /// Invoice table data access object
 /// Handles all CRUD operations for the invoices table
@@ -18,6 +19,14 @@ class InvoiceTable {
       'FROM ${AppConstants.invoiceOrderRelationsTable} r '
       'INNER JOIN ${AppConstants.ordersTable} o '
       'ON r.${AppConstants.colOrderId} = o.${AppConstants.colId}';
+
+  static String _paginationClause({int? limit, int? offset}) {
+    if (limit == null && offset == null) return '';
+
+    final effectiveLimit = limit ?? -1;
+    if (offset == null) return 'LIMIT $effectiveLimit';
+    return 'LIMIT $effectiveLimit OFFSET $offset';
+  }
 
   /// Insert a new invoice into the database
   Future<int> insert(Invoice invoice) async {
@@ -121,6 +130,36 @@ class InvoiceTable {
     }
   }
 
+  /// Return a lightweight month index without loading every invoice model.
+  Future<List<LedgerMonthSummary>> getMonthSummaries() async {
+    try {
+      final rows = await database.rawQuery(
+        "SELECT COALESCE(strftime('%Y-%m', i.${AppConstants.colInvoiceDate}), "
+        "strftime('%Y-%m', i.${AppConstants.colCreatedAt})) AS month_key, "
+        'COUNT(*) AS item_count, '
+        'COALESCE(SUM(i.${AppConstants.colTotalAmount}), 0) AS total_amount, '
+        'COUNT(CASE WHEN i.${AppConstants.colId} IN ($_validInvoiceIdWithOrderSubquery) THEN 1 END) AS linked_item_count '
+        'FROM ${AppConstants.invoicesTable} i '
+        'GROUP BY month_key ORDER BY month_key DESC',
+      );
+
+      return rows
+          .where((row) => (row['month_key'] as String?)?.isNotEmpty ?? false)
+          .map(
+            (row) => LedgerMonthSummary(
+              monthKey: row['month_key'] as String,
+              itemCount: (row['item_count'] as num).toInt(),
+              totalAmount: (row['total_amount'] as num).toDouble(),
+              linkedItemCount: (row['linked_item_count'] as num).toInt(),
+            ),
+          )
+          .toList(growable: false);
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleDb, '获取发票月份汇总失败', e, stackTrace);
+      rethrow;
+    }
+  }
+
   /// Get invoices by order ID (through relation table)
   Future<List<Invoice>> getByOrderId(
     int orderId, {
@@ -128,8 +167,7 @@ class InvoiceTable {
     int? offset,
   }) async {
     try {
-      final limitClause = limit != null ? 'LIMIT $limit' : '';
-      final offsetClause = offset != null ? 'OFFSET $offset' : '';
+      final paginationClause = _paginationClause(limit: limit, offset: offset);
       final List<Map<String, dynamic>> maps = await database.rawQuery(
         '''
         SELECT i.* FROM ${AppConstants.invoicesTable} i
@@ -137,7 +175,7 @@ class InvoiceTable {
         ON i.${AppConstants.colId} = r.${AppConstants.colInvoiceId}
         WHERE r.${AppConstants.colOrderId} = ?
         ORDER BY i.${AppConstants.colCreatedAt} DESC
-        $limitClause $offsetClause
+        $paginationClause
         ''',
         [orderId],
       );
@@ -378,6 +416,8 @@ class InvoiceTable {
     DateTime? startDate,
     DateTime? endDate,
     bool? hasLinkedOrder,
+    int? limit,
+    int? offset,
   }) async {
     try {
       final conditions = <String>[];
@@ -413,31 +453,33 @@ class InvoiceTable {
         args.add(_formatDate(endDate));
       }
 
-      String whereClause = conditions.isNotEmpty
-          ? 'WHERE ${conditions.join(' AND ')}'
-          : '';
-
       // Handle orderId filter through relation table
       if (orderId != null) {
-        whereClause += conditions.isNotEmpty ? ' AND ' : 'WHERE ';
-        whereClause +=
-            '${AppConstants.colId} IN (SELECT ${AppConstants.colInvoiceId} FROM ${AppConstants.invoiceOrderRelationsTable} WHERE ${AppConstants.colOrderId} = ?)';
+        conditions.add(
+          '${AppConstants.colId} IN (SELECT ${AppConstants.colInvoiceId} FROM ${AppConstants.invoiceOrderRelationsTable} WHERE ${AppConstants.colOrderId} = ?)',
+        );
         args.add(orderId);
       }
 
       // Handle hasLinkedOrder filter through relation table
       if (hasLinkedOrder == true) {
-        whereClause += conditions.isNotEmpty ? ' AND ' : 'WHERE ';
-        whereClause +=
-            '${AppConstants.colId} IN ($_validInvoiceIdWithOrderSubquery)';
+        conditions.add(
+          '${AppConstants.colId} IN ($_validInvoiceIdWithOrderSubquery)',
+        );
       } else if (hasLinkedOrder == false) {
-        whereClause += conditions.isNotEmpty ? ' AND ' : 'WHERE ';
-        whereClause +=
-            '${AppConstants.colId} NOT IN ($_validInvoiceIdWithOrderSubquery)';
+        conditions.add(
+          '${AppConstants.colId} NOT IN ($_validInvoiceIdWithOrderSubquery)',
+        );
       }
 
+      final whereClause = conditions.isNotEmpty
+          ? 'WHERE ${conditions.join(' AND ')}'
+          : '';
+      final paginationClause = _paginationClause(limit: limit, offset: offset);
       final List<Map<String, dynamic>> maps = await database.rawQuery(
-        'SELECT * FROM ${AppConstants.invoicesTable} $whereClause ORDER BY ${AppConstants.colCreatedAt} DESC',
+        'SELECT * FROM ${AppConstants.invoicesTable} $whereClause '
+        'ORDER BY ${AppConstants.colCreatedAt} DESC '
+        '$paginationClause',
         args,
       );
 

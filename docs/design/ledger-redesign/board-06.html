@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>06 · 完整导出 — 墨色账簿</title>
+  <link rel="stylesheet" href="shared.css">
+  <style>
+    .export-intro { margin-bottom:13px; color:var(--graphite); font-size:11px; line-height:1.6; }
+    .export-choice { position:relative; display:grid; grid-template-columns:48px minmax(0,1fr) 24px; align-items:center; min-height:106px; margin-bottom:10px; padding:14px; overflow:hidden; border:1px solid var(--rule); border-radius:14px; background:var(--paper-raised); }
+    .export-choice.featured { border-color:var(--teal); }
+    .export-choice.featured::after { content:"推荐"; position:absolute; top:0; right:0; padding:5px 9px; border-radius:0 13px 0 10px; background:var(--teal); color:white; font-size:8px; font-weight:800; }
+    .choice-mark { display:grid; place-items:center; width:38px; height:45px; border:1px solid var(--rule-strong); border-radius:9px 9px 5px 5px; background:var(--copy); color:var(--teal); font:800 11px "RT Mono",monospace; }
+    .export-choice b { display:block; font:730 16px "RT Serif",serif; }
+    .export-choice p { margin:6px 0 0; color:var(--graphite); font-size:10px; line-height:1.48; }
+    .choice-arrow { color:var(--graphite); font-size:19px; }
+    .recent-link { display:flex; align-items:center; justify-content:space-between; margin-top:14px; padding:13px; border-top:1px dashed var(--rule-strong); color:var(--graphite); font-size:11px; }
+    .search-box { display:flex; align-items:center; gap:8px; min-height:46px; margin-bottom:9px; padding:0 12px; border:1px solid var(--rule); border-radius:12px; background:var(--paper-raised); color:var(--graphite); font-size:11px; }
+    .search-box b { color:var(--ink); font-size:16px; }
+    .selection-summary { display:flex; align-items:center; justify-content:space-between; min-height:52px; margin-bottom:10px; padding:9px 12px; border:1px solid var(--teal); border-radius:12px; background:var(--teal-soft); }
+    .selection-summary b { display:block; font-size:12px; }
+    .selection-summary small { display:block; margin-top:3px; color:var(--graphite); font-size:9px; }
+    .selection-summary strong { font:500 18px "RT MiSans",sans-serif; }
+    .invoice-select-row { display:grid; grid-template-columns:32px 54px minmax(0,1fr) 74px; align-items:center; min-height:82px; padding:9px 11px; border-bottom:1px solid var(--rule); }
+    .invoice-select-row:last-child { border-bottom:0; }
+    .invoice-stub { display:grid; place-items:center; width:45px; height:55px; border:1px solid var(--rule); border-radius:7px; background:var(--copy); color:var(--seal); font:700 8px "RT Mono",monospace; }
+    .invoice-select-row .row-main { padding-left:7px; }
+    .invoice-select-row .row-main b { font-size:12px; }
+    .invoice-select-row .row-main small { font-size:8px; line-height:1.4; white-space:normal; }
+    .invoice-select-row .row-amount { font-size:14px; }
+    .top-n-panel { display:grid; grid-template-columns:minmax(0,1fr) 98px; gap:10px; margin-bottom:11px; padding:12px; border:1px solid var(--rule); border-radius:13px; background:var(--paper-raised); }
+    .top-n-panel b { display:block; font-size:12px; }
+    .top-n-panel p { margin:5px 0 0; color:var(--graphite); font-size:9px; line-height:1.45; }
+    .stepper { display:grid; grid-template-columns:28px 1fr 28px; align-items:center; height:36px; overflow:hidden; border:1px solid var(--rule-strong); border-radius:9px; text-align:center; }
+    .stepper span { display:grid; place-items:center; height:100%; background:var(--copy); color:var(--graphite); }
+    .stepper b { font:500 14px "RT MiSans",sans-serif; }
+    .rank { display:grid; place-items:center; width:24px; height:24px; border-radius:8px; background:var(--ink); color:var(--paper); font:9px "RT Mono",monospace; }
+    .rank.off { background:var(--copy); color:var(--graphite); }
+    .order-select-row { display:grid; grid-template-columns:32px 32px minmax(0,1fr) 78px; align-items:center; min-height:72px; padding:8px 11px; border-bottom:1px solid var(--rule); }
+    .order-select-row:last-child { border-bottom:0; }
+    .order-select-row .row-main { padding-left:5px; }
+    .order-select-row .row-main b { font-size:12px; }
+    .order-select-row .row-main small { font-size:8px; }
+    .order-select-row .row-amount { font-size:14px; }
+    .option-row { display:grid; grid-template-columns:40px minmax(0,1fr) auto; align-items:center; min-height:68px; padding:8px 0; border-bottom:1px solid var(--rule); }
+    .option-row:last-child { border-bottom:0; }
+    .option-mark { display:grid; place-items:center; width:31px; height:31px; border-radius:9px; background:var(--copy); color:var(--teal); font:800 9px "RT Mono",monospace; }
+    .option-row b { display:block; font-size:12px; }
+    .option-row small { display:block; margin-top:4px; color:var(--graphite); font-size:9px; }
+    .radio { display:grid; place-items:center; width:22px; height:22px; border:1px solid var(--rule-strong); border-radius:50%; }
+    .radio.on::after { content:""; width:12px; height:12px; border-radius:50%; background:var(--teal); }
+    .linked-note { margin-bottom:12px; padding:11px 12px; border-left:3px solid var(--teal); background:var(--teal-soft); color:var(--graphite); font-size:9px; line-height:1.55; }
+    .note-box { min-height:76px; align-items:flex-start; color:var(--ink); line-height:1.5; }
+    .note-count { display:block; margin-top:5px; color:var(--graphite); font:8px "RT Mono",monospace; text-align:right; }
+    .export-underlay { opacity:.72; }
+    .generation-seal { display:grid; place-items:center; width:64px; height:64px; margin:0 auto 16px; border:1px solid var(--teal); border-radius:50%; background:var(--teal-soft); color:var(--teal); font:730 13px "RT Serif",serif; text-align:center; }
+    .result-receipt { position:relative; margin:6px 0 22px; padding:20px 17px 25px; border:1px solid var(--rule-strong); border-radius:15px 15px 6px 6px; background:var(--paper-raised); }
+    .result-receipt::after { content:""; position:absolute; right:9px; bottom:-8px; left:9px; height:9px; background:radial-gradient(circle at 6px 0,transparent 5px,var(--paper-raised) 5.5px) 0 0/14px 9px repeat-x; filter:drop-shadow(0 1px 0 var(--rule-strong)); }
+    .result-head { display:grid; grid-template-columns:1fr 72px; align-items:start; gap:12px; }
+    .result-head h3 { margin:5px 0 4px; font:760 22px "RT Serif",serif; }
+    .result-head p { margin:0; color:var(--graphite); font-size:10px; line-height:1.5; }
+    .result-stamp { display:grid; place-items:center; width:66px; height:66px; border:3px double var(--warning); border-radius:50%; color:var(--warning); font:800 12px "RT Serif",serif; line-height:1.1; text-align:center; transform:rotate(-7deg); }
+    .result-rule { margin:17px 0 8px; border-top:1px dashed var(--rule-strong); }
+    .result-file { display:grid; grid-template-columns:35px minmax(0,1fr) auto; align-items:center; min-height:62px; border-bottom:1px solid var(--rule); }
+    .result-file:last-child { border-bottom:0; }
+    .result-file b { display:block; overflow:hidden; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+    .result-file small { display:block; margin-top:4px; color:var(--graphite); font-size:8px; }
+    .result-file strong { color:var(--success); font-size:9px; }
+    .result-file strong.bad { color:var(--seal); }
+    .result-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .progress-caption { display:flex; justify-content:space-between; margin:12px 0 7px; color:var(--graphite); font-size:10px; }
+  </style>
+</head>
+<body>
+<main class="board-page">
+  <header class="board-header">
+    <div><div class="board-kicker">BOARD 06 · FULL EXPORT</div><h1 class="board-title">完整导出流程</h1></div>
+    <div class="board-note">同一套选择、联动、合计与结果语言贯穿三类导出。金额前 N 是显式筛选器；部分失败保留成功文件，并允许只重试失败项。</div>
+  </header>
+  <section class="phone-grid">
+    <article class="phone-card">
+      <div class="phone"><div class="screen">
+        <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▮▮▮&nbsp;&nbsp;86%</span></div>
+        <div class="appbar compact"><div class="back-button">‹</div><div><span class="eyebrow">EXPORT / START</span><h2 class="screen-title small">选择导出方式</h2></div><div class="icon-button">?</div></div>
+        <div class="content no-nav"><p class="export-intro">从你手上的凭证开始选择。下一步仍可补充关联订单或发票。</p><div class="export-choice featured"><div class="choice-mark">票</div><div><b>按发票选择</b><p>适合已有发票的报销；自动带入关联订单与用餐信息。</p></div><div class="choice-arrow">›</div></div><div class="export-choice"><div class="choice-mark">单</div><div><b>按订单选择</b><p>从用餐记录开始；可联动选中已关联发票。</p></div><div class="choice-arrow">›</div></div><div class="export-choice"><div class="choice-mark">期</div><div><b>按日期范围</b><p>一次选中一段时间内的订单与发票，再统一校对。</p></div><div class="choice-arrow">›</div></div><div class="recent-link"><span>查看已保存的导出文件</span><b class="text-teal">7 个 ›</b></div><div class="danger-panel" style="margin-top:12px;border-color:var(--rule);background:var(--copy);color:var(--graphite)"><b style="color:var(--ink)">常用组合</b><p>用餐证明 PDF + 发票 PDF + 用餐明细 Excel，可在导出选项中自由增减。</p></div></div>
+      </div></div>
+      <div class="phone-label"><strong>导出方式</strong><span>从现有凭证开始</span></div>
+    </article>
+
+    <article class="phone-card">
+      <div class="phone"><div class="screen">
+        <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▮▮▮&nbsp;&nbsp;86%</span></div>
+        <div class="appbar compact"><div class="back-button">‹</div><div><span class="eyebrow">EXPORT / INVOICES</span><h2 class="screen-title small">选择发票</h2></div><span class="status-chip">2 已选</span></div>
+        <div class="content with-action-bar"><div class="search-box"><b>⌕</b><span>搜索发票号码或金额</span></div><div class="filter-row"><span class="filter-chip active">2026年7月</span><span class="filter-chip">已关联订单</span><span class="filter-chip">全部类型</span></div><div class="selection-summary"><div><b>已选 2 张发票</b><small>将联动 4 笔订单</small></div><strong>¥176.60</strong></div><div class="ledger-panel"><div class="invoice-select-row"><div class="check on">✓</div><div class="invoice-stub">PDF</div><div class="row-main"><b>湘满园餐饮</b><small class="mono">244420…591621<br>关联 1 笔订单 · 07/09</small></div><div class="row-amount">¥33.50<small>已关联</small></div></div><div class="invoice-select-row"><div class="check on">✓</div><div class="invoice-stub">JPG</div><div class="row-main"><b>云海肴餐饮</b><small class="mono">254420…183707<br>关联 3 笔订单 · 07/07</small></div><div class="row-amount">¥143.10<small>已关联</small></div></div><div class="invoice-select-row"><div class="check"></div><div class="invoice-stub">PDF</div><div class="row-main"><b>麦当劳餐饮</b><small class="mono">254420…090328<br>未关联订单 · 07/06</small></div><div class="row-amount">¥61.00<small class="text-seal">待关联</small></div></div><div class="invoice-select-row"><div class="check"></div><div class="invoice-stub">JPG</div><div class="row-main"><b>和府捞面</b><small class="mono">254420…670016<br>关联 2 笔订单 · 07/03</small></div><div class="row-amount">¥86.40<small>已关联</small></div></div></div></div><div class="action-bar"><div class="action-meta"><b>¥176.60 · 4 笔订单</b><span>发票选择将保持到下一步</span></div><div class="button teal">下一步</div></div>
+      </div></div>
+      <div class="phone-label"><strong>按发票选择</strong><span>关系与金额同屏</span></div>
+    </article>
+
+    <article class="phone-card">
+      <div class="phone"><div class="screen">
+        <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▮▮▮&nbsp;&nbsp;86%</span></div>
+        <div class="appbar compact"><div class="back-button">‹</div><div><span class="eyebrow">EXPORT / ORDERS</span><h2 class="screen-title small">选择订单</h2></div><span class="status-chip">TOP 5</span></div>
+        <div class="content with-action-bar"><div class="filter-row"><span class="filter-chip active">2026年7月</span><span class="filter-chip">全部餐时</span><span class="filter-chip">金额从高到低</span></div><div class="top-n-panel"><div><b>按金额自动选择前 N 笔</b><p>当前范围共 23 笔；更改 N 会立即更新勾选与合计。</p></div><div class="stepper"><span>−</span><b>5</b><span>＋</span></div></div><div class="selection-summary"><div><b>金额前 5 笔</b><small>其中 4 笔已有发票</small></div><strong>¥306.80</strong></div><div class="ledger-panel"><div class="order-select-row"><div class="check on">✓</div><div class="rank">01</div><div class="row-main"><b>云海肴·云南菜</b><small>07/07 晚餐 · 已关联发票</small></div><div class="row-amount">¥82.00</div></div><div class="order-select-row"><div class="check on">✓</div><div class="rank">02</div><div class="row-main"><b>和府捞面</b><small>07/03 午餐 · 已关联发票</small></div><div class="row-amount">¥68.40</div></div><div class="order-select-row"><div class="check on">✓</div><div class="rank">03</div><div class="row-main"><b>麦当劳</b><small>07/06 晚餐 · 未关联</small></div><div class="row-amount">¥61.00</div></div><div class="order-select-row"><div class="check on">✓</div><div class="rank">04</div><div class="row-main"><b>云海肴·云南菜</b><small>07/05 午餐 · 已关联发票</small></div><div class="row-amount">¥53.60</div></div><div class="order-select-row"><div class="check on">✓</div><div class="rank">05</div><div class="row-main"><b>湘满园·小炒黄牛肉</b><small>07/01 晚餐 · 已关联发票</small></div><div class="row-amount">¥41.80</div></div><div class="order-select-row"><div class="check"></div><div class="rank off">06</div><div class="row-main"><b>兰湘子</b><small>07/02 午餐 · 未关联</small></div><div class="row-amount muted">¥38.50</div></div></div></div><div class="action-bar"><div class="action-meta"><b>已选 5 笔 · ¥306.80</b><span>自动联动 3 张发票</span></div><div class="button teal">下一步</div></div>
+      </div></div>
+      <div class="phone-label"><strong>按订单选择 · 金额前 N</strong><span>精确、即时、可撤销</span></div>
+    </article>
+
+    <article class="phone-card">
+      <div class="phone"><div class="screen">
+        <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▮▮▮&nbsp;&nbsp;86%</span></div>
+        <div class="appbar compact"><div class="back-button">‹</div><div><span class="eyebrow">EXPORT / OPTIONS</span><h2 class="screen-title small">导出选项</h2></div><div class="icon-button">✓</div></div>
+        <div class="content with-action-bar"><div class="linked-note"><b style="color:var(--ink)">已联动补充 3 张发票</b><br>来自所选订单的关联关系。关闭“发票 PDF”不会取消原始选择。</div><div class="form-section"><h3>生成文件</h3><div class="option-row"><div class="option-mark">餐</div><div><b>用餐证明 PDF</b><small>5 笔订单 · 预计 2 页</small></div><div class="toggle on"></div></div><div class="option-row"><div class="option-mark">票</div><div><b>发票 PDF</b><small>3 张发票 · 自动旋转排版</small></div><div class="toggle on"></div></div><div class="option-row"><div class="option-mark">表</div><div><b>用餐明细 Excel</b><small>按日期与餐时汇总</small></div><div class="toggle on"></div></div></div><div class="form-section"><h3>发票时间标签</h3><div class="option-row"><div class="radio on"></div><div><b>显示关联订单日期与餐时</b><small>例如 07/07 · 晚餐</small></div><span class="status-chip">推荐</span></div><div class="option-row"><div class="radio"></div><div><b>不显示时间标签</b><small>仅输出原始发票画面</small></div><span></span></div></div><div class="field"><label>报销备注（可选）</label><div class="field-box note-box">7月项目驻场餐费；发票金额按关联订单比例分摊。</div><small class="note-count">27 / 100</small></div><div class="row-between" style="padding:0 2px"><span class="muted" style="font-size:10px">忽略无用餐记录的日期</span><div class="toggle on"></div></div></div><div class="action-bar"><div class="action-meta"><b>将生成 3 个文件</b><span>订单 5 · 发票 3 · 合计 ¥306.80</span></div><div class="button teal">开始导出</div></div>
+      </div></div>
+      <div class="phone-label"><strong>导出选项</strong><span>联动、备注与模板统一</span></div>
+    </article>
+
+    <article class="phone-card">
+      <div class="phone"><div class="screen">
+        <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▮▮▮&nbsp;&nbsp;86%</span></div>
+        <div class="appbar compact export-underlay"><div class="back-button">‹</div><div><span class="eyebrow">EXPORT / OPTIONS</span><h2 class="screen-title small">导出选项</h2></div><div class="icon-button">✓</div></div>
+        <div class="content no-nav export-underlay"><div class="summary-receipt"><div class="summary-top"><span class="status-chip">已确认</span><span class="summary-period">3 个文件</span></div><div class="summary-amount">¥ 306.80</div><div class="summary-grid"><div class="summary-metric"><span>订单</span><b>5</b></div><div class="summary-metric"><span>发票</span><b>3</b></div><div class="summary-metric"><span>页数</span><b>≈ 7</b></div></div></div><div class="ledger-panel"><div class="setting-row"><div class="row-mark">餐</div><div><b>用餐证明 PDF</b><small>排版订单截图</small></div><span class="status-chip">等待</span></div><div class="setting-row"><div class="row-mark">票</div><div><b>发票 PDF</b><small>处理图片与原始 PDF</small></div><span class="status-chip">等待</span></div><div class="setting-row"><div class="row-mark">表</div><div><b>用餐明细 Excel</b><small>汇总金额</small></div><span class="status-chip">等待</span></div></div></div>
+        <div class="scrim"></div><div class="dialog"><div class="generation-seal">整理<br>凭证</div><h3 class="center">正在生成报销材料</h3><p class="center">请保持应用在前台，文件会保存到今日目录。</p><div class="progress-caption"><span>处理第 3 / 5 笔订单</span><b class="mono">62%</b></div><div class="progress-track"><div class="progress-fill" style="width:62%"></div></div><div class="step-list"><div class="step done"><i>✓</i>校验订单与发票关系</div><div class="step done"><i>✓</i>生成用餐证明 PDF</div><div class="step"><i>3</i>排版发票 PDF</div><div class="step"><i>4</i>写入用餐明细 Excel</div></div><div class="dialog-actions"><div class="button secondary">取消导出</div></div></div>
+      </div></div>
+      <div class="phone-label"><strong>生成中</strong><span>分阶段进度，不锁死界面</span></div>
+    </article>
+
+    <article class="phone-card">
+      <div class="phone dark"><div class="screen">
+        <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▮▮▮&nbsp;&nbsp;86%</span></div>
+        <div class="appbar compact"><div class="back-button">‹</div><div><span class="eyebrow">EXPORT / RESULT</span><h2 class="screen-title small">导出结果</h2></div><div class="icon-button">×</div></div>
+        <div class="content no-nav"><div class="result-receipt"><div class="result-head"><div><span class="eyebrow">2026-07-10 · 09:43</span><h3>完成 2，失败 1</h3><p>成功文件已保存，可以立即查看或分享。</p></div><div class="result-stamp">部分<br>完成</div></div><div class="result-rule"></div><div class="result-file"><div class="row-mark">餐</div><div><b>用餐证明_20260710_0943.pdf</b><small>2.8 MB · 2 页</small></div><strong>已保存</strong></div><div class="result-file"><div class="row-mark">表</div><div><b>用餐明细_20260710_0943.xlsx</b><small>18 KB · 7 天</small></div><strong>已保存</strong></div><div class="result-file"><div class="row-mark" style="background:var(--seal-soft);color:var(--seal)">票</div><div><b>发票_20260710_0943.pdf</b><small>第 2 张原始 PDF 已损坏</small></div><strong class="bad">失败</strong></div></div><div class="danger-panel"><b>发票 PDF 未生成</b><p>发票 254420…183707 的页面索引损坏。替换原文件后，可只重试发票 PDF。</p></div><div class="spacer-12"></div><div class="result-actions"><div class="button secondary">分享成功文件</div><div class="button teal">只重试失败项</div><div class="button secondary">打开保存目录</div><div class="button secondary">查看失败详情</div></div></div>
+      </div></div>
+      <div class="phone-label"><strong>结果 · 部分失败</strong><span>成功可用，失败可单独重试</span></div>
+    </article>
+  </section>
+</main>
+</body>
+</html>

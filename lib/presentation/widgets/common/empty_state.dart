@@ -54,7 +54,7 @@ class EmptyState extends StatelessWidget {
                 Text(
                   subtitle!,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                    color: colorScheme.onSurfaceVariant,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -96,7 +96,7 @@ class EmptyState extends StatelessWidget {
               Text(
                 subtitle!,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                  color: colorScheme.onSurfaceVariant,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -175,11 +175,7 @@ class EmptyError extends StatelessWidget {
   final String? message;
   final VoidCallback? onRetry;
 
-  const EmptyError({
-    super.key,
-    this.message,
-    this.onRetry,
-  });
+  const EmptyError({super.key, this.message, this.onRetry});
 
   @override
   Widget build(BuildContext context) {

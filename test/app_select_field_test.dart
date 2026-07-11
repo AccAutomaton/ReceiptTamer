@@ -6,7 +6,7 @@ import 'package:receipt_tamer/presentation/widgets/common/app_text_field.dart';
 
 void main() {
   testWidgets(
-    'AppSelectField keeps the inner decorator rounded and transparent',
+    'AppSelectField uses an opaque rounded relief decorator without blur',
     (tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -31,10 +31,11 @@ void main() {
         find.byType(InputDecorator),
       );
 
-      expect(inputDecorator.decoration.fillColor, Colors.transparent);
+      expect(inputDecorator.decoration.fillColor, AppEntityTokens.lightFill);
+      expect(inputDecorator.decoration.fillColor?.a, 1);
       expect(
         inputDecorator.decoration.border,
-        isA<OutlineInputBorder>()
+        isA<AppReliefInputBorder>()
             .having(
               (border) => border.borderRadius,
               'borderRadius',
@@ -43,9 +44,10 @@ void main() {
             .having(
               (border) => border.borderSide,
               'borderSide',
-              BorderSide.none,
+              const BorderSide(color: AppEntityTokens.lightStrongBorder),
             ),
       );
+      expect(find.byType(BackdropFilter), findsNothing);
     },
   );
 

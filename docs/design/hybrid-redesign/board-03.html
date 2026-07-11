@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="zh-CN" data-preview-theme="fresh-dense">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1450, initial-scale=1">
+  <title>ReceiptTamer 晨雾账簿｜03 发票流程</title>
+  <link rel="stylesheet" href="../ledger-redesign/shared.css">
+    <link rel="stylesheet" href="hybrid.css" />
+  </head>
+<body>
+  <main class="board-page">
+    <header class="board-header">
+      <div>
+        <div class="board-kicker">Board 03 · Invoice Flow</div>
+        <h1 class="board-title">发票流程</h1>
+      </div>
+      <div class="board-note">发票将文件类型、票号与关联数量直接写入台账；PDF 与图片保持同一录入路径，重复票号即时阻断，订单关系以多选合计和双向状态清晰呈现。</div>
+    </header>
+
+    <section class="phone-grid" aria-label="发票流程界面预览">
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen">
+            <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+            <header class="appbar">
+              <div><span class="eyebrow">INVOICE LEDGER</span><h2 class="screen-title">发票</h2></div>
+              <div class="icon-actions"><div class="icon-button">⌕</div><div class="icon-button">≡</div></div>
+            </header>
+            <div class="content">
+              <div class="filter-row"><span class="filter-chip active">全部 9</span><span class="filter-chip">PDF 7</span><span class="filter-chip">图片 2</span><span class="filter-chip">未关联</span></div>
+              <div class="danger-panel">
+                <div class="row-between"><div><b>正在查看订单对应发票</b><p>老乡鸡 · 科技园店　07-09 · ¥42.80</p></div><span class="status-chip danger">清除过滤</span></div>
+              </div>
+              <div class="spacer-12"></div>
+              <div class="ledger-panel">
+                <div class="month-strip"><b>七月</b><span>5 张 · ¥ 1,024.30</span></div>
+                <div class="ledger-row">
+                  <div class="row-date">07·09<br>PDF</div>
+                  <div class="row-main"><b>安徽老乡鸡餐饮</b><small class="mono">…37841 · 3 笔订单</small></div>
+                  <div class="row-amount">¥ 128.40<small class="text-teal">含此订单</small></div>
+                </div>
+                <div class="ledger-row">
+                  <div class="row-date">07·09<br>PDF</div>
+                  <div class="row-main"><b>安徽小菜园餐饮</b><small class="mono">…91027 · 2 笔订单</small></div>
+                  <div class="row-amount">¥ 150.50<small class="text-teal">已关联</small></div>
+                </div>
+                <div class="ledger-row">
+                  <div class="row-date">07·06<br>JPG</div>
+                  <div class="row-main"><b>上海蒸小皖餐饮</b><small class="mono">…66120 · 2 笔订单</small></div>
+                  <div class="row-amount">¥ 70.90<small class="text-teal">已关联</small></div>
+                </div>
+                <div class="ledger-row">
+                  <div class="row-date">07·03<br>PDF</div>
+                  <div class="row-main"><b>金拱门食品</b><small class="mono">…08217 · 尚无订单</small></div>
+                  <div class="row-amount">¥ 119.00<small class="text-seal">待关联</small></div>
+                </div>
+              </div>
+            </div>
+            <aside class="month-rail" aria-label="月份快速索引"><b>07</b><span>06</span><span>05</span><span>04</span><span>03</span></aside>
+            <nav class="bottom-nav" aria-label="主导航">
+              <div class="nav-item"><div><b>⌂</b>首页</div></div><div class="nav-item"><div><b>≡</b>订单</div></div><div class="nav-add">＋</div><div class="nav-item active"><div><b>▱</b>发票</div></div><div class="nav-item"><div><b>⚙</b>设置</div></div>
+            </nav>
+          </div>
+        </div>
+        <div class="phone-label"><strong>发票列表</strong><span>按订单过滤</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen">
+            <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+            <header class="appbar compact">
+              <div class="back-button">‹</div>
+              <div><span class="eyebrow">NEW INVOICE</span><h2 class="screen-title small">添加发票</h2></div>
+              <div class="icon-button">⋯</div>
+            </header>
+            <div class="content with-action-bar">
+              <section class="form-section">
+                <div class="row-between"><h3>来源文件</h3><span class="status-chip warning">尚未选择</span></div>
+                <div class="media-frame"><div><div class="empty-mark">票</div><b>添加发票文件</b><p class="muted">支持图片与单份 PDF 发票</p></div></div>
+              </section>
+              <section class="form-section">
+                <div class="row-between"><h3>AI 提取</h3><span class="status-chip">选择文件后可用</span></div>
+                <p class="muted">识别发票号码、开票日期与价税合计；所有字段可修改。</p>
+              </section>
+              <section class="form-section">
+                <h3>字段校对</h3>
+                <div class="field"><label>发票号码</label><div class="field-box mono muted">等待识别</div></div>
+                <div class="field"><label>价税合计</label><div class="field-box muted">¥ 0.00</div></div>
+              </section>
+            </div>
+            <div class="action-bar"><div class="action-meta"><b>新发票</b><span>选择文件后开始识别</span></div><div class="button secondary">保存发票</div></div>
+            <div class="scrim"></div>
+            <section class="sheet" aria-label="选择发票来源">
+              <div class="sheet-handle"></div>
+              <h3>选择发票来源</h3>
+              <p>原始文件会安全复制到 ReceiptTamer 存储中。</p>
+              <div class="sheet-option"><span class="sheet-option-mark">PDF</span><div><b>选择 PDF 发票</b><small>从下载目录或其他文件夹选择</small></div><span>›</span></div>
+              <div class="sheet-option"><span class="sheet-option-mark">图</span><div><b>从相册选择图片</b><small>支持 JPG 与 PNG 发票</small></div><span>›</span></div>
+              <div class="sheet-option"><span class="sheet-option-mark">入</span><div><b>查看分享导入</b><small>处理微信、邮箱等应用分享的文件</small></div><span>›</span></div>
+            </section>
+          </div>
+        </div>
+        <div class="phone-label"><strong>新增发票</strong><span>图片 / PDF 来源</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen">
+            <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+            <header class="appbar compact">
+              <div class="back-button">‹</div>
+              <div><span class="eyebrow">INVOICE · PDF</span><h2 class="screen-title small">发票详情</h2></div>
+              <div class="icon-actions"><div class="icon-button">↗</div><div class="icon-button">⋯</div></div>
+            </header>
+            <div class="content with-action-bar">
+              <div class="media-frame">
+                <div class="mock-receipt">
+                  <h4>电子发票（普通发票）</h4>
+                  <div class="receipt-line"></div><div class="receipt-line short"></div><div class="receipt-line"></div><div class="receipt-line"></div><div class="receipt-line short"></div>
+                  <div class="spacer-12"></div><b>价税合计　¥ 128.40</b>
+                </div>
+              </div>
+              <div class="detail-amount"><span>价税合计</span><b>¥ 128.40</b></div>
+              <div class="detail-line"><span>销售方</span><b>安徽老乡鸡餐饮有限公司</b></div>
+              <div class="detail-line"><span>发票号码</span><b class="mono">2540200000037841</b></div>
+              <div class="detail-line"><span>开票日期</span><b>2026-07-09</b></div>
+              <div class="section-heading"><h3>关联订单</h3><span>管理 3 笔 →</span></div>
+              <div class="ledger-panel">
+                <div class="ledger-row"><div class="row-date">07·09<br>午餐</div><div class="row-main"><b>老乡鸡 · 科技园店</b><small>尾号 8136</small></div><div class="row-amount">¥ 42.80<small class="text-teal">已关联</small></div></div>
+                <div class="ledger-row"><div class="row-date">07·07<br>午餐</div><div class="row-main"><b>老乡鸡 · 天街店</b><small>尾号 5028</small></div><div class="row-amount">¥ 43.60<small class="text-teal">已关联</small></div></div>
+              </div>
+            </div>
+            <div class="action-bar"><div class="action-meta"><b>PDF · 1 页</b><span>关联 3 笔订单</span></div><div class="button">编辑发票</div></div>
+          </div>
+        </div>
+        <div class="phone-label"><strong>发票详情</strong><span>PDF / 双向关联</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen">
+            <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+            <header class="appbar compact">
+              <div class="back-button">‹</div>
+              <div><span class="eyebrow">EDIT INVOICE</span><h2 class="screen-title small">编辑发票</h2></div>
+              <span class="status-chip danger">需处理</span>
+            </header>
+            <div class="content with-action-bar">
+              <section class="form-section">
+                <div class="row-between"><h3>来源文件</h3><span class="link">预览 PDF</span></div>
+                <div class="file-row"><span class="row-mark">PDF</span><div><b>invoice_0709_37841.pdf</b><small>1 页 · 286 KB</small></div><span>›</span></div>
+              </section>
+              <section class="form-section">
+                <div class="row-between"><h3>AI 提取</h3><span class="status-chip">已完成</span></div>
+                <p class="muted">已提取 3 个字段，请处理下方重复号码。</p>
+              </section>
+              <div class="danger-panel"><b>发票号码已存在</b><p>与“安徽老乡鸡餐饮 · ¥128.40 · 2026-07-09”重复。请核对文件，避免重复入账。</p></div>
+              <div class="spacer-12"></div>
+              <section class="form-section">
+                <h3>字段校对</h3>
+                <div class="field"><label>发票号码</label><div class="field-box mono"><span>2540200000037841</span><span class="text-seal">重复</span></div></div>
+                <div class="field"><label>开票日期</label><div class="field-box mono">2026-07-09</div></div>
+                <div class="field"><label>价税合计</label><div class="field-box"><span>人民币</span><b>¥ 128.40</b></div></div>
+              </section>
+              <section class="form-section"><div class="row-between"><h3>关联订单</h3><span class="status-chip">3 笔 · ¥128.40</span></div></section>
+            </div>
+            <div class="action-bar"><div class="action-meta"><b class="text-seal">无法保存</b><span>请先处理重复发票</span></div><div class="button secondary">检查已有发票</div></div>
+          </div>
+        </div>
+        <div class="phone-label"><strong>编辑发票</strong><span>重复号码阻断</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen">
+            <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+            <header class="appbar compact">
+              <div class="back-button">‹</div>
+              <div><span class="eyebrow">LINK ORDERS</span><h2 class="screen-title small">选择关联订单</h2></div>
+              <div class="icon-button">⌕</div>
+            </header>
+            <div class="content with-action-bar">
+              <div class="filter-row"><span class="filter-chip active">未关联 5</span><span class="filter-chip">同店铺</span><span class="filter-chip">07.01—07.09</span></div>
+              <div class="selection-total"><div><span class="micro-label">发票金额</span><b>¥ 128.40</b></div><div class="right"><span class="micro-label">已选订单</span><b class="text-teal">¥ 128.40</b></div></div>
+              <div class="spacer-12"></div>
+              <div class="ledger-panel">
+                <div class="month-strip"><b>七月</b><span>金额匹配</span></div>
+                <div class="ledger-row selectable"><span class="check on">✓</span><div class="row-date">07·09<br>午餐</div><div class="row-main"><b>老乡鸡 · 科技园店</b><small>尾号 8136</small></div><div class="row-amount">¥ 42.80<small class="text-teal">已选</small></div></div>
+                <div class="ledger-row selectable"><span class="check on">✓</span><div class="row-date">07·07<br>午餐</div><div class="row-main"><b>老乡鸡 · 天街店</b><small>尾号 5028</small></div><div class="row-amount">¥ 43.60<small class="text-teal">已选</small></div></div>
+                <div class="ledger-row selectable"><span class="check on">✓</span><div class="row-date">07·05<br>晚餐</div><div class="row-main"><b>老乡鸡 · 望江路店</b><small>尾号 9177</small></div><div class="row-amount">¥ 42.00<small class="text-teal">已选</small></div></div>
+                <div class="ledger-row selectable"><span class="check"></span><div class="row-date">07·02<br>午餐</div><div class="row-main"><b>小菜园新徽菜</b><small>尾号 6604</small></div><div class="row-amount">¥ 64.50<small class="text-seal">未关联</small></div></div>
+                <div class="ledger-row selectable"><span class="check"></span><div class="row-date">07·01<br>晚餐</div><div class="row-main"><b>和府捞面</b><small>尾号 1183</small></div><div class="row-amount">¥ 51.00<small class="text-seal">未关联</small></div></div>
+              </div>
+            </div>
+            <div class="action-bar"><div class="action-meta"><b>已选 3 笔</b><span>合计与发票完全一致</span></div><div class="button teal">确认关联</div></div>
+          </div>
+        </div>
+        <div class="phone-label"><strong>订单选择器</strong><span>多选 / 固定合计</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone dark">
+          <div class="screen">
+            <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+            <header class="appbar compact">
+              <div class="back-button">‹</div>
+              <div><span class="eyebrow">EDIT INVOICE</span><h2 class="screen-title small">编辑发票</h2></div>
+              <span class="status-chip danger">重复</span>
+            </header>
+            <div class="content no-nav">
+              <section class="form-section">
+                <div class="file-row"><span class="row-mark">PDF</span><div><b>invoice_0709_copy.pdf</b><small>1 页 · 284 KB</small></div><span>›</span></div>
+              </section>
+              <div class="danger-panel"><b>发现相同发票号码</b><p class="mono">2540200000037841</p></div>
+              <div class="spacer-12"></div>
+              <div class="detail-line"><span>已有记录</span><b>安徽老乡鸡餐饮</b></div>
+              <div class="detail-line"><span>价税合计</span><b>¥ 128.40</b></div>
+              <div class="detail-line"><span>关联订单</span><b>3 笔</b></div>
+            </div>
+            <div class="scrim"></div>
+            <section class="dialog" aria-label="重复发票处理">
+              <span class="eyebrow text-seal">DUPLICATE INVOICE</span>
+              <h3>这张发票已经入账</h3>
+              <p>发票号码、金额和日期均与现有记录一致。建议打开已有发票，不再保存重复文件。</p>
+              <div class="danger-panel"><b>已有发票关联 3 笔订单</b><p>若继续替换文件，原 PDF 将被移除，订单关系保持不变。</p></div>
+              <div class="dialog-actions"><div class="button secondary">返回修改</div><div class="button">打开已有发票</div></div>
+            </section>
+          </div>
+        </div>
+        <div class="phone-label"><strong>重复发票处理</strong><span>关系保留 / 暗色</span></div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

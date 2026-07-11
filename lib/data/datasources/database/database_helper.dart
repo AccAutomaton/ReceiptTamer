@@ -15,12 +15,25 @@ class DatabaseHelper {
   DatabaseHelper._internal();
 
   static Database? _database;
+  static Future<Database>? _openingDatabase;
 
   /// Get database instance
   Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initDatabase();
-    return _database!;
+    final current = _database;
+    if (current != null && current.isOpen) return current;
+
+    final inFlight = _openingDatabase;
+    if (inFlight != null) return inFlight;
+
+    final opening = _initDatabase();
+    _openingDatabase = opening;
+    try {
+      final opened = await opening;
+      _database = opened;
+      return opened;
+    } finally {
+      _openingDatabase = null;
+    }
   }
 
   /// Initialize database
@@ -146,6 +159,7 @@ class DatabaseHelper {
     final db = await database;
     await db.close();
     _database = null;
+    _openingDatabase = null;
     logService.i(LogConfig.moduleDb, '数据库连接已关闭');
   }
 

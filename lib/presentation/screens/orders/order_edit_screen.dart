@@ -139,7 +139,7 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
   }
 
   Future<void> _pickImage() async {
-    final result = await showModalBottomSheet<ImageSource>(
+    final result = await showGlassContentBottomSheet<ImageSource>(
       context: context,
       builder: (context) => SafeArea(
         child: Column(
@@ -268,7 +268,7 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
   }
 
   void _showShopNamePicker() {
-    showModalBottomSheet(
+    showGlassContentBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),

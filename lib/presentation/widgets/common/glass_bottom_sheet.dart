@@ -11,8 +11,33 @@ Future<T?> showGlassBottomSheet<T>({
     useRootNavigator: true,
     useSafeArea: true,
     backgroundColor: Colors.transparent,
-    barrierColor: AppPalette.darkSurface.withValues(alpha: 0.24),
+    barrierColor: Theme.of(context).colorScheme.scrim.withValues(alpha: 0.34),
     builder: builder,
+  );
+}
+
+/// Shows existing page content inside the shared floating glass sheet.
+///
+/// This intentionally mirrors the native bottom-sheet defaults used by the
+/// legacy screens: the nearest navigator is used unless explicitly overridden,
+/// dismiss/drag behavior is unchanged, and the builder receives the sheet
+/// route's context. Only the route material and visual wrapper are replaced.
+Future<T?> showGlassContentBottomSheet<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  ShapeBorder? shape,
+  bool isScrollControlled = false,
+  bool useRootNavigator = false,
+}) {
+  return showModalBottomSheet<T>(
+    context: context,
+    useRootNavigator: useRootNavigator,
+    isScrollControlled: isScrollControlled,
+    backgroundColor: Colors.transparent,
+    barrierColor: Theme.of(context).colorScheme.scrim.withValues(alpha: 0.34),
+    shape: shape,
+    builder: (sheetContext) =>
+        GlassBottomSheet(shape: shape, child: builder(sheetContext)),
   );
 }
 
@@ -21,24 +46,44 @@ class GlassBottomSheet extends StatelessWidget {
     super.key,
     required this.child,
     this.padding = const EdgeInsets.fromLTRB(16, 10, 16, 16),
+    this.shape,
   });
 
   final Widget child;
   final EdgeInsetsGeometry padding;
+  final ShapeBorder? shape;
 
   @override
   Widget build(BuildContext context) {
+    final sheetShape = shape;
+    final requestedRadius = sheetShape is RoundedRectangleBorder
+        ? sheetShape.borderRadius.resolve(Directionality.of(context))
+        : null;
+    const fallbackRadius = Radius.circular(AppRadii.sheet);
+    final topLeft = requestedRadius?.topLeft ?? fallbackRadius;
+    final topRight = requestedRadius?.topRight ?? fallbackRadius;
+    final borderRadius = BorderRadius.only(
+      topLeft: topLeft == Radius.zero ? fallbackRadius : topLeft,
+      topRight: topRight == Radius.zero ? fallbackRadius : topRight,
+      bottomLeft: requestedRadius?.bottomLeft == Radius.zero
+          ? (topLeft == Radius.zero ? fallbackRadius : topLeft)
+          : requestedRadius?.bottomLeft ?? fallbackRadius,
+      bottomRight: requestedRadius?.bottomRight == Radius.zero
+          ? (topRight == Radius.zero ? fallbackRadius : topRight)
+          : requestedRadius?.bottomRight ?? fallbackRadius,
+    );
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-      child: GlassSurface(
-        fillColor: AppGlassTokens.sheetFillFor(context),
-        preset: GlassSurfacePreset.sheet,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(AppRadii.sheet),
-          bottom: Radius.circular(AppRadii.sheet),
+      padding: const EdgeInsets.all(8),
+      child: RepaintBoundary(
+        child: GlassSurface(
+          preset: GlassSurfacePreset.sheet,
+          fillColor: AppGlassTokens.sheetFillFor(context),
+          blurSigma: 10,
+          borderRadius: borderRadius,
+          edgeIntensity: 0.48,
+          child: Padding(padding: padding, child: child),
         ),
-        boxShadow: AppShadows.glass,
-        child: Padding(padding: padding, child: child),
       ),
     );
   }
@@ -63,7 +108,6 @@ class GlassActionTile extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final actionColor = AppPalette.actionPrimaryFor(context);
-    final actionFill = AppPalette.actionSoftFillFor(context, alpha: 0.58);
     final actionContainer = AppPalette.actionContainerFor(context);
     final selectedFill = AppPalette.selectedFillFor(context);
 
@@ -77,8 +121,15 @@ class GlassActionTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadii.card),
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: glass ? actionFill : Colors.transparent,
+              color: glass
+                  ? AppGlassTokens.contentFillFor(context)
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(AppRadii.card),
+              border: glass
+                  ? Border.all(
+                      color: colorScheme.outlineVariant.withValues(alpha: 0.72),
+                    )
+                  : null,
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),

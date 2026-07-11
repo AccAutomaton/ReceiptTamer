@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="zh-CN" data-preview-theme="relief-island">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>晨雾浮签 · 03 操作与层级</title>
+    <link rel="stylesheet" href="shared.css" />
+    <style>
+      .underlay-content {
+        padding-top: 1px;
+      }
+
+      .underlay-content .folio {
+        opacity: 0.98;
+      }
+
+      .underlay-content .index-row {
+        min-height: 58px;
+      }
+
+      .add-sheet .sheet-row {
+        min-height: 73px;
+      }
+
+      .filter-sheet .sheet-row {
+        min-height: 60px;
+      }
+
+      .filter-sheet .row-mark {
+        width: 37px;
+        height: 37px;
+      }
+
+      .export-phone .content {
+        padding: 2px 12px 10px;
+      }
+
+      .export-main .summary-card {
+        min-height: 68px;
+      }
+
+      .export-main .section-heading {
+        min-height: 38px;
+        padding-top: 9px;
+        padding-bottom: 5px;
+      }
+
+      .export-main .choice-row {
+        min-height: 59px;
+      }
+
+      .export-options {
+        margin-top: 8px;
+        padding-bottom: 10px;
+      }
+
+      .export-options .section-heading {
+        min-height: 31px;
+        padding-top: 7px;
+        padding-bottom: 3px;
+      }
+
+      .export-options .section-heading h3 {
+        font-size: 13px;
+      }
+
+      .export-options .option-row {
+        min-height: 35px;
+        padding-top: 5px;
+        padding-bottom: 5px;
+      }
+
+      .export-options .button.full {
+        min-height: 40px;
+        margin-top: 9px;
+      }
+
+      .choice-check.small {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+      }
+
+      .choice-check.small .icon {
+        width: 13px;
+        height: 13px;
+      }
+
+      .choice-check.off {
+        border: 2px solid var(--screen-line-strong);
+        background: transparent;
+      }
+    </style>
+      <link rel="stylesheet" href="relief-island.css" />
+  </head>
+  <body class="board-03">
+    <main class="board-page">
+      <header class="board-header">
+        <div>
+          <div class="board-kicker">EXPLORATION · RELIEF ISLAND</div>
+          <h1 class="board-title">03 · 操作与层级</h1>
+        </div>
+        <p class="board-note"><b>浮层使用 94% 实色与 12px 模糊。</b> 中央新增、筛选和导出继续保留 ce04b3c 的原选项；遮罩不做全屏模糊，浮层文字始终完全锐利。</p>
+      </header>
+
+      <section class="phone-grid" aria-label="面板与导出预览">
+        <article class="phone-card">
+          <div class="phone">
+            <div class="screen">
+              <div class="statusbar"><span>10:24</span><span>5G · 91%</span></div>
+              <header class="appbar">
+                <div class="appbar-main"><h2 class="screen-title">首页</h2></div>
+              </header>
+
+              <div class="content underlay-content">
+                <section class="folio">
+                  <span class="index-tab high" aria-hidden="true"></span>
+                  <div class="stats-strip">
+                    <div class="stat-block">
+                      <div class="stat-label"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-orders"></use></svg>订单总数</div>
+                      <div class="stat-value">3</div>
+                    </div>
+                    <div class="stats-divider"></div>
+                    <div class="stat-block">
+                      <div class="stat-label"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-invoice"></use></svg>发票总数</div>
+                      <div class="stat-value">2</div>
+                    </div>
+                  </div>
+                  <div class="section-heading"><h3>快捷功能</h3></div>
+                  <ul class="index-list">
+                    <li class="index-row"><span class="row-mark"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-restaurant"></use></svg></span><span class="row-copy"><b>用餐证明导出</b></span></li>
+                    <li class="index-row"><span class="row-mark"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-invoice"></use></svg></span><span class="row-copy"><b>发票导出</b></span></li>
+                    <li class="index-row"><span class="row-mark"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-store"></use></svg></span><span class="row-copy"><b>开票助手</b></span></li>
+                    <li class="index-row"><span class="row-mark"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-download"></use></svg></span><span class="row-copy"><b>报销材料导出</b></span></li>
+                  </ul>
+                </section>
+              </div>
+
+              <nav class="bottom-nav" aria-label="主导航">
+                <div class="nav-item active"><span><svg class="icon" aria-hidden="true"><use href="icons.svg#i-home"></use></svg>首页</span></div>
+                <div class="nav-item"><span><svg class="icon" aria-hidden="true"><use href="icons.svg#i-orders"></use></svg>订单</span></div>
+                <div class="nav-add"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-plus"></use></svg></div>
+                <div class="nav-item"><span><svg class="icon" aria-hidden="true"><use href="icons.svg#i-invoice"></use></svg>发票</span></div>
+                <div class="nav-item"><span><svg class="icon" aria-hidden="true"><use href="icons.svg#i-info"></use></svg>关于</span></div>
+              </nav>
+
+              <div class="scrim"></div>
+              <section class="sheet add-sheet">
+                <div class="sheet-handle"></div>
+                <div class="sheet-row">
+                  <span class="row-mark"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-orders"></use></svg></span>
+                  <span class="row-copy"><b>添加订单</b><small>通过订单截图导入</small></span>
+                  <svg class="icon chevron" aria-hidden="true"><use href="icons.svg#i-chevron"></use></svg>
+                </div>
+                <div class="sheet-row">
+                  <span class="row-mark"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-invoice"></use></svg></span>
+                  <span class="row-copy"><b>添加发票</b><small>通过图片或PDF导入</small></span>
+                  <svg class="icon chevron" aria-hidden="true"><use href="icons.svg#i-chevron"></use></svg>
+                </div>
+              </section>
+            </div>
+          </div>
+          <div class="phone-label"><strong>中央添加面板</strong><span>原有两项 · 无面板标题</span></div>
+        </article>
+
+        <article class="phone-card">
+          <div class="phone">
+            <div class="screen">
+              <div class="statusbar"><span>10:24</span><span>5G · 91%</span></div>
+              <header class="appbar">
+                <div class="appbar-main"><h2 class="screen-title">订单管理</h2></div>
+                <div class="appbar-actions">
+                  <button class="icon-button" type="button" title="筛选"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-filter"></use></svg></button>
+                  <button class="icon-button" type="button" title="搜索"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-search"></use></svg></button>
+                </div>
+              </header>
+
+              <div class="content underlay-content">
+                <section class="folio">
+                  <span class="index-tab low" aria-hidden="true"></span>
+                  <div class="month-header"><b>2026 年 7 月</b><span>2笔&nbsp;&nbsp;&nbsp;¥128.64</span></div>
+                  <div class="ledger-row">
+                    <span class="row-mark"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-orders"></use></svg></span>
+                    <span class="row-copy"><b>青禾餐食 · 测试店</b><small>2026年07月09日 午餐</small></span>
+                    <span class="row-amount">¥42.80<small>未关联发票</small></span>
+                  </div>
+                  <div class="ledger-row">
+                    <span class="row-mark"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-orders"></use></svg></span>
+                    <span class="row-copy"><b>云帆便当 · 脱敏样本</b><small>2026年07月08日 晚餐</small></span>
+                    <span class="row-amount">¥85.84<small>已关联发票</small></span>
+                  </div>
+                </section>
+              </div>
+
+              <nav class="bottom-nav" aria-label="主导航">
+                <div class="nav-item"><span><svg class="icon" aria-hidden="true"><use href="icons.svg#i-home"></use></svg>首页</span></div>
+                <div class="nav-item active"><span><svg class="icon" aria-hidden="true"><use href="icons.svg#i-orders"></use></svg>订单</span></div>
+                <div class="nav-add"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-plus"></use></svg></div>
+                <div class="nav-item"><span><svg class="icon" aria-hidden="true"><use href="icons.svg#i-invoice"></use></svg>发票</span></div>
+                <div class="nav-item"><span><svg class="icon" aria-hidden="true"><use href="icons.svg#i-info"></use></svg>关于</span></div>
+              </nav>
+
+              <div class="scrim"></div>
+              <section class="sheet filter-sheet">
+                <div class="sheet-handle"></div>
+                <h3>筛选订单</h3>
+                <div class="sheet-row"><span class="row-mark"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-list"></use></svg></span><span class="row-copy"><b>全部订单</b></span></div>
+                <div class="sheet-row"><span class="row-mark"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-today"></use></svg></span><span class="row-copy"><b>今日订单</b></span></div>
+                <div class="sheet-row"><span class="row-mark"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-month"></use></svg></span><span class="row-copy"><b>本月订单</b></span></div>
+                <div class="sheet-row"><span class="row-mark"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-range"></use></svg></span><span class="row-copy"><b>按月份范围</b></span></div>
+                <div class="sheet-row"><span class="row-mark"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-unlink"></use></svg></span><span class="row-copy"><b>未关联发票</b></span></div>
+                <div class="sheet-row"><span class="row-mark"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-link"></use></svg></span><span class="row-copy"><b>已关联发票</b></span></div>
+              </section>
+            </div>
+          </div>
+          <div class="phone-label"><strong>订单筛选面板</strong><span>即时选择 · 无应用按钮</span></div>
+        </article>
+
+        <article class="phone-card">
+          <div class="phone export-phone">
+            <div class="screen">
+              <div class="statusbar"><span>10:24</span><span>5G · 91%</span></div>
+              <header class="appbar">
+                <div class="appbar-main">
+                  <button class="icon-button" type="button" title="返回"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-back"></use></svg></button>
+                  <h2 class="screen-title">导出选项</h2>
+                </div>
+              </header>
+
+              <div class="content no-nav">
+                <section class="folio export-main">
+                  <span class="index-tab high" aria-hidden="true"></span>
+                  <div class="summary-card">
+                    <span class="row-mark"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-file"></use></svg></span>
+                    <span class="row-copy"><b>报销材料</b><small>2 张发票 · 2 条订单</small></span>
+                  </div>
+                  <div class="section-heading"><h3>选择导出内容</h3></div>
+                  <div class="choice-row">
+                    <span class="choice-check"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-check"></use></svg></span>
+                    <span class="row-copy"><b>用餐证明</b><small>订单截图汇总文档</small></span>
+                    <span class="format-pill">PDF</span>
+                  </div>
+                  <div class="choice-row">
+                    <span class="choice-check"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-check"></use></svg></span>
+                    <span class="row-copy"><b>发票</b><small>发票信息汇总文档</small></span>
+                    <span class="format-pill">PDF</span>
+                  </div>
+                  <div class="choice-row">
+                    <span class="choice-check"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-check"></use></svg></span>
+                    <span class="row-copy"><b>用餐明细</b><small>订单和发票明细表格</small></span>
+                    <span class="format-pill">XLSX</span>
+                  </div>
+                  <div class="export-options">
+                  <div class="section-heading"><h3>用餐证明导出选项</h3></div>
+                  <div class="option-row"><span>添加备注</span><span class="choice-check small off"></span></div>
+                  <div class="section-heading"><h3>发票导出选项</h3></div>
+                  <div class="option-row"><span>标注订单时间</span><span class="choice-check small off"></span></div>
+                  <div class="option-row"><span>添加备注</span><span class="choice-check small off"></span></div>
+                  <div class="section-heading"><h3>用餐明细导出选项</h3></div>
+                  <div class="option-row"><span>忽略无用餐记录的日期</span><span class="choice-check small"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-check"></use></svg></span></div>
+                  <button class="button full" type="button">开始导出</button>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+          <div class="phone-label"><strong>导出选项</strong><span>三类材料 · 原有附加选项</span></div>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

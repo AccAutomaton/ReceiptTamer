@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ReceiptTamer · 晨雾编目预览总览</title>
+    <link rel="stylesheet" href="shared.css" />
+    <style>
+      html, body { min-width: 320px; }
+      .gallery-page { min-height: 100vh; padding: 58px 34px 80px; background: radial-gradient(circle at 8% 0, rgba(117,188,174,.24), transparent 32rem), linear-gradient(145deg,#edf5f2,#e3eeea); }
+      .gallery-shell { width: min(1320px, 100%); margin: 0 auto; }
+      .rejected-banner { margin-bottom:26px; padding:14px 17px; border:1px solid rgba(164,71,63,.24); border-radius:14px; background:rgba(255,248,246,.92); color:#713b35; font-size:13px; line-height:1.6; }
+      .rejected-banner a { color:#2b716c; font-weight:800; }
+      .gallery-status { display:inline-flex; align-items:center; gap:10px; padding:8px 12px; border:1px solid rgba(43,109,106,.2); border-radius:999px; background:rgba(255,255,255,.72); color:var(--binding); font-size:12px; font-weight:800; letter-spacing:.06em; }
+      .gallery-status::before { width:7px; height:24px; border-radius:2px 7px 7px 2px; background:var(--binding); content:""; }
+      .gallery-hero h1 { max-width:900px; margin:22px 0 12px; font-family:"RT Display","RT Sans",sans-serif; font-size:clamp(42px,6vw,72px); font-weight:500; letter-spacing:-.055em; line-height:1.03; }
+      .gallery-hero p { max-width:900px; margin:0; color:#50676a; font-size:16px; line-height:1.8; }
+      .tokens { display:flex; flex-wrap:wrap; gap:8px; margin-top:24px; }
+      .tokens span { padding:8px 11px; border:1px solid var(--line); border-radius:10px; background:rgba(255,255,255,.75); color:var(--graphite); font-size:12px; }
+      .compare { margin-top:42px; display:grid; grid-template-columns:minmax(260px,.72fr) minmax(0,1.28fr); gap:20px; align-items:stretch; }
+      .compare-card, .gallery-card { overflow:hidden; border:1px solid rgba(43,109,106,.13); border-radius:24px; background:#fff; box-shadow:0 16px 38px rgba(33,76,72,.1); }
+      .compare-card header, .gallery-card header { padding:17px 19px 15px; border-bottom:1px solid var(--line); }
+      .compare-card h2, .gallery-card h2 { margin:0; font-family:"RT Display","RT Sans",sans-serif; font-size:20px; font-weight:500; }
+      .compare-card p, .gallery-card p { margin:5px 0 0; color:var(--graphite); font-size:12px; line-height:1.55; }
+      .compare-card img { display:block; width:100%; height:630px; object-fit:contain; object-position:top center; background:#edf4f2; }
+      .compare-card.candidate img { object-fit:cover; object-position:top center; }
+      .gallery-heading { margin:54px 0 18px; display:flex; align-items:end; justify-content:space-between; gap:20px; }
+      .gallery-heading h2 { margin:0; font-family:"RT Display","RT Sans",sans-serif; font-size:32px; font-weight:500; letter-spacing:-.035em; }
+      .gallery-heading p { margin:0; color:var(--graphite); font-size:13px; }
+      .gallery-grid { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+      .gallery-card img { display:block; width:100%; height:520px; object-fit:cover; object-position:top center; background:#e7f0ed; }
+      .gallery-card a { color:inherit; text-decoration:none; }
+      .boundary { margin-top:28px; padding:20px 22px; border-left:7px solid var(--binding); border-radius:4px 18px 18px 4px; background:rgba(255,255,255,.8); color:#52696b; font-size:13px; line-height:1.75; }
+      .boundary b { color:var(--ink); }
+      @media (max-width:860px) { .gallery-page{padding:34px 16px 60px}.compare,.gallery-grid{grid-template-columns:1fr}.compare-card img{height:auto}.gallery-card img{height:auto}.gallery-heading{align-items:start;flex-direction:column} }
+    </style>
+  </head>
+  <body>
+    <main class="gallery-page">
+      <div class="gallery-shell">
+        <div class="rejected-banner"><b>该方向已否决：</b>“一屏一张连续归档卡”的整体感不符合要求。请查看新的 <a href="../morning-ledger-relief-island-preview/index.html">晨雾浮签 · 实体层与悬浮岛预览</a>。</div>
+        <section class="gallery-hero">
+          <div class="gallery-status">EXPLORATION · NOT CURRENT FLUTTER</div>
+          <h1>晨雾编目<br />骑缝索引</h1>
+          <p>
+            中度激进方向：页面功能、内容和文案仍以 ce04b3c 为基线，只把当前“许多柔和卡片”推进为
+            “一张连续归档页”。唯一视觉签名是每屏一枚骑缝索引签，金额形成稳定右列；不新增统计、状态或流程。
+          </p>
+          <div class="tokens"><span>雾页 #F2F7F5</span><span>归档白 #FFFFFF</span><span>潮墨 #1E3436</span><span>装订青 #2B6D6A</span><span>珊瑚仅用于危险</span><span>MiSans + Noto Sans SC</span></div>
+        </section>
+
+        <section class="compare">
+          <article class="compare-card">
+            <header><h2>当前 Flutter</h2><p>安全、清新，但卡片之间的视觉权重比较平均。</p></header>
+            <img src="../../../test/goldens/baselines/home-android_regular-light-1.0.png" alt="当前晨雾首页 Golden" />
+          </article>
+          <article class="compare-card candidate">
+            <header><h2>候选力度</h2><p>内容不变，改为连续归档页、骑缝索引和更稳定的金额节奏。</p></header>
+            <img src="rendered/board-01.png" alt="晨雾编目日常主壳预览" />
+          </article>
+        </section>
+
+        <div class="gallery-heading"><h2>4 张代表画板 · 12 个状态</h2><p>412×915 Android 视口；另含 360×800 紧凑检查。</p></div>
+        <section class="gallery-grid">
+          <article class="gallery-card"><a href="board-01.html"><header><h2>01 · 日常主壳</h2><p>首页、订单、发票</p></header><img src="rendered/board-01.png" alt="日常主壳画板" /></a></article>
+          <article class="gallery-card"><a href="board-02.html"><header><h2>02 · 高密度流程</h2><p>订单详情、添加订单、编辑发票</p></header><img src="rendered/board-02.png" alt="高密度流程画板" /></a></article>
+          <article class="gallery-card"><a href="board-03.html"><header><h2>03 · 操作与层级</h2><p>中央新增、订单筛选、导出选项</p></header><img src="rendered/board-03.png" alt="操作与层级画板" /></a></article>
+          <article class="gallery-card"><a href="board-04.html"><header><h2>04 · 边界状态</h2><p>关于、暗色列表、危险确认</p></header><img src="rendered/board-04.png" alt="边界状态画板" /></a></article>
+          <article class="gallery-card"><a href="compact-check.html"><header><h2>360×800 紧凑检查</h2><p>首页、订单、中央新增面板</p></header><img src="rendered/compact-check.png" alt="紧凑视口检查" /></a></article>
+        </section>
+
+        <p class="boundary"><b>边界：</b>这些图只用于选择视觉力度，尚未改动 Flutter。旧墨色、清新减法和混合画板仍是已否决历史稿；本候选也不会覆盖当前实现，直到你明确确认。</p>
+      </div>
+    </main>
+  </body>
+</html>

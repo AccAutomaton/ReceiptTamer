@@ -93,13 +93,17 @@ class _FloatingOverlayLayoutState extends State<FloatingOverlayLayout> {
     required EdgeInsetsGeometry margin,
     required Widget child,
   }) {
-    return GlassSurface(
-      margin: margin,
-      padding: widget.overlayPadding,
-      fillColor: AppGlassTokens.panelFillFor(context),
-      borderRadius: BorderRadius.circular(AppRadii.card),
-      boxShadow: AppShadows.glass,
-      child: child,
+    return RepaintBoundary(
+      child: GlassSurface(
+        margin: margin,
+        padding: widget.overlayPadding,
+        fillColor: AppGlassTokens.panelFillFor(context),
+        blurSigma: 10,
+        preset: GlassSurfacePreset.floating,
+        borderRadius: BorderRadius.circular(AppRadii.card),
+        edgeIntensity: 0.44,
+        child: child,
+      ),
     );
   }
 

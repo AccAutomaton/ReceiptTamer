@@ -19,13 +19,25 @@ class MutedStatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final labelStyle = theme.textTheme.labelSmall;
+    final chipWash = color.withValues(alpha: 0.13);
+    final effectiveBackground = Color.alphaBlend(
+      chipWash,
+      AppEntityTokens.fillFor(context),
+    );
+    final requestedForeground = color.withValues(alpha: 1);
+    final foregroundColor =
+        _contrastRatio(requestedForeground, effectiveBackground) >=
+            _minimumTextContrast
+        ? requestedForeground
+        : theme.colorScheme.onSurface;
 
     return Container(
       padding: compact
           ? const EdgeInsets.symmetric(horizontal: 8, vertical: 3)
           : const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.13),
+        // Pre-composited to keep ordinary content surfaces fully opaque.
+        color: effectiveBackground,
         borderRadius: BorderRadius.circular(AppRadii.chip),
         border: Border.all(color: color.withValues(alpha: 0.28)),
       ),
@@ -33,14 +45,14 @@ class MutedStatusChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: compact ? 12 : 13, color: color),
+            Icon(icon, size: compact ? 12 : 13, color: foregroundColor),
             SizedBox(width: compact ? 3 : 4),
           ],
           Text(
             label,
             style: labelStyle?.copyWith(
               fontSize: compact ? (labelStyle.fontSize ?? 11) - 1 : null,
-              color: color,
+              color: foregroundColor,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -48,4 +60,18 @@ class MutedStatusChip extends StatelessWidget {
       ),
     );
   }
+}
+
+const _minimumTextContrast = 4.5;
+
+double _contrastRatio(Color foreground, Color background) {
+  final foregroundLuminance = foreground.computeLuminance();
+  final backgroundLuminance = background.computeLuminance();
+  final lighter = foregroundLuminance > backgroundLuminance
+      ? foregroundLuminance
+      : backgroundLuminance;
+  final darker = foregroundLuminance > backgroundLuminance
+      ? backgroundLuminance
+      : foregroundLuminance;
+  return (lighter + 0.05) / (darker + 0.05);
 }

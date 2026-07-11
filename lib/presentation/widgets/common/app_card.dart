@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
-import 'package:receipt_tamer/presentation/widgets/common/liquid_glass_edge.dart';
 
-/// App Card - Material 3 style card widget with consistent styling
-class AppCard extends StatelessWidget {
+/// Opaque filing surface with a restrained highlight, ridge and press depth.
+class AppCard extends StatefulWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
@@ -35,62 +34,90 @@ class AppCard extends StatelessWidget {
   });
 
   @override
+  State<AppCard> createState() => _AppCardState();
+}
+
+class _AppCardState extends State<AppCard> {
+  bool _isPressed = false;
+
+  @override
   Widget build(BuildContext context) {
-    final isInteractive = onTap != null || onLongPress != null;
-    final contentFill = AppGlassTokens.contentFillFor(context);
-    final effectiveBackgroundColor =
-        backgroundColor ??
-        (isInteractive
-            ? Color.alphaBlend(
-                AppPalette.actionSoftFillFor(context, alpha: 0.28),
-                contentFill,
-              )
-            : contentFill);
+    final isInteractive = widget.onTap != null || widget.onLongPress != null;
+    final entityFill = AppEntityTokens.fillFor(context);
+    final requestedBackgroundColor = widget.backgroundColor ?? entityFill;
+    final effectiveBackgroundColor = requestedBackgroundColor.a < 1
+        ? Color.alphaBlend(requestedBackgroundColor, entityFill)
+        : requestedBackgroundColor;
     final effectivePadding =
-        padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 12);
+        widget.padding ??
+        const EdgeInsets.symmetric(horizontal: 16, vertical: 12);
     final effectiveMargin =
-        margin ?? const EdgeInsets.symmetric(horizontal: 8, vertical: 6);
+        widget.margin ?? const EdgeInsets.symmetric(horizontal: 8, vertical: 6);
     final effectiveBorderRadius =
-        borderRadius ?? BorderRadius.circular(AppRadii.card);
+        widget.borderRadius ?? BorderRadius.circular(AppRadii.card);
     final effectiveBorderSide =
-        borderSide ??
-        (isInteractive
-            ? BorderSide(
-                color: AppPalette.actionOutlineFor(context, alpha: 0.24),
-              )
-            : BorderSide.none);
+        widget.borderSide ??
+        BorderSide(color: AppEntityTokens.borderFor(context));
     final effectiveShadows =
-        boxShadow ??
-        (elevation == null
-            ? AppShadows.card
-            : elevation! > 0
+        widget.boxShadow ??
+        (widget.elevation == null
+            ? AppEntityTokens.shadowFor(context)
+            : widget.elevation! > 0
             ? [
                 BoxShadow(
-                  color: AppPalette.shadowMuted,
-                  blurRadius: elevation! * 2.8,
-                  offset: Offset(0, elevation!),
+                  color: Theme.of(context).colorScheme.shadow.withValues(
+                    alpha: AppPalette.isDark(context) ? 0.46 : 0.14,
+                  ),
+                  blurRadius: widget.elevation! * 3.2,
+                  spreadRadius: -widget.elevation!,
+                  offset: Offset(0, widget.elevation!),
                 ),
               ]
             : null);
 
-    final content = Padding(padding: effectivePadding, child: child);
+    Widget content = Padding(padding: effectivePadding, child: widget.child);
+    if (widget.foregroundColor != null) {
+      content = IconTheme.merge(
+        data: IconThemeData(color: widget.foregroundColor),
+        child: DefaultTextStyle.merge(
+          style: TextStyle(color: widget.foregroundColor),
+          child: content,
+        ),
+      );
+    }
 
     final card = _AppCardChrome(
       borderRadius: effectiveBorderRadius,
       backgroundColor: effectiveBackgroundColor,
       borderSide: effectiveBorderSide,
       shadows: effectiveShadows,
+      highlightColor: AppEntityTokens.highlightFor(context),
+      ridgeColor: AppEntityTokens.ridgeFor(context),
       child: content,
     );
 
-    return Padding(
-      padding: effectiveMargin,
-      child: _withInk(card, effectiveBorderRadius),
-    );
+    Widget interactiveCard = _withInk(card, effectiveBorderRadius);
+    if (isInteractive) {
+      final duration = AppMotion.adaptive(context, AppMotion.fast);
+      final pressedVisual = _isPressed && !AppMotion.reduceMotion(context);
+      interactiveCard = AnimatedSlide(
+        duration: duration,
+        curve: AppMotion.curve,
+        offset: pressedVisual ? const Offset(0, 0.018) : Offset.zero,
+        child: AnimatedScale(
+          duration: duration,
+          curve: AppMotion.curve,
+          scale: pressedVisual ? 0.985 : 1,
+          child: interactiveCard,
+        ),
+      );
+    }
+
+    return Padding(padding: effectiveMargin, child: interactiveCard);
   }
 
   Widget _withInk(Widget child, BorderRadius borderRadius) {
-    if (onTap == null && onLongPress == null) return child;
+    if (widget.onTap == null && widget.onLongPress == null) return child;
 
     return Stack(
       fit: StackFit.passthrough,
@@ -103,8 +130,12 @@ class AppCard extends StatelessWidget {
             borderRadius: borderRadius,
             clipBehavior: Clip.antiAlias,
             child: InkWell(
-              onTap: onTap,
-              onLongPress: onLongPress,
+              onTap: widget.onTap,
+              onLongPress: widget.onLongPress,
+              onHighlightChanged: (value) {
+                if (!mounted || _isPressed == value) return;
+                setState(() => _isPressed = value);
+              },
               borderRadius: borderRadius,
             ),
           ),
@@ -120,6 +151,8 @@ class _AppCardChrome extends StatelessWidget {
     required this.backgroundColor,
     required this.borderSide,
     required this.shadows,
+    required this.highlightColor,
+    required this.ridgeColor,
     required this.child,
   });
 
@@ -127,22 +160,14 @@ class _AppCardChrome extends StatelessWidget {
   final Color backgroundColor;
   final BorderSide borderSide;
   final List<BoxShadow>? shadows;
+  final Color highlightColor;
+  final Color ridgeColor;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
     final decoration = BoxDecoration(
       color: backgroundColor,
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          backgroundColor,
-          Color.alphaBlend(AppGlassTokens.refractionTint, backgroundColor),
-          backgroundColor.withValues(alpha: backgroundColor.a * 0.92),
-        ],
-        stops: const [0, 0.62, 1],
-      ),
       borderRadius: borderRadius,
       border: borderSide == BorderSide.none
           ? null
@@ -150,8 +175,26 @@ class _AppCardChrome extends StatelessWidget {
       boxShadow: shadows,
     );
 
-    final content = DecoratedBox(decoration: decoration, child: child);
-    return LiquidGlassEdge(borderRadius: borderRadius, child: content);
+    return Stack(
+      fit: StackFit.passthrough,
+      children: [
+        DecoratedBox(decoration: decoration, child: child),
+        Positioned(
+          top: 1,
+          left: borderRadius.topLeft.x,
+          right: borderRadius.topRight.x,
+          height: 1,
+          child: IgnorePointer(child: ColoredBox(color: highlightColor)),
+        ),
+        Positioned(
+          right: borderRadius.bottomRight.x * 0.72,
+          bottom: 0,
+          left: borderRadius.bottomLeft.x * 0.72,
+          height: 2,
+          child: IgnorePointer(child: ColoredBox(color: ridgeColor)),
+        ),
+      ],
+    );
   }
 }
 
@@ -201,7 +244,10 @@ class AppCardWithHeader extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              color: Color.alphaBlend(
+                AppPalette.actionSoftFillFor(context, alpha: 0.3),
+                AppEntityTokens.fillFor(context),
+              ),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(AppRadii.card),
                 topRight: Radius.circular(AppRadii.card),

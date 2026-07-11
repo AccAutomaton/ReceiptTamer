@@ -186,6 +186,42 @@ class InvoiceOrderRelationTable {
     }
   }
 
+  Future<Map<int, Set<int>>> getOrderIdsForInvoices(
+    List<int> invoiceIds,
+  ) async {
+    if (invoiceIds.isEmpty) return {};
+
+    try {
+      final uniqueInvoiceIds = invoiceIds.toSet().toList(growable: false);
+      final orderIdsByInvoice = <int, Set<int>>{
+        for (final invoiceId in uniqueInvoiceIds) invoiceId: <int>{},
+      };
+      for (var offset = 0; offset < uniqueInvoiceIds.length; offset += 500) {
+        final end = offset + 500 < uniqueInvoiceIds.length
+            ? offset + 500
+            : uniqueInvoiceIds.length;
+        final chunk = uniqueInvoiceIds.sublist(offset, end);
+        final placeholders = List.filled(chunk.length, '?').join(', ');
+        final rows = await database.rawQuery(
+          'SELECT r.${AppConstants.colInvoiceId}, '
+          'r.${AppConstants.colOrderId} '
+          '$_validRelationFromClause '
+          'WHERE r.${AppConstants.colInvoiceId} IN ($placeholders)',
+          chunk,
+        );
+        for (final row in rows) {
+          final invoiceId = row[AppConstants.colInvoiceId] as int;
+          final orderId = row[AppConstants.colOrderId] as int;
+          orderIdsByInvoice[invoiceId]!.add(orderId);
+        }
+      }
+      return orderIdsByInvoice;
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleDb, '批量获取发票关联订单失败', e, stackTrace);
+      rethrow;
+    }
+  }
+
   /// Get all invoice IDs for an order
   Future<List<int>> getInvoiceIdsForOrder(int orderId) async {
     try {
@@ -206,6 +242,41 @@ class InvoiceOrderRelationTable {
         e,
         stackTrace,
       );
+      rethrow;
+    }
+  }
+
+  /// Get invoice IDs for many orders without issuing one query per row.
+  Future<Map<int, Set<int>>> getInvoiceIdsForOrders(List<int> orderIds) async {
+    if (orderIds.isEmpty) return {};
+
+    try {
+      final uniqueOrderIds = orderIds.toSet().toList(growable: false);
+      final invoiceIdsByOrder = <int, Set<int>>{
+        for (final orderId in uniqueOrderIds) orderId: <int>{},
+      };
+      for (var offset = 0; offset < uniqueOrderIds.length; offset += 500) {
+        final end = offset + 500 < uniqueOrderIds.length
+            ? offset + 500
+            : uniqueOrderIds.length;
+        final chunk = uniqueOrderIds.sublist(offset, end);
+        final placeholders = List.filled(chunk.length, '?').join(', ');
+        final rows = await database.rawQuery(
+          'SELECT r.${AppConstants.colOrderId}, '
+          'r.${AppConstants.colInvoiceId} '
+          '$_validRelationFromClause '
+          'WHERE r.${AppConstants.colOrderId} IN ($placeholders)',
+          chunk,
+        );
+        for (final row in rows) {
+          final orderId = row[AppConstants.colOrderId] as int;
+          final invoiceId = row[AppConstants.colInvoiceId] as int;
+          invoiceIdsByOrder[orderId]!.add(invoiceId);
+        }
+      }
+      return invoiceIdsByOrder;
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleDb, '批量获取订单关联发票失败', e, stackTrace);
       rethrow;
     }
   }
@@ -317,19 +388,25 @@ class InvoiceOrderRelationTable {
 
     try {
       final uniqueInvoiceIds = invoiceIds.toSet().toList(growable: false);
-      final placeholders = List.filled(uniqueInvoiceIds.length, '?').join(', ');
-      final result = await database.rawQuery(
-        'SELECT r.${AppConstants.colInvoiceId}, COUNT(*) as count '
-        '$_validRelationFromClause '
-        'WHERE r.${AppConstants.colInvoiceId} IN ($placeholders) '
-        'GROUP BY r.${AppConstants.colInvoiceId}',
-        uniqueInvoiceIds,
-      );
-
-      return {
-        for (final row in result)
-          row[AppConstants.colInvoiceId] as int: row['count'] as int,
-      };
+      final counts = <int, int>{};
+      for (var offset = 0; offset < uniqueInvoiceIds.length; offset += 500) {
+        final end = offset + 500 < uniqueInvoiceIds.length
+            ? offset + 500
+            : uniqueInvoiceIds.length;
+        final chunk = uniqueInvoiceIds.sublist(offset, end);
+        final placeholders = List.filled(chunk.length, '?').join(', ');
+        final result = await database.rawQuery(
+          'SELECT r.${AppConstants.colInvoiceId}, COUNT(*) as count '
+          '$_validRelationFromClause '
+          'WHERE r.${AppConstants.colInvoiceId} IN ($placeholders) '
+          'GROUP BY r.${AppConstants.colInvoiceId}',
+          chunk,
+        );
+        for (final row in result) {
+          counts[row[AppConstants.colInvoiceId] as int] = row['count'] as int;
+        }
+      }
+      return counts;
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleDb, '批量获取发票关联订单数量失败', e, stackTrace);
       rethrow;
@@ -357,6 +434,37 @@ class InvoiceOrderRelationTable {
         e,
         stackTrace,
       );
+      rethrow;
+    }
+  }
+
+  /// Get invoice counts for multiple orders in a single query.
+  Future<Map<int, int>> getInvoiceCountsForOrders(List<int> orderIds) async {
+    if (orderIds.isEmpty) return {};
+
+    try {
+      final uniqueOrderIds = orderIds.toSet().toList(growable: false);
+      final counts = <int, int>{};
+      for (var offset = 0; offset < uniqueOrderIds.length; offset += 500) {
+        final end = offset + 500 < uniqueOrderIds.length
+            ? offset + 500
+            : uniqueOrderIds.length;
+        final chunk = uniqueOrderIds.sublist(offset, end);
+        final placeholders = List.filled(chunk.length, '?').join(', ');
+        final result = await database.rawQuery(
+          'SELECT r.${AppConstants.colOrderId}, COUNT(*) as count '
+          '$_validRelationFromClause '
+          'WHERE r.${AppConstants.colOrderId} IN ($placeholders) '
+          'GROUP BY r.${AppConstants.colOrderId}',
+          chunk,
+        );
+        for (final row in result) {
+          counts[row[AppConstants.colOrderId] as int] = row['count'] as int;
+        }
+      }
+      return counts;
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleDb, '批量获取订单关联发票数量失败', e, stackTrace);
       rethrow;
     }
   }

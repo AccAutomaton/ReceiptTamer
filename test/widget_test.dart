@@ -95,7 +95,7 @@ void main() {
     await _unmountApp(tester);
   });
 
-  testWidgets('App uses cold action-forward visual palette', (
+  testWidgets('App uses the morning-mist action palette', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(_testApp(enableBackgroundInitialization: false));

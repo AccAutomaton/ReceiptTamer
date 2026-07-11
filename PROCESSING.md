@@ -19,21 +19,21 @@
 | 项目基础架构    | ✅  | 依赖包、入口配置、Material 3 主题、路由、数据库                           |
 | 数据层       | ✅  | Order/Invoice/OcrResult/InvoiceOrderRelation 模型、仓库层、服务层 |
 | 状态管理      | ✅  | Riverpod StateNotifier (order/invoice/ocr)              |
-| UI组件库     | ✅  | 统一卡片、按钮、输入框、空状态、月份选择器、存储环形图                             |
-| 冷调液态玻璃视觉改造 | ✅ | 已完成冷调低饱和设计 token、LiquidGlassBackground 冷调雾面背景、GlassSurface/GlassBottomSheet/GlassNavigationBar/MutedStatusChip 基础组件；全局保持纯 Flutter 非 shader 仿液态玻璃样式，避免真实 shader 导致卡顿 |
-| 订单管理      | ✅  | 列表、详情、编辑页面、月份分组、快速滚动                                    |
-| 发票管理      | ✅  | 列表、详情、编辑页面、月份分组                                         |
+| UI组件库     | ✅  | `AppCard`、按钮、字段与状态标签使用不透明实体层、高光和底脊；顶栏浮签、悬浮岛导航、Sheet 与 Dialog 使用有界高实色模糊 |
+| 晨雾浮签视觉系统 | ✅ | 页面功能、内容、文案和路由以 `ce04b3c` 为基线；已迁移实体层、悬浮岛、岛内同高中央新增、浅暗色和减少动态效果支持 |
+| 订单管理      | ✅  | 保留原订单列表、月份分组与快速滚动、搜索筛选、详情编辑和发票关联流程；当前 UI 未改为 40 条分页台账 |
+| 发票管理      | ✅  | 保留原发票列表、月份分组与快速滚动、订单过滤、详情编辑和订单关联流程；当前 UI 未改为 40 条分页台账 |
 | 发票-订单关联   | ✅  | 一对多关系（一张发票关联多个订单）、双向选择器、关联计数显示                          |
-| 用餐证明导出    | ✅  | PDF格式、订单截图2x2排版、金额分摊、自动保存到Download/ReceiptTamer |
-| 发票导出      | ✅  | PDF格式、2张/页、PDFium位图化渲染、单张受控字体加载、Courier/Arial发票字体兜底、自动旋转、时间标签选项、自动保存到Download/ReceiptTamer |
-| 用餐明细导出    | ✅  | Excel格式、按日期/餐时分类、金额分摊、汇总行、自动保存到Download/ReceiptTamer |
+| 用餐证明导出    | ✅  | 保留原订单选择与导出流程；PDF格式、订单截图2x2排版、金额分摊、自动保存到Download/ReceiptTamer |
+| 发票导出      | ✅  | 保留原发票选择与导出流程；PDF格式、2张/页、PDFium位图化渲染、字体兜底、自动旋转、时间标签选项、自动保存到Download/ReceiptTamer |
+| 用餐明细导出    | ✅  | 保留原导出选项与结果流程；Excel格式、按日期/餐时分类、金额分摊、汇总行、自动保存到Download/ReceiptTamer |
 | 发票金额分摊    | ✅  | 按订单金额比例分摊、精确无舍入误差                                       |
-| 首页统计      | ✅  | 数据概览页面                                                  |
+| 首页统计      | ✅  | 保留原首页的订单总数、发票总数、四个快捷功能和最近订单；未改为月度账单首页 |
 | 开票助手      | ✅  | 快捷功能入口；按订单日期筛选未关联发票的订单，按店铺聚合查看数量、总额和明细，并可批量预选订单新建发票 |
-| 分享功能      | ✅  | 图片、PDF、导出文件分享                                           |
+| 分享功能      | ✅  | 保留原图片/PDF分享导入、批量处理和导出文件分享流程与文案 |
 | PDF预览     | ✅  | syncfusion_flutter_pdfviewer                            |
-| 设置页面      | ✅  | 应用信息、隐私政策/开源信息 Markdown 文档渲染、存储统计、缓存清理、模型管理、云端模型提供商预置（Xiaomi MiMo/Deepseek/其它 OpenAI 风格接口）、按供应商独立保存配置、/v1/models 模型列表、本地模型逐文件下载（可选 hf-mirror/Hugging Face、断点续传、取消）/ZIP 导入/删除 |
-| 数据清理      | ✅  | 根据订单/发票清理数据、级联选择删除关联、文件清理                        |
+| 关于页面      | ✅  | 第四栏继续显示“关于”，原应用信息、模型、存储、隐私、开源、更新、备份与还原入口及文案均保持不变 |
+| 数据清理      | ✅  | 保留原订单/发票清理、级联选择、确认、执行与结果流程，仅由主题提供珊瑚色危险语义 |
 | OCR引擎     | ✅  | RapidOcrAndroidOnnx (ONNX格式，内置模型)                       |
 | LLM推理     | ✅  | 本地 MNN 或 OpenAI-compatible 云端模型                         |
 | OCR + LLM 识别 | ✅  | 本地 OCR 文本提取 + LLM 结构化；多模态云端模型可直接识别图片       |
@@ -51,8 +51,11 @@ lib/
 ├── core/
 │   ├── constants/
 │   │   └── app_constants.dart     # 常量定义
+│   ├── models/
+│   │   └── ledger_month_summary.dart # 数据层只读月份汇总（非持久化模型）
 │   ├── theme/
-│   │   └── app_theme.dart         # Material 3 主题
+│   │   ├── app_theme.dart         # 晨雾账簿 Material 3 浅色/暗色主题
+│   │   └── app_design_tokens.dart # 色板、字体、圆角、动效和玻璃表面 token
 │   └── utils/
 │       └── date_formatter.dart    # 日期格式化
 ├── data/
@@ -92,6 +95,8 @@ lib/
 │   │   ├── order_provider.dart
 │   │   ├── invoice_provider.dart
 │   │   ├── ocr_provider.dart
+│   │   ├── export_provider.dart
+│   │   ├── invoice_assistant_provider.dart
 │   │   └── cleanup_provider.dart        # 清理状态管理
 │   ├── screens/
 │   │   ├── home/home_screen.dart
@@ -107,11 +112,23 @@ lib/
 │   │   │   └── order_selector_screen.dart    # 订单选择器
 │   │   ├── export/
 │   │   │   ├── export_screen.dart            # 导出主页面
-│   │   │   └── export_options_screen.dart    # 导出选项页面
-│   │   └── settings/
-│   │       ├── settings_screen.dart
-│   │       ├── info_screen.dart
-│   │       └── data_cleanup_screen.dart # 清理模式选择页面
+│   │   │   ├── export_options_screen.dart    # 导出选项页面
+│   │   │   ├── export_mode_screen.dart
+│   │   │   ├── order_export_screen.dart
+│   │   │   ├── meal_proof_order_select_screen.dart
+│   │   │   ├── invoice_quick_select_screen.dart
+│   │   │   └── saved_files_screen.dart       # 已保存文件
+│   │   ├── invoice_assistant/
+│   │   │   └── invoice_assistant_screen.dart
+│   │   ├── share/
+│   │   │   └── share_target_screen.dart
+│   │   ├── settings/
+│   │   │   ├── settings_screen.dart
+│   │   │   ├── model_management_screen.dart
+│   │   │   ├── storage_management_screen.dart
+│   │   │   ├── release_history_screen.dart
+│   │   │   ├── info_screen.dart
+│   │   │   └── data_cleanup_screen.dart       # 清理模式选择页面
 │   │   └── cleanup/
 │   │       ├── order_cleanup_screen.dart  # 订单清理页面
 │   │       └── invoice_cleanup_screen.dart # 发票清理页面
@@ -121,7 +138,13 @@ lib/
 │       │   ├── app_card.dart
 │       │   ├── app_text_field.dart
 │       │   ├── empty_state.dart
-│       │   ├── month_range_picker.dart
+│       │   ├── glass_surface.dart
+│       │   ├── glass_navigation_bar.dart
+│       │   ├── glass_alert_dialog.dart
+│       │   ├── glass_bottom_sheet.dart
+│       │   ├── liquid_glass_background.dart
+│       │   ├── date_range_picker.dart
+│       │   ├── syncfusion_month_range_picker.dart
 │       │   └── storage_ring_chart.dart
 │       ├── order/                  # 订单相关组件
 │       │   ├── order_card.dart
@@ -147,6 +170,14 @@ assets/
     ├── privacy_policy.md          # 隐私政策 Markdown 文档
     └── open_source.md             # 开源信息 Markdown 文档
 
+docs/design/
+├── fresh-redesign/                 # 晨雾视觉探索稿，不作为页面内容基线
+├── hybrid-redesign/                # 历史混合方案，不作为页面内容基线
+├── ledger-redesign/                # 历史墨色账簿方案，不作为页面内容基线
+├── morning-ledger-ce04/            # 当前 Flutter 首页 Golden Gallery
+├── morning-ledger-mid-bold-preview/ # 已否决的“单张连续归档页”候选稿
+└── morning-ledger-relief-island-preview/ # 已确认并迁移的“晨雾浮签·实体层与悬浮岛”设计基准
+
 android/app/src/main/
 ├── cpp/
 │   ├── CMakeLists.txt              # NDK编译配置
@@ -171,9 +202,65 @@ filesDir/
     ├── llm.mnn.weight              # 模型权重
     └── tokenizer.txt               # 分词器
 
+package.json                        # 设计渲染脚本与锁定的 playwright-core 依赖
+pnpm-lock.yaml                      # Node.js 设计工具依赖锁文件
+
 tools/
-└── generate_icons.py               # 从SVG生成各分辨率PNG图标
+├── generate_icons.py               # 从SVG生成各分辨率PNG图标
+├── render_design_boards.cjs        # 确定性渲染历史墨色画板
+├── render_fresh_design.cjs         # 渲染晨雾视觉探索稿
+├── generate_hybrid_design_boards.cjs
+├── render_hybrid_design.cjs
+├── render_morning_ledger_mid_bold.cjs # 渲染已否决的连续归档页候选
+├── generate_morning_ledger_relief_island_preview.cjs
+└── render_morning_ledger_relief_island.cjs # 渲染实体层与悬浮岛候选画板
 ```
+
+---
+
+## 晨雾账簿视觉换肤与性能边界
+
+### 页面内容与功能基线
+
+- 本轮页面语义严格以 Commit `ce04b3c6457f444645a4bd6cca98d5e71707115d` 为唯一基线。受保护范围包括 presentation screens、providers、订单/发票/设置业务组件、`main_shell.dart` 与 `app_router.dart`，不得因换肤改写页面结构、业务能力或任何可见文案。
+- 首页继续展示“订单总数”“发票总数”、四个原快捷功能和“最近订单”，没有改成月度账单、待关联任务面板或新的统计口径。
+- 主导航继续是“首页—订单—中央新增—发票—关于”。第四栏仍为“关于”；中央新增面板继续使用“添加订单 / 通过订单截图导入”和“添加发票 / 通过图片或PDF导入”等原文案与原路由。
+- 订单、发票、详情、编辑、关联选择、导出、开票助手、分享导入、关于、清理及维护弹层均保留 `ce04b3c` 的原层级和操作顺序。历史墨色或混合画板中的台账重排、固定保存栏、信息增删和文案改写均不是当前实现。
+- `test/ui_contract/ce04_source_contract_test.dart` 以 FNV-1a 64 哈希冻结 46 个内容与功能源文件；`test/ui_contract/fixtures/ce04b3c_source_hashes.json` 记录完整文件集合和来源 Commit。契约 schema 2 只批准订单编辑 2 处、订单详情 1 处、发票编辑 2 处将原生 `showModalBottomSheet` 等价替换为 `showGlassContentBottomSheet`，哈希前会把这 5 处函数名还原，其余字节仍必须与 `ce04b3c` 一致。
+
+### 晨雾视觉系统
+
+- `AppPalette` 使用晨雾白 `#EEF5F2`、归档白 `#FCFEFD`、正文墨青 `#193335`、石墨青 `#52686A`、装订深青 `#2B716C`、薄荷 `#70B9AE`、天空蓝与珊瑚 `#A4473F`；浅色和暗色均由 Material `ColorScheme` 提供，应用继续使用 `ThemeMode.system`。
+- `AppTypography` 的标题和标签使用 MiSans，正文使用 Noto Sans SC；UI 标题不再使用衬线字体。金额使用 MiSans 与等宽数字特性，编号等工具文本可使用 Courier Prime。
+- `AppEntityTokens` 管理完全不透明的实体填充、边线、高光、底脊与阴影；圆角主层级为 10/14/16/18。`AppCard`、普通 `GlassSurfacePreset.panel`、输入框和列表内容不创建 `BackdropFilter`。
+- `GlassSurfacePreset.floating/navigation` 使用浅色约 92%、暗色约 94% 的高实色底；`sheet/dialog` 使用约 94% 底色。实时背景模糊集中在 `glass_surface.dart`，sigma 会钳制到不超过 12，且由圆角裁剪和局部 `RepaintBoundary` 限定绘制范围。
+- 主导航是左右 14dp、底部 12dp、高 72dp 的悬浮岛；360dp 宽时为左右 12dp、底部 10dp、高 68dp。中央新增为常规 54dp、紧凑 51dp 的岛内同高圆角主操作，与四个目的地共享垂直基线，不再越出岛面。普通 `IconButton` 保持透明贴附式，只有 `AppIconButton` 等真实浮控件启用模糊。
+- 原 5 个直接创建的业务 Bottom Sheet 已通过受控等价 wrapper 接入同一悬浮材质，泛型返回值、最近 Navigator、拖动、遮罩关闭与原参数保持不变；Sheet 四周保留 8dp 安全间距并闭合四角。
+- 交互卡、按钮、导航和票签只在按压/选择时使用 160–220ms 位移、缩放或透明度变化；`MediaQuery.disableAnimations` 开启后时长归零。`LiquidGlassBackground` 只绘制静态晨雾渐变，不包含常驻动画、自定义 shader 或持续调度帧。
+- 非重叠的同页浮签通过 `BackdropGroup` 共享背景采样；中央新增已并入导航岛的单一模糊层，自身使用不透明实体面与底脊，不再叠加第二层背景滤镜。
+
+### 数据层查询优化
+
+- `DatabaseHelper` 复用同一个数据库打开 Future，避免冷启动期间并发初始化同一数据库。
+- 订单和发票 DAO 的默认排序、日期过滤、关键词组合与关联条件严格沿用 `ce04b3c`；在不传参数时结果与原实现一致。数据层另提供可独立使用的 `limit` / `offset` 查询参数和轻量月份汇总查询；raw SQL 的 offset-only 请求使用 SQLite 合法的 `LIMIT -1 OFFSET n`。发票搜索可同时组合 `orderId` 与 `hasLinkedOrder`，只生成一组 `WHERE` 条件；`LedgerMonthSummary` 只是只读查询结果，不写入数据库。
+- 发票—订单关系支持按最多 500 个 ID 分块批量查询关联 ID 和数量，供批量业务减少逐条数据库往返。
+- 以上能力是数据层基础设施和性能测试对象，当前 `ce04b3c` 页面及 Provider 仍按原方式加载和呈现数据。不得据此声称订单/发票 UI 已实现“每页 40 条”、下一视口预取、250ms 搜索防抖、按月定向加载或月度账单首页。
+- `test/performance/ledger_sqlite_performance_test.dart` 使用 1,000 条订单、500 张发票和 36 个月的真实 SQLite 夹具，包含 40 条一页的查询工作负载、月份汇总、连续筛选和分块关系查询；其中“40 条”是 DAO 性能测试参数，不是当前 UI 的分页行为。
+
+### 设计预览与回归资产
+
+- `docs/design/ledger-redesign/`、`fresh-redesign/` 和 `hybrid-redesign/` 保存的是本轮决策过程中的可复现视觉探索稿。它们可用于比较色彩和材质，但其中改变过的信息层级或文案不构成当前页面验收标准。
+- `docs/design/morning-ledger-mid-bold-preview/` 保存已被否决的“单张连续归档页”候选；`docs/design/morning-ledger-relief-island-preview/` 是已确认并迁移的“晨雾浮签 · 实体层与悬浮岛”基准。它以 `ce04b3c` 原内容和文案展示 12 个 412×915 状态与三个 360×800 紧凑状态。
+- HTML 设计画板统一使用根目录 `package.json` 与 `pnpm-lock.yaml` 锁定的 `playwright-core`，配合本机 Chrome/Edge 渲染；脚本不再读取用户目录下的 Codex runtime。干净 checkout 先执行 `pnpm install --frozen-lockfile`，再使用对应的 `pnpm run render:design:*` 命令。
+- 最终页面内容以 46 文件受控源契约为准，最终 Flutter 视觉以 `test/goldens/baselines/` 中的 16 张真实 Golden 为准。其中 12 张直接渲染原 `HomeScreen`，覆盖 412×915、360×800、浅色、暗色及 1.0/1.3/2.0 文本缩放；另 4 张主壳组件基线覆盖双视口浅暗色下的顶部浮签、实体月份/行与底部悬浮岛。
+- `test/goldens/scenarios/manifest.json` 仍保存 28 个路由、`SavedFilesScreen` 和中央新增面板共 30 个候选截图场景，用于后续接入计划；该 manifest 不是“已经生成 30 张截图”的声明。目前真实、可比较的 Flutter Golden 数量是 16 张。
+- Golden 使用固定时钟、脱敏夹具、仓库字体和减少动态效果设置，不依赖用户数据或远程资源。新增或更新基线前必须人工核对差异，不得在普通修复中无条件执行 `--update-goldens`。
+- 真实组件回归覆盖浅暗色提示文字、导航小字和状态标签至少 `4.5:1` 的对比度，`AppIconButton` 至少 `48dp` 的命中与语义区域，以及 common 导航在系统减少动态效果开启时禁用选择动画；受保护路由仍保持 `ce04b3c` 的原过渡行为。
+- SQLite 性能测试与 x86_64 profile 报告只验证数据查询或测试流程。迁移后的 1,738 帧模拟器回归为 build p90/p99 `1.58/2.992ms`、raster p90/p99 `6.275/8.973ms`、慢帧比例 `0.23%`，流程目标通过；`docs/performance/profile-x86-emulator.json` 仍明确为 `certified: false`。认证 harness 直接使用 `kProfileMode`、`device_info_plus.isPhysicalDevice` 与 `Abi.current()` 核验构建模式、物理设备和实际进程 ABI，并强制采集月份快速滚动帧；调用方不能通过 `dart-define` 自报认证条件。只有中档 ARM64 真机 profile mode 结果才可用于正式性能认证，当前不作该声明。
+
+### 兼容性边界
+
+本轮视觉换肤、数据层查询优化与查询边界修复没有改变持久化数据模型、数据库版本、备份包格式、还原兼容性、应用版本号或业务计算规则，因此不需要数据库迁移或备份格式升级。除 5 处受契约控制的 Bottom Sheet 视觉 wrapper 外，现有路由、首页内容、四栏“关于”、中央新增面板、发票—订单关系、金额分摊、导出计算及备份/还原行为继续保持 `ce04b3c` 兼容。
 
 ---
 

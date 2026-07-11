@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 
 class LiquidGlassEdge extends StatelessWidget {
   const LiquidGlassEdge({
@@ -19,11 +18,13 @@ class LiquidGlassEdge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final softGlow = Colors.white.withValues(
-      alpha: (isDark ? 0.04 : 0.14) * edgeIntensity,
+    final colors = Theme.of(context).colorScheme;
+    final softGlow = (isDark ? Colors.black : colors.primary).withValues(
+      alpha: (isDark ? 0.12 : 0.035) * edgeIntensity,
     );
-    final edgeTint = AppPalette.primaryMuted.withValues(
-      alpha: (isDark ? 0.05 : 0.10) * edgeIntensity,
+    final edgeColor = Color.alphaBlend(
+      Colors.white.withValues(alpha: isDark ? 0.06 : 0.42),
+      colors.outlineVariant,
     );
 
     return Stack(
@@ -38,9 +39,9 @@ class LiquidGlassEdge extends StatelessWidget {
                 boxShadow: [
                   BoxShadow(
                     color: softGlow,
-                    blurRadius: 10 * edgeIntensity,
-                    spreadRadius: edgeIntensity,
-                    offset: const Offset(0, -1),
+                    blurRadius: 8 * edgeIntensity,
+                    spreadRadius: -2 * edgeIntensity,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
@@ -54,9 +55,7 @@ class LiquidGlassEdge extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: borderRadius,
                 border: Border.all(
-                  color: Colors.white.withValues(
-                    alpha: (isDark ? 0.07 : 0.24) * edgeIntensity,
-                  ),
+                  color: edgeColor.withValues(alpha: edgeIntensity),
                   width: 0.8,
                 ),
                 gradient: LinearGradient(
@@ -64,15 +63,14 @@ class LiquidGlassEdge extends StatelessWidget {
                   end: Alignment.bottomRight,
                   colors: [
                     Colors.white.withValues(
-                      alpha: (isDark ? 0.08 : 0.30) * edgeIntensity,
+                      alpha: (isDark ? 0.035 : 0.12) * edgeIntensity,
                     ),
                     Colors.white.withValues(
-                      alpha: (isDark ? 0.02 : 0.06) * edgeIntensity,
+                      alpha: (isDark ? 0.01 : 0.025) * edgeIntensity,
                     ),
-                    edgeTint,
                     Colors.white.withValues(alpha: 0),
                   ],
-                  stops: const [0, 0.42, 0.78, 1],
+                  stops: const [0, 0.45, 1],
                 ),
               ),
             ),

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ReceiptTamer · 墨色账簿设计画板</title>
+    <style>
+      @font-face {
+        font-family: "RT Serif";
+        src: url("../../../assets/fonts/NotoSerifSC-VF.ttf") format("truetype");
+        font-weight: 100 900;
+      }
+      @font-face {
+        font-family: "RT Sans";
+        src: url("../../../assets/fonts/NotoSansSC-VF.ttf") format("truetype");
+        font-weight: 100 900;
+      }
+      :root {
+        color-scheme: light;
+        --paper: #f4f5f2;
+        --ink: #151a1c;
+        --graphite: #5a6265;
+        --rule: #cfd5d1;
+        --teal: #1d7074;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: #e7eae6;
+        color: var(--ink);
+        font-family: "RT Sans", sans-serif;
+      }
+      header {
+        padding: 62px max(28px, calc((100vw - 1280px) / 2));
+        border-bottom: 2px solid var(--ink);
+        background: var(--paper);
+      }
+      header small {
+        color: var(--teal);
+        font-weight: 800;
+        letter-spacing: .12em;
+      }
+      h1 {
+        margin: 12px 0 8px;
+        font-family: "RT Serif", serif;
+        font-size: clamp(38px, 6vw, 74px);
+        line-height: 1.05;
+      }
+      header p {
+        max-width: 780px;
+        margin: 0;
+        color: var(--graphite);
+        line-height: 1.7;
+      }
+      main {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+        gap: 24px;
+        max-width: 1320px;
+        margin: 0 auto;
+        padding: 34px 20px 70px;
+      }
+      article {
+        overflow: hidden;
+        border: 1px solid var(--rule);
+        border-radius: 18px;
+        background: var(--paper);
+      }
+      article img {
+        display: block;
+        width: 100%;
+        height: auto;
+        border-bottom: 1px solid var(--rule);
+      }
+      article div { padding: 17px 18px 19px; }
+      h2 {
+        margin: 0 0 7px;
+        font-family: "RT Serif", serif;
+        font-size: 21px;
+      }
+      a { color: var(--teal); font-weight: 750; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p role="note" style="max-width: 920px; margin: 0 0 28px; padding: 14px 16px; border: 1px solid #a94c44; border-radius: 12px; background: #f3e3df; color: #6f302a;"><strong>历史探索 · 已否决。</strong> 此 HTML 画板不是当前 Flutter 实现。<a href="../morning-ledger-ce04/index.html">查看当前真实 Flutter Golden →</a></p>
+      <small>RECEIPT TAMER · DESIGN REVIEW</small>
+      <h1>墨色账簿</h1>
+      <p>10 张画板覆盖所有核心路由、媒体预览与维护弹层。每个手机框均以 412×915 Android 视口绘制，使用本地字体和可复现的 HTML/CSS。</p>
+    </header>
+    <main>
+      <article><a href="board-01.html"><img src="rendered/board-01.png" alt="全局与首页画板" /></a><div><h2>01 · 全局与首页</h2><a href="board-01.html">查看可缩放源稿</a></div></article>
+      <article><a href="board-02.html"><img src="rendered/board-02.png" alt="订单流程画板" /></a><div><h2>02 · 订单流程</h2><a href="board-02.html">查看可缩放源稿</a></div></article>
+      <article><a href="board-03.html"><img src="rendered/board-03.png" alt="发票流程画板" /></a><div><h2>03 · 发票流程</h2><a href="board-03.html">查看可缩放源稿</a></div></article>
+      <article><a href="board-04.html"><img src="rendered/board-04.png" alt="媒体与识别画板" /></a><div><h2>04 · 媒体与识别</h2><a href="board-04.html">查看可缩放源稿</a></div></article>
+      <article><a href="board-05.html"><img src="rendered/board-05.png" alt="开票助手与分享导入画板" /></a><div><h2>05 · 开票与分享</h2><a href="board-05.html">查看可缩放源稿</a></div></article>
+      <article><a href="board-06.html"><img src="rendered/board-06.png" alt="完整导出画板" /></a><div><h2>06 · 完整导出</h2><a href="board-06.html">查看可缩放源稿</a></div></article>
+      <article><a href="board-07.html"><img src="rendered/board-07.png" alt="快捷导出与结果画板" /></a><div><h2>07 · 快捷导出</h2><a href="board-07.html">查看可缩放源稿</a></div></article>
+      <article><a href="board-08.html"><img src="rendered/board-08.png" alt="设置与信息画板" /></a><div><h2>08 · 设置与信息</h2><a href="board-08.html">查看可缩放源稿</a></div></article>
+      <article><a href="board-09.html"><img src="rendered/board-09.png" alt="数据清理画板" /></a><div><h2>09 · 数据清理</h2><a href="board-09.html">查看可缩放源稿</a></div></article>
+      <article><a href="board-10.html"><img src="rendered/board-10.png" alt="维护弹层画板" /></a><div><h2>10 · 维护弹层</h2><a href="board-10.html">查看可缩放源稿</a></div></article>
+      <article><a href="compact-check.html"><img src="rendered/compact-check.png" alt="360乘800紧凑视口检查" /></a><div><h2>附录 · 360×800 紧凑检查</h2><a href="compact-check.html">查看可缩放源稿</a></div></article>
+    </main>
+  </body>
+</html>

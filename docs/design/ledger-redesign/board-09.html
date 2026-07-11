@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1450, initial-scale=1">
+  <title>ReceiptTamer 墨色账簿｜09 数据清理</title>
+  <link rel="stylesheet" href="shared.css">
+  <style>
+    .cleanup-choice { position:relative; margin-bottom:12px; padding:17px 16px 15px; overflow:hidden; border:1px solid var(--rule); border-radius:14px; background:var(--paper-raised); }
+    .cleanup-choice::before { content:""; position:absolute; top:0; bottom:0; left:0; width:4px; background:var(--seal); }
+    .cleanup-choice-head { display:grid; grid-template-columns:42px minmax(0,1fr) auto; align-items:center; gap:10px; }
+    .cleanup-mark { display:grid; place-items:center; width:38px; height:38px; border:1px solid color-mix(in srgb,var(--seal) 36%,var(--rule)); border-radius:11px; background:var(--seal-soft); color:var(--seal); font:760 13px "RT Serif",serif; }
+    .cleanup-choice h3 { margin:0; font:730 17px "RT Serif",serif; }
+    .cleanup-choice p { margin:5px 0 0; color:var(--graphite); font-size:10px; line-height:1.5; }
+    .cleanup-count { color:var(--seal); font:500 18px "RT MiSans",sans-serif; text-align:right; }
+    .cleanup-count small { display:block; margin-top:2px; color:var(--graphite); font:9px "RT Sans",sans-serif; }
+    .impact-grid { display:grid; grid-template-columns:repeat(3,1fr); margin-top:13px; padding-top:11px; border-top:1px dashed var(--rule-strong); }
+    .impact-grid div { padding:0 9px; border-right:1px solid var(--rule); }
+    .impact-grid div:first-child { padding-left:0; }
+    .impact-grid div:last-child { border-right:0; }
+    .impact-grid span { display:block; color:var(--graphite); font-size:8px; }
+    .impact-grid b { display:block; margin-top:3px; font:500 12px "RT MiSans",sans-serif; }
+    .safety-note { display:grid; grid-template-columns:28px minmax(0,1fr); gap:10px; margin-top:13px; padding:12px; border:1px solid var(--rule); border-radius:12px; color:var(--graphite); font-size:9px; line-height:1.55; }
+    .safety-note i { display:grid; place-items:center; width:26px; height:26px; border-radius:8px; background:var(--teal-soft); color:var(--teal); font-style:normal; font-weight:800; }
+    .scope-bar { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; padding:11px 12px; border:1px solid var(--rule); border-radius:12px; background:var(--paper-raised); }
+    .scope-bar b { display:block; font-size:12px; }
+    .scope-bar small { display:block; margin-top:4px; color:var(--graphite); font-size:9px; }
+    .cleanup-row { display:grid; grid-template-columns:32px 46px minmax(0,1fr) auto; align-items:center; min-height:74px; padding:8px 11px; border-bottom:1px solid var(--rule); }
+    .cleanup-row:last-child { border-bottom:0; }
+    .cleanup-row .row-date { font-size:10px; }
+    .cleanup-row .row-main { padding:0 7px; }
+    .cleanup-row .row-main b { font-size:12px; }
+    .cleanup-row .row-main small { font-size:9px; }
+    .cleanup-side { text-align:right; }
+    .cleanup-side b { display:block; font:500 13px "RT MiSans",sans-serif; }
+    .cleanup-side small { display:block; margin-top:5px; color:var(--graphite); font-size:8px; }
+    .cascade-panel { margin-top:11px; padding:12px 13px; border:1px solid color-mix(in srgb,var(--seal) 43%,var(--rule)); border-radius:12px; background:var(--seal-soft); }
+    .cascade-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .cascade-head b { color:var(--seal); font-size:12px; }
+    .cascade-panel p { margin:7px 0 0; color:var(--graphite); font-size:9px; line-height:1.5; }
+    .cascade-tree { margin-top:10px; padding-left:10px; border-left:1px dashed var(--seal); color:var(--graphite); font-size:9px; line-height:1.8; }
+    .cascade-tree b { color:var(--ink); }
+    .confirm-facts { margin:12px 0; border-top:1px solid var(--rule); }
+    .confirm-fact { display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:39px; border-bottom:1px solid var(--rule); font-size:10px; }
+    .confirm-fact span { color:var(--graphite); }
+    .confirm-fact b { font:500 12px "RT MiSans",sans-serif; text-align:right; }
+    .dialog .danger-panel { margin-top:10px; }
+    .cleanup-progress { display:flex; align-items:baseline; justify-content:space-between; margin:11px 0 7px; color:var(--graphite); font-size:9px; }
+    .cleanup-progress b { color:var(--ink); font:500 13px "RT MiSans",sans-serif; }
+    .result-head { display:flex; align-items:center; gap:15px; margin-bottom:13px; }
+    .result-head .seal-stamp { width:58px; height:58px; flex:0 0 auto; font-size:13px; }
+    .result-head h3 { margin:0; }
+    .result-head p { margin:4px 0 0; }
+    .retained-note { margin-top:10px; padding:10px 11px; border:1px dashed var(--rule-strong); border-radius:10px; color:var(--graphite); font-size:9px; line-height:1.5; }
+    .scrim .noop { display:none; }
+  </style>
+</head>
+<body>
+  <main class="board-page">
+    <header class="board-header">
+      <div>
+        <div class="board-kicker">Board 09 · Data Cleanup</div>
+        <h1 class="board-title">数据清理</h1>
+      </div>
+      <div class="board-note">危险操作不靠惊吓，而靠“将删除什么、会牵连什么、还能保留什么”建立确定性。每一次最终删除都需二次确认，并以印泥红明确不可逆边界。</div>
+    </header>
+
+    <section class="phone-grid" aria-label="数据清理界面预览">
+      <article class="phone-card">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;79%</span></div>
+          <header class="appbar compact"><div class="back-button">‹</div><div style="flex:1"><span class="eyebrow">DATA / CLEANUP</span><h2 class="screen-title small">选择清理方式</h2></div><div class="icon-button">?</div></header>
+          <div class="content no-nav">
+            <div class="danger-panel"><b>删除后无法撤销</b><p>建议先创建备份。你会在最终确认前看到记录、关联关系与文件的完整影响。</p></div>
+            <div class="section-heading"><h3>按记录类型清理</h3><span>扫描于 09:38</span></div>
+            <section class="cleanup-choice">
+              <div class="cleanup-choice-head"><div class="cleanup-mark">单</div><div><h3>清理订单</h3><p>按日期或关联状态选择订单，可同时删除原图。</p></div><div class="cleanup-count">286<small>笔记录 ›</small></div></div>
+              <div class="impact-grid"><div><span>未关联</span><b>43</b></div><div><span>原图</span><b>682 MB</b></div><div><span>最早</span><b>2025·01</b></div></div>
+            </section>
+            <section class="cleanup-choice">
+              <div class="cleanup-choice-head"><div class="cleanup-mark">票</div><div><h3>清理发票</h3><p>选择图片或 PDF，可决定是否解除订单关联。</p></div><div class="cleanup-count">118<small>份记录 ›</small></div></div>
+              <div class="impact-grid"><div><span>已关联</span><b>96</b></div><div><span>文件</span><b>294 MB</b></div><div><span>最早</span><b>2025·02</b></div></div>
+            </section>
+            <div class="section-heading"><h3>推荐先做</h3><span>备份与还原 →</span></div>
+            <div class="ledger-panel">
+              <div class="setting-row"><div class="row-mark">备</div><div><b>最近备份可用</b><small>2026-07-08 22:16 · 1.31 GB</small></div><span class="status-chip">已校验</span></div>
+              <div class="setting-row"><div class="row-mark">存</div><div><b>可释放缓存</b><small>21.4 MB · 不影响业务记录</small></div><span>›</span></div>
+            </div>
+            <div class="safety-note"><i>✓</i><span>数据库会在清理事务中同步更新；若文件删除失败，结果页会列出保留项并允许重试。</span></div>
+          </div>
+        </div></div>
+        <div class="phone-label"><strong>清理方式 · 影响预览</strong><span>先备份 / 再选择类型</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;78%</span></div>
+          <header class="appbar compact"><div class="back-button">‹</div><div style="flex:1"><span class="eyebrow">CLEANUP / ORDERS</span><h2 class="screen-title small">清理订单</h2></div><div class="icon-button">⌕</div></header>
+          <div class="content with-action-bar">
+            <div class="filter-row"><span class="filter-chip active">2025 年</span><span class="filter-chip">未关联</span><span class="filter-chip">金额低于 ¥30</span></div>
+            <div class="scope-bar"><div><b>选择当前筛选结果</b><small>共 14 笔 · 预计释放 38.6 MB</small></div><div class="check">✓</div></div>
+            <div class="ledger-panel">
+              <div class="month-strip"><b>2025 年 12 月</b><span>5 笔 · ¥ 186.20</span></div>
+              <div class="cleanup-row"><div class="check on">✓</div><div class="row-date">12·28<br>19:14</div><div class="row-main"><b>真功夫 · 西二旗店</b><small>晚餐 · 未关联发票</small></div><div class="cleanup-side"><b>¥28.00</b><small>2.4 MB</small></div></div>
+              <div class="cleanup-row"><div class="check on">✓</div><div class="row-date">12·22<br>08:31</div><div class="row-main"><b>麦当劳 · 上地店</b><small>早餐 · 关联发票 1 张</small></div><div class="cleanup-side"><b>¥23.50</b><small class="text-seal">有关联</small></div></div>
+              <div class="cleanup-row"><div class="check">✓</div><div class="row-date">12·17<br>12:09</div><div class="row-main"><b>和府捞面</b><small>午餐 · 未关联发票</small></div><div class="cleanup-side"><b>¥39.80</b><small>3.1 MB</small></div></div>
+              <div class="cleanup-row"><div class="check on">✓</div><div class="row-date">12·04<br>18:42</div><div class="row-main"><b>小杨生煎</b><small>晚餐 · 未关联发票</small></div><div class="cleanup-side"><b>¥26.90</b><small>1.9 MB</small></div></div>
+            </div>
+            <div class="cascade-panel"><div class="cascade-head"><b>同时处理关联数据</b><div class="toggle on"></div></div><p>删除所选订单，并解除 1 条发票关联；发票记录与发票文件会保留。</p><div class="cascade-tree"><b>订单 2501220831…</b><br>└ 解除关联：发票 244420000000781…</div></div>
+          </div>
+          <div class="action-bar"><div class="action-meta"><b>已选 3 笔 · ¥78.40</b><span>释放约 7.6 MB · 解除 1 条关联</span></div><div class="button danger">继续清理</div></div>
+        </div></div>
+        <div class="phone-label"><strong>订单清理 · 级联选择</strong><span>记录 / 原图 / 关联分别说明</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone dark"><div class="screen">
+          <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;77%</span></div>
+          <header class="appbar compact"><div class="back-button">‹</div><div style="flex:1"><span class="eyebrow">CLEANUP / INVOICES</span><h2 class="screen-title small">清理发票</h2></div><div class="icon-button">⌕</div></header>
+          <div class="content with-action-bar">
+            <div class="filter-row"><span class="filter-chip active">未用于导出</span><span class="filter-chip">2025 年</span><span class="filter-chip">PDF</span></div>
+            <div class="scope-bar"><div><b>只选择未关联发票</b><small>降低误删已报销凭证的风险</small></div><div class="toggle on"></div></div>
+            <div class="ledger-panel">
+              <div class="month-strip"><b>2025 年 11 月</b><span>3 份 · ¥ 312.80</span></div>
+              <div class="cleanup-row"><div class="check on">✓</div><div class="row-date">11·26<br>PDF</div><div class="row-main"><b>24442000000073152908</b><small>老乡鸡餐饮 · 未关联</small></div><div class="cleanup-side"><b>¥42.80</b><small>840 KB</small></div></div>
+              <div class="cleanup-row"><div class="check on">✓</div><div class="row-date">11·18<br>JPG</div><div class="row-main"><b>24442000000072486132</b><small>北京麦当劳 · 未关联</small></div><div class="cleanup-side"><b>¥58.00</b><small>1.2 MB</small></div></div>
+              <div class="cleanup-row"><div class="check">✓</div><div class="row-date">11·07<br>PDF</div><div class="row-main"><b>24442000000071345609</b><small>湘满园 · 关联 3 笔订单</small></div><div class="cleanup-side"><b>¥212.00</b><small class="text-seal">已关联</small></div></div>
+            </div>
+            <div class="cascade-panel"><div class="cascade-head"><b>删除发票文件</b><div class="toggle on"></div></div><p>所选 2 份发票无订单关联，将删除数据库记录与原始文件。导出的报销材料不受影响。</p></div>
+            <div class="spacer-12"></div><div class="danger-panel"><b>已排除 1 份有关联发票</b><p>如需选择，先关闭“只选择未关联发票”，并在确认页处理 3 笔订单关系。</p></div>
+          </div>
+          <div class="action-bar"><div class="action-meta"><b>已选 2 份 · ¥100.80</b><span>将删除 2.0 MB 原始凭证</span></div><div class="button danger">继续清理</div></div>
+        </div></div>
+        <div class="phone-label"><strong>发票清理 · 危险暗色稿</strong><span>保护已关联凭证</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;78%</span></div>
+          <header class="appbar compact"><div class="back-button">‹</div><div style="flex:1"><span class="eyebrow">CLEANUP / ORDERS</span><h2 class="screen-title small">清理订单</h2></div><div class="icon-button">⌕</div></header>
+          <div class="content with-action-bar">
+            <div class="filter-row"><span class="filter-chip active">2025 年</span><span class="filter-chip">未关联</span></div>
+            <div class="scope-bar"><div><b>已选择 3 笔订单</b><small>2025 年 12 月 · ¥78.40</small></div><span class="status-chip danger">待确认</span></div>
+            <div class="ledger-panel"><div class="cleanup-row"><div class="check on">✓</div><div class="row-date">12·28</div><div class="row-main"><b>真功夫 · 西二旗店</b><small>晚餐 · 原图 2.4 MB</small></div><div class="cleanup-side"><b>¥28.00</b></div></div><div class="cleanup-row"><div class="check on">✓</div><div class="row-date">12·22</div><div class="row-main"><b>麦当劳 · 上地店</b><small>早餐 · 关联发票 1 张</small></div><div class="cleanup-side"><b>¥23.50</b></div></div><div class="cleanup-row"><div class="check on">✓</div><div class="row-date">12·04</div><div class="row-main"><b>小杨生煎</b><small>晚餐 · 原图 1.9 MB</small></div><div class="cleanup-side"><b>¥26.90</b></div></div></div>
+          </div>
+          <div class="action-bar"><div class="action-meta"><b>已选 3 笔</b><span>释放约 7.6 MB</span></div><div class="button danger">继续清理</div></div>
+          <div class="scrim"></div>
+          <section class="dialog" role="dialog" aria-label="确认清理订单">
+            <span class="eyebrow text-seal">FINAL CONFIRMATION</span><h3>确认永久删除？</h3><p>清理开始后无法撤销。数据库与文件将作为一次任务处理。</p>
+            <div class="confirm-facts"><div class="confirm-fact"><span>订单记录</span><b>3 笔</b></div><div class="confirm-fact"><span>订单原图</span><b>3 张 · 7.6 MB</b></div><div class="confirm-fact"><span>关联关系</span><b class="text-seal">解除 1 条</b></div><div class="confirm-fact"><span>关联发票</span><b>保留记录与文件</b></div></div>
+            <div class="danger-panel"><b>不会删除发票</b><p>发票 244420…781 仍保留，但将不再关联到已删除订单。</p></div>
+            <div class="dialog-actions"><div class="button secondary">返回检查</div><div class="button danger">确认删除</div></div>
+          </section>
+        </div></div>
+        <div class="phone-label"><strong>最终确认 · 订单</strong><span>真实来源页上核对影响</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>09:41</span><span>Wi-Fi&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;76%</span></div>
+          <header class="appbar compact"><div class="back-button">‹</div><div style="flex:1"><span class="eyebrow">CLEANUP / INVOICES</span><h2 class="screen-title small">清理发票</h2></div><div class="icon-button">⌕</div></header>
+          <div class="content with-action-bar"><div class="filter-row"><span class="filter-chip active">未用于导出</span><span class="filter-chip">2025 年</span></div><div class="scope-bar"><div><b>正在处理所选发票</b><small>请保持应用在前台</small></div><span class="status-chip warning">执行中</span></div><div class="ledger-panel"><div class="cleanup-row"><div class="check on">✓</div><div class="row-date">11·26</div><div class="row-main"><b>24442000000073152908</b><small>PDF · 840 KB</small></div><div class="cleanup-side"><b>¥42.80</b></div></div><div class="cleanup-row"><div class="check on">✓</div><div class="row-date">11·18</div><div class="row-main"><b>24442000000072486132</b><small>JPG · 1.2 MB</small></div><div class="cleanup-side"><b>¥58.00</b></div></div></div></div>
+          <div class="action-bar"><div class="action-meta"><b>清理任务进行中</b><span>完成前暂不可修改选择</span></div><div class="button secondary">后台继续</div></div>
+          <div class="scrim"></div>
+          <section class="dialog" role="dialog" aria-label="正在清理发票">
+            <span class="eyebrow">CLEANUP TRANSACTION</span><h3>正在安全清理</h3><p>先提交数据库事务，再删除不再被引用的原始文件。</p>
+            <div class="cleanup-progress"><span>删除原始凭证</span><b>68%</b></div><div class="progress-track"><div class="progress-fill"></div></div>
+            <div class="step-list"><div class="step done"><i>✓</i>建立回滚检查点</div><div class="step done"><i>✓</i>删除 2 份发票记录</div><div class="step"><i>3</i>删除原始 PDF / JPG</div><div class="step"><i>4</i>核对存储占用</div></div>
+            <div class="dialog-actions"><div class="button secondary">后台继续</div></div>
+          </section>
+        </div></div>
+        <div class="phone-label"><strong>执行中 · 原子任务</strong><span>步骤与当前影响可见</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>09:42</span><span>Wi-Fi&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;76%</span></div>
+          <header class="appbar compact"><div class="back-button">‹</div><div style="flex:1"><span class="eyebrow">CLEANUP / INVOICES</span><h2 class="screen-title small">清理发票</h2></div><div class="icon-button">⌕</div></header>
+          <div class="content no-nav"><div class="filter-row"><span class="filter-chip active">未用于导出</span><span class="filter-chip">2025 年</span></div><div class="scope-bar"><div><b>筛选结果已更新</b><small>剩余 11 份未关联发票</small></div><span class="status-chip">已刷新</span></div><div class="ledger-panel"><div class="month-strip"><b>2025 年 10 月</b><span>4 份 · ¥ 386.20</span></div><div class="cleanup-row"><div class="check">✓</div><div class="row-date">10·28</div><div class="row-main"><b>24442000000069812042</b><small>PDF · 未关联</small></div><div class="cleanup-side"><b>¥76.00</b></div></div><div class="cleanup-row"><div class="check">✓</div><div class="row-date">10·16</div><div class="row-main"><b>24442000000068753291</b><small>JPG · 未关联</small></div><div class="cleanup-side"><b>¥32.80</b></div></div></div></div>
+          <div class="scrim"></div>
+          <section class="dialog" role="dialog" aria-label="清理结果">
+            <div class="result-head"><div class="seal-stamp">清理<br>完成</div><div><h3>已清理 2 份发票</h3><p>数据库记录已提交，存储统计已刷新。</p></div></div>
+            <div class="confirm-facts"><div class="confirm-fact"><span>删除记录</span><b>2 份</b></div><div class="confirm-fact"><span>解除关联</span><b>0 条</b></div><div class="confirm-fact"><span>已释放空间</span><b class="text-teal">1.96 MB</b></div><div class="confirm-fact"><span>耗时</span><b>0.8 秒</b></div></div>
+            <div class="retained-note"><b>保留 1 个共享预览缓存</b><br>该文件仍被导出历史引用，稍后清理缓存时可安全移除。</div>
+            <div class="dialog-actions"><div class="button secondary">查看日志</div><div class="button">完成</div></div>
+          </section>
+        </div></div>
+        <div class="phone-label"><strong>清理结果 · 可核对</strong><span>释放量 / 保留项 / 耗时</span></div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

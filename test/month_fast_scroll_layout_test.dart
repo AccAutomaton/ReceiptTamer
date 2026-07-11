@@ -10,7 +10,6 @@ import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/screens/invoices/invoices_screen.dart';
 import 'package:receipt_tamer/presentation/screens/orders/orders_screen.dart';
-import 'package:receipt_tamer/presentation/widgets/common/liquid_glass_edge.dart';
 import 'package:receipt_tamer/presentation/widgets/invoice/invoice_card.dart';
 import 'package:receipt_tamer/presentation/widgets/order/month_fast_scroll_bar.dart';
 import 'package:receipt_tamer/presentation/widgets/order/order_card.dart';
@@ -36,10 +35,12 @@ void main() {
 
       _expectFastScrollLayout(
         tester,
-        cardFinder: find.descendant(
-          of: find.byType(OrderCard).first,
-          matching: find.byType(LiquidGlassEdge),
-        ),
+        cardFinder: find
+            .descendant(
+              of: find.byType(OrderCard).first,
+              matching: find.byType(DecoratedBox),
+            )
+            .first,
       );
     },
   );
@@ -64,10 +65,12 @@ void main() {
 
       _expectFastScrollLayout(
         tester,
-        cardFinder: find.descendant(
-          of: find.byType(InvoiceCard).first,
-          matching: find.byType(LiquidGlassEdge),
-        ),
+        cardFinder: find
+            .descendant(
+              of: find.byType(InvoiceCard).first,
+              matching: find.byType(DecoratedBox),
+            )
+            .first,
       );
     },
   );

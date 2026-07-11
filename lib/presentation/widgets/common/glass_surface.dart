@@ -2,9 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
-import 'package:receipt_tamer/presentation/widgets/common/liquid_glass_edge.dart';
 
-enum GlassSurfacePreset { panel, sheet, dialog }
+enum GlassSurfacePreset { panel, floating, navigation, sheet, dialog }
 
 class GlassSurface extends StatelessWidget {
   const GlassSurface({
@@ -41,7 +40,22 @@ class GlassSurface extends StatelessWidget {
   Widget build(BuildContext context) {
     final effectiveRadius =
         borderRadius ?? BorderRadius.circular(AppRadii.glassLarge);
-    final effectiveFill = fillColor ?? AppGlassTokens.panelFillFor(context);
+    final requestedFill =
+        fillColor ??
+        switch (preset) {
+          GlassSurfacePreset.panel => AppEntityTokens.fillFor(context),
+          GlassSurfacePreset.floating ||
+          GlassSurfacePreset.navigation => AppGlassTokens.panelFillFor(context),
+          GlassSurfacePreset.sheet ||
+          GlassSurfacePreset.dialog => AppGlassTokens.sheetFillFor(context),
+        };
+    // Frozen ce04b3c content widgets can still pass legacy translucent fills
+    // to the panel preset. Pre-composite those colors onto entity paper so
+    // ordinary rows stay fully opaque without changing business widgets.
+    final effectiveFill =
+        preset == GlassSurfacePreset.panel && requestedFill.a < 1
+        ? Color.alphaBlend(requestedFill, AppEntityTokens.fillFor(context))
+        : requestedFill;
     final content = Padding(padding: padding ?? EdgeInsets.zero, child: child);
 
     final fallback = _GlassSurfaceFallback(
@@ -52,6 +66,7 @@ class GlassSurface extends StatelessWidget {
       boxShadow: boxShadow,
       showHighlights: showHighlights,
       edgeIntensity: edgeIntensity,
+      preset: preset,
       child: content,
     );
 
@@ -69,6 +84,7 @@ class _GlassSurfaceFallback extends StatelessWidget {
     this.boxShadow,
     this.showHighlights = true,
     this.edgeIntensity = 1,
+    this.preset = GlassSurfacePreset.panel,
   });
 
   final BorderRadius borderRadius;
@@ -78,85 +94,84 @@ class _GlassSurfaceFallback extends StatelessWidget {
   final List<BoxShadow>? boxShadow;
   final bool showHighlights;
   final double edgeIntensity;
+  final GlassSurfacePreset preset;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final explicitBorder = borderColor == null
-        ? null
-        : Border.all(
-            color: borderColor!.withValues(alpha: isDark ? 0.08 : 0.14),
-            width: 0.5,
+    final isFloating = preset != GlassSurfacePreset.panel;
+    final effectiveBorder =
+        borderColor ??
+        (isFloating
+            ? (isDark ? AppGlassTokens.darkBorder : AppGlassTokens.lightBorder)
+            : AppEntityTokens.borderFor(context));
+    final highlightColor = AppEntityTokens.highlightFor(context).withValues(
+      alpha: AppEntityTokens.highlightFor(context).a * edgeIntensity,
+    );
+    final ridgeColor = AppEntityTokens.ridgeFor(
+      context,
+    ).withValues(alpha: AppEntityTokens.ridgeFor(context).a * edgeIntensity);
+
+    final surfaceBody = Stack(
+      fit: StackFit.passthrough,
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: fillColor,
+            borderRadius: borderRadius,
+            border: Border.all(color: effectiveBorder),
+          ),
+          child: child,
+        ),
+        if (showHighlights) ...[
+          Positioned(
+            top: 1,
+            right: borderRadius.topRight.x * 0.72,
+            left: borderRadius.topLeft.x * 0.72,
+            height: 1,
+            child: IgnorePointer(child: ColoredBox(color: highlightColor)),
+          ),
+          Positioned(
+            right: borderRadius.bottomRight.x * 0.72,
+            bottom: 0,
+            left: borderRadius.bottomLeft.x * 0.72,
+            height: isFloating ? 1 : 2,
+            child: IgnorePointer(child: ColoredBox(color: ridgeColor)),
+          ),
+        ],
+      ],
+    );
+    final effectiveBlurSigma = blurSigma.clamp(0.0, 12.0).toDouble();
+    final clippedBody = !isFloating || effectiveBlurSigma <= 0
+        ? surfaceBody
+        : BackdropFilter.grouped(
+            filter: ImageFilter.blur(
+              sigmaX: effectiveBlurSigma,
+              sigmaY: effectiveBlurSigma,
+            ),
+            child: surfaceBody,
           );
 
     return Container(
       decoration: BoxDecoration(
         borderRadius: borderRadius,
-        boxShadow: boxShadow ?? AppShadows.glass,
-      ),
-      child: LiquidGlassEdge(
-        borderRadius: borderRadius,
-        edgeIntensity: edgeIntensity,
-        child: ClipRRect(
-          borderRadius: borderRadius,
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-            child: Stack(
-              fit: StackFit.passthrough,
-              children: [
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: fillColor,
-                      borderRadius: borderRadius,
-                      border: explicitBorder,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          fillColor,
-                          Color.alphaBlend(
-                            AppGlassTokens.refractionTint,
-                            fillColor,
-                          ),
-                          fillColor,
-                        ],
-                        stops: const [0, 0.58, 1],
+        boxShadow:
+            boxShadow ??
+            (isFloating
+                ? [
+                    BoxShadow(
+                      color: Theme.of(context).colorScheme.shadow.withValues(
+                        alpha: isDark ? 0.46 : 0.16,
                       ),
+                      blurRadius: 30,
+                      spreadRadius: -8,
+                      offset: const Offset(0, 12),
                     ),
-                  ),
-                ),
-                if (showHighlights)
-                  Positioned.fill(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        borderRadius: borderRadius,
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Colors.white.withValues(
-                              alpha: isDark ? 0.08 : 0.34,
-                            ),
-                            Colors.white.withValues(
-                              alpha: isDark ? 0.01 : 0.05,
-                            ),
-                            AppPalette.frostLine.withValues(
-                              alpha: isDark ? 0.02 : 0.08,
-                            ),
-                          ],
-                          stops: const [0, 0.48, 1],
-                        ),
-                      ),
-                    ),
-                  ),
-                child,
-              ],
-            ),
-          ),
-        ),
+                  ]
+                : AppEntityTokens.shadowFor(context)),
       ),
+      child: ClipRRect(borderRadius: borderRadius, child: clippedBody),
     );
   }
 }

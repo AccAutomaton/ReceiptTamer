@@ -1,0 +1,733 @@
+/*
+ * 晨雾账簿：保留墨色账簿的完整信息结构，仅替换视觉语言。
+ * 此文件必须位于各画板的局部 <style> 之后。
+ */
+
+:root {
+  --paper: #f5f9f8;
+  --paper-raised: #ffffff;
+  --copy: #e8f1ef;
+  --ink: #233238;
+  --graphite: #63757a;
+  --rule: #e0eae7;
+  --rule-strong: #cbd9d5;
+  --teal: #245f61;
+  --teal-soft: #dff3ee;
+  --seal: #ad4f3e;
+  --seal-soft: #fce9e5;
+  --success: #27765f;
+  --warning: #896225;
+  --sky: #4f91ad;
+  --sky-soft: #e5f2f7;
+  --coral-tab: #e87863;
+  --mint-tab: #68b7ae;
+  --shadow: rgba(45, 79, 76, 0.12);
+}
+
+html,
+body {
+  background: #dce8e4;
+  color: var(--ink);
+  font-family: "RT Sans", "Microsoft YaHei", sans-serif;
+}
+
+.board-page {
+  background:
+    radial-gradient(circle at 7% 2%, rgba(104, 183, 174, 0.18), transparent 21%),
+    radial-gradient(circle at 94% 17%, rgba(122, 183, 210, 0.13), transparent 25%),
+    #edf4f2;
+}
+
+.board-header {
+  border-bottom: 1px solid rgba(36, 95, 97, 0.22);
+}
+
+.board-kicker {
+  color: var(--teal);
+  font-family: "RT Sans", sans-serif;
+  font-weight: 780;
+  letter-spacing: 0.055em;
+}
+
+.board-kicker::before {
+  content: "";
+  display: inline-block;
+  width: 22px;
+  height: 8px;
+  margin-right: 9px;
+  border-radius: 999px;
+  background: var(--mint-tab);
+}
+
+.board-title {
+  font-family: "RT MiSans", "RT Sans", sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.045em;
+}
+
+.board-note {
+  color: #536a70;
+}
+
+.phone {
+  border-color: rgba(44, 78, 76, 0.13);
+  border-radius: 40px;
+  background: var(--paper);
+  box-shadow: 0 24px 54px var(--shadow), inset 0 0 0 5px rgba(255, 255, 255, 0.62);
+}
+
+.screen {
+  background:
+    radial-gradient(circle at 96% 0%, rgba(104, 183, 174, 0.08), transparent 22%),
+    var(--paper);
+}
+
+.screen * {
+  font-family: "RT Sans", "Microsoft YaHei", sans-serif !important;
+}
+
+.screen-title,
+.section-heading h3,
+.month-strip b,
+.form-section h3,
+.sheet h3,
+.dialog h3,
+.empty-state b,
+.summary-amount,
+.detail-amount b,
+.quick-hero h3,
+.result-head h3,
+.result-ticket h3,
+.generation-card h3,
+.settings-intro b,
+.engine-head b,
+.policy-lead b,
+.license-summary b,
+.release-head b,
+.source-summary b,
+.release-ticket h4,
+.export-choice b {
+  font-family: "RT MiSans", "RT Sans", sans-serif !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.022em;
+}
+
+.mono,
+.field-box.mono,
+.invoice-code,
+.capture-order-no,
+.file-ticket b,
+.model-file b,
+.license-row span,
+.release-head time,
+.note-count,
+.counter,
+.date-divider,
+.pagination {
+  font-family: "RT Mono", monospace !important;
+  letter-spacing: 0;
+}
+
+.eyebrow {
+  color: var(--teal);
+  font-family: "RT Sans", sans-serif !important;
+  font-weight: 760;
+  letter-spacing: 0.045em;
+  text-transform: none;
+}
+
+.icon-button,
+.back-button {
+  border: 0;
+  border-radius: 16px;
+  background: var(--paper-raised);
+  color: var(--teal);
+  box-shadow: 0 5px 16px rgba(45, 79, 76, 0.08);
+}
+
+.summary-receipt {
+  overflow: hidden;
+  border: 0;
+  border-radius: 24px;
+  background: var(--teal-soft);
+  box-shadow: 0 9px 22px rgba(45, 79, 76, 0.07);
+}
+
+.summary-receipt::after,
+.result-receipt::after,
+.result-ticket::after {
+  display: none;
+}
+
+.summary-grid,
+.engine-meta,
+.quick-stat,
+.source-summary .meta-line {
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--teal) 22%, var(--rule));
+}
+
+.sheet-total {
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--teal) 22%, var(--rule));
+  border-bottom: 1px solid color-mix(in srgb, var(--teal) 22%, var(--rule));
+}
+
+.result-rule {
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--teal) 22%, var(--rule));
+}
+
+.summary-metric {
+  border-color: color-mix(in srgb, var(--teal) 18%, var(--rule));
+}
+
+.task-tile,
+.form-section,
+.range-card,
+.export-choice,
+.top-n-panel,
+.saved-header,
+.generation-card,
+.source-card,
+.source-summary,
+.release-ticket,
+.settings-intro,
+.license-summary,
+.cleanup-choice,
+.cascade-panel,
+.confirm-facts,
+.file-alert,
+.selection-note,
+.import-banner,
+.queue-stats,
+.directory-card,
+.maintenance-note {
+  border-color: var(--rule);
+  border-radius: 18px;
+  background: var(--paper-raised);
+  box-shadow: 0 5px 16px rgba(45, 79, 76, 0.045);
+}
+
+.task-mark,
+.row-mark,
+.sheet-option-mark,
+.option-mark,
+.store-mark,
+.cleanup-mark,
+.choice-mark,
+.file-mark,
+.quick-mark,
+.generation-icon,
+.ai-mark,
+.app-monogram {
+  border-color: transparent;
+  border-radius: 12px;
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+
+.ledger-panel,
+.store-group,
+.invoice-table,
+.settings-list,
+.model-files {
+  border-color: var(--rule);
+  border-radius: 20px;
+  background: var(--paper-raised);
+  box-shadow: 0 5px 18px rgba(45, 79, 76, 0.045);
+}
+
+.month-strip {
+  border-bottom-color: var(--rule);
+  border-bottom-style: solid;
+  background: var(--teal-soft);
+}
+
+.ledger-row {
+  position: relative;
+  overflow: hidden;
+  border-bottom-color: var(--rule);
+  background: var(--paper-raised);
+}
+
+.ledger-row::after {
+  content: "";
+  position: absolute;
+  top: 24px;
+  right: -1px;
+  width: 7px;
+  height: 30px;
+  border-radius: 7px 0 0 7px;
+  display: none;
+  background: var(--coral-tab);
+}
+
+.ledger-row:has(.text-teal)::after,
+.ledger-row:has(.text-seal)::after {
+  display: block;
+}
+
+.ledger-row:has(.text-teal)::after {
+  background: var(--mint-tab);
+}
+
+.row-date {
+  color: var(--graphite);
+  font-family: "RT Sans", sans-serif !important;
+  font-weight: 620;
+}
+
+.row-amount,
+.summary-amount,
+.detail-amount b,
+.selection-summary strong,
+.sheet-total b,
+.storage-hero .amount,
+.storage-row span:last-child,
+.range-point b,
+.quick-stat b,
+.store-total,
+.cache-grid b {
+  font-family: "RT MiSans", "RT Sans", sans-serif !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.status-chip {
+  border-color: transparent;
+  border-radius: 10px;
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+
+.status-chip.warning {
+  border-color: transparent;
+}
+
+.status-chip.danger {
+  border-color: transparent;
+  background: var(--seal-soft);
+  color: var(--seal);
+}
+
+.filter-chip {
+  border-color: var(--rule);
+  border-radius: 12px;
+  background: var(--paper-raised);
+}
+
+.filter-chip.active {
+  border-color: var(--teal);
+  background: var(--teal);
+  color: #ffffff;
+}
+
+.search-box,
+.field-box,
+.note-box,
+.file-ticket,
+.restore-option,
+.page-buttons i,
+.mini-action,
+.share-button,
+.stepper,
+.radio,
+.check {
+  border-color: var(--rule);
+  border-radius: 14px;
+  background: var(--paper-raised);
+}
+
+.check.on,
+.radio.on,
+.toggle.on,
+.step.done i {
+  border-color: var(--teal);
+  background: var(--teal);
+  color: white;
+}
+
+.button {
+  border-color: var(--teal);
+  border-radius: 15px;
+  background: var(--teal);
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(36, 95, 97, 0.13);
+}
+
+.button.secondary {
+  border-color: var(--rule-strong);
+  background: var(--paper-raised);
+  color: var(--teal);
+  box-shadow: none;
+}
+
+.button.teal {
+  border-color: var(--teal);
+  background: var(--teal);
+}
+
+.button.danger {
+  border-color: #b65746;
+  background: #b65746;
+  color: #ffffff;
+}
+
+.detail-amount,
+.quick-hero,
+.storage-hero {
+  overflow: hidden;
+  border: 0;
+  border-radius: 22px;
+  background: var(--teal-soft);
+}
+
+.detail-line,
+.file-row,
+.setting-row,
+.option-row,
+.option-line,
+.saved-row,
+.result-file,
+.result-line,
+.sheet-row,
+.model-file,
+.storage-row,
+.license-row,
+.queue-row,
+.order-select-row,
+.invoice-select-row {
+  border-color: var(--rule);
+}
+
+.media-frame,
+.preview-stage,
+.scan-panel,
+.proof-shot {
+  border-color: var(--rule);
+  border-radius: 20px;
+  background-color: var(--copy);
+}
+
+.month-rail {
+  color: var(--graphite);
+  font-family: "RT Sans", sans-serif !important;
+}
+
+.month-rail b,
+.rank {
+  border-radius: 10px;
+  background: var(--teal);
+  color: #ffffff;
+}
+
+.rank.off {
+  background: var(--copy);
+  color: var(--graphite);
+}
+
+.bottom-nav,
+.action-bar,
+.save-bar,
+.scope-bar {
+  border-color: rgba(43, 84, 81, 0.12);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--paper-raised) 96%, transparent);
+  box-shadow: 0 14px 35px rgba(45, 79, 76, 0.13);
+}
+
+.nav-item {
+  border-radius: 15px;
+  color: var(--graphite);
+}
+
+.nav-item.active {
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+
+.nav-add {
+  border: 0;
+  border-radius: 18px;
+  background: var(--teal);
+  color: #ffffff;
+  box-shadow: 0 8px 19px rgba(36, 95, 97, 0.23);
+}
+
+.sheet {
+  border: 0;
+  border-radius: 26px 26px 0 0;
+  background: var(--paper-raised);
+  box-shadow: 0 -20px 54px rgba(28, 51, 52, 0.18);
+}
+
+.sheet-option {
+  margin-bottom: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--rule);
+  border-radius: 18px;
+  background: var(--paper);
+}
+
+.sheet-handle {
+  background: var(--rule-strong);
+}
+
+.dialog {
+  border: 0;
+  border-radius: 22px;
+  background: var(--paper-raised);
+  box-shadow: 0 24px 70px rgba(28, 51, 52, 0.22);
+}
+
+.scrim {
+  background: rgba(28, 51, 52, 0.34);
+}
+
+.toast {
+  border-radius: 15px;
+  background: var(--teal);
+  color: #ffffff;
+  box-shadow: 0 12px 30px rgba(36, 95, 97, 0.23);
+}
+
+.progress-track {
+  background: var(--copy);
+}
+
+.progress-fill {
+  background: var(--mint-tab);
+}
+
+.calendar-grid span.on {
+  background: var(--teal);
+  color: #ffffff;
+}
+
+.calendar-grid span.range {
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+
+.danger-panel,
+.safety-note,
+.permission-line,
+.amount-mismatch {
+  border-color: color-mix(in srgb, var(--seal) 24%, var(--rule));
+  border-radius: 17px;
+  background: var(--seal-soft);
+  color: var(--seal);
+}
+
+.seal-stamp,
+.result-stamp,
+.success-mark,
+.generation-seal {
+  border: 0;
+  border-radius: 16px;
+  background: var(--teal-soft);
+  color: var(--teal);
+  transform: none;
+}
+
+.result-stamp {
+  background: color-mix(in srgb, var(--warning) 12%, var(--paper-raised));
+  color: var(--warning);
+}
+
+.seal-stamp {
+  background: var(--seal-soft);
+  color: var(--seal);
+}
+
+.result-receipt,
+.result-ticket {
+  border-color: var(--rule);
+  border-radius: 22px;
+  background: var(--paper-raised);
+  box-shadow: 0 9px 24px rgba(45, 79, 76, 0.08);
+}
+
+.assistant-receipt::before {
+  padding: 5px 9px;
+  border-radius: 10px;
+  background: var(--seal-soft);
+  color: var(--seal);
+  font-family: "RT Sans", sans-serif !important;
+  transform: none;
+}
+
+.export-choice.featured {
+  border-color: var(--teal);
+  background: color-mix(in srgb, var(--teal-soft) 48%, var(--paper-raised));
+}
+
+.export-choice.featured::after {
+  border-radius: 0 17px 0 12px;
+  background: var(--teal);
+}
+
+.selection-summary,
+.engine-card,
+.linked-note,
+.policy-lead,
+.retained-note {
+  border-color: transparent;
+  border-radius: 18px;
+  background: var(--teal-soft);
+}
+
+.policy-lead,
+.linked-note {
+  border-left: 0;
+}
+
+.source-line,
+.maintenance-note,
+.file-ticket {
+  border-style: solid;
+}
+
+.recent-link {
+  border: 0;
+  border-top: 1px solid var(--rule-strong);
+}
+
+.date-divider::after {
+  border: 0;
+  border-top: 1px solid var(--rule-strong);
+}
+
+.storage-dot.ink {
+  background: var(--teal);
+}
+
+.storage-dot.copy {
+  background: var(--sky);
+}
+
+.release {
+  border-left-color: var(--rule-strong);
+}
+
+.release::before {
+  border-color: var(--mint-tab);
+  background: var(--paper);
+}
+
+.release.current::before {
+  background: var(--mint-tab);
+}
+
+.app-monogram {
+  background: var(--teal);
+  color: #ffffff;
+}
+
+.source-thumb,
+.invoice-stub,
+.invoice-mini,
+.file-tile,
+.proof-shot,
+.page-thumb {
+  border-color: var(--rule);
+  background: var(--sky-soft);
+  color: var(--sky);
+}
+
+.source-pill,
+.type-picker .on,
+.folder-button {
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+
+.capture-logo,
+.page-thumb.on {
+  border-color: var(--mint-tab);
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+
+.phone.dark {
+  --paper: #10191a;
+  --paper-raised: #172325;
+  --copy: #20302f;
+  --ink: #edf6f3;
+  --graphite: #a7b8b5;
+  --rule: #2b3c3a;
+  --rule-strong: #405552;
+  --teal: #9ddbd2;
+  --teal-soft: #203b38;
+  --seal: #ff9985;
+  --seal-soft: #482d2b;
+  --success: #8dd2b5;
+  --warning: #e3bd72;
+  --sky: #91cbe2;
+  --sky-soft: #203740;
+  --shadow: rgba(0, 0, 0, 0.34);
+}
+
+.phone.dark .screen {
+  background:
+    radial-gradient(circle at 96% 0%, rgba(104, 183, 174, 0.08), transparent 22%),
+    var(--paper);
+}
+
+.phone.dark .button,
+.phone.dark .button.teal,
+.phone.dark .filter-chip.active,
+.phone.dark .nav-add,
+.phone.dark .month-rail b,
+.phone.dark .calendar-grid span.on,
+.phone.dark .check.on,
+.phone.dark .toggle.on,
+.phone.dark .step.done i {
+  border-color: #2f7472;
+  background: #2f7472;
+  color: #ffffff;
+}
+
+.phone.dark .button.secondary {
+  border-color: var(--rule-strong);
+  background: var(--paper-raised);
+  color: var(--teal);
+}
+
+.phone.dark .button.danger {
+  border-color: #a94f43;
+  background: #a94f43;
+  color: #ffffff;
+}
+
+.phone.dark .bottom-nav,
+.phone.dark .action-bar,
+.phone.dark .dialog,
+.phone.dark .sheet {
+  background: color-mix(in srgb, var(--paper-raised) 96%, transparent);
+}
+
+.phone.dark .media-screen,
+.phone.dark .viewer-stage,
+.phone.dark .media-frame.dark-media {
+  background: #070b0c;
+}
+
+.phone.dark .mock-receipt,
+.phone.dark .invoice-paper,
+.phone.dark .pdf-page,
+.phone.dark .scan-document,
+.phone.dark .order-capture {
+  color: #263337;
+  background: #ffffff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

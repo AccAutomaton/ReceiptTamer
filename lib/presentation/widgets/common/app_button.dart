@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
 
 /// App Button - Unified button styles for the application
 enum AppButtonType { primary, secondary, tertiary, outlined, text }
@@ -120,7 +121,33 @@ class AppButton extends StatelessWidget {
         break;
     }
 
-    return _applyWidth(button);
+    final enabled = !effectiveDisabled || onPressedWhileLoading != null;
+    final pressedSurface = type != AppButtonType.text;
+    final effectiveFill = _backgroundForType(context, colorScheme);
+    final ridgeColor = type == AppButtonType.primary
+        ? Color.alphaBlend(
+            Colors.black.withValues(
+              alpha: AppPalette.isDark(context) ? 0.18 : 0.24,
+            ),
+            effectiveFill,
+          )
+        : AppEntityTokens.ridgeFor(context);
+
+    return _applyWidth(
+      _PressRelief(
+        enabled: enabled,
+        borderRadius: BorderRadius.circular(borderRadius),
+        ridgeColor: ridgeColor,
+        highlightColor: type == AppButtonType.primary
+            ? Colors.white.withValues(alpha: 0.28)
+            : AppEntityTokens.highlightFor(context),
+        boxShadow: pressedSurface
+            ? AppEntityTokens.controlShadowFor(context)
+            : const <BoxShadow>[],
+        showChrome: pressedSurface,
+        child: button,
+      ),
+    );
   }
 
   Widget _applyWidth(Widget child) {
@@ -132,6 +159,7 @@ class AppButton extends StatelessWidget {
   }
 
   Widget _buildChild(BuildContext context) {
+    final loadingColor = foregroundColor ?? _foregroundForType(context);
     if (isLoading) {
       return Row(
         mainAxisSize: MainAxisSize.min,
@@ -141,9 +169,7 @@ class AppButton extends StatelessWidget {
             height: isDense ? 16 : 20,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                foregroundColor ?? Theme.of(context).colorScheme.onPrimary,
-              ),
+              valueColor: AlwaysStoppedAnimation<Color>(loadingColor),
             ),
           ),
           const SizedBox(width: 8),
@@ -171,6 +197,19 @@ class AppButton extends StatelessWidget {
     return ElevatedButton.styleFrom(
       backgroundColor: backgroundColor ?? colorScheme.primary,
       foregroundColor: foregroundColor ?? colorScheme.onPrimary,
+      disabledBackgroundColor: colorScheme.surfaceContainerHigh,
+      disabledForegroundColor: colorScheme.onSurfaceVariant,
+      elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      animationDuration: AppMotion.adaptive(context, AppMotion.fast),
+      side:
+          borderSide ??
+          BorderSide(
+            color: AppPalette.isDark(context)
+                ? colorScheme.primary.withValues(alpha: 0.54)
+                : const Color(0xFF1E5955),
+          ),
       padding: EdgeInsets.symmetric(
         horizontal: isDense ? 16 : 24,
         vertical: isDense ? 8 : 12,
@@ -178,18 +217,26 @@ class AppButton extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(borderRadius),
       ),
-      minimumSize: Size(width ?? 0, height ?? 44),
+      minimumSize: Size(width ?? 0, height ?? (isDense ? 40 : 46)),
     );
   }
 
   ButtonStyle _secondaryStyle(BuildContext context, ColorScheme colorScheme) {
     return ElevatedButton.styleFrom(
-      backgroundColor: backgroundColor ?? colorScheme.secondaryContainer,
-      foregroundColor: foregroundColor ?? colorScheme.onSecondaryContainer,
-      side: BorderSide(
-        color: colorScheme.primary.withValues(alpha: 0.26),
-        width: 1,
-      ),
+      backgroundColor: backgroundColor ?? AppEntityTokens.fillFor(context),
+      foregroundColor: foregroundColor ?? colorScheme.primary,
+      disabledBackgroundColor: colorScheme.surfaceContainerHigh,
+      disabledForegroundColor: colorScheme.onSurfaceVariant,
+      elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      animationDuration: AppMotion.adaptive(context, AppMotion.fast),
+      side:
+          borderSide ??
+          BorderSide(
+            color: AppPalette.actionOutlineFor(context, alpha: 0.62),
+            width: 1,
+          ),
       padding: EdgeInsets.symmetric(
         horizontal: isDense ? 16 : 24,
         vertical: isDense ? 8 : 12,
@@ -197,7 +244,7 @@ class AppButton extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(borderRadius),
       ),
-      minimumSize: Size(width ?? 0, height ?? 44),
+      minimumSize: Size(width ?? 0, height ?? (isDense ? 40 : 46)),
     );
   }
 
@@ -205,10 +252,18 @@ class AppButton extends StatelessWidget {
     return ElevatedButton.styleFrom(
       backgroundColor: backgroundColor ?? colorScheme.tertiaryContainer,
       foregroundColor: foregroundColor ?? colorScheme.onTertiaryContainer,
-      side: BorderSide(
-        color: colorScheme.primary.withValues(alpha: 0.2),
-        width: 1,
-      ),
+      disabledBackgroundColor: colorScheme.surfaceContainerHigh,
+      disabledForegroundColor: colorScheme.onSurfaceVariant,
+      elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      animationDuration: AppMotion.adaptive(context, AppMotion.fast),
+      side:
+          borderSide ??
+          BorderSide(
+            color: colorScheme.primary.withValues(alpha: 0.2),
+            width: 1,
+          ),
       padding: EdgeInsets.symmetric(
         horizontal: isDense ? 16 : 24,
         vertical: isDense ? 8 : 12,
@@ -216,7 +271,7 @@ class AppButton extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(borderRadius),
       ),
-      minimumSize: Size(width ?? 0, height ?? 44),
+      minimumSize: Size(width ?? 0, height ?? (isDense ? 40 : 46)),
     );
   }
 
@@ -229,10 +284,11 @@ class AppButton extends StatelessWidget {
             color: AppPalette.actionOutlineFor(context, alpha: 0.72),
             width: 1.2,
           ),
-      backgroundColor: AppPalette.actionSoftFillFor(
-        context,
-        alpha: AppPalette.isDark(context) ? 0.72 : 0.42,
-      ),
+      backgroundColor: backgroundColor ?? AppEntityTokens.fillFor(context),
+      disabledBackgroundColor: colorScheme.surfaceContainerHigh,
+      disabledForegroundColor: colorScheme.onSurfaceVariant,
+      surfaceTintColor: Colors.transparent,
+      animationDuration: AppMotion.adaptive(context, AppMotion.fast),
       padding: EdgeInsets.symmetric(
         horizontal: isDense ? 16 : 24,
         vertical: isDense ? 8 : 12,
@@ -240,13 +296,14 @@ class AppButton extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(borderRadius),
       ),
-      minimumSize: Size(width ?? 0, height ?? 44),
+      minimumSize: Size(width ?? 0, height ?? (isDense ? 40 : 46)),
     );
   }
 
   ButtonStyle _textStyle(BuildContext context, ColorScheme colorScheme) {
     return TextButton.styleFrom(
       foregroundColor: foregroundColor ?? colorScheme.primary,
+      animationDuration: AppMotion.adaptive(context, AppMotion.fast),
       padding: EdgeInsets.symmetric(
         horizontal: isDense ? 12 : 16,
         vertical: isDense ? 6 : 10,
@@ -256,6 +313,28 @@ class AppButton extends StatelessWidget {
       ),
       minimumSize: Size(width ?? 0, height ?? 36),
     );
+  }
+
+  Color _backgroundForType(BuildContext context, ColorScheme colorScheme) {
+    if (backgroundColor != null) return backgroundColor!;
+    return switch (type) {
+      AppButtonType.primary => colorScheme.primary,
+      AppButtonType.secondary ||
+      AppButtonType.outlined => AppEntityTokens.fillFor(context),
+      AppButtonType.tertiary => colorScheme.tertiaryContainer,
+      AppButtonType.text => Colors.transparent,
+    };
+  }
+
+  Color _foregroundForType(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return switch (type) {
+      AppButtonType.primary => colorScheme.onPrimary,
+      AppButtonType.secondary ||
+      AppButtonType.outlined ||
+      AppButtonType.text => colorScheme.primary,
+      AppButtonType.tertiary => colorScheme.onTertiaryContainer,
+    };
   }
 }
 
@@ -289,8 +368,11 @@ class AppIconButton extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final effectiveDisabled = isLoading || onPressed == null;
+    final effectiveRadius = BorderRadius.circular(borderRadius);
+    final effectiveBackground =
+        backgroundColor ?? AppGlassTokens.panelFillFor(context);
 
-    return IconButton(
+    final button = IconButton(
       onPressed: effectiveDisabled ? null : onPressed,
       onLongPress: onLongPress,
       tooltip: tooltip,
@@ -307,21 +389,133 @@ class AppIconButton extends StatelessWidget {
             )
           : Icon(icon),
       style: IconButton.styleFrom(
-        backgroundColor:
-            backgroundColor ??
-            AppPalette.actionSoftFillFor(
-              context,
-              alpha: AppPalette.isDark(context) ? 0.72 : 1,
-            ),
+        backgroundColor: Colors.transparent,
+        disabledBackgroundColor: Colors.transparent,
         foregroundColor: foregroundColor ?? colorScheme.primary,
-        side: BorderSide(
-          color: AppPalette.actionOutlineFor(context, alpha: 0.46),
-        ),
+        disabledForegroundColor: colorScheme.onSurfaceVariant,
+        side: BorderSide.none,
         minimumSize: Size(size, size),
         maximumSize: Size(size, size),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(borderRadius),
+        tapTargetSize: MaterialTapTargetSize.padded,
+        shape: RoundedRectangleBorder(borderRadius: effectiveRadius),
+      ),
+    );
+
+    final floatingSurface = GlassSurface(
+      preset: GlassSurfacePreset.floating,
+      borderRadius: effectiveRadius,
+      fillColor: effectiveBackground,
+      blurSigma: AppGlassTokens.blurSigma,
+      boxShadow: [
+        BoxShadow(
+          color: colorScheme.shadow.withValues(
+            alpha: AppPalette.isDark(context) ? 0.46 : 0.16,
+          ),
+          blurRadius: 18,
+          spreadRadius: -8,
+          offset: const Offset(0, 8),
+        ),
+      ],
+      edgeIntensity: 1,
+      child: button,
+    );
+
+    return _PressRelief(
+      enabled: !effectiveDisabled,
+      borderRadius: effectiveRadius,
+      ridgeColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      boxShadow: const <BoxShadow>[],
+      showChrome: false,
+      child: floatingSurface,
+    );
+  }
+}
+
+class _PressRelief extends StatefulWidget {
+  const _PressRelief({
+    required this.enabled,
+    required this.borderRadius,
+    required this.ridgeColor,
+    required this.highlightColor,
+    required this.boxShadow,
+    required this.showChrome,
+    required this.child,
+  });
+
+  final bool enabled;
+  final BorderRadius borderRadius;
+  final Color ridgeColor;
+  final Color highlightColor;
+  final List<BoxShadow> boxShadow;
+  final bool showChrome;
+  final Widget child;
+
+  @override
+  State<_PressRelief> createState() => _PressReliefState();
+}
+
+class _PressReliefState extends State<_PressRelief> {
+  bool _pressed = false;
+
+  void _setPressed(bool value) {
+    if (!mounted || _pressed == value || !widget.enabled) return;
+    setState(() => _pressed = value);
+  }
+
+  @override
+  void didUpdateWidget(covariant _PressRelief oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.enabled && _pressed) _pressed = false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = AppMotion.reduceMotion(context);
+    final pressedVisual = _pressed && !reduceMotion;
+    final duration = AppMotion.adaptive(context, AppMotion.fast);
+
+    Widget result = widget.child;
+    if (widget.showChrome) {
+      result = AnimatedContainer(
+        duration: duration,
+        curve: AppMotion.curve,
+        decoration: BoxDecoration(
+          color: widget.ridgeColor,
+          borderRadius: widget.borderRadius,
+          boxShadow: pressedVisual ? const <BoxShadow>[] : widget.boxShadow,
+        ),
+        child: Stack(
+          fit: StackFit.passthrough,
+          children: [
+            Padding(padding: const EdgeInsets.only(bottom: 2), child: result),
+            Positioned(
+              top: 1,
+              right: widget.borderRadius.topRight.x * 0.72,
+              left: widget.borderRadius.topLeft.x * 0.72,
+              height: 1,
+              child: IgnorePointer(
+                child: ColoredBox(color: widget.highlightColor),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Listener(
+      onPointerDown: widget.enabled ? (_) => _setPressed(true) : null,
+      onPointerUp: widget.enabled ? (_) => _setPressed(false) : null,
+      onPointerCancel: widget.enabled ? (_) => _setPressed(false) : null,
+      child: AnimatedSlide(
+        duration: duration,
+        curve: AppMotion.curve,
+        offset: pressedVisual ? const Offset(0, 0.035) : Offset.zero,
+        child: AnimatedScale(
+          duration: duration,
+          curve: AppMotion.curve,
+          scale: pressedVisual ? 0.98 : 1,
+          child: result,
         ),
       ),
     );

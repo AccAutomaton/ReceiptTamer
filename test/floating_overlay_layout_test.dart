@@ -40,5 +40,13 @@ void main() {
     expect(find.byType(SafeArea), findsNothing);
     expect(latestPadding?.top, 94);
     expect(latestPadding?.bottom, 156);
+
+    for (final surface in tester.widgetList<GlassSurface>(
+      find.byType(GlassSurface),
+    )) {
+      expect(surface.fillColor?.a, closeTo(0.92, 0.002));
+      expect(surface.blurSigma, 10);
+      expect(surface.preset, GlassSurfacePreset.floating);
+    }
   });
 }

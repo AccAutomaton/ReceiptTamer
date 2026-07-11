@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ReceiptTamer · 晨雾票夹方向预览</title>
+    <link rel="stylesheet" href="shared.css" />
+  </head>
+  <body>
+    <svg width="0" height="0" aria-hidden="true" style="position:absolute">
+      <defs>
+        <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4.2-4.2"></path></symbol>
+        <symbol id="i-back" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"></path></symbol>
+        <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle></symbol>
+        <symbol id="i-home" viewBox="0 0 24 24"><path d="m3.5 11 8.5-7 8.5 7"></path><path d="M5.5 10v10h13V10"></path><path d="M9.5 20v-6h5v6"></path></symbol>
+        <symbol id="i-orders" viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="2"></rect><path d="M8.5 8h7M8.5 12h7M8.5 16h4"></path></symbol>
+        <symbol id="i-invoice" viewBox="0 0 24 24"><path d="M6 3.5h9l3 3V20.5H6z"></path><path d="M14.5 3.5V7H18M9 11h6M9 15h6"></path></symbol>
+        <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19 13.5v-3l-2-.7-.7-1.7.9-1.9-2.1-2.1-1.9.9-1.7-.7-.7-2h-3l-.7 2-1.7.7-1.9-.9-2.1 2.1.9 1.9-.7 1.7-2 .7v3l2 .7.7 1.7-.9 1.9 2.1 2.1 1.9-.9 1.7.7.7 2h3l.7-2 1.7-.7 1.9.9 2.1-2.1-.9-1.9.7-1.7z"></path></symbol>
+        <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"></path></symbol>
+        <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2"></rect><circle cx="9" cy="9" r="1.5"></circle><path d="m5.5 17 4.5-4.5 3 3 2-2 3.5 3.5"></path></symbol>
+        <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3.5h9l3 3V20.5H6z"></path><path d="M14.5 3.5V7H18"></path></symbol>
+        <symbol id="i-archive" viewBox="0 0 24 24"><path d="M4 7h16v13H4zM3 4h18v3H3zM9 11h6"></path></symbol>
+        <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3.5 19 6v5.5c0 4.3-2.9 7.3-7 9-4.1-1.7-7-4.7-7-9V6z"></path><path d="m9 12 2 2 4-4"></path></symbol>
+        <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v6M12 7.5v.2"></path></symbol>
+        <symbol id="i-edit" viewBox="0 0 24 24"><path d="m4 20 4.2-1 10.4-10.4-3.2-3.2L5 15.8zM13.8 7l3.2 3.2"></path></symbol>
+      </defs>
+    </svg>
+
+    <main class="board-page">
+      <header class="board-header">
+        <div>
+          <div class="board-kicker">清新风方向复核</div>
+          <h1 class="board-title">晨雾票夹</h1>
+        </div>
+        <p class="board-note">
+          面向只想快速整理订单与发票的普通用户。默认只展示
+          <b>金额、缺什么、下一步</b>；编号、OCR、文件属性与模型信息仍保留，但收进“更多信息”。
+        </p>
+      </header>
+
+      <section class="phone-grid">
+        <article class="phone-card">
+          <div class="phone">
+            <div class="screen">
+              <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+              <header class="appbar">
+                <div>
+                  <div class="month-switch">2026 年 7 月⌄</div>
+                  <h2 class="screen-title">我的票夹</h2>
+                </div>
+                <div class="icon-button"><svg><use href="#i-search"></use></svg></div>
+              </header>
+              <div class="content">
+                <section class="fresh-hero">
+                  <div class="hero-label">本月实付</div>
+                  <div class="hero-amount">¥ 1,286.40</div>
+                  <div class="hero-foot"><span>共 8 笔订单</span><b>查看本月记录 ›</b></div>
+                </section>
+                <section class="todo-card">
+                  <div class="todo-mark">3</div>
+                  <div class="todo-copy"><b>还有 3 笔没找到发票</b><span>补齐后就能生成报销材料</span></div>
+                  <div class="mini-action">去补齐</div>
+                </section>
+                <div class="primary-add"><span>＋</span>拍照记一笔</div>
+                <div class="section-heading"><h3>最近添加</h3><span>全部记录 ›</span></div>
+                <div class="record-list">
+                  <div class="record-row">
+                    <div class="record-icon mint">单</div>
+                    <div class="record-copy"><b>老乡鸡 · 科技园店</b><span>今天 12:28</span></div>
+                    <div class="record-amount">¥ 42.80<small>待补发票</small></div>
+                    <i class="ticket-tab pending"></i>
+                  </div>
+                  <div class="record-row">
+                    <div class="record-icon">票</div>
+                    <div class="record-copy"><b>小菜园新徽菜</b><span>昨天 19:06</span></div>
+                    <div class="record-amount">¥ 86.00<small>材料已配齐</small></div>
+                    <i class="ticket-tab"></i>
+                  </div>
+                </div>
+              </div>
+              <nav class="bottom-nav">
+                <div class="nav-item active"><div><svg><use href="#i-home"></use></svg>首页</div></div>
+                <div class="nav-item"><div><svg><use href="#i-orders"></use></svg>订单</div></div>
+                <div class="nav-add">＋</div>
+                <div class="nav-item"><div><svg><use href="#i-invoice"></use></svg>发票</div></div>
+                <div class="nav-item"><div><svg><use href="#i-settings"></use></svg>设置</div></div>
+              </nav>
+            </div>
+          </div>
+          <div class="phone-label"><strong>首页 · 只回答三个问题</strong><span>金额 / 缺口 / 下一步</span></div>
+          <div class="annotation-strip">
+            <div class="annotation"><b>删掉</b><span>账目正常、已关联数量</span></div>
+            <div class="annotation"><b>保留</b><span>本月实付、待补提醒</span></div>
+            <div class="annotation"><b>突出</b><span>拍照记一笔</span></div>
+          </div>
+        </article>
+
+        <article class="phone-card">
+          <div class="phone">
+            <div class="screen">
+              <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+              <header class="appbar">
+                <div><h2 class="screen-title">订单</h2><div class="screen-subtitle">需要时再补发票</div></div>
+                <div class="icon-button">＋</div>
+              </header>
+              <div class="content">
+                <div class="search-box"><svg><use href="#i-search"></use></svg><span>搜店铺或金额</span></div>
+                <div class="filter-row">
+                  <span class="chip active">全部</span><span class="chip">待补发票 3</span>
+                  <span class="filter-button"><svg style="width:18px;height:18px;fill:none;stroke:currentColor"><use href="#i-filter"></use></svg></span>
+                </div>
+                <div class="month-line"><b>7 月</b><span>8 笔 · ¥ 1,286.40</span></div>
+                <div class="record-list">
+                  <div class="record-row"><div class="record-icon mint">单</div><div class="record-copy"><b>老乡鸡 · 科技园店</b><span>7 月 9 日 · 12:28</span></div><div class="record-amount">¥ 42.80<small>待补发票</small></div><i class="ticket-tab pending"></i></div>
+                  <div class="record-row"><div class="record-icon mint">单</div><div class="record-copy"><b>小菜园新徽菜</b><span>7 月 8 日 · 19:06</span></div><div class="record-amount">¥ 86.00<small>已配齐</small></div><i class="ticket-tab"></i></div>
+                  <div class="record-row"><div class="record-icon mint">单</div><div class="record-copy"><b>蒸小皖 · 天街店</b><span>7 月 7 日 · 12:17</span></div><div class="record-amount">¥ 35.90<small>已配齐</small></div><i class="ticket-tab"></i></div>
+                  <div class="record-row"><div class="record-icon mint">单</div><div class="record-copy"><b>陈香贵兰州牛肉面</b><span>6 月 28 日 · 18:42</span></div><div class="record-amount">¥ 48.00<small>待补发票</small></div><i class="ticket-tab pending"></i></div>
+                  <div class="record-row"><div class="record-icon mint">单</div><div class="record-copy"><b>麦当劳 · 软件园店</b><span>6 月 26 日 · 12:00</span></div><div class="record-amount">¥ 39.50<small>已配齐</small></div><i class="ticket-tab"></i></div>
+                </div>
+              </div>
+              <nav class="bottom-nav">
+                <div class="nav-item"><div><svg><use href="#i-home"></use></svg>首页</div></div>
+                <div class="nav-item active"><div><svg><use href="#i-orders"></use></svg>订单</div></div>
+                <div class="nav-add">＋</div>
+                <div class="nav-item"><div><svg><use href="#i-invoice"></use></svg>发票</div></div>
+                <div class="nav-item"><div><svg><use href="#i-settings"></use></svg>设置</div></div>
+              </nav>
+            </div>
+          </div>
+          <div class="phone-label"><strong>订单 · 轻量列表</strong><span>异常状态才出现</span></div>
+          <div class="annotation-strip">
+            <div class="annotation"><b>删掉</b><span>尾号、餐别、文件类型</span></div>
+            <div class="annotation"><b>默认筛选</b><span>全部 / 待补发票</span></div>
+            <div class="annotation"><b>票签</b><span>珊瑚待办、薄荷完成</span></div>
+          </div>
+        </article>
+
+        <article class="phone-card">
+          <div class="phone">
+            <div class="screen">
+              <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+              <header class="appbar">
+                <div><div class="month-switch">2026 年 7 月⌄</div><h2 class="screen-title">我的票夹</h2></div>
+                <div class="icon-button"><svg><use href="#i-search"></use></svg></div>
+              </header>
+              <div class="content">
+                <section class="fresh-hero"><div class="hero-label">本月实付</div><div class="hero-amount">¥ 1,286.40</div><div class="hero-foot"><span>共 8 笔订单</span><b>查看本月记录 ›</b></div></section>
+                <section class="todo-card"><div class="todo-mark">3</div><div class="todo-copy"><b>还有 3 笔没找到发票</b><span>补齐后就能生成报销材料</span></div><div class="mini-action">去补齐</div></section>
+              </div>
+              <nav class="bottom-nav">
+                <div class="nav-item active"><div><svg><use href="#i-home"></use></svg>首页</div></div><div class="nav-item"><div><svg><use href="#i-orders"></use></svg>订单</div></div><div class="nav-add">＋</div><div class="nav-item"><div><svg><use href="#i-invoice"></use></svg>发票</div></div><div class="nav-item"><div><svg><use href="#i-settings"></use></svg>设置</div></div>
+              </nav>
+              <div class="scrim"></div>
+              <section class="sheet">
+                <div class="sheet-handle"></div>
+                <h3>你要添加什么？</h3>
+                <p>选好资料，店铺、日期和金额会自动填入。</p>
+                <div class="sheet-option">
+                  <div class="option-icon"><svg><use href="#i-image"></use></svg></div>
+                  <div><b>订单截图</b><small>外卖或堂食订单</small></div><span class="next">›</span>
+                </div>
+                <div class="sheet-option">
+                  <div class="option-icon sky"><svg><use href="#i-file"></use></svg></div>
+                  <div><b>发票</b><small>支持图片和 PDF</small></div><span class="next">›</span>
+                </div>
+                <div class="share-link">处理分享进来的文件</div>
+              </section>
+            </div>
+          </div>
+          <div class="phone-label"><strong>新增 · 两个主要选择</strong><span>来源下一步再问</span></div>
+          <div class="annotation-strip">
+            <div class="annotation"><b>改写</b><span>“凭证”改成订单或发票</span></div>
+            <div class="annotation"><b>延后</b><span>相册、文件、分享来源</span></div>
+            <div class="annotation"><b>不出现</b><span>OCR、队列、批处理</span></div>
+          </div>
+        </article>
+
+        <article class="phone-card">
+          <div class="phone">
+            <div class="screen">
+              <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+              <header class="appbar compact">
+                <div class="title-row"><div class="back-button"><svg><use href="#i-back"></use></svg></div><h2 class="screen-title">订单详情</h2></div>
+                <div class="icon-button"><svg><use href="#i-edit"></use></svg></div>
+              </header>
+              <div class="content no-nav">
+                <section class="detail-head">
+                  <h3>老乡鸡 · 科技园店</h3>
+                  <div class="detail-amount">¥ 42.80</div>
+                  <div class="detail-meta">7 月 9 日 · 12:28</div>
+                  <div class="detail-status"><i></i>还没有发票</div>
+                  <span class="ticket-tab pending"></span>
+                </section>
+                <section class="preview-card">
+                  <div class="mock-order"><b>老乡鸡 · 科技园店</b><div class="mock-line"></div><div class="mock-line short"></div><div class="mock-line"></div><div class="mock-total">实付 ¥ 42.80</div></div>
+                </section>
+                <div class="detail-actions"><div class="button">选择发票</div><div class="button secondary"><svg><use href="#i-more"></use></svg></div></div>
+                <div class="folded-row">更多信息 <span>订单号、原始文件等 ›</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="phone-label"><strong>详情 · 结果先于字段</strong><span>主任务只有一个</span></div>
+          <div class="annotation-strip">
+            <div class="annotation"><b>首屏</b><span>商家、金额、日期、凭证</span></div>
+            <div class="annotation"><b>主操作</b><span>选择发票</span></div>
+            <div class="annotation"><b>折叠</b><span>编号、来源、创建时间</span></div>
+          </div>
+        </article>
+
+        <article class="phone-card">
+          <div class="phone">
+            <div class="screen">
+              <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+              <header class="appbar compact">
+                <div class="title-row"><div class="back-button"><svg><use href="#i-back"></use></svg></div><div><h2 class="screen-title">核对订单</h2><div class="screen-subtitle">保存前检查一下</div></div></div>
+                <div class="icon-button"><svg><use href="#i-more"></use></svg></div>
+              </header>
+              <div class="content no-nav with-save">
+                <div class="recognition-note"><i>✓</i><span><b>已帮你填好</b><br />有误的地方可以直接修改</span></div>
+                <div class="source-strip">
+                  <div class="source-thumb"><svg style="width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8"><use href="#i-image"></use></svg></div>
+                  <div class="source-copy"><b>订单截图</b><span>点按查看原图</span></div><span class="text-link">更换</span>
+                </div>
+                <div class="field"><label>店铺</label><div class="field-box"><span>老乡鸡 · 科技园店</span><span class="text-link">修改</span></div></div>
+                <div class="field"><label>实付金额</label><div class="field-box amount"><span>¥ 42.80</span><span class="text-link">修改</span></div></div>
+                <div class="field"><label>下单时间</label><div class="field-box"><span>2026 年 7 月 9 日 12:28</span><span class="text-link">修改</span></div></div>
+                <div class="folded-row">其他信息 <span>订单号、餐别等 ›</span></div>
+              </div>
+              <div class="save-bar"><div><b>信息已检查</b><span>之后仍可修改</span></div><div class="button">保存订单</div></div>
+            </div>
+          </div>
+          <div class="phone-label"><strong>编辑 · 直接核对结果</strong><span>隐藏识别管线</span></div>
+          <div class="annotation-strip">
+            <div class="annotation"><b>用户语言</b><span>已帮你填好</span></div>
+            <div class="annotation"><b>只核对</b><span>店铺、金额、日期</span></div>
+            <div class="annotation"><b>不常驻</b><span>OCR 百分比、模型状态</span></div>
+          </div>
+        </article>
+
+        <article class="phone-card">
+          <div class="phone">
+            <div class="screen">
+              <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+              <header class="appbar"><div><h2 class="screen-title">设置</h2><div class="screen-subtitle">只保留常用入口</div></div></header>
+              <div class="content">
+                <section class="settings-status"><div class="status-orb">AI</div><div><b>自动填写</b><span>添加图片后会自动识别</span></div><div class="available">可用</div></section>
+                <div class="settings-heading">数据与文件</div>
+                <div class="settings-list">
+                  <div class="setting-row"><div class="setting-icon mint"><svg><use href="#i-archive"></use></svg></div><div class="setting-copy"><b>备份与恢复</b><span>最近备份：7 月 8 日</span></div><span class="setting-next">›</span></div>
+                  <div class="setting-row"><div class="setting-icon"><svg><use href="#i-file"></use></svg></div><div class="setting-copy"><b>存储空间</b><span>已使用 1.84 GB</span></div><span class="setting-next">›</span></div>
+                </div>
+                <div class="settings-heading">其他</div>
+                <div class="settings-list">
+                  <div class="setting-row"><div class="setting-icon mint"><svg><use href="#i-settings"></use></svg></div><div class="setting-copy"><b>识别设置</b><span>自动填写方式与下载</span></div><span class="setting-next">›</span></div>
+                  <div class="setting-row"><div class="setting-icon"><svg><use href="#i-shield"></use></svg></div><div class="setting-copy"><b>隐私与权限</b><span>照片、文件与数据说明</span></div><span class="setting-next">›</span></div>
+                  <div class="setting-row"><div class="setting-icon coral"><svg><use href="#i-info"></use></svg></div><div class="setting-copy"><b>关于 ReceiptTamer</b><span>版本、开源信息与更新记录</span></div><span class="setting-next">›</span></div>
+                </div>
+              </div>
+              <nav class="bottom-nav">
+                <div class="nav-item"><div><svg><use href="#i-home"></use></svg>首页</div></div><div class="nav-item"><div><svg><use href="#i-orders"></use></svg>订单</div></div><div class="nav-add">＋</div><div class="nav-item"><div><svg><use href="#i-invoice"></use></svg>发票</div></div><div class="nav-item active"><div><svg><use href="#i-settings"></use></svg>设置</div></div>
+              </nav>
+            </div>
+          </div>
+          <div class="phone-label"><strong>设置 · 职责首页</strong><span>技术选项下钻</span></div>
+          <div class="annotation-strip">
+            <div class="annotation"><b>首屏</b><span>识别、备份、存储</span></div>
+            <div class="annotation"><b>合并</b><span>模型与云端 → 识别设置</span></div>
+            <div class="annotation"><b>归档</b><span>开源、版本 → 关于</span></div>
+          </div>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

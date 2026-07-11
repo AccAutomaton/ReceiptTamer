@@ -4,13 +4,14 @@ import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/data/models/order.dart';
 import 'package:receipt_tamer/presentation/widgets/common/muted_status_chip.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
 import 'package:receipt_tamer/presentation/widgets/invoice/invoice_card.dart';
 import 'package:receipt_tamer/presentation/widgets/invoice/invoice_month_section_header.dart';
 import 'package:receipt_tamer/presentation/widgets/order/month_section_header.dart';
 import 'package:receipt_tamer/presentation/widgets/order/order_card.dart';
 
 void main() {
-  testWidgets('month section headers use glass function surfaces', (
+  testWidgets('month section headers use low-cost morning surfaces', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -38,7 +39,8 @@ void main() {
       ),
     );
 
-    expect(find.byType(BackdropFilter), findsNWidgets(2));
+    expect(find.byType(GlassSurface), findsNWidgets(2));
+    expect(find.byType(BackdropFilter), findsNothing);
   });
 
   testWidgets(

@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1450, initial-scale=1">
+  <title>ReceiptTamer 墨色账簿｜01 全局与首页</title>
+  <link rel="stylesheet" href="shared.css">
+</head>
+<body>
+  <main class="board-page">
+    <header class="board-header">
+      <div>
+        <div class="board-kicker">Board 01 · Global / Home</div>
+        <h1 class="board-title">全局与首页</h1>
+      </div>
+      <div class="board-note">以“月度账单”为首页主叙事：实付、关联进度与待处理事项同屏可读；中央新增、搜索筛选、日期选择、空载与异常状态共享同一套墨色台账语法。</div>
+    </header>
+
+    <section class="phone-grid" aria-label="全局与首页界面预览">
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen">
+            <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+            <header class="appbar">
+              <div>
+                <span class="eyebrow">JUL · 2026</span>
+                <h2 class="screen-title">我的账簿</h2>
+              </div>
+              <div class="icon-actions">
+                <div class="icon-button">⌕</div>
+                <div class="icon-button">◫</div>
+              </div>
+            </header>
+            <div class="content">
+              <section class="summary-receipt">
+                <div class="summary-top">
+                  <span class="summary-period">2026 年 7 月 · 截至今日</span>
+                  <span class="status-chip">账目正常</span>
+                </div>
+                <div class="micro-label">本月实付</div>
+                <div class="summary-amount">¥ 1,286.40</div>
+                <div class="summary-grid">
+                  <div class="summary-metric"><span>订单</span><b>8 笔</b></div>
+                  <div class="summary-metric"><span>已关联</span><b>5 笔</b></div>
+                  <div class="summary-metric"><span>待关联</span><b class="text-seal">3 笔</b></div>
+                </div>
+              </section>
+
+              <div class="section-heading"><h3>现在要做</h3><span>全部功能 →</span></div>
+              <div class="task-grid">
+                <div class="task-tile"><span class="task-mark">票</span><b>开票助手</b></div>
+                <div class="task-tile"><span class="task-mark">出</span><b>整理报销</b></div>
+                <div class="task-tile"><span class="task-mark">入</span><b>分享导入</b></div>
+                <div class="task-tile"><span class="task-mark">存</span><b>已存文件</b></div>
+              </div>
+
+              <div class="section-heading"><h3>最近订单</h3><span>查看全部 →</span></div>
+              <div class="ledger-panel">
+                <div class="ledger-row">
+                  <div class="row-date">07·09<br>12:28</div>
+                  <div class="row-main"><b>老乡鸡 · 科技园店</b><small>午餐 · 尾号 8136</small></div>
+                  <div class="row-amount">¥ 42.80<small>待关联</small></div>
+                </div>
+                <div class="ledger-row">
+                  <div class="row-date">07·08<br>19:06</div>
+                  <div class="row-main"><b>小菜园新徽菜</b><small>晚餐 · 尾号 2051</small></div>
+                  <div class="row-amount">¥ 86.00<small class="text-teal">已开票</small></div>
+                </div>
+              </div>
+            </div>
+            <nav class="bottom-nav" aria-label="主导航">
+              <div class="nav-item active"><div><b>⌂</b>首页</div></div>
+              <div class="nav-item"><div><b>≡</b>订单</div></div>
+              <div class="nav-add">＋</div>
+              <div class="nav-item"><div><b>▱</b>发票</div></div>
+              <div class="nav-item"><div><b>⚙</b>设置</div></div>
+            </nav>
+          </div>
+        </div>
+        <div class="phone-label"><strong>首页 · 月度账单</strong><span>正常 / 浅色</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen">
+            <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+            <header class="appbar">
+              <div>
+                <span class="eyebrow">JUL · 2026</span>
+                <h2 class="screen-title">我的账簿</h2>
+              </div>
+              <div class="icon-actions"><div class="icon-button">⌕</div><div class="icon-button">◫</div></div>
+            </header>
+            <div class="content">
+              <section class="summary-receipt">
+                <div class="summary-top"><span class="summary-period">正在核对 7 月账目</span><span class="status-chip">载入中</span></div>
+                <div class="sk-line skeleton"></div>
+                <div class="summary-grid">
+                  <div class="summary-metric"><span>订单</span><div class="sk-line skeleton"></div></div>
+                  <div class="summary-metric"><span>已关联</span><div class="sk-line skeleton"></div></div>
+                  <div class="summary-metric"><span>待关联</span><div class="sk-line skeleton"></div></div>
+                </div>
+              </section>
+              <div class="section-heading"><h3>现在要做</h3><span class="muted">准备中</span></div>
+              <div class="task-grid">
+                <div class="task-tile"><div class="sk-line skeleton"></div><div class="sk-line skeleton"></div></div>
+                <div class="task-tile"><div class="sk-line skeleton"></div><div class="sk-line skeleton"></div></div>
+                <div class="task-tile"><div class="sk-line skeleton"></div><div class="sk-line skeleton"></div></div>
+                <div class="task-tile"><div class="sk-line skeleton"></div><div class="sk-line skeleton"></div></div>
+              </div>
+              <div class="section-heading"><h3>最近订单</h3><span class="muted">并行载入</span></div>
+              <div class="ledger-panel">
+                <div class="ledger-row">
+                  <div class="row-date skeleton"></div>
+                  <div class="row-main"><div class="sk-line skeleton"></div><div class="sk-line skeleton"></div></div>
+                  <div class="row-amount"><div class="sk-line skeleton"></div></div>
+                </div>
+                <div class="ledger-row">
+                  <div class="row-date skeleton"></div>
+                  <div class="row-main"><div class="sk-line skeleton"></div><div class="sk-line skeleton"></div></div>
+                  <div class="row-amount"><div class="sk-line skeleton"></div></div>
+                </div>
+              </div>
+            </div>
+            <nav class="bottom-nav" aria-label="主导航">
+              <div class="nav-item active"><div><b>⌂</b>首页</div></div>
+              <div class="nav-item"><div><b>≡</b>订单</div></div>
+              <div class="nav-add">＋</div>
+              <div class="nav-item"><div><b>▱</b>发票</div></div>
+              <div class="nav-item"><div><b>⚙</b>设置</div></div>
+            </nav>
+          </div>
+        </div>
+        <div class="phone-label"><strong>首页 · 局部骨架</strong><span>非阻塞加载</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen">
+            <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+            <header class="appbar">
+              <div>
+                <span class="eyebrow">JUN · 2026</span>
+                <h2 class="screen-title">我的账簿</h2>
+              </div>
+              <div class="icon-actions"><div class="icon-button">⌕</div><div class="icon-button">◫</div></div>
+            </header>
+            <div class="content">
+              <section class="summary-receipt">
+                <div class="summary-top"><span class="summary-period">2026 年 6 月</span><span class="status-chip">已归档</span></div>
+                <div class="micro-label">本月实付</div>
+                <div class="summary-amount">¥ 0.00</div>
+                <div class="summary-grid">
+                  <div class="summary-metric"><span>订单</span><b>0 笔</b></div>
+                  <div class="summary-metric"><span>已关联</span><b>0 笔</b></div>
+                  <div class="summary-metric"><span>待关联</span><b>0 笔</b></div>
+                </div>
+              </section>
+              <div class="empty-state">
+                <div>
+                  <div class="empty-mark">＋</div>
+                  <b>六月还没有订单</b>
+                  <p>添加外卖订单截图，识别后的金额与开票进度会汇入这张月度账单。</p>
+                  <div class="button teal">添加第一笔订单</div>
+                </div>
+              </div>
+            </div>
+            <nav class="bottom-nav" aria-label="主导航">
+              <div class="nav-item active"><div><b>⌂</b>首页</div></div>
+              <div class="nav-item"><div><b>≡</b>订单</div></div>
+              <div class="nav-add">＋</div>
+              <div class="nav-item"><div><b>▱</b>发票</div></div>
+              <div class="nav-item"><div><b>⚙</b>设置</div></div>
+            </nav>
+          </div>
+        </div>
+        <div class="phone-label"><strong>首页 · 空月份</strong><span>明确下一步</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen">
+            <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+            <header class="appbar">
+              <div><span class="eyebrow">JUL · 2026</span><h2 class="screen-title">我的账簿</h2></div>
+              <div class="icon-actions"><div class="icon-button">⌕</div><div class="icon-button">◫</div></div>
+            </header>
+            <div class="content">
+              <section class="summary-receipt">
+                <div class="summary-top"><span class="summary-period">2026 年 7 月</span><span class="status-chip">账目正常</span></div>
+                <div class="micro-label">本月实付</div><div class="summary-amount">¥ 1,286.40</div>
+                <div class="summary-grid"><div class="summary-metric"><span>订单</span><b>8 笔</b></div><div class="summary-metric"><span>已关联</span><b>5 笔</b></div><div class="summary-metric"><span>待关联</span><b>3 笔</b></div></div>
+              </section>
+              <div class="section-heading"><h3>最近订单</h3><span>查看全部 →</span></div>
+              <div class="ledger-panel">
+                <div class="ledger-row"><div class="row-date">07·09<br>12:28</div><div class="row-main"><b>老乡鸡 · 科技园店</b><small>午餐 · 尾号 8136</small></div><div class="row-amount">¥ 42.80<small>待关联</small></div></div>
+                <div class="ledger-row"><div class="row-date">07·08<br>19:06</div><div class="row-main"><b>小菜园新徽菜</b><small>晚餐 · 尾号 2051</small></div><div class="row-amount">¥ 86.00<small class="text-teal">已开票</small></div></div>
+              </div>
+            </div>
+            <nav class="bottom-nav" aria-label="主导航">
+              <div class="nav-item active"><div><b>⌂</b>首页</div></div><div class="nav-item"><div><b>≡</b>订单</div></div><div class="nav-add">＋</div><div class="nav-item"><div><b>▱</b>发票</div></div><div class="nav-item"><div><b>⚙</b>设置</div></div>
+            </nav>
+            <div class="scrim"></div>
+            <section class="sheet" aria-label="新增资料">
+              <div class="sheet-handle"></div>
+              <h3>记入一张新凭证</h3>
+              <p>选择资料类型，识别结果都可以在保存前校对。</p>
+              <div class="sheet-option"><span class="sheet-option-mark">单</span><div><b>添加订单</b><small>从相册或文件选择外卖订单截图</small></div><span>›</span></div>
+              <div class="sheet-option"><span class="sheet-option-mark">票</span><div><b>添加发票</b><small>支持发票图片与 PDF 文件</small></div><span>›</span></div>
+              <div class="sheet-option"><span class="sheet-option-mark">入</span><div><b>查看分享导入</b><small>处理从其他应用发送来的资料</small></div><span>›</span></div>
+            </section>
+          </div>
+        </div>
+        <div class="phone-label"><strong>中央新增面板</strong><span>轻触反馈</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen">
+            <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+            <header class="appbar compact">
+              <div class="back-button">‹</div>
+              <div><span class="eyebrow">SEARCH LEDGER</span><h2 class="screen-title small">搜索账簿</h2></div>
+              <div class="icon-button">×</div>
+            </header>
+            <div class="content no-nav">
+              <div class="field"><label>店铺、订单号或发票号</label><div class="field-box"><span>小菜园</span><b class="text-teal">⌕</b></div></div>
+              <div class="filter-row"><span class="filter-chip active">全部 3</span><span class="filter-chip">订单 2</span><span class="filter-chip">发票 1</span><span class="filter-chip">待关联</span></div>
+              <div class="row-between"><span class="status-chip">07.01—07.10</span><span class="link">清除日期</span></div>
+              <div class="spacer-12"></div>
+              <div class="ledger-panel">
+                <div class="month-strip"><b>搜索结果</b><span>共 3 条</span></div>
+                <div class="ledger-row"><div class="row-date">07·08<br>19:06</div><div class="row-main"><b>小菜园新徽菜</b><small>订单 · 晚餐</small></div><div class="row-amount">¥ 86.00<small>已关联</small></div></div>
+                <div class="ledger-row"><div class="row-date">07·02<br>12:14</div><div class="row-main"><b>小菜园新徽菜</b><small>订单 · 午餐</small></div><div class="row-amount">¥ 64.50<small>已关联</small></div></div>
+                <div class="ledger-row"><div class="row-date">07·09<br>开票</div><div class="row-main"><b>安徽小菜园餐饮</b><small>发票 · 254020000001</small></div><div class="row-amount">¥ 150.50<small class="text-teal">2 笔订单</small></div></div>
+              </div>
+            </div>
+            <div class="scrim"></div>
+            <section class="sheet" aria-label="选择日期范围">
+              <div class="sheet-handle"></div>
+              <div class="row-between"><div><span class="eyebrow">DATE RANGE</span><h3>选择账目日期</h3></div><span class="link">重置</span></div>
+              <p>2026 年 7 月 1 日 — 7 月 10 日</p>
+              <div class="calendar-grid" aria-label="2026 年 7 月">
+                <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+                <span class="on">1</span><span class="range">2</span><span class="range">3</span><span class="range">4</span><span class="range">5</span><span class="range">6</span><span class="range">7</span>
+                <span class="range">8</span><span class="range">9</span><span class="on">10</span><span>11</span><span>12</span><span>13</span><span>14</span>
+                <span>15</span><span>16</span><span>17</span><span>18</span><span>19</span><span>20</span><span>21</span>
+                <span>22</span><span>23</span><span>24</span><span>25</span><span>26</span><span>27</span><span>28</span>
+              </div>
+              <div class="spacer-12"></div><div class="button teal block">查看这段时间</div>
+            </section>
+          </div>
+        </div>
+        <div class="phone-label"><strong>搜索与筛选</strong><span>日期范围叠层</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone dark">
+          <div class="screen">
+            <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+            <header class="appbar compact">
+              <div class="back-button">‹</div>
+              <div><span class="eyebrow">ROUTE ERROR</span><h2 class="screen-title small">页面未找到</h2></div>
+              <div class="icon-button">⌂</div>
+            </header>
+            <div class="content no-nav">
+              <div class="empty-state">
+                <div>
+                  <div class="empty-mark">404</div>
+                  <b>这页不在当前账簿里</b>
+                  <p>地址可能已失效。返回首页不会丢失已经保存的订单或发票。</p>
+                  <div class="button secondary">返回首页</div>
+                </div>
+              </div>
+            </div>
+            <div class="scrim"></div>
+            <section class="dialog" aria-label="退出确认">
+              <span class="eyebrow">LEAVE APP</span>
+              <h3>退出 ReceiptTamer？</h3>
+              <p>已保存的账目会保留；正在编辑但尚未保存的内容将丢失。</p>
+              <div class="dialog-actions"><div class="button secondary">继续使用</div><div class="button danger">退出应用</div></div>
+            </section>
+          </div>
+        </div>
+        <div class="phone-label"><strong>错误页与退出提示</strong><span>关键暗色状态</span></div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

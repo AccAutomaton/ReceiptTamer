@@ -118,10 +118,10 @@ class _AppTextFieldState extends State<AppTextField> {
 
   @override
   Widget build(BuildContext context) {
-    return _buildFieldContent(context, glass: false);
+    return _buildFieldContent(context);
   }
 
-  Widget _buildFieldContent(BuildContext context, {required bool glass}) {
+  Widget _buildFieldContent(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final suffixIcon = _buildSuffixIcon(colorScheme);
@@ -130,9 +130,42 @@ class _AppTextFieldState extends State<AppTextField> {
         widget.contentPadding ??
         const EdgeInsets.symmetric(horizontal: 16, vertical: 14);
     final effectiveBorderRadius = widget.borderRadius ?? AppRadii.control;
+    final fieldFill = widget.enabled
+        ? AppEntityTokens.fillFor(context)
+        : AppEntityTokens.subtleFillFor(context);
+    final effectiveFieldBackground = fieldFill.a < 1
+        ? Color.alphaBlend(fieldFill, colorScheme.surface)
+        : fieldFill;
+    final hintColor = _readableHintColor(
+      colorScheme.onSurfaceVariant,
+      effectiveFieldBackground,
+      colorScheme.onSurface,
+    );
     final contextMenuBuilder = widget.manualPasteContextMenu
         ? _buildManualPasteContextMenu
         : _buildDefaultContextMenu;
+    final fieldRadius = BorderRadius.circular(effectiveBorderRadius);
+    final highlightColor = AppEntityTokens.highlightFor(context);
+    final ridgeColor = AppEntityTokens.ridgeFor(context);
+    final enabledFieldBorder = AppReliefInputBorder(
+      highlightColor: highlightColor,
+      ridgeColor: ridgeColor,
+      borderRadius: fieldRadius,
+      borderSide: BorderSide(color: AppEntityTokens.strongBorderFor(context)),
+    );
+    final focusedFieldBorder = AppReliefInputBorder(
+      highlightColor: highlightColor,
+      ridgeColor: colorScheme.primary,
+      ridgeWidth: 2.5,
+      borderRadius: fieldRadius,
+      borderSide: BorderSide(color: colorScheme.primary, width: 1.4),
+    );
+    final errorFieldBorder = AppReliefInputBorder(
+      highlightColor: highlightColor,
+      ridgeColor: colorScheme.error,
+      borderRadius: fieldRadius,
+      borderSide: BorderSide(color: colorScheme.error),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -167,66 +200,28 @@ class _AppTextFieldState extends State<AppTextField> {
           ),
           decoration: InputDecoration(
             hintText: widget.hint,
-            hintStyle: theme.textTheme.bodyLarge?.copyWith(
-              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
-            ),
+            hintStyle: theme.textTheme.bodyLarge?.copyWith(color: hintColor),
             errorText: widget.errorText,
             helperText: widget.helperText,
             counterText: widget.counterText,
             filled: true,
-            fillColor: glass
-                ? Colors.transparent
-                : widget.enabled
-                ? AppGlassTokens.contentFillFor(context)
-                : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+            fillColor: fieldFill,
             prefixIcon: widget.prefixIcon,
             suffixIcon: suffixIcon,
             contentPadding: effectivePadding,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(effectiveBorderRadius),
-              borderSide: glass
-                  ? BorderSide.none
-                  : BorderSide(
-                      color: colorScheme.outline.withValues(alpha: 0.3),
-                    ),
+            border: enabledFieldBorder,
+            enabledBorder: enabledFieldBorder,
+            focusedBorder: focusedFieldBorder,
+            errorBorder: errorFieldBorder,
+            focusedErrorBorder: errorFieldBorder.copyWith(
+              borderSide: BorderSide(color: colorScheme.error, width: 1.4),
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(effectiveBorderRadius),
-              borderSide: glass
-                  ? BorderSide.none
-                  : BorderSide(
-                      color: colorScheme.outline.withValues(alpha: 0.3),
-                    ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(effectiveBorderRadius),
-              borderSide: glass
-                  ? BorderSide(
-                      color: AppPalette.actionOutlineFor(context, alpha: 0.72),
-                      width: 1.2,
-                    )
-                  : BorderSide(color: colorScheme.primary, width: 2),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(effectiveBorderRadius),
-              borderSide: BorderSide(
-                color: Colors.red.withValues(alpha: glass ? 0.58 : 1),
-              ),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(effectiveBorderRadius),
-              borderSide: BorderSide(
-                color: Colors.red.withValues(alpha: glass ? 0.62 : 1),
-                width: glass ? 1.2 : 2,
-              ),
-            ),
-            disabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(effectiveBorderRadius),
-              borderSide: glass
-                  ? BorderSide.none
-                  : BorderSide(
-                      color: colorScheme.outline.withValues(alpha: 0.2),
-                    ),
+            disabledBorder: AppReliefInputBorder(
+              highlightColor: highlightColor.withValues(alpha: 0.55),
+              ridgeColor: ridgeColor,
+              ridgeWidth: 1,
+              borderRadius: fieldRadius,
+              borderSide: BorderSide(color: AppEntityTokens.borderFor(context)),
             ),
           ),
         ),
@@ -283,9 +278,7 @@ class _AppTextFieldState extends State<AppTextField> {
         type: ContextMenuButtonType.paste,
         onPressed: () {
           editableTextState.hideToolbar();
-          unawaited(
-            editableTextState.pasteText(SelectionChangedCause.toolbar),
-          );
+          unawaited(editableTextState.pasteText(SelectionChangedCause.toolbar));
         },
       ),
     );
@@ -312,7 +305,7 @@ class _AppTextFieldState extends State<AppTextField> {
           TextSpan(text: widget.label!, style: labelStyle),
           TextSpan(
             text: ' *',
-            style: labelStyle?.copyWith(color: Colors.red),
+            style: labelStyle?.copyWith(color: colorScheme.error),
           ),
         ],
       ),
@@ -577,9 +570,32 @@ class AppSelectField<T> extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final controlBorderRadius = BorderRadius.circular(AppRadii.control);
-    final transparentControlBorder = OutlineInputBorder(
+    final fieldBackground = enabled
+        ? AppEntityTokens.fillFor(context)
+        : AppEntityTokens.subtleFillFor(context);
+    final hintColor = _readableHintColor(
+      colorScheme.onSurfaceVariant,
+      fieldBackground,
+      colorScheme.onSurface,
+    );
+    final reliefBorder = AppReliefInputBorder(
+      highlightColor: AppEntityTokens.highlightFor(context),
+      ridgeColor: AppEntityTokens.ridgeFor(context),
       borderRadius: controlBorderRadius,
-      borderSide: BorderSide.none,
+      borderSide: BorderSide(color: AppEntityTokens.strongBorderFor(context)),
+    );
+    final focusedReliefBorder = AppReliefInputBorder(
+      highlightColor: AppEntityTokens.highlightFor(context),
+      ridgeColor: colorScheme.primary,
+      ridgeWidth: 2.5,
+      borderRadius: controlBorderRadius,
+      borderSide: BorderSide(color: colorScheme.primary, width: 1.4),
+    );
+    final errorReliefBorder = AppReliefInputBorder(
+      highlightColor: AppEntityTokens.highlightFor(context),
+      ridgeColor: colorScheme.error,
+      borderRadius: controlBorderRadius,
+      borderSide: BorderSide(color: colorScheme.error),
     );
 
     return Column(
@@ -601,7 +617,7 @@ class AppSelectField<T> extends StatelessWidget {
                       TextSpan(
                         text: ' *',
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: Colors.red,
+                          color: colorScheme.error,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -617,61 +633,73 @@ class AppSelectField<T> extends StatelessWidget {
                 ),
           const SizedBox(height: 6),
         ],
-        Container(
-          decoration: BoxDecoration(
-            color: enabled
-                ? colorScheme.surfaceContainerHighest
-                : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        DropdownButtonHideUnderline(
+          child: DropdownButtonFormField<T>(
+            initialValue: value,
+            items: options.map((option) {
+              return DropdownMenuItem<T>(
+                value: option,
+                child: Text(
+                  displayValue(option),
+                  style: theme.textTheme.bodyLarge,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              );
+            }).toList(),
+            onChanged: enabled ? onChanged : null,
             borderRadius: controlBorderRadius,
-            border: Border.all(
-              color: errorText != null
-                  ? Colors.red
-                  : colorScheme.outline.withValues(alpha: 0.3),
-              width: errorText != null ? 1 : 1,
+            hint: Text(
+              hint ?? '请选择',
+              style: theme.textTheme.bodyLarge?.copyWith(color: hintColor),
             ),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButtonFormField<T>(
-              initialValue: value,
-              items: options.map((option) {
-                return DropdownMenuItem<T>(
-                  value: option,
-                  child: Text(
-                    displayValue(option),
-                    style: theme.textTheme.bodyLarge,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                );
-              }).toList(),
-              onChanged: enabled ? onChanged : null,
-              borderRadius: controlBorderRadius,
-              hint: Text(
-                hint ?? '请选择',
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+            decoration: InputDecoration(
+              errorText: errorText,
+              helperText: helperText,
+              filled: true,
+              fillColor: fieldBackground,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+              border: reliefBorder,
+              enabledBorder: reliefBorder,
+              focusedBorder: focusedReliefBorder,
+              errorBorder: errorReliefBorder,
+              focusedErrorBorder: errorReliefBorder.copyWith(
+                borderSide: BorderSide(color: colorScheme.error, width: 1.4),
+              ),
+              disabledBorder: AppReliefInputBorder(
+                highlightColor: AppEntityTokens.highlightFor(
+                  context,
+                ).withValues(alpha: 0.55),
+                ridgeColor: AppEntityTokens.ridgeFor(context),
+                ridgeWidth: 1,
+                borderRadius: controlBorderRadius,
+                borderSide: BorderSide(
+                  color: AppEntityTokens.borderFor(context),
                 ),
               ),
-              decoration: InputDecoration(
-                errorText: errorText,
-                helperText: helperText,
-                filled: true,
-                fillColor: Colors.transparent,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                border: transparentControlBorder,
-                enabledBorder: transparentControlBorder,
-                focusedBorder: transparentControlBorder,
-                errorBorder: transparentControlBorder,
-                focusedErrorBorder: transparentControlBorder,
-                disabledBorder: transparentControlBorder,
-              ),
-              focusNode: focusNode,
             ),
+            focusNode: focusNode,
           ),
         ),
       ],
     );
   }
+}
+
+Color _readableHintColor(Color requested, Color background, Color fallback) {
+  return _textContrast(requested, background) >= 4.5 ? requested : fallback;
+}
+
+double _textContrast(Color foreground, Color background) {
+  final foregroundLuminance = foreground.computeLuminance();
+  final backgroundLuminance = background.computeLuminance();
+  final lighter = foregroundLuminance > backgroundLuminance
+      ? foregroundLuminance
+      : backgroundLuminance;
+  final darker = foregroundLuminance > backgroundLuminance
+      ? backgroundLuminance
+      : foregroundLuminance;
+  return (lighter + 0.05) / (darker + 0.05);
 }

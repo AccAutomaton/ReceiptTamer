@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1450, initial-scale=1">
+  <title>ReceiptTamer 墨色账簿｜02 订单流程</title>
+  <link rel="stylesheet" href="shared.css">
+</head>
+<body>
+  <main class="board-page">
+    <header class="board-header">
+      <div>
+        <div class="board-kicker">Board 02 · Order Flow</div>
+        <h1 class="board-title">订单流程</h1>
+      </div>
+      <div class="board-note">固定高度台账行让日期、店铺与实付金额形成稳定读序；新增与编辑沿“来源文件—AI 提取—字段校对—关联—保存”推进，删除保持独立的印泥红确认。</div>
+    </header>
+
+    <section class="phone-grid" aria-label="订单流程界面预览">
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen">
+            <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+            <header class="appbar">
+              <div><span class="eyebrow">ORDER LEDGER</span><h2 class="screen-title">订单</h2></div>
+              <div class="icon-actions"><div class="icon-button">⌕</div><div class="icon-button">≡</div></div>
+            </header>
+            <div class="content">
+              <div class="filter-row"><span class="filter-chip active">全部 16</span><span class="filter-chip">待关联 5</span><span class="filter-chip">已开票 11</span><span class="filter-chip">午餐</span></div>
+              <div class="ledger-panel">
+                <div class="month-strip"><b>七月</b><span>8 笔 · ¥ 1,286.40</span></div>
+                <div class="ledger-row">
+                  <div class="row-date">07·09<br>12:28</div>
+                  <div class="row-main"><b>老乡鸡 · 科技园店</b><small>午餐 · 尾号 8136</small></div>
+                  <div class="row-amount">¥ 42.80<small class="text-seal">待关联</small></div>
+                </div>
+                <div class="ledger-row">
+                  <div class="row-date">07·08<br>19:06</div>
+                  <div class="row-main"><b>小菜园新徽菜</b><small>晚餐 · 尾号 2051</small></div>
+                  <div class="row-amount">¥ 86.00<small class="text-teal">已开票</small></div>
+                </div>
+                <div class="ledger-row">
+                  <div class="row-date">07·07<br>12:17</div>
+                  <div class="row-main"><b>蒸小皖 · 天街店</b><small>午餐 · 尾号 0092</small></div>
+                  <div class="row-amount">¥ 35.90<small class="text-teal">已开票</small></div>
+                </div>
+              </div>
+              <div class="ledger-panel">
+                <div class="month-strip"><b>六月</b><span>8 笔 · ¥ 923.60</span></div>
+                <div class="ledger-row"><div class="row-date">06·28<br>18:42</div><div class="row-main"><b>陈香贵兰州牛肉面</b><small>晚餐 · 尾号 7760</small></div><div class="row-amount">¥ 48.00<small>待关联</small></div></div>
+                <div class="ledger-row"><div class="row-date">06·26<br>12:08</div><div class="row-main"><b>麦当劳 · 软件园店</b><small>午餐 · 尾号 4391</small></div><div class="row-amount">¥ 39.50<small class="text-teal">已开票</small></div></div>
+              </div>
+            </div>
+            <aside class="month-rail" aria-label="月份快速索引"><b>07</b><span>06</span><span>05</span><span>04</span><span>03</span></aside>
+            <nav class="bottom-nav" aria-label="主导航">
+              <div class="nav-item"><div><b>⌂</b>首页</div></div><div class="nav-item active"><div><b>≡</b>订单</div></div><div class="nav-add">＋</div><div class="nav-item"><div><b>▱</b>发票</div></div><div class="nav-item"><div><b>⚙</b>设置</div></div>
+            </nav>
+          </div>
+        </div>
+        <div class="phone-label"><strong>订单列表</strong><span>分页 / 月份索引</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen">
+            <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+            <header class="appbar compact">
+              <div class="back-button">‹</div>
+              <div><span class="eyebrow">NEW ORDER</span><h2 class="screen-title small">添加订单</h2></div>
+              <div class="icon-button">⋯</div>
+            </header>
+            <div class="content with-action-bar">
+              <section class="form-section">
+                <div class="row-between"><h3>来源文件</h3><span class="status-chip warning">尚未选择</span></div>
+                <div class="media-frame"><div><div class="empty-mark">图</div><b>添加订单截图</b><p class="muted">图片会复制到应用存储中</p></div></div>
+              </section>
+              <section class="form-section">
+                <div class="row-between"><h3>AI 提取</h3><span class="status-chip">选择图片后可用</span></div>
+                <p class="muted">识别店铺、实付款、下单时间与订单号；结果可手动修改。</p>
+              </section>
+              <section class="form-section">
+                <h3>字段校对</h3>
+                <div class="field"><label>店铺名称</label><div class="field-box muted">等待识别</div></div>
+                <div class="field"><label>实付款</label><div class="field-box muted">¥ 0.00</div></div>
+              </section>
+            </div>
+            <div class="action-bar"><div class="action-meta"><b>新订单</b><span>完成校对后保存</span></div><div class="button secondary">保存订单</div></div>
+            <div class="scrim"></div>
+            <section class="sheet" aria-label="选择图片来源">
+              <div class="sheet-handle"></div>
+              <h3>选择订单截图来源</h3>
+              <p>支持 JPG、PNG 与系统分享来的图片。</p>
+              <div class="sheet-option"><span class="sheet-option-mark">册</span><div><b>从相册选择</b><small>可选择一张订单完整截图</small></div><span>›</span></div>
+              <div class="sheet-option"><span class="sheet-option-mark">夹</span><div><b>从文件选择</b><small>浏览下载目录或云端文件</small></div><span>›</span></div>
+              <div class="sheet-option"><span class="sheet-option-mark">入</span><div><b>查看分享导入</b><small>使用其他应用发送来的图片</small></div><span>›</span></div>
+            </section>
+          </div>
+        </div>
+        <div class="phone-label"><strong>新增订单</strong><span>图片来源面板</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen">
+            <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+            <header class="appbar compact">
+              <div class="back-button">‹</div>
+              <div><span class="eyebrow">ORDER · 07/09</span><h2 class="screen-title small">订单详情</h2></div>
+              <div class="icon-actions"><div class="icon-button">↗</div><div class="icon-button">⋯</div></div>
+            </header>
+            <div class="content with-action-bar">
+              <div class="media-frame">
+                <div class="mock-receipt">
+                  <h4>老乡鸡 · 科技园店</h4>
+                  <div class="receipt-line"></div><div class="receipt-line short"></div><div class="receipt-line"></div><div class="receipt-line"></div><div class="receipt-line short"></div>
+                  <div class="spacer-12"></div><b>实付　¥ 42.80</b>
+                </div>
+              </div>
+              <div class="detail-amount"><span>订单实付款</span><b>¥ 42.80</b></div>
+              <div class="detail-line"><span>店铺</span><b>老乡鸡 · 科技园店</b></div>
+              <div class="detail-line"><span>下单时间</span><b>2026-07-09 12:28</b></div>
+              <div class="detail-line"><span>订单号</span><b class="mono">1039482718136</b></div>
+              <div class="section-heading"><h3>关联发票</h3><span>更换 →</span></div>
+              <div class="ledger-panel">
+                <div class="file-row"><span class="row-mark">票</span><div><b>安徽老乡鸡餐饮</b><small class="mono">2540200000037841</small></div><span class="status-chip">已关联</span></div>
+              </div>
+            </div>
+            <div class="action-bar"><div class="action-meta"><b>记录完整</b><span>2026-07-09 保存</span></div><div class="button">编辑订单</div></div>
+          </div>
+        </div>
+        <div class="phone-label"><strong>订单详情</strong><span>凭证—金额—关联</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen">
+            <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+            <header class="appbar compact">
+              <div class="back-button">‹</div>
+              <div><span class="eyebrow">EDIT ORDER</span><h2 class="screen-title small">编辑订单</h2></div>
+              <span class="status-chip warning">识别中</span>
+            </header>
+            <div class="content with-action-bar">
+              <section class="form-section">
+                <div class="row-between"><h3>来源文件</h3><span class="link">更换图片</span></div>
+                <div class="file-row"><span class="row-mark">JPG</span><div><b>order_0709_1228.jpg</b><small>1080 × 2400 · 1.8 MB</small></div><span>›</span></div>
+              </section>
+              <section class="form-section">
+                <div class="row-between"><h3>AI 提取</h3><span class="status-chip warning">OCR 68%</span></div>
+                <div class="progress-track"><div class="progress-fill"></div></div>
+              </section>
+              <section class="form-section">
+                <h3>字段校对</h3>
+                <div class="field"><label>店铺名称</label><div class="field-box">老乡鸡 · 科技园店 <span class="text-teal">✓</span></div></div>
+                <div class="field"><label>实付款</label><div class="field-box"><span>人民币</span><b>¥ 42.80</b></div></div>
+                <div class="field"><label>下单时间</label><div class="field-box mono">2026-07-09 12:28</div></div>
+              </section>
+            </div>
+            <div class="action-bar"><div class="action-meta"><b>正在识别</b><span>完成后请校对高亮字段</span></div><div class="button secondary">暂不可保存</div></div>
+            <div class="scrim"></div>
+            <section class="dialog" aria-label="OCR 识别进度">
+              <span class="eyebrow">OCR + AI</span>
+              <h3>正在读这张订单</h3>
+              <p>已经完成文字检测，正在整理店铺、金额与订单号。</p>
+              <div class="progress-track"><div class="progress-fill"></div></div>
+              <div class="step-list"><div class="step done"><i>✓</i>读取图片文字</div><div class="step done"><i>✓</i>定位金额与时间</div><div class="step"><i>3</i>生成结构化字段</div></div>
+              <div class="dialog-actions"><div class="button secondary">取消识别</div></div>
+            </section>
+          </div>
+        </div>
+        <div class="phone-label"><strong>编辑订单</strong><span>OCR 处理叠层</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen">
+            <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+            <header class="appbar compact">
+              <div class="back-button">‹</div>
+              <div><span class="eyebrow">LINK INVOICE</span><h2 class="screen-title small">选择关联发票</h2></div>
+              <div class="icon-button">⌕</div>
+            </header>
+            <div class="content with-action-bar">
+              <div class="filter-row"><span class="filter-chip active">可关联 6</span><span class="filter-chip">金额接近</span><span class="filter-chip">七月</span></div>
+              <div class="danger-panel"><b>一笔订单只能关联一张发票</b><p>选择后将替换当前关联；发票仍可同时关联其他订单。</p></div>
+              <div class="spacer-12"></div>
+              <div class="ledger-panel">
+                <div class="month-strip"><b>匹配建议</b><span>按日期与金额排序</span></div>
+                <div class="ledger-row selectable"><span class="check on">✓</span><div class="row-date">07·09<br>开票</div><div class="row-main"><b>安徽老乡鸡餐饮</b><small class="mono">…37841 · PDF</small></div><div class="row-amount">¥ 128.40<small>含 3 单</small></div></div>
+                <div class="ledger-row selectable"><span class="check"></span><div class="row-date">07·08<br>开票</div><div class="row-main"><b>安徽小菜园餐饮</b><small class="mono">…91027 · PDF</small></div><div class="row-amount">¥ 150.50<small>含 2 单</small></div></div>
+                <div class="ledger-row selectable"><span class="check"></span><div class="row-date">07·06<br>开票</div><div class="row-main"><b>上海蒸小皖餐饮</b><small class="mono">…66120 · JPG</small></div><div class="row-amount">¥ 70.90<small>含 2 单</small></div></div>
+                <div class="ledger-row selectable"><span class="check"></span><div class="row-date">06·29<br>开票</div><div class="row-main"><b>金拱门食品</b><small class="mono">…08217 · PDF</small></div><div class="row-amount">¥ 119.00<small>未关联</small></div></div>
+              </div>
+            </div>
+            <div class="action-bar"><div class="action-meta"><b>已选择 1 张</b><span>订单 ¥42.80 · 发票 ¥128.40</span></div><div class="button teal">确认关联</div></div>
+          </div>
+        </div>
+        <div class="phone-label"><strong>发票选择器</strong><span>单选 / 匹配建议</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone dark">
+          <div class="screen">
+            <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▰▰▰&nbsp;&nbsp;82%</span></div>
+            <header class="appbar compact">
+              <div class="back-button">‹</div>
+              <div><span class="eyebrow">ORDER · 06/28</span><h2 class="screen-title small">订单详情</h2></div>
+              <div class="icon-button">⋯</div>
+            </header>
+            <div class="content no-nav">
+              <div class="media-frame"><div class="mock-receipt"><h4>陈香贵兰州牛肉面</h4><div class="receipt-line"></div><div class="receipt-line short"></div><div class="receipt-line"></div><div class="spacer-12"></div><b>实付　¥ 48.00</b></div></div>
+              <div class="detail-amount"><span>订单实付款</span><b>¥ 48.00</b></div>
+              <div class="detail-line"><span>店铺</span><b>陈香贵兰州牛肉面</b></div>
+              <div class="detail-line"><span>关联发票</span><b class="text-seal">尚未关联</b></div>
+            </div>
+            <div class="scrim"></div>
+            <section class="dialog" aria-label="删除订单确认">
+              <span class="eyebrow text-seal">IRREVERSIBLE</span>
+              <h3>删除这笔订单？</h3>
+              <p>“陈香贵兰州牛肉面 · ¥48.00”及其截图会被移除。若已关联发票，仅解除关系，不删除发票。</p>
+              <div class="danger-panel"><b>此操作不可撤销</b><p>请确认金额与下单时间为 2026-06-28 18:42。</p></div>
+              <div class="dialog-actions"><div class="button secondary">取消</div><div class="button danger">确认删除</div></div>
+            </section>
+          </div>
+        </div>
+        <div class="phone-label"><strong>删除订单</strong><span>危险操作 / 暗色</span></div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

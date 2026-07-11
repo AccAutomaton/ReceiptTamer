@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN" data-preview-theme="fresh-dense">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>04 · 媒体与识别 — 晨雾账簿</title>
+  <link rel="stylesheet" href="../ledger-redesign/shared.css">
+  <style>
+    .media-screen { background: #090b0c; color: #eef0eb; }
+    .media-screen .statusbar { color: #c6ceca; }
+    .viewer-bar { display:flex; align-items:center; gap:12px; min-height:66px; padding:8px 18px 12px; }
+    .viewer-bar .back-button, .viewer-tool { border-color:#303638; background:#171b1d; color:#eef0eb; }
+    .viewer-copy { flex:1; min-width:0; }
+    .viewer-copy b { display:block; overflow:hidden; font-size:14px; text-overflow:ellipsis; white-space:nowrap; }
+    .viewer-copy small { display:block; margin-top:4px; color:#8f9995; font:10px "RT Mono",monospace; }
+    .viewer-tool { display:grid; place-items:center; width:42px; height:42px; border:1px solid #303638; border-radius:13px; font-size:17px; }
+    .viewer-stage { position:relative; flex:1; min-height:0; display:grid; place-items:center; overflow:hidden; background:radial-gradient(circle at 50% 48%,#202628 0, #0d1011 46%,#070809 75%); }
+    .capture { overflow:hidden; border-radius:12px; background:#f7f8f6; color:#22282a; box-shadow:0 24px 68px rgba(0,0,0,.46); }
+    .order-capture { width:290px; height:616px; }
+    .capture-head { padding:15px 16px 12px; background:#f2c648; }
+    .capture-head small { display:block; margin-top:4px; font-size:9px; color:#6d5a1d; }
+    .capture-shop { display:flex; align-items:center; gap:10px; padding:15px; border-bottom:1px solid #e1e4df; }
+    .capture-logo { display:grid; place-items:center; width:34px; height:34px; border-radius:10px; background:#1d7074; color:white; font-weight:800; }
+    .capture-shop b { font-size:13px; }
+    .capture-shop span { display:block; margin-top:4px; color:#737b78; font-size:9px; }
+    .capture-items { padding:5px 15px 12px; }
+    .capture-line { display:grid; grid-template-columns:1fr auto; gap:10px; padding:12px 0; border-bottom:1px solid #e7e9e5; font-size:11px; }
+    .capture-line span:last-child { font-family:"RT MiSans",sans-serif; }
+    .capture-total { margin:0 15px; padding:14px 0; border-top:2px solid #22282a; text-align:right; }
+    .capture-total b { font:500 25px "RT MiSans",sans-serif; }
+    .capture-order-no { margin:0 15px; padding:12px; border:1px dashed #b7bfbb; border-radius:9px; color:#69716e; font:9px "RT Mono",monospace; }
+    .viewer-bottom { display:flex; align-items:center; justify-content:space-between; min-height:84px; padding:11px 22px 18px; background:#111516; }
+    .viewer-action { min-width:62px; text-align:center; color:#c3cbc7; font-size:10px; }
+    .viewer-action b { display:grid; place-items:center; width:36px; height:36px; margin:0 auto 5px; border:1px solid #343b3d; border-radius:11px; color:#f1f3ef; font-size:16px; }
+    .invoice-paper { width:354px; min-height:238px; padding:18px 20px; border-radius:3px; background:#fffdf8; color:#283033; box-shadow:0 18px 55px rgba(0,0,0,.48); transform:rotate(-.8deg); }
+    .invoice-paper h3 { margin:0 0 4px; text-align:center; font:730 17px "RT Serif",serif; letter-spacing:.18em; }
+    .invoice-code { margin-bottom:12px; text-align:center; color:#855147; font:9px "RT Mono",monospace; }
+    .invoice-meta { display:grid; grid-template-columns:1fr 1fr; gap:6px 14px; padding:8px 0; border-top:1px solid #b8a9a2; border-bottom:1px solid #b8a9a2; font-size:8px; }
+    .invoice-table { display:grid; grid-template-columns:1.6fr .6fr .6fr; margin-top:8px; font-size:8px; }
+    .invoice-table span { padding:5px 4px; border-bottom:1px solid #e1d9d4; }
+    .invoice-sum { margin-top:10px; text-align:right; font:500 15px "RT MiSans",sans-serif; }
+    .corner-badge { position:absolute; right:18px; bottom:18px; padding:8px 11px; border:1px solid #353c3e; border-radius:10px; background:#151a1c; color:#dfe4e0; font:10px "RT Mono",monospace; }
+    .pdf-page { position:relative; width:310px; height:610px; padding:34px 28px; background:#fff; color:#252b2d; box-shadow:0 20px 65px rgba(0,0,0,.55); }
+    .pdf-page::before { content:"报销附件 · 电子发票"; display:block; padding-bottom:14px; border-bottom:2px solid #252b2d; font:730 17px "RT Serif",serif; }
+    .pdf-page .invoice-paper { width:252px; min-height:184px; margin-top:48px; padding:13px; box-shadow:none; border:1px solid #d7d9d5; transform:none; }
+    .pdf-page .invoice-paper h3 { font-size:13px; }
+    .pdf-page .invoice-meta { font-size:7px; }
+    .pdf-page footer { position:absolute; right:28px; bottom:28px; left:28px; padding-top:10px; border-top:1px solid #d9deda; color:#7a827f; font:8px "RT Mono",monospace; text-align:right; }
+    .page-rail { position:absolute; left:10px; top:160px; display:grid; gap:7px; }
+    .page-thumb { display:grid; place-items:center; width:35px; height:48px; border:1px solid #343a3c; border-radius:4px; background:#dfe2df; color:#333; font:8px "RT Mono",monospace; }
+    .page-thumb.on { border:2px solid #79b7b7; }
+    .source-card { display:grid; grid-template-columns:74px 1fr; gap:12px; padding:12px; border:1px solid var(--rule); border-radius:14px; background:var(--paper-raised); }
+    .source-thumb { display:grid; place-items:center; height:88px; border-radius:10px; background:var(--copy); color:var(--teal); font:700 11px "RT Mono",monospace; }
+    .source-card b { display:block; margin-top:4px; font-size:13px; }
+    .source-card p { margin:7px 0 0; color:var(--graphite); font-size:10px; line-height:1.5; }
+    .scan-panel { position:relative; min-height:240px; margin-top:12px; overflow:hidden; border:1px solid var(--rule); border-radius:14px; background:linear-gradient(135deg,var(--copy),var(--paper-raised)); }
+    .scan-document { position:absolute; inset:24px 52px; padding:17px; border:1px solid var(--rule-strong); background:var(--paper-raised); box-shadow:0 12px 26px rgba(21,26,28,.12); }
+    .scan-document div { height:7px; margin:12px 0; border-radius:3px; background:var(--rule); }
+    .scan-document div:nth-child(2n) { width:62%; }
+    .scan-line { position:absolute; right:35px; left:35px; top:113px; height:2px; background:var(--teal); box-shadow:0 0 18px var(--teal); }
+    .scan-line::after { content:"正在定位金额字段"; position:absolute; top:8px; right:0; padding:4px 7px; border-radius:7px; background:var(--teal); color:white; font-size:8px; }
+    .dialog .progress-caption { display:flex; justify-content:space-between; margin:12px 0 7px; color:var(--graphite); font-size:10px; }
+    .ai-mark { display:grid; place-items:center; width:58px; height:58px; margin:0 auto 15px; border:1px solid var(--teal); border-radius:17px; background:var(--teal-soft); color:var(--teal); font:730 21px "RT Serif",serif; }
+    .file-alert { margin-bottom:11px; padding:14px; border:1px solid color-mix(in srgb,var(--seal) 45%,var(--rule)); border-radius:14px; background:var(--seal-soft); }
+    .file-alert .row-between { align-items:flex-start; }
+    .file-alert b { font-size:13px; color:var(--seal); }
+    .file-alert p { margin:6px 0 10px; color:var(--graphite); font-size:10px; line-height:1.5; }
+    .file-path { padding:8px; border-radius:8px; background:color-mix(in srgb,var(--paper-raised) 62%,transparent); color:var(--graphite); font:8px "RT Mono",monospace; word-break:break-all; }
+    .mini-actions { display:flex; gap:7px; margin-top:10px; }
+    .mini-action { padding:7px 9px; border:1px solid var(--rule-strong); border-radius:9px; background:var(--paper-raised); font-size:9px; font-weight:700; }
+    .queue-row { display:grid; grid-template-columns:42px minmax(0,1fr) auto; align-items:center; min-height:72px; padding:10px 12px; border-bottom:1px solid var(--rule); }
+    .queue-row:last-child { border-bottom:0; }
+    .queue-row b { display:block; font-size:12px; }
+    .queue-row small { display:block; margin-top:4px; color:var(--graphite); font-size:9px; }
+    .queue-state { font-size:9px; font-weight:730; color:var(--teal); }
+    .queue-state.bad { color:var(--seal); }
+  </style>
+    <link rel="stylesheet" href="hybrid.css" />
+  </head>
+<body>
+<main class="board-page">
+  <header class="board-header">
+    <div><div class="board-kicker">BOARD 04 · MEDIA / RECOGNITION</div><h1 class="board-title">媒体检视与 AI 识别</h1></div>
+    <div class="board-note">深色检视台让凭证成为唯一主角；识别只在处理期间显示进度。缺失与损坏不再笼统报错，而是指出文件、影响与下一步。</div>
+  </header>
+  <section class="phone-grid">
+    <article class="phone-card">
+      <div class="phone dark"><div class="screen media-screen">
+        <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▮▮▮&nbsp;&nbsp;86%</span></div>
+        <div class="viewer-bar"><div class="back-button">‹</div><div class="viewer-copy"><b>订单原图</b><small>ORDER · 20260708_121743.jpg</small></div><div class="viewer-tool">⋮</div></div>
+        <div class="viewer-stage"><div class="capture order-capture">
+          <div class="capture-head"><b>订单已送达</b><small>2026年7月8日 12:17</small></div>
+          <div class="capture-shop"><div class="capture-logo">湘</div><div><b>湘满园·小炒黄牛肉</b><span>中关村软件园店</span></div></div>
+          <div class="capture-items"><div class="capture-line"><span>小炒黄牛肉盖饭 × 1</span><span>¥32.00</span></div><div class="capture-line"><span>冰豆花 × 1</span><span>¥6.00</span></div><div class="capture-line"><span>配送费 · 包装费</span><span>¥4.00</span></div><div class="capture-line"><span>平台红包</span><span>−¥8.50</span></div></div>
+          <div class="capture-total"><small>实付</small> <b>¥33.50</b></div><div class="capture-order-no">订单号 2507081217048869</div>
+        </div><span class="corner-badge">1 / 1 · 1080 × 2400</span></div>
+        <div class="viewer-bottom"><div class="viewer-action"><b>↗</b>分享</div><div class="viewer-action"><b>AI</b>识别</div><div class="viewer-action"><b>⌁</b>旋转</div><div class="viewer-action"><b>⋯</b>更多</div></div>
+      </div></div>
+      <div class="phone-label"><strong>订单图片 · 全屏</strong><span>缩放后再取原分辨率</span></div>
+    </article>
+
+    <article class="phone-card">
+      <div class="phone dark"><div class="screen media-screen">
+        <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▮▮▮&nbsp;&nbsp;86%</span></div>
+        <div class="viewer-bar"><div class="back-button">‹</div><div class="viewer-copy"><b>电子发票</b><small>INVOICE · 24442000000084591621.jpg</small></div><div class="viewer-tool">⋮</div></div>
+        <div class="viewer-stage"><div class="invoice-paper"><h3>增值税电子普通发票</h3><div class="invoice-code">发票号码 24442000000084591621</div><div class="invoice-meta"><span>购买方：北京云帆科技有限公司</span><span>开票日期：2026年07月09日</span><span>销售方：北京湘满园餐饮有限公司</span><span>统一信用代码：91110108MA01…</span></div><div class="invoice-table"><span>餐饮服务</span><span>金额</span><span>税额</span><span>*餐饮服务*餐费</span><span>¥33.18</span><span>¥0.32</span></div><div class="invoice-sum">价税合计　¥33.50</div></div><span class="corner-badge">已关联 1 笔订单</span></div>
+        <div class="viewer-bottom"><div class="viewer-action"><b>↗</b>分享</div><div class="viewer-action"><b>AI</b>识别</div><div class="viewer-action"><b>⌁</b>旋转</div><div class="viewer-action"><b>⋯</b>更多</div></div>
+      </div></div>
+      <div class="phone-label"><strong>发票图片 · 全屏</strong><span>关系状态随凭证可见</span></div>
+    </article>
+
+    <article class="phone-card">
+      <div class="phone dark"><div class="screen media-screen">
+        <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▮▮▮&nbsp;&nbsp;86%</span></div>
+        <div class="viewer-bar"><div class="back-button">‹</div><div class="viewer-copy"><b>电子发票 PDF</b><small>3 PAGES · 1.8 MB</small></div><div class="viewer-tool">⌕</div></div>
+        <div class="viewer-stage"><div class="page-rail"><div class="page-thumb on">01</div><div class="page-thumb">02</div><div class="page-thumb">03</div></div><div class="pdf-page"><div class="invoice-paper"><h3>增值税电子普通发票</h3><div class="invoice-meta"><span>购买方：云帆科技</span><span>日期：2026-07-07</span></div><div class="invoice-table"><span>餐饮服务</span><span>金额</span><span>税额</span><span>餐费</span><span>¥76.60</span><span>¥0.70</span></div><div class="invoice-sum">¥77.30</div></div><footer>ReceiptTamer · 第 1 页 / 共 3 页</footer></div><span class="corner-badge">第 1 / 3 页 · 118%</span></div>
+        <div class="viewer-bottom"><div class="viewer-action"><b>−</b>缩小</div><div class="viewer-action"><b>1:1</b>适合</div><div class="viewer-action"><b>＋</b>放大</div><div class="viewer-action"><b>↗</b>分享</div></div>
+      </div></div>
+      <div class="phone-label"><strong>PDF · 全屏阅读</strong><span>分页缩略图与页码</span></div>
+    </article>
+
+    <article class="phone-card">
+      <div class="phone"><div class="screen">
+        <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▮▮▮&nbsp;&nbsp;86%</span></div>
+        <div class="appbar compact"><div class="back-button">‹</div><div><span class="eyebrow">ORDER / RECOGNIZE</span><h2 class="screen-title small">识别订单</h2></div><div class="icon-button">×</div></div>
+        <div class="content no-nav"><div class="source-card"><div class="source-thumb">JPG</div><div><b>美团订单_0708.jpg</b><p>1080 × 2400 · 1.4 MB<br>图片已就绪，正在读取文字区域</p></div></div><div class="scan-panel"><div class="scan-document"><div></div><div></div><div></div><div></div><div></div><div></div></div><div class="scan-line"></div></div></div>
+        <div class="scrim"></div><div class="dialog"><span class="eyebrow">OCR + LLM PIPELINE</span><h3>正在读懂这张订单</h3><p>可以离开此页，识别会在后台继续。请勿删除原图。</p><div class="progress-caption"><span>提取结构化字段</span><b class="mono">68%</b></div><div class="progress-track"><div class="progress-fill"></div></div><div class="step-list"><div class="step done"><i>✓</i>载入并校正图片</div><div class="step done"><i>✓</i>识别 46 个文字块</div><div class="step"><i>3</i>提取店铺、金额与时间</div><div class="step"><i>4</i>校验订单号</div></div><div class="dialog-actions"><div class="button secondary">后台继续</div><div class="button">取消识别</div></div></div>
+      </div></div>
+      <div class="phone-label"><strong>OCR + AI · 处理中</strong><span>仅任务期间显示动效</span></div>
+    </article>
+
+    <article class="phone-card">
+      <div class="phone"><div class="screen">
+        <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▮▮▮&nbsp;&nbsp;86%</span></div>
+        <div class="appbar"><div><span class="eyebrow">INVOICE / EDIT</span><h2 class="screen-title">校对发票</h2></div><div class="icon-button">AI</div></div>
+        <div class="content no-nav"><div class="form-section"><h3>来源文件</h3><div class="source-card"><div class="source-thumb">PDF</div><div><b>电子发票_0709.pdf</b><p>1 页 · 420 KB<br>可提取发票号码、日期与金额</p></div></div></div><div class="form-section"><h3>发票字段</h3><div class="field"><label>发票号码</label><div class="field-box muted">等待识别</div></div><div class="field"><label>价税合计</label><div class="field-box muted">¥ 0.00</div></div></div></div>
+        <div class="scrim"></div><div class="dialog"><div class="ai-mark">AI</div><h3 class="center">先配置识别模型</h3><p class="center">选择本地模型，或连接一个 OpenAI-compatible 云端模型。原文件不会在未配置时上传。</p><div class="danger-panel" style="border-color:var(--rule);background:var(--copy);color:var(--graphite)"><b style="color:var(--ink)">当前状态</b><p>未选择模型 · 内置 OCR 可用，结构化提取不可用</p></div><div class="dialog-actions"><div class="button secondary">稍后手动填写</div><div class="button teal">前往模型设置</div></div></div>
+      </div></div>
+      <div class="phone-label"><strong>AI 未配置</strong><span>说明数据边界与替代路径</span></div>
+    </article>
+
+    <article class="phone-card">
+      <div class="phone"><div class="screen">
+        <div class="statusbar"><span>09:41</span><span>5G&nbsp;&nbsp;▮▮▮&nbsp;&nbsp;86%</span></div>
+        <div class="appbar compact"><div class="back-button">‹</div><div><span class="eyebrow">SHARE BATCH</span><h2 class="screen-title small">分享 4 个文件</h2></div><div class="icon-button">×</div></div>
+        <div class="content with-action-bar"><div class="summary-receipt"><div class="summary-top"><span class="status-chip warning">部分就绪</span><span class="summary-period mono">2 / 4</span></div><div class="summary-amount" style="font-size:26px">报销材料 · 7 月</div><div class="summary-grid"><div class="summary-metric"><span>图片</span><b>1</b></div><div class="summary-metric"><span>PDF</span><b>1</b></div><div class="summary-metric"><span>失败</span><b class="text-seal">2</b></div></div></div><div class="ledger-panel"><div class="queue-row"><div class="row-mark">JPG</div><div><b>湘满园订单_0708.jpg</b><small>1.4 MB · 订单原图</small></div><span class="queue-state">就绪</span></div><div class="queue-row"><div class="row-mark">PDF</div><div><b>电子发票_0709.pdf</b><small>420 KB · 1 页</small></div><span class="queue-state">就绪</span></div><div class="queue-row"><div class="row-mark" style="background:var(--seal-soft);color:var(--seal)">!</div><div><b>云海肴订单_0707.jpg</b><small>原图已缺失 · 记录仍保留</small></div><span class="queue-state bad">替换</span></div><div class="queue-row"><div class="row-mark" style="background:var(--seal-soft);color:var(--seal)">!</div><div><b>发票_0706.pdf</b><small>PDF 索引损坏 · 无法读取</small></div><span class="queue-state bad">替换</span></div></div><div class="spacer-12"></div><div class="danger-panel"><b>将跳过缺失与损坏文件</b><p>可分享其余 2 个文件；返回替换文件不会改变订单与发票关联。</p></div></div><div class="action-bar"><div class="action-meta"><b>2 个文件 · 1.8 MB</b><span>失败项保留，可稍后恢复</span></div><div class="button teal">继续分享</div></div>
+      </div></div>
+      <div class="phone-label"><strong>批量分享 · 部分失败</strong><span>可见队列，不阻断成功项</span></div>
+    </article>
+  </section>
+</main>
+</body>
+</html>

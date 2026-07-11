@@ -2,6 +2,7 @@ import '../datasources/database/database_helper.dart';
 import '../datasources/database/invoice_table.dart';
 import '../datasources/database/invoice_order_relation_table.dart';
 import '../models/invoice.dart';
+import '../../core/models/ledger_month_summary.dart';
 
 /// Invoice repository
 /// Provides data access methods for invoices using the invoice table
@@ -127,6 +128,12 @@ class InvoiceRepository {
     return await table.getAll(limit: limit, offset: offset);
   }
 
+  /// Read-only month index used by the virtualized ledger and fast scroller.
+  Future<List<LedgerMonthSummary>> getMonthSummaries() async {
+    final table = await _invoiceTable;
+    return table.getMonthSummaries();
+  }
+
   /// Get invoices by order ID
   Future<List<Invoice>> getByOrderId(
     int orderId, {
@@ -207,6 +214,8 @@ class InvoiceRepository {
     DateTime? startDate,
     DateTime? endDate,
     bool? hasLinkedOrder,
+    int? limit,
+    int? offset,
   }) async {
     final table = await _invoiceTable;
     return await table.search(
@@ -218,6 +227,8 @@ class InvoiceRepository {
       startDate: startDate,
       endDate: endDate,
       hasLinkedOrder: hasLinkedOrder,
+      limit: limit,
+      offset: offset,
     );
   }
 
@@ -231,6 +242,13 @@ class InvoiceRepository {
   Future<List<int>> getOrderIdsForInvoice(int invoiceId) async {
     final relationTable = await _relationTable;
     return await relationTable.getOrderIdsForInvoice(invoiceId);
+  }
+
+  Future<Map<int, Set<int>>> getOrderIdsForInvoices(
+    List<int> invoiceIds,
+  ) async {
+    final relationTable = await _relationTable;
+    return relationTable.getOrderIdsForInvoices(invoiceIds);
   }
 
   /// Get order count for an invoice

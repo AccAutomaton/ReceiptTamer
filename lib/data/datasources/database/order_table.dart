@@ -5,6 +5,7 @@ import '../../models/uninvoiced_shop_summary.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/services/log_service.dart';
 import '../../../core/services/log_config.dart';
+import '../../../core/models/ledger_month_summary.dart';
 
 /// Order table data access object
 /// Handles all CRUD operations for the orders table
@@ -39,6 +40,14 @@ class OrderTable {
 
   static const String _normalizedShopKeyExpression =
       "trim(coalesce(o.${AppConstants.colShopName}, ''))";
+
+  static String _paginationClause({int? limit, int? offset}) {
+    if (limit == null && offset == null) return '';
+
+    final effectiveLimit = limit ?? -1;
+    if (offset == null) return 'LIMIT $effectiveLimit';
+    return 'LIMIT $effectiveLimit OFFSET $offset';
+  }
 
   /// Parse order from query result with has_invoice field
   Order _parseOrderWithInvoice(Map<String, dynamic> map) {
@@ -137,20 +146,50 @@ class OrderTable {
   /// Get all orders, ordered by order date (newest first), then by meal time (dinner > lunch > breakfast)
   Future<List<Order>> getAll({int? limit, int? offset}) async {
     try {
-      final limitClause = limit != null ? 'LIMIT $limit' : '';
-      final offsetClause = offset != null ? 'OFFSET $offset' : '';
+      final paginationClause = _paginationClause(limit: limit, offset: offset);
 
       final List<Map<String, dynamic>> maps = await database.rawQuery(
         'SELECT o.*, $_hasInvoiceColumn '
         'FROM ${AppConstants.ordersTable} o '
         '$_invoiceJoinClause '
         '$_orderByClause '
-        '$limitClause $offsetClause',
+        '$paginationClause',
       );
 
       return maps.map(_parseOrderWithInvoice).toList();
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleDb, '获取所有订单失败', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  /// Return a lightweight month index without loading every order model.
+  Future<List<LedgerMonthSummary>> getMonthSummaries() async {
+    try {
+      final rows = await database.rawQuery(
+        "SELECT COALESCE(strftime('%Y-%m', o.${AppConstants.colOrderDate}), "
+        "strftime('%Y-%m', o.${AppConstants.colCreatedAt})) AS month_key, "
+        'COUNT(*) AS item_count, '
+        'COALESCE(SUM(o.${AppConstants.colAmount}), 0) AS total_amount, '
+        'COUNT(r.${AppConstants.colOrderId}) AS linked_item_count '
+        'FROM ${AppConstants.ordersTable} o '
+        '$_invoiceJoinClause '
+        'GROUP BY month_key ORDER BY month_key DESC',
+      );
+
+      return rows
+          .where((row) => (row['month_key'] as String?)?.isNotEmpty ?? false)
+          .map(
+            (row) => LedgerMonthSummary(
+              monthKey: row['month_key'] as String,
+              itemCount: (row['item_count'] as num).toInt(),
+              totalAmount: (row['total_amount'] as num).toDouble(),
+              linkedItemCount: (row['linked_item_count'] as num).toInt(),
+            ),
+          )
+          .toList(growable: false);
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleDb, '获取订单月份汇总失败', e, stackTrace);
       rethrow;
     }
   }
@@ -457,6 +496,8 @@ class OrderTable {
     DateTime? startDate,
     DateTime? endDate,
     bool? hasLinkedInvoice,
+    int? limit,
+    int? offset,
   }) async {
     try {
       final conditions = <String>[];
@@ -517,13 +558,15 @@ class OrderTable {
       final whereClause = conditions.isNotEmpty
           ? 'WHERE ${conditions.join(' AND ')}'
           : '';
+      final paginationClause = _paginationClause(limit: limit, offset: offset);
 
       final List<Map<String, dynamic>> maps = await database.rawQuery(
         'SELECT o.*, $_hasInvoiceColumn '
         'FROM ${AppConstants.ordersTable} o '
         '$_invoiceJoinClause '
         '$whereClause '
-        '$_orderByClause',
+        '$_orderByClause '
+        '$paginationClause',
         args,
       );
 

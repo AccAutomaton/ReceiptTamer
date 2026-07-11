@@ -1,9 +1,10 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
+
+export 'package:receipt_tamer/presentation/widgets/common/glass_bottom_sheet.dart'
+    show showGlassContentBottomSheet;
 
 class GlassAlertDialog extends StatelessWidget {
   const GlassAlertDialog({
@@ -36,26 +37,21 @@ class GlassAlertDialog extends StatelessWidget {
     final borderRadius =
         _borderRadiusFromShape() ?? BorderRadius.circular(AppRadii.glassLarge);
     final body = _buildBody(theme, colorScheme);
-
-    return SizedBox.expand(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Center(
-          child: Dialog(
-            backgroundColor: Colors.transparent,
-            shadowColor: Colors.transparent,
-            elevation: 0,
-            insetPadding:
-                insetPadding ?? const EdgeInsets.symmetric(horizontal: 32),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 560),
-              child: GlassSurface(
-                borderRadius: borderRadius,
-                fillColor: AppGlassTokens.sheetFillFor(context),
-                boxShadow: AppShadows.glass,
-                child: body,
-              ),
-            ),
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      shadowColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: insetPadding ?? const EdgeInsets.symmetric(horizontal: 32),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: RepaintBoundary(
+          child: GlassSurface(
+            borderRadius: borderRadius,
+            fillColor: AppGlassTokens.sheetFillFor(context),
+            blurSigma: 12,
+            preset: GlassSurfacePreset.dialog,
+            edgeIntensity: 0.48,
+            child: body,
           ),
         ),
       ),

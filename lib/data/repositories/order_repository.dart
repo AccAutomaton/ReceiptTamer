@@ -1,6 +1,7 @@
 import '../datasources/database/database_helper.dart';
 import '../datasources/database/invoice_order_relation_table.dart';
 import '../datasources/database/order_table.dart';
+import '../../core/models/ledger_month_summary.dart';
 import '../models/order.dart';
 import '../models/uninvoiced_shop_summary.dart';
 
@@ -64,6 +65,12 @@ class OrderRepository {
   Future<List<Order>> getAll({int? limit, int? offset}) async {
     final table = await _orderTable;
     return await table.getAll(limit: limit, offset: offset);
+  }
+
+  /// Read-only month index used by the virtualized ledger and fast scroller.
+  Future<List<LedgerMonthSummary>> getMonthSummaries() async {
+    final table = await _orderTable;
+    return table.getMonthSummaries();
   }
 
   /// Get orders by shop name (partial match)
@@ -156,6 +163,8 @@ class OrderRepository {
     DateTime? startDate,
     DateTime? endDate,
     bool? hasLinkedInvoice,
+    int? limit,
+    int? offset,
   }) async {
     final table = await _orderTable;
     return await table.search(
@@ -166,6 +175,8 @@ class OrderRepository {
       startDate: startDate,
       endDate: endDate,
       hasLinkedInvoice: hasLinkedInvoice,
+      limit: limit,
+      offset: offset,
     );
   }
 
@@ -208,6 +219,17 @@ class OrderRepository {
   Future<List<int>> getInvoiceIdsForOrder(int orderId) async {
     final table = await _orderTable;
     return await table.getInvoiceIdsForOrder(orderId);
+  }
+
+  Future<Map<int, Set<int>>> getInvoiceIdsForOrders(List<int> orderIds) async {
+    final table = await _relationTable;
+    return table.getInvoiceIdsForOrders(orderIds);
+  }
+
+  /// Get invoice counts for multiple orders in one database round trip.
+  Future<Map<int, int>> getInvoiceCountsForOrders(List<int> orderIds) async {
+    final relationTable = await _relationTable;
+    return relationTable.getInvoiceCountsForOrders(orderIds);
   }
 
   /// Get shop names with count, ordered by count (highest first)

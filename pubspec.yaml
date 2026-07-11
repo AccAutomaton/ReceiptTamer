@@ -85,6 +85,9 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
+  device_info_plus: ^12.3.0
   flutter_lints: ^6.0.0
   freezed: ^3.2.5
   json_serializable: ^6.9.0
@@ -104,3 +107,18 @@ flutter:
   assets:
     - assets/docs/
     - assets/fonts/
+
+  fonts:
+    - family: NotoSerifSC
+      fonts:
+        - asset: assets/fonts/NotoSerifSC-VF.ttf
+    - family: NotoSansSC
+      fonts:
+        - asset: assets/fonts/NotoSansSC-VF.ttf
+    - family: MiSans
+      fonts:
+        - asset: assets/fonts/MiSans-Medium.ttf
+          weight: 500
+    - family: CourierPrime
+      fonts:
+        - asset: assets/fonts/CourierPrime-Regular.ttf

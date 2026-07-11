@@ -170,7 +170,7 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
   }
 
   Future<void> _pickFile() async {
-    final result = await showModalBottomSheet<_FilePickResult>(
+    final result = await showGlassContentBottomSheet<_FilePickResult>(
       context: context,
       builder: (context) => SafeArea(
         child: Column(
@@ -493,7 +493,7 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
   }
 
   void _showSellerNamePicker() {
-    showModalBottomSheet(
+    showGlassContentBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),

@@ -1,0 +1,35 @@
+{
+  "capturedAt": "2026-07-11T03:41:13+08:00",
+  "device": "Android 16 x86_64 emulator",
+  "contentBaseline": "ce04b3c6457f444645a4bd6cca98d5e71707115d",
+  "visualStyle": "morning-ledger-relief-island",
+  "ledgerFrameTiming": {
+    "profileMode": true,
+    "realArm64Device": false,
+    "certified": false,
+    "targetsPassed": true,
+    "frameCount": 1738,
+    "buildP90Ms": 1.58,
+    "buildP99Ms": 2.992,
+    "rasterP90Ms": 6.275,
+    "rasterP99Ms": 8.973,
+    "slowFrameCount": 4,
+    "slowFrameRatio": 0.0023,
+    "framesByAction": {
+      "orders-scroll": 648,
+      "orders-scroll-reverse": 216,
+      "branch-switch": 5,
+      "invoices-scroll": 648,
+      "invoices-scroll-reverse": 216,
+      "month-jump": 5
+    },
+    "targets": {
+      "minimumMeasuredFrames": 120,
+      "buildP90Ms": 8.0,
+      "buildP99Ms": 16.0,
+      "rasterP90Ms": 8.0,
+      "rasterP99Ms": 16.0,
+      "slowFrameRatioExclusiveMax": 0.01
+    }
+  }
+}
