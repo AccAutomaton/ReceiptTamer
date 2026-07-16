@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'app_design_tokens.dart';
 
-/// Material 3 configuration for the "morning-mist relief ledger" direction.
+/// Material 3 configuration for the flat "morning-mist ledger" direction.
 ///
 /// The public constants and theme getters match the ce04b3c contract. Feature
 /// screens therefore keep their original structure, copy and behavior while
@@ -77,7 +77,7 @@ class AppTheme {
     inverseSurface: inverseSurfaceColor,
     onInverseSurface: Color(0xFFEFF7F4),
     inversePrimary: inversePrimaryColor,
-    shadow: Color(0xFF1A4541),
+    shadow: Colors.transparent,
     scrim: Color(0xFF132324),
   );
 
@@ -111,7 +111,7 @@ class AppTheme {
     inverseSurface: Color(0xFFEFF7F4),
     onInverseSurface: Color(0xFF233238),
     inversePrimary: Color(0xFF245F61),
-    shadow: Color(0xFF000000),
+    shadow: Colors.transparent,
     scrim: Color(0xFF000000),
   );
 
@@ -157,59 +157,26 @@ class AppTheme {
     final strongLineColor = isDark
         ? AppEntityTokens.darkStrongBorder
         : AppEntityTokens.lightStrongBorder;
-    final ridgeColor = isDark
-        ? AppEntityTokens.darkRidge
-        : AppEntityTokens.lightRidge;
-    final highlightColor = isDark
-        ? AppEntityTokens.darkHighlight
-        : AppEntityTokens.lightHighlight;
     final actionOutline = isDark
         ? scheme.primary.withValues(alpha: 0.48)
         : AppPalette.actionOutline.withValues(alpha: 0.72);
     final controlShape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(AppRadii.control),
     );
-    final reliefControlShape = WidgetStateProperty.resolveWith<OutlinedBorder?>(
-      (states) => AppReliefRoundedRectangleBorder(
-        highlightColor: highlightColor,
-        ridgeColor: ridgeColor,
-        ridgeWidth: states.contains(WidgetState.pressed) ? 1 : 2,
-        borderRadius: BorderRadius.circular(AppRadii.control),
-      ),
+    final flatControlShape = WidgetStatePropertyAll<OutlinedBorder?>(
+      controlShape,
     );
-    final primaryRidge = Color.alphaBlend(
-      Colors.black.withValues(alpha: isDark ? 0.18 : 0.24),
-      scheme.primary,
+    const flatElevation = WidgetStatePropertyAll<double?>(0);
+    const transparentShadow = WidgetStatePropertyAll<Color?>(
+      Colors.transparent,
     );
-    final primaryReliefControlShape =
-        WidgetStateProperty.resolveWith<OutlinedBorder?>(
-          (states) => AppReliefRoundedRectangleBorder(
-            highlightColor: Colors.white.withValues(alpha: isDark ? 0.18 : 0.3),
-            ridgeColor: primaryRidge,
-            ridgeWidth: states.contains(WidgetState.pressed) ? 1 : 2,
-            borderRadius: BorderRadius.circular(AppRadii.control),
-          ),
-        );
-    final reliefElevation = WidgetStateProperty.resolveWith<double?>((states) {
-      if (states.contains(WidgetState.disabled) ||
-          states.contains(WidgetState.pressed)) {
-        return 0;
-      }
-      if (states.contains(WidgetState.hovered)) return 3;
-      return 2;
-    });
-    final fieldBorder = AppReliefInputBorder(
-      highlightColor: highlightColor,
-      ridgeColor: ridgeColor,
+    final fieldBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(AppRadii.control),
       borderSide: BorderSide(color: strongLineColor),
     );
-    final focusedFieldBorder = AppReliefInputBorder(
-      highlightColor: highlightColor,
-      ridgeColor: scheme.primary,
-      ridgeWidth: 2.5,
+    final focusedFieldBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(AppRadii.control),
-      borderSide: BorderSide(color: scheme.primary, width: 1.4),
+      borderSide: BorderSide(color: scheme.primary),
     );
 
     return ThemeData(
@@ -217,6 +184,7 @@ class AppTheme {
       brightness: scheme.brightness,
       colorScheme: scheme,
       fontFamily: AppTypography.bodyFamily,
+      fontFamilyFallback: AppTypography.serifFallback,
       textTheme: textTheme,
       primaryTextTheme: textTheme.apply(
         bodyColor: scheme.onPrimary,
@@ -231,42 +199,48 @@ class AppTheme {
         centerTitle: true,
         elevation: 0,
         scrolledUnderElevation: 0,
-        backgroundColor: Colors.transparent,
+        // App bars and scroll-edge fogs share one paper color so the body can
+        // fade in without producing a horizontal seam below the title bar.
+        backgroundColor: scheme.surface,
         foregroundColor: scheme.onSurface,
         surfaceTintColor: Colors.transparent,
         titleTextStyle: textTheme.titleLarge,
         systemOverlayStyle: overlayStyle,
       ),
       cardTheme: CardThemeData(
-        elevation: 1,
-        shadowColor: scheme.shadow.withValues(alpha: isDark ? 0.5 : 0.12),
+        elevation: 0,
+        shadowColor: Colors.transparent,
         color: raisedSurface,
         surfaceTintColor: Colors.transparent,
-        shape: AppReliefRoundedRectangleBorder(
-          highlightColor: highlightColor,
-          ridgeColor: ridgeColor,
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.card),
           side: BorderSide(color: lineColor),
         ),
       ),
       dividerTheme: DividerThemeData(color: lineColor, thickness: 1, space: 1),
       elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          minimumSize: const Size(48, 48),
-          backgroundColor: quietSurface,
-          foregroundColor: scheme.primary,
-          disabledBackgroundColor: scheme.surfaceContainerHigh,
-          disabledForegroundColor: scheme.onSurfaceVariant.withValues(
-            alpha: 0.62,
-          ),
-          elevation: 2,
-          shadowColor: scheme.shadow.withValues(alpha: isDark ? 0.54 : 0.2),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: controlShape,
-          side: BorderSide(color: actionOutline),
-          textStyle: textTheme.labelLarge,
-          animationDuration: AppMotion.standard,
-        ).copyWith(elevation: reliefElevation, shape: reliefControlShape),
+        style:
+            ElevatedButton.styleFrom(
+              minimumSize: const Size(48, 48),
+              backgroundColor: quietSurface,
+              foregroundColor: scheme.primary,
+              disabledBackgroundColor: scheme.surfaceContainerHigh,
+              disabledForegroundColor: scheme.onSurfaceVariant.withValues(
+                alpha: 0.62,
+              ),
+              elevation: 0,
+              shadowColor: Colors.transparent,
+              surfaceTintColor: Colors.transparent,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: controlShape,
+              side: BorderSide(color: actionOutline),
+              textStyle: textTheme.labelLarge,
+              animationDuration: AppMotion.standard,
+            ).copyWith(
+              elevation: flatElevation,
+              shadowColor: transparentShadow,
+              shape: flatControlShape,
+            ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style:
@@ -278,10 +252,9 @@ class AppTheme {
               disabledForegroundColor: scheme.onSurfaceVariant.withValues(
                 alpha: 0.62,
               ),
-              elevation: 2,
-              shadowColor: scheme.shadow.withValues(
-                alpha: isDark ? 0.58 : 0.24,
-              ),
+              elevation: 0,
+              shadowColor: Colors.transparent,
+              surfaceTintColor: Colors.transparent,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: controlShape,
               side: BorderSide(
@@ -292,31 +265,45 @@ class AppTheme {
               textStyle: textTheme.labelLarge,
               animationDuration: AppMotion.standard,
             ).copyWith(
-              elevation: reliefElevation,
-              shape: primaryReliefControlShape,
+              elevation: flatElevation,
+              shadowColor: transparentShadow,
+              shape: flatControlShape,
             ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size(48, 48),
-          backgroundColor: raisedSurface,
-          foregroundColor: scheme.primary,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: controlShape,
-          side: BorderSide(color: actionOutline, width: 1.2),
-          textStyle: textTheme.labelLarge,
-          animationDuration: AppMotion.standard,
-        ).copyWith(shape: reliefControlShape),
+        style:
+            OutlinedButton.styleFrom(
+              minimumSize: const Size(48, 48),
+              backgroundColor: raisedSurface,
+              foregroundColor: scheme.primary,
+              elevation: 0,
+              shadowColor: Colors.transparent,
+              surfaceTintColor: Colors.transparent,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: controlShape,
+              side: BorderSide(color: actionOutline),
+              textStyle: textTheme.labelLarge,
+              animationDuration: AppMotion.standard,
+            ).copyWith(
+              elevation: flatElevation,
+              shadowColor: transparentShadow,
+              shape: flatControlShape,
+            ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          minimumSize: const Size(48, 48),
-          foregroundColor: scheme.primary,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          shape: controlShape,
-          textStyle: textTheme.labelLarge,
-          animationDuration: AppMotion.standard,
-        ),
+        style:
+            TextButton.styleFrom(
+              minimumSize: const Size(48, 48),
+              foregroundColor: scheme.primary,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              shape: controlShape,
+              textStyle: textTheme.labelLarge,
+              animationDuration: AppMotion.standard,
+            ).copyWith(
+              elevation: flatElevation,
+              shadowColor: transparentShadow,
+              shape: flatControlShape,
+            ),
       ),
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(
@@ -343,23 +330,15 @@ class AppTheme {
         border: fieldBorder,
         enabledBorder: fieldBorder,
         focusedBorder: focusedFieldBorder,
-        errorBorder: AppReliefInputBorder(
-          highlightColor: highlightColor,
-          ridgeColor: scheme.error,
+        errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.control),
           borderSide: BorderSide(color: scheme.error),
         ),
-        focusedErrorBorder: AppReliefInputBorder(
-          highlightColor: highlightColor,
-          ridgeColor: scheme.error,
-          ridgeWidth: 2.5,
+        focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.control),
-          borderSide: BorderSide(color: scheme.error, width: 1.4),
+          borderSide: BorderSide(color: scheme.error),
         ),
-        disabledBorder: AppReliefInputBorder(
-          highlightColor: highlightColor.withValues(alpha: 0.55),
-          ridgeColor: ridgeColor,
-          ridgeWidth: 1,
+        disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.control),
           borderSide: BorderSide(color: lineColor),
         ),
@@ -372,7 +351,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.small / 2),
         ),
-        side: BorderSide(color: scheme.outline, width: 1.2),
+        side: BorderSide(color: scheme.outline),
         fillColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.disabled)) {
             return scheme.surfaceContainerHigh;
@@ -452,10 +431,11 @@ class AppTheme {
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: scheme.primary,
         foregroundColor: scheme.onPrimary,
-        elevation: 2,
-        focusElevation: 2,
-        hoverElevation: 3,
-        highlightElevation: 2,
+        elevation: 0,
+        focusElevation: 0,
+        hoverElevation: 0,
+        highlightElevation: 0,
+        disabledElevation: 0,
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         elevation: 0,
@@ -527,6 +507,8 @@ class AppTheme {
       ),
       datePickerTheme: DatePickerThemeData(
         backgroundColor: raisedSurface,
+        elevation: 0,
+        shadowColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         headerBackgroundColor: scheme.primaryContainer,
         headerForegroundColor: scheme.onPrimaryContainer,
@@ -553,6 +535,9 @@ class AppTheme {
         }),
         todayForegroundColor: WidgetStatePropertyAll(scheme.primary),
         todayBorder: BorderSide(color: scheme.primary),
+        rangePickerElevation: 0,
+        rangePickerShadowColor: Colors.transparent,
+        rangePickerSurfaceTintColor: Colors.transparent,
       ),
     );
   }

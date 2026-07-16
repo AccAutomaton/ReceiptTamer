@@ -3,11 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
-import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
 import 'package:receipt_tamer/presentation/widgets/common/liquid_glass_background.dart';
 
 void main() {
-  testWidgets('AppCard uses an opaque morning-mist relief surface', (
+  testWidgets('AppCard uses an opaque flat surface with one outline', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -35,20 +34,18 @@ void main() {
     expect(decoration.gradient, isNull);
     expect(decoration.borderRadius, BorderRadius.circular(AppRadii.card));
     expect(decoration.border, isNotNull);
-    expect(decoration.boxShadow, isNotEmpty);
+    expect(decoration.boxShadow, isNull);
     expect(find.byType(BackdropFilter), findsNothing);
   });
 
-  testWidgets('interactive AppCard removes press motion when requested', (
+  testWidgets('interactive AppCard keeps flat geometry while pressed', (
     tester,
   ) async {
+    var tapped = false;
     await tester.pumpWidget(
       MaterialApp(
-        home: MediaQuery(
-          data: const MediaQueryData(disableAnimations: true),
-          child: Scaffold(
-            body: AppCard(onTap: () {}, child: const Text('可点击卡片')),
-          ),
+        home: Scaffold(
+          body: AppCard(onTap: () => tapped = true, child: const Text('可点击卡片')),
         ),
       ),
     );
@@ -57,15 +54,14 @@ void main() {
       tester.getCenter(find.text('可点击卡片')),
     );
     await tester.pump();
-    final scale = tester.widget<AnimatedScale>(find.byType(AnimatedScale));
-    expect(scale.duration, Duration.zero);
-    expect(scale.scale, 1);
+    expect(find.byType(AnimatedScale), findsNothing);
+    expect(find.byType(AnimatedSlide), findsNothing);
     await gesture.up();
+    await tester.pump();
+    expect(tapped, isTrue);
   });
 
-  testWidgets('AppIconButton uses one legible floating blur surface', (
-    tester,
-  ) async {
+  testWidgets('AppIconButton uses flat transparent chrome', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -81,36 +77,17 @@ void main() {
         style.shape!.resolve(<WidgetState>{})! as RoundedRectangleBorder;
 
     expect(background, Colors.transparent);
+    expect(
+      style.backgroundColor!.resolve(<WidgetState>{WidgetState.disabled}),
+      Colors.transparent,
+    );
+    expect(style.side!.resolve(<WidgetState>{}), BorderSide.none);
     expect(style.minimumSize!.resolve(<WidgetState>{}), const Size(44, 44));
     expect(shape.borderRadius, BorderRadius.circular(AppRadii.control));
-    expect(find.byType(BackdropFilter), findsOneWidget);
-    expect(
-      tester
-          .widget<GlassSurface>(
-            find.descendant(
-              of: find.byType(AppIconButton),
-              matching: find.byType(GlassSurface),
-            ),
-          )
-          .preset,
-      GlassSurfacePreset.floating,
-    );
-
-    final floatingDecoration = tester
-        .widgetList<DecoratedBox>(
-          find.descendant(
-            of: find.byType(AppIconButton),
-            matching: find.byType(DecoratedBox),
-          ),
-        )
-        .map((widget) => widget.decoration)
-        .whereType<BoxDecoration>()
-        .firstWhere((value) => value.color == AppGlassTokens.lightFill);
-    expect(floatingDecoration.color!.a, inInclusiveRange(0.90, 0.95));
-    expect(AppGlassTokens.blurSigma, lessThanOrEqualTo(12));
+    expect(find.byType(BackdropFilter), findsNothing);
   });
 
-  testWidgets('AppButton stays opaque and disables press motion on request', (
+  testWidgets('AppButton stays opaque with zero elevation in every state', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -125,14 +102,19 @@ void main() {
     );
 
     expect(find.byType(BackdropFilter), findsNothing);
-    expect(
-      tester.widget<AnimatedScale>(find.byType(AnimatedScale)).duration,
-      Duration.zero,
-    );
-    expect(
-      tester.widget<AnimatedSlide>(find.byType(AnimatedSlide)).duration,
-      Duration.zero,
-    );
+    expect(find.byType(AnimatedScale), findsNothing);
+    expect(find.byType(AnimatedSlide), findsNothing);
+
+    final button = tester.widget<ElevatedButton>(find.byType(ElevatedButton));
+    for (final states in <Set<WidgetState>>[
+      <WidgetState>{},
+      <WidgetState>{WidgetState.pressed},
+      <WidgetState>{WidgetState.hovered},
+      <WidgetState>{WidgetState.focused},
+    ]) {
+      expect(button.style!.elevation!.resolve(states), 0);
+      expect(button.style!.shadowColor!.resolve(states), Colors.transparent);
+    }
   });
 
   testWidgets('LiquidGlassBackground paints a non-flat morning backdrop', (

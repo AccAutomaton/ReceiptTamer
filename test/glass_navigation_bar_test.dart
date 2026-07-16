@@ -1,3 +1,5 @@
+import 'dart:ui' show SemanticsAction;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_navigation_bar.dart';
@@ -21,15 +23,17 @@ void main() {
       label: '发票',
     ),
     GlassNavItem(
-      icon: Icons.info_outline,
-      selectedIcon: Icons.info,
-      label: '关于',
+      icon: Icons.inventory_2_outlined,
+      selectedIcon: Icons.inventory_2,
+      label: '报销',
     ),
   ];
 
-  testWidgets('GlassNavigationBar renders labels and in-island center action', (
+  testWidgets('GlassNavigationBar renders four destinations and side intake', (
     tester,
   ) async {
+    final semantics = tester.ensureSemantics();
+
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -39,7 +43,7 @@ void main() {
               selectedIndex: 0,
               items: items,
               onDestinationSelected: (_) {},
-              onCenterPressed: () {},
+              onIntakePressed: () {},
             ),
           ),
         ),
@@ -49,14 +53,24 @@ void main() {
     expect(find.text('首页'), findsOneWidget);
     expect(find.text('订单'), findsOneWidget);
     expect(find.text('发票'), findsOneWidget);
-    expect(find.text('关于'), findsOneWidget);
-    expect(find.byIcon(Icons.add), findsOneWidget);
+    expect(find.text('报销'), findsOneWidget);
+    expect(find.text('新增'), findsOneWidget);
+    expect(find.byIcon(Icons.add_rounded), findsOneWidget);
+    expect(find.byKey(const ValueKey('glass_nav_center_action')), findsNothing);
 
-    final centerBox = tester.renderObject<RenderBox>(
-      find.byKey(const ValueKey('glass_nav_center_action')),
+    final intakeFinder = find.byKey(const ValueKey('glass_nav_intake_action'));
+    final intakeBox = tester.renderObject<RenderBox>(intakeFinder);
+    expect(intakeBox.size.width, GlassNavigationBar.intakeActionSize);
+    expect(intakeBox.size.height, GlassNavigationBar.intakeActionSize);
+
+    final intakeSemantics = tester.getSemantics(intakeFinder);
+    final intakeSemanticsData = intakeSemantics.getSemanticsData();
+    expect(
+      intakeSemantics.label.split('\n').where((label) => label.isNotEmpty),
+      everyElement('新增'),
     );
-    expect(centerBox.size.width, GlassNavigationBar.centerActionSize);
-    expect(centerBox.size.height, GlassNavigationBar.centerActionSize);
+    expect(intakeSemanticsData.flagsCollection.isButton, isTrue);
+    expect(intakeSemanticsData.hasAction(SemanticsAction.tap), isTrue);
 
     final island = tester.widget<GlassSurface>(
       find.byKey(const ValueKey('glass_nav_island')),
@@ -64,20 +78,31 @@ void main() {
     expect(island.fillColor?.a, closeTo(0.92, 0.002));
     expect(island.blurSigma, lessThanOrEqualTo(12));
     expect(island.preset, GlassSurfacePreset.navigation);
+    expect(island.boxShadow, isNull);
 
-    final centerSurface = tester.widget<GlassSurface>(
-      find
-          .descendant(
-            of: find.byKey(const ValueKey('glass_nav_center_action')),
-            matching: find.byType(GlassSurface),
-          )
-          .first,
+    expect(
+      find.descendant(of: intakeFinder, matching: find.byType(GlassSurface)),
+      findsNothing,
     );
-    expect(centerSurface.blurSigma, 0);
-    expect(centerSurface.preset, GlassSurfacePreset.panel);
+    expect(
+      find.descendant(of: intakeFinder, matching: find.byType(AnimatedSlide)),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: intakeFinder, matching: find.byType(AnimatedScale)),
+      findsNothing,
+    );
+
+    final intakeMaterial = tester.widget<Material>(
+      find.descendant(of: intakeFinder, matching: find.byType(Material)).first,
+    );
+    expect(intakeMaterial.elevation, 0);
+    expect(intakeMaterial.shadowColor, Colors.transparent);
+
+    semantics.dispose();
   });
 
-  testWidgets('GlassNavigationBar follows regular and compact island insets', (
+  testWidgets('GlassNavigationBar keeps side dock geometry at both widths', (
     tester,
   ) async {
     Future<void> pumpAt(Size size) async {
@@ -92,7 +117,7 @@ void main() {
                 selectedIndex: 0,
                 items: items,
                 onDestinationSelected: (_) {},
-                onCenterPressed: () {},
+                onIntakePressed: () {},
               ),
             ),
           ),
@@ -108,40 +133,50 @@ void main() {
 
     await pumpAt(const Size(412, 915));
     var rect = tester.getRect(find.byKey(const ValueKey('glass_nav_island')));
-    var centerRect = tester.getRect(
-      find.byKey(const ValueKey('glass_nav_center_action')),
+    var intakeRect = tester.getRect(
+      find.byKey(const ValueKey('glass_nav_intake_action')),
     );
     expect(rect.left, 14);
-    expect(412 - rect.right, 14);
     expect(915 - rect.bottom, 12);
     expect(rect.height, GlassNavigationBar.islandHeight);
-    expect(centerRect.size, const Size.square(54));
-    expect(centerRect.center.dx, 206);
-    expect(centerRect.center.dy, closeTo(rect.center.dy, 0.5));
-    expect(centerRect.top, greaterThanOrEqualTo(rect.top));
-    expect(centerRect.bottom, lessThanOrEqualTo(rect.bottom));
+    expect(intakeRect.size, const Size.square(72));
+    expect(intakeRect.left - rect.right, GlassNavigationBar.dockGap);
+    expect(412 - intakeRect.right, 14);
+    expect(intakeRect.top, rect.top);
+    expect(intakeRect.bottom, rect.bottom);
+    expect(
+      GlassNavigationBar.contentFadeInset(
+        tester.element(find.byType(GlassNavigationBar)),
+      ),
+      92,
+    );
 
     await pumpAt(const Size(360, 800));
     rect = tester.getRect(find.byKey(const ValueKey('glass_nav_island')));
-    centerRect = tester.getRect(
-      find.byKey(const ValueKey('glass_nav_center_action')),
+    intakeRect = tester.getRect(
+      find.byKey(const ValueKey('glass_nav_intake_action')),
     );
     expect(rect.left, 12);
-    expect(360 - rect.right, 12);
     expect(800 - rect.bottom, 10);
     expect(rect.height, GlassNavigationBar.compactIslandHeight);
-    expect(centerRect.size, const Size.square(51));
-    expect(centerRect.center.dx, 180);
-    expect(centerRect.center.dy, closeTo(rect.center.dy, 0.5));
-    expect(centerRect.top, greaterThanOrEqualTo(rect.top));
-    expect(centerRect.bottom, lessThanOrEqualTo(rect.bottom));
+    expect(intakeRect.size, const Size.square(68));
+    expect(intakeRect.left - rect.right, GlassNavigationBar.dockGap);
+    expect(360 - intakeRect.right, 12);
+    expect(intakeRect.top, rect.top);
+    expect(intakeRect.bottom, rect.bottom);
+    expect(
+      GlassNavigationBar.contentFadeInset(
+        tester.element(find.byType(GlassNavigationBar)),
+      ),
+      86,
+    );
   });
 
-  testWidgets('GlassNavigationBar reports destination and center taps', (
+  testWidgets('GlassNavigationBar reports destination and intake taps', (
     tester,
   ) async {
     int? selected;
-    var centerPressed = false;
+    var intakePressed = false;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -152,7 +187,7 @@ void main() {
               selectedIndex: 0,
               items: items,
               onDestinationSelected: (index) => selected = index,
-              onCenterPressed: () => centerPressed = true,
+              onIntakePressed: () => intakePressed = true,
             ),
           ),
         ),
@@ -162,7 +197,10 @@ void main() {
     await tester.tap(find.text('订单'));
     expect(selected, 1);
 
-    await tester.tap(find.byKey(const ValueKey('glass_nav_center_action')));
-    expect(centerPressed, isTrue);
+    await tester.tap(find.text('报销'));
+    expect(selected, 3);
+
+    await tester.tap(find.byKey(const ValueKey('glass_nav_intake_action')));
+    expect(intakePressed, isTrue);
   });
 }

@@ -10,6 +10,7 @@ import 'package:receipt_tamer/core/services/log_config.dart';
 import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
+import 'package:receipt_tamer/presentation/providers/reimbursement_provider.dart';
 import 'package:receipt_tamer/presentation/screens/export/saved_files_screen.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
@@ -26,8 +27,8 @@ class ExportOptionsScreen extends ConsumerStatefulWidget {
   final List<int> orderIds;
 
   const ExportOptionsScreen({
-    required this.invoiceIds,
-    required this.orderIds,
+    this.invoiceIds = const [],
+    this.orderIds = const [],
     super.key,
   });
 
@@ -60,6 +61,13 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final reimbursement = ref.watch(reimbursementProvider);
+    final effectiveInvoiceIds = widget.invoiceIds.isNotEmpty
+        ? widget.invoiceIds
+        : reimbursement.invoiceIds.toList(growable: false);
+    final effectiveOrderIds = widget.orderIds.isNotEmpty
+        ? widget.orderIds
+        : reimbursement.closureOrderIds.toList(growable: false);
 
     return GlassPageScaffold(
       appBar: AppBar(title: const Text('导出选项'), elevation: 0),
@@ -92,7 +100,7 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${widget.invoiceIds.length} 张发票 · ${widget.orderIds.length} 条订单',
+                            '${effectiveInvoiceIds.length} 张发票 · ${effectiveOrderIds.length} 笔订单',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: colorScheme.onSurfaceVariant,
                             ),
@@ -717,8 +725,8 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
               errors.add('用餐证明：保存到下载目录失败');
             }
           }
-        } catch (e) {
-          errors.add('用餐证明导出失败: $e');
+        } catch (_) {
+          errors.add('用餐证明：导出失败');
         } finally {
           // Clean up temp file
           if (tempPath != null) {
@@ -774,8 +782,8 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
               errors.add('发票：保存到下载目录失败');
             }
           }
-        } catch (e) {
-          errors.add('发票导出失败: $e');
+        } catch (_) {
+          errors.add('发票：导出失败');
         } finally {
           // Clean up temp file
           if (tempPath != null) {
@@ -829,8 +837,8 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
               errors.add('用餐明细：保存到下载目录失败');
             }
           }
-        } catch (e) {
-          errors.add('用餐明细导出失败: $e');
+        } catch (_) {
+          errors.add('用餐明细：导出失败');
         } finally {
           // Clean up temp file
           if (tempPath != null) {
@@ -863,7 +871,7 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
         logService.e(LogConfig.moduleUi, '导出失败', e, stackTrace);
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('导出失败: $e')));
+        ).showSnackBar(const SnackBar(content: Text('导出失败，请重试')));
       }
     } finally {
       if (mounted) {
@@ -877,7 +885,11 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
   /// Get selected invoices from invoice IDs
   Future<List<Invoice>> _getSelectedInvoices() async {
     final invoices = <Invoice>[];
-    for (final id in widget.invoiceIds) {
+    final reimbursement = ref.read(reimbursementProvider);
+    final effectiveInvoiceIds = widget.invoiceIds.isNotEmpty
+        ? widget.invoiceIds
+        : reimbursement.invoiceIds;
+    for (final id in effectiveInvoiceIds) {
       final invoice = await ref
           .read(invoiceProvider.notifier)
           .getInvoiceById(id);

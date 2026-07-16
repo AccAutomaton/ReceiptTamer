@@ -46,7 +46,7 @@ void main() {
     expect(clip.borderRadius, BorderRadius.circular(24));
   });
 
-  testWidgets('panel surface uses an opaque relief entity default', (
+  testWidgets('panel surface uses an opaque flat entity default', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -74,6 +74,14 @@ void main() {
     expect(decoration.borderRadius, BorderRadius.circular(AppRadii.glassLarge));
     expect(decoration.border, isNotNull);
     expect(decoration.gradient, isNull);
+    expect(decoration.boxShadow, isNull);
+    expect(
+      find.descendant(
+        of: find.byType(GlassSurface),
+        matching: find.byType(ColoredBox),
+      ),
+      findsNothing,
+    );
     expect(find.byType(BackdropFilter), findsNothing);
   });
 
@@ -145,6 +153,7 @@ void main() {
           .whereType<BoxDecoration>()
           .firstWhere((value) => value.color == fillColor);
       expect(decoration.color!.a, inInclusiveRange(0.90, 0.95));
+      expect(decoration.boxShadow, isNull);
     }
 
     await pumpPreset(GlassSurfacePreset.floating);

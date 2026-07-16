@@ -387,9 +387,14 @@ object DownloadHelper {
             "${Environment.DIRECTORY_DOWNLOADS}/$BASE_DIR"
         }
 
-        // 查询条件：匹配相对路径
-        val selection = "${MediaStore.Downloads.RELATIVE_PATH} LIKE ?"
-        val selectionArgs = arrayOf("$relativePath%")
+        // 只列出当前目录的直属文件。前缀匹配会把日期子目录中的文件也
+        // 返回到父目录，造成归档页看起来像是重复导出了一份。
+        // MediaStore 通常会规范化为尾随斜杠，同时兼容少数实现保留原值。
+        val normalizedPath = relativePath.trimEnd('/')
+        val selection =
+            "${MediaStore.Downloads.RELATIVE_PATH} IN (?, ?) AND " +
+                "${MediaStore.Downloads.MIME_TYPE} IS NOT NULL"
+        val selectionArgs = arrayOf(normalizedPath, "$normalizedPath/")
 
         val cursor = resolver.query(
             MediaStore.Downloads.EXTERNAL_CONTENT_URI,

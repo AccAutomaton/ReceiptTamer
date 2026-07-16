@@ -9,7 +9,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 /// Deterministic high-volume data used by the ledger performance gates.
 ///
-/// This fixture deliberately mirrors the production version-1 schema instead
+/// This fixture deliberately mirrors the production version-2 schema instead
 /// of going through [DatabaseHelper], whose singleton owns the user's normal
 /// database path. No generated record is persisted outside the temporary test
 /// database.
@@ -239,7 +239,7 @@ class LedgerPerformanceFixture {
       '(${AppConstants.colInvoiceId})',
     );
     await database.execute(
-      'CREATE INDEX idx_invoice_order_relations_order_id '
+      'CREATE UNIQUE INDEX ${InvoiceOrderRelationTable.orderIdUniqueIndexName} '
       'ON ${AppConstants.invoiceOrderRelationsTable}'
       '(${AppConstants.colOrderId})',
     );

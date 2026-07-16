@@ -7,6 +7,13 @@ import 'package:receipt_tamer/core/theme/app_theme.dart';
 const Key ledgerGoldenBoundaryKey = ValueKey('ledger_golden_boundary');
 
 Future<void> loadLedgerGoldenFonts() async {
+  final tinosLoader = FontLoader('Tinos')
+    ..addFont(rootBundle.load('assets/fonts/Tinos-Regular.ttf'))
+    ..addFont(rootBundle.load('assets/fonts/Tinos-Italic.ttf'))
+    ..addFont(rootBundle.load('assets/fonts/Tinos-Bold.ttf'))
+    ..addFont(rootBundle.load('assets/fonts/Tinos-BoldItalic.ttf'));
+  await tinosLoader.load();
+
   const fonts = <String, String>{
     'MaterialIcons': 'fonts/MaterialIcons-Regular.otf',
     'NotoSerifSC': 'assets/fonts/NotoSerifSC-VF.ttf',

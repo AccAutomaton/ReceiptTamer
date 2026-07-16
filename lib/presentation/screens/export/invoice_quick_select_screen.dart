@@ -63,11 +63,7 @@ class _InvoiceQuickSelectScreenState
   @override
   void initState() {
     super.initState();
-    // Default to current month range
-    final now = DateTime.now();
-    _startDate = DateTime(now.year, now.month, 1);
-    _endDate = DateTime(now.year, now.month + 1, 0);
-    // Delay loading to avoid modifying provider during build
+    // 独立发票导出默认查看全部发票；日期在这里仅是可选筛选。
     Future(() => _loadInvoices());
   }
 
@@ -81,22 +77,19 @@ class _InvoiceQuickSelectScreenState
     setState(() => _isLoading = true);
 
     try {
-      // Use searchInvoices to support hasLinkedOrder filter
-      await ref
-          .read(invoiceProvider.notifier)
-          .searchInvoices(
-            startDate: _startDate,
-            endDate: _endDate,
-            hasLinkedOrder:
-                _orderRelationFilter == OrderRelationFilter.withOrder
-                ? true
-                : _orderRelationFilter == OrderRelationFilter.withoutOrder
-                ? false
-                : null,
-          );
-
-      // Get invoices from provider state
-      final invoices = ref.read(invoiceProvider).invoices;
+      // 快捷导出使用局部查询，避免覆盖主发票 Tab 的缓存列表。
+      final repository = ref.read(invoiceRepositoryProvider);
+      final relationFilter =
+          _orderRelationFilter == OrderRelationFilter.withOrder
+          ? true
+          : _orderRelationFilter == OrderRelationFilter.withoutOrder
+          ? false
+          : null;
+      final invoices = await repository.search(
+        startDate: _startDate,
+        endDate: _endDate,
+        hasLinkedOrder: relationFilter,
+      );
 
       // Apply keyword filter if any
       var filteredInvoices = invoices;
@@ -116,42 +109,21 @@ class _InvoiceQuickSelectScreenState
           _searchKeyword.isEmpty) {
         totalCount = filteredInvoices.length;
       } else {
-        // 需要额外查询全部筛选的数量
-        await ref
-            .read(invoiceProvider.notifier)
-            .searchInvoices(
-              startDate: _startDate,
-              endDate: _endDate,
-              hasLinkedOrder: null, // 全部
-            );
-        final allInvoices = ref.read(invoiceProvider).invoices;
+        final allInvoices = await repository.search(
+          startDate: _startDate,
+          endDate: _endDate,
+        );
         // 搜索关键词不影响分母（分母只考虑日期筛选）
         totalCount = allInvoices.length;
-        // 恢复当前筛选的发票列表
-        await ref
-            .read(invoiceProvider.notifier)
-            .searchInvoices(
-              startDate: _startDate,
-              endDate: _endDate,
-              hasLinkedOrder:
-                  _orderRelationFilter == OrderRelationFilter.withOrder
-                  ? true
-                  : _orderRelationFilter == OrderRelationFilter.withoutOrder
-                  ? false
-                  : null,
-            );
       }
 
-      // Load order counts for each invoice
-      final invoiceOrderCounts = <int, int>{};
-      for (final invoice in filteredInvoices) {
-        if (invoice.id != null) {
-          final orderIds = await ref
-              .read(invoiceProvider.notifier)
-              .getOrderIdsForInvoice(invoice.id!);
-          invoiceOrderCounts[invoice.id!] = orderIds.length;
-        }
-      }
+      final invoiceIds = filteredInvoices
+          .map((invoice) => invoice.id)
+          .whereType<int>()
+          .toList();
+      final invoiceOrderCounts = await repository.getOrderCountsForInvoices(
+        invoiceIds,
+      );
 
       if (mounted) {
         setState(() {
@@ -290,6 +262,7 @@ class _InvoiceQuickSelectScreenState
     }
 
     setState(() => _isExporting = true);
+    String? tempPath;
 
     try {
       // Get selected invoices
@@ -318,32 +291,28 @@ class _InvoiceQuickSelectScreenState
       }
 
       // Generate PDF to temp directory
+      final now = DateTime.now();
       final tempDir = await getTemporaryDirectory();
-      final timestamp = DateFormatter.formatStorageWithTime(DateTime.now());
-      final tempPath = '${tempDir.path}/发票_$timestamp.pdf';
+      final timestamp = DateFormatter.formatStorageWithTime(now);
+      final workingPath = '${tempDir.path}/发票_$timestamp.pdf';
+      tempPath = workingPath;
 
       await InvoiceExportService.generateInvoicePdf(
         items: items,
-        outputPath: tempPath,
+        outputPath: workingPath,
         getFilePath: (path) => path,
         showTimeLabel: _showTimeLabel,
         showRemark: _addRemark,
       );
 
       // Copy to download directory
-      final now = DateTime.now();
       final dateDir =
           '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
       final fileService = FileService();
       final savedPath = await fileService.copyToDownloadDirectory(
-        tempPath,
+        workingPath,
         subDir: 'materials/$dateDir',
       );
-
-      // Clean up temp file
-      try {
-        await File(tempPath).delete();
-      } catch (_) {}
 
       logService.i(LogConfig.moduleFile, '发票PDF已保存: $savedPath');
 
@@ -370,6 +339,14 @@ class _InvoiceQuickSelectScreenState
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('导出失败: $e')));
+      }
+    } finally {
+      final workingPath = tempPath;
+      if (workingPath != null) {
+        try {
+          final tempFile = File(workingPath);
+          if (await tempFile.exists()) await tempFile.delete();
+        } catch (_) {}
       }
     }
   }

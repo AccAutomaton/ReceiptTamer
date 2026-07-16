@@ -567,7 +567,7 @@ class _OrderCleanupCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '关联 $invoiceCount 张发票',
+                          '已关联发票',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: colorScheme.primary,
                           ),

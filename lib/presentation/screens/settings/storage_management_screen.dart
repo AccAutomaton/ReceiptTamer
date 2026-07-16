@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../data/services/file_service.dart';
 import '../../widgets/common/app_button.dart';
+import '../../widgets/common/scroll_edge_fog.dart';
 import '../../widgets/common/storage_ring_chart.dart';
 
 class StorageManagementScreen extends StatefulWidget {
@@ -79,91 +80,95 @@ class _StorageManagementScreenState extends State<StorageManagementScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('存储管理')),
-      body: RefreshIndicator(
-        onRefresh: _loadStorageUsage,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '存储占用',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+      body: ScrollEdgeFog(
+        showBottom: false,
+        child: RefreshIndicator(
+          onRefresh: _loadStorageUsage,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '存储占用',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    if (_isLoading)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 40),
-                        child: Center(child: CircularProgressIndicator()),
-                      )
-                    else
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final compact = constraints.maxWidth < 320;
-                          final chartSize = compact ? 128.0 : 160.0;
-                          final chartStrokeWidth = compact ? 14.0 : 16.0;
-                          final gap = compact ? 12.0 : 24.0;
-                          final chart = StorageRingChart(
-                            storageData: _storageUsage,
-                            size: chartSize,
-                            strokeWidth: chartStrokeWidth,
-                          );
-                          final legend = StorageLegend(
-                            storageData: _storageUsage,
-                          );
-                          return Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              chart,
-                              SizedBox(width: gap),
-                              Expanded(
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: legend,
+                      const SizedBox(height: 16),
+                      if (_isLoading)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 40),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      else
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final compact = constraints.maxWidth < 320;
+                            final chartSize = compact ? 128.0 : 160.0;
+                            final chartStrokeWidth = compact ? 14.0 : 16.0;
+                            final gap = compact ? 12.0 : 24.0;
+                            final chart = StorageRingChart(
+                              storageData: _storageUsage,
+                              size: chartSize,
+                              strokeWidth: chartStrokeWidth,
+                            );
+                            final legend = StorageLegend(
+                              storageData: _storageUsage,
+                            );
+                            return Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                chart,
+                                SizedBox(width: gap),
+                                Expanded(
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: legend,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: AppButton(
-                            text: '清理数据',
-                            onPressed: () => context.push('/settings/cleanup'),
-                            type: AppButtonType.outlined,
-                            foregroundColor: theme.colorScheme.error,
-                            borderSide: BorderSide(
-                              color: theme.colorScheme.error.withValues(
-                                alpha: 0.5,
+                              ],
+                            );
+                          },
+                        ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: AppButton(
+                              text: '清理数据',
+                              onPressed: () =>
+                                  context.push('/settings/cleanup'),
+                              type: AppButtonType.outlined,
+                              foregroundColor: theme.colorScheme.error,
+                              borderSide: BorderSide(
+                                color: theme.colorScheme.error.withValues(
+                                  alpha: 0.5,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: AppButton(
-                            text: _isClearingCache ? '清理中...' : '清理缓存',
-                            onPressed: _isClearingCache ? null : _clearCache,
-                            type: AppButtonType.outlined,
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: AppButton(
+                              text: _isClearingCache ? '清理中...' : '清理缓存',
+                              onPressed: _isClearingCache ? null : _clearCache,
+                              type: AppButtonType.outlined,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

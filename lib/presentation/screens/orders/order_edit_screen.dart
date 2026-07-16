@@ -22,6 +22,7 @@ import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/providers/ocr_provider.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_text_field.dart';
+import 'package:receipt_tamer/presentation/widgets/common/scroll_edge_fog.dart';
 import 'package:receipt_tamer/presentation/widgets/order/order_image_preview.dart';
 
 /// Order edit/add screen
@@ -525,217 +526,220 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
         ),
         elevation: 0,
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // Image picker section
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '订单图片',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+      body: ScrollEdgeFog(
+        showBottom: false,
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              // Image picker section
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '订单图片',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    if (_imagePath != null && _imagePath!.isNotEmpty)
-                      OrderImagePreview(imagePath: _imagePath!, height: 200)
-                    else
-                      Container(
-                        height: 200,
-                        decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
+                      const SizedBox(height: 12),
+                      if (_imagePath != null && _imagePath!.isNotEmpty)
+                        OrderImagePreview(imagePath: _imagePath!, height: 200)
+                      else
+                        Container(
+                          height: 200,
+                          decoration: BoxDecoration(
                             color: Theme.of(
                               context,
-                            ).colorScheme.outlineVariant.withValues(alpha: 0.5),
-                            style: BorderStyle.solid,
+                            ).colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .outlineVariant
+                                  .withValues(alpha: 0.5),
+                              style: BorderStyle.solid,
+                            ),
                           ),
-                        ),
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.add_photo_alternate,
-                                size: 48,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant
-                                    .withValues(alpha: 0.5),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                '点击下方按钮选择图片',
-                                style: TextStyle(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.add_photo_alternate,
+                                  size: 48,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant
+                                      .withValues(alpha: 0.5),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _pickImage,
-                            icon: const Icon(Icons.image),
-                            label: const Text('选择图片'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: (_isLoading || isOcrButtonBusy)
-                                ? null
-                                : _handleOCR,
-                            icon: isOcrButtonBusy
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.document_scanner),
-                            label: Text(
-                              isRecognizing
-                                  ? 'OCR 识别中...'
-                                  : isModelLoading
-                                  ? '模型加载中...'
-                                  : AppConstants.btnOCR,
+                                const SizedBox(height: 8),
+                                Text(
+                                  '点击下方按钮选择图片',
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                      ],
-                    ),
-                  ],
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _pickImage,
+                              icon: const Icon(Icons.image),
+                              label: const Text('选择图片'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: (_isLoading || isOcrButtonBusy)
+                                  ? null
+                                  : _handleOCR,
+                              icon: isOcrButtonBusy
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(Icons.document_scanner),
+                              label: Text(
+                                isRecognizing
+                                    ? 'OCR 识别中...'
+                                    : isModelLoading
+                                    ? '模型加载中...'
+                                    : AppConstants.btnOCR,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // OCR提示
-            if (_hasOcrResult)
-              Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.errorContainer,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      color: Theme.of(context).colorScheme.error,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '识别结果可能存在错误，请自行核对识别结果的准确性。',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                          fontSize: 13,
+              // OCR提示
+              if (_hasOcrResult)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.errorContainer,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: Theme.of(context).colorScheme.error,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '识别结果可能存在错误，请自行核对识别结果的准确性。',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                ),
+
+              // Form fields - 按日期、时段、金额、店铺名称、订单号顺序排列
+              AppDateField(
+                label: AppConstants.labelOrderDate,
+                initialValue: _orderDate,
+                onChanged: (date) {
+                  setState(() {
+                    _orderDate = date;
+                  });
+                },
+                required: true,
+              ),
+
+              const SizedBox(height: 16),
+
+              AppSelectField<MealTime>(
+                label: AppConstants.labelMealTime,
+                value: _mealTime,
+                options: MealTime.values,
+                displayValue: (mealTime) =>
+                    DateFormatter.mealTimeToDisplayName(mealTime),
+                onChanged: (value) {
+                  setState(() {
+                    _mealTime = value;
+                  });
+                },
+                required: true,
+              ),
+
+              const SizedBox(height: 16),
+
+              AppAmountField(
+                label: AppConstants.labelAmount,
+                hint: AppConstants.hintAmount,
+                controller: _amountController,
+                required: true,
+              ),
+
+              const SizedBox(height: 16),
+
+              AppTextField(
+                label: AppConstants.labelShopName,
+                hint: AppConstants.hintShopName,
+                controller: _shopNameController,
+                required: false,
+                keyboardType: TextInputType.text,
+                prefixIcon: const Icon(Icons.store),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.arrow_drop_down),
+                  onPressed: _showShopNamePicker,
+                  tooltip: '从历史记录选择',
                 ),
               ),
 
-            // Form fields - 按日期、时段、金额、店铺名称、订单号顺序排列
-            AppDateField(
-              label: AppConstants.labelOrderDate,
-              initialValue: _orderDate,
-              onChanged: (date) {
-                setState(() {
-                  _orderDate = date;
-                });
-              },
-              required: true,
-            ),
+              const SizedBox(height: 16),
 
-            const SizedBox(height: 16),
-
-            AppSelectField<MealTime>(
-              label: AppConstants.labelMealTime,
-              value: _mealTime,
-              options: MealTime.values,
-              displayValue: (mealTime) =>
-                  DateFormatter.mealTimeToDisplayName(mealTime),
-              onChanged: (value) {
-                setState(() {
-                  _mealTime = value;
-                });
-              },
-              required: true,
-            ),
-
-            const SizedBox(height: 16),
-
-            AppAmountField(
-              label: AppConstants.labelAmount,
-              hint: AppConstants.hintAmount,
-              controller: _amountController,
-              required: true,
-            ),
-
-            const SizedBox(height: 16),
-
-            AppTextField(
-              label: AppConstants.labelShopName,
-              hint: AppConstants.hintShopName,
-              controller: _shopNameController,
-              required: false,
-              keyboardType: TextInputType.text,
-              prefixIcon: const Icon(Icons.store),
-              suffixIcon: IconButton(
-                icon: const Icon(Icons.arrow_drop_down),
-                onPressed: _showShopNamePicker,
-                tooltip: '从历史记录选择',
+              AppTextField(
+                label: AppConstants.labelOrderNumber,
+                hint: AppConstants.hintOrderNumber,
+                controller: _orderNumberController,
+                required: false,
+                keyboardType: TextInputType.text,
+                prefixIcon: const Icon(Icons.receipt),
               ),
-            ),
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            AppTextField(
-              label: AppConstants.labelOrderNumber,
-              hint: AppConstants.hintOrderNumber,
-              controller: _orderNumberController,
-              required: false,
-              keyboardType: TextInputType.text,
-              prefixIcon: const Icon(Icons.receipt),
-            ),
+              const SizedBox(height: 24),
 
-            const SizedBox(height: 16),
-
-            const SizedBox(height: 24),
-
-            // Save button
-            AppButton(
-              text: AppConstants.btnSave,
-              onPressed: _handleSave,
-              isLoading: _isLoading,
-              isFullWidth: true,
-              type: AppButtonType.primary,
-            ),
-          ],
+              // Save button
+              AppButton(
+                text: AppConstants.btnSave,
+                onPressed: _handleSave,
+                isLoading: _isLoading,
+                isFullWidth: true,
+                type: AppButtonType.primary,
+              ),
+            ],
+          ),
         ),
       ),
     );

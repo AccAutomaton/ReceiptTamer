@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>报销装订轨 · 范围与导出</title>
+  <link rel="stylesheet" href="shared.css">
+</head>
+<body>
+  <main class="board-page">
+    <header class="board-header">
+      <div>
+        <div class="board-kicker">Exploration · reimbursement loop</div>
+        <h1 class="board-title">03 · 范围由用户决定</h1>
+      </div>
+      <p class="board-note"><b>“报销”用于生成完整材料，进入后才选择范围并检查关系。</b>只需要用餐证明时从首页快捷工作台直接选择订单，不受发票关系限制；完整材料生成后仍可直接再次分享。</p>
+    </header>
+
+    <section class="phone-grid">
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen">
+            <div class="statusbar"><span>10:28</span><span>5G&nbsp;&nbsp;82%</span></div>
+            <header class="appbar with-back">
+              <button class="back-button"><svg class="icon"><use href="icons.svg#i-back"/></svg></button>
+              <div class="appbar-copy"><div class="appbar-eyebrow">第 2 步 / 共 3 步</div><h2 class="screen-title">检查关联</h2></div>
+              <div class="appbar-actions"><button class="icon-button"><svg class="icon"><use href="icons.svg#i-more"/></svg></button></div>
+            </header>
+            <div class="scroll no-nav">
+              <div class="scope-strip">
+                <div class="row-mark"><svg class="icon"><use href="icons.svg#i-calendar"/></svg></div>
+                <div class="copy"><b>2026/07/07—2026/07/11</b><small>按订单日期选择 · 2 笔订单</small></div>
+                <div class="amount"><small>订单合计</small>¥128.64</div>
+              </div>
+              <section class="ticket notched statement" style="margin-top:12px">
+                <div class="statement-head no-stamp"><div><span class="statement-label">检查结果</span><h2><em>1 笔</em>订单未关联</h2><div class="statement-amount">未关联金额 · ¥42.80</div></div></div>
+                <div class="binding-track">
+                  <div class="track-step done"><div class="track-copy"><b>范围内订单</b><small>2 笔 · 已纳入本次检查</small></div><div class="track-value">¥128.64</div></div>
+                  <div class="track-step attention"><div class="track-copy"><b>关联发票</b><small>2 笔订单中 1 笔已关联</small></div><div class="track-value warn">1 / 2 笔</div></div>
+                  <div class="track-step"><div class="track-copy"><b>导出材料</b><small>用餐证明 · 发票 · 用餐明细</small></div><div class="track-value">未检查</div></div>
+                </div>
+              </section>
+              <div class="inline-action"><div class="action-mark"><svg class="icon"><use href="icons.svg#i-store"/></svg></div><div class="copy"><b>青禾餐食 · 测试店</b><small>7月9日 · 午餐 · 未关联发票 ¥42.80</small></div><div class="status-pill pending">去关联</div><svg class="icon"><use href="icons.svg#i-arrow"/></svg></div>
+            </div>
+            <div class="bottom-action"><div class="secondary-button">更改范围</div><div class="primary-button"><svg class="icon"><use href="icons.svg#i-link"/></svg>处理未关联</div></div>
+          </div>
+        </div>
+        <div class="phone-label"><strong>报销 · 选定后才检查</strong><span>装订轨只属于本次导出</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen">
+            <div class="statusbar"><span>10:28</span><span>5G&nbsp;&nbsp;82%</span></div>
+            <header class="appbar with-back">
+              <button class="back-button"><svg class="icon"><use href="icons.svg#i-back"/></svg></button>
+              <div class="appbar-copy"><div class="appbar-eyebrow">第 3 步 / 共 3 步</div><h2 class="screen-title">导出选项</h2></div>
+            </header>
+            <div class="scroll no-nav">
+              <div class="scope-strip">
+                <div class="row-mark"><svg class="icon"><use href="icons.svg#i-calendar"/></svg></div>
+                <div class="copy"><b>2026/07/07—2026/07/11</b><small>2 笔订单 · 2 张发票 · 已完整关联</small></div>
+                <div class="amount"><small>订单合计</small>¥128.64</div>
+              </div>
+              <div class="section-title"><b>将生成的材料</b><span>3 项全选</span></div>
+              <div class="build-track">
+                <div class="build-row">
+                  <div class="row-mark"><svg class="icon"><use href="icons.svg#i-orders"/></svg></div>
+                  <div class="copy"><b>用餐证明 PDF</b><small>订单截图 2×2 排版 · 含分摊金额</small></div>
+                  <div class="toggle"></div>
+                </div>
+                <div class="build-row">
+                  <div class="row-mark info"><svg class="icon"><use href="icons.svg#i-invoice"/></svg></div>
+                  <div class="copy"><b>发票汇总 PDF</b><small>2 张发票 · 显示关联日期与餐时</small></div>
+                  <div class="toggle"></div>
+                </div>
+                <div class="build-row">
+                  <div class="row-mark"><svg class="icon"><use href="icons.svg#i-package"/></svg></div>
+                  <div class="copy"><b>用餐明细 XLSX</b><small>按日期与餐时分类 · 含汇总行</small></div>
+                  <div class="toggle"></div>
+                </div>
+              </div>
+              <div class="section-title"><b>高级选项</b><span>已使用推荐设置</span></div>
+              <div class="filter-strip">
+                <div class="chip active">关系自动闭合</div>
+                <div class="chip">忽略空白日期</div>
+              </div>
+            </div>
+            <div class="bottom-action"><div class="secondary-button">返回修改</div><div class="primary-button"><svg class="icon"><use href="icons.svg#i-download"/></svg>开始导出</div></div>
+          </div>
+        </div>
+        <div class="phone-label"><strong>报销 · 默认三件套</strong><span>复杂分支降为高级选项</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen">
+            <div class="statusbar"><span>10:28</span><span>5G&nbsp;&nbsp;82%</span></div>
+            <header class="appbar">
+              <div class="appbar-copy"><div class="appbar-eyebrow">本次生成</div><h2 class="screen-title">报销</h2></div>
+              <div class="appbar-actions"><button class="icon-button"><svg class="icon"><use href="icons.svg#i-more"/></svg></button></div>
+            </header>
+            <div class="scroll">
+              <section class="archive-banner">
+                <div class="eyebrow">已保存 · 10:26</div>
+                <h2>本次报销材料已生成</h2>
+                <p>范围 2026/07/07—07/11 · 3 个文件已保存</p>
+                <div class="archive-actions"><div class="primary-button"><svg class="icon"><use href="icons.svg#i-share"/></svg>分享全部</div><div class="secondary-button"><svg class="icon"><use href="icons.svg#i-folder"/></svg>打开目录</div></div>
+              </section>
+              <div class="date-divider">今天 · 2026 / 07 / 11</div>
+              <div class="file-list">
+                <div class="file-row"><div class="row-mark info"><svg class="icon"><use href="icons.svg#i-pdf"/></svg></div><div class="row-copy"><b>用餐证明_20260711_1026.pdf</b><div class="file-tags"><span class="file-tag">PDF</span><span class="file-tag">4.2 MB</span></div></div><div class="row-end"><svg class="icon"><use href="icons.svg#i-share"/></svg></div></div>
+                <div class="file-row"><div class="row-mark info"><svg class="icon"><use href="icons.svg#i-pdf"/></svg></div><div class="row-copy"><b>发票_20260711_1026.pdf</b><div class="file-tags"><span class="file-tag">PDF</span><span class="file-tag">3.8 MB</span></div></div><div class="row-end"><svg class="icon"><use href="icons.svg#i-share"/></svg></div></div>
+                <div class="file-row"><div class="row-mark"><svg class="icon"><use href="icons.svg#i-package"/></svg></div><div class="row-copy"><b>用餐明细_20260711_1026.xlsx</b><div class="file-tags"><span class="file-tag">XLSX</span><span class="file-tag">28 KB</span></div></div><div class="row-end"><svg class="icon"><use href="icons.svg#i-share"/></svg></div></div>
+              </div>
+            </div>
+            <nav class="bottom-nav">
+              <div class="nav-item"><span><svg class="icon"><use href="icons.svg#i-home"/></svg>首页</span></div>
+              <div class="nav-item"><span><svg class="icon"><use href="icons.svg#i-orders"/></svg>订单</span></div>
+              <div class="nav-item"><span><svg class="icon"><use href="icons.svg#i-invoice"/></svg>发票</span></div>
+              <div class="nav-item active"><span><svg class="icon"><use href="icons.svg#i-package"/></svg>报销</span></div>
+            </nav>
+            <div class="intake-dock"><svg class="icon"><use href="icons.svg#i-plus"/></svg><span>新增</span></div>
+          </div>
+        </div>
+        <div class="phone-label"><strong>已导出 · 生成后仍可找回</strong><span>文件名、类型与分享同屏</span></div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

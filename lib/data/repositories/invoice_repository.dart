@@ -35,15 +35,7 @@ class InvoiceRepository {
     // Create order relations if provided
     if (orderIds != null && orderIds.isNotEmpty) {
       final relationTable = await _relationTable;
-
-      // For each order, remove any existing relation with other invoices first
-      // This ensures one order can only have one invoice
-      for (final orderId in orderIds) {
-        await relationTable.deleteByOrderId(orderId);
-      }
-
-      // Now insert the new relations
-      await relationTable.insertRelationsForInvoice(id, orderIds);
+      await relationTable.replaceRelationsForInvoice(id, orderIds);
     }
 
     return id;
@@ -59,37 +51,7 @@ class InvoiceRepository {
     // Update order relations if provided
     if (orderIds != null && invoice.id != null) {
       final relationTable = await _relationTable;
-
-      // Get current order IDs for this invoice
-      final currentOrderIds = await relationTable.getOrderIdsForInvoice(
-        invoice.id!,
-      );
-
-      // Find orders to remove (in current but not in new list)
-      final ordersToRemove = currentOrderIds
-          .where((id) => !orderIds.contains(id))
-          .toList();
-      // Find orders to add (in new list but not in current)
-      final ordersToAdd = orderIds
-          .where((id) => !currentOrderIds.contains(id))
-          .toList();
-
-      // Remove orders that are no longer selected
-      for (final orderId in ordersToRemove) {
-        await relationTable.deleteRelation(invoice.id!, orderId);
-      }
-
-      // For new orders, first remove any existing relations with other invoices,
-      // then add the new relation. This ensures one order can only have one invoice.
-      for (final orderId in ordersToAdd) {
-        // Remove any existing relation this order has with other invoices
-        await relationTable.deleteByOrderId(orderId);
-      }
-
-      // Insert new relations
-      if (ordersToAdd.isNotEmpty) {
-        await relationTable.insertRelationsForInvoice(invoice.id!, ordersToAdd);
-      }
+      await relationTable.replaceRelationsForInvoice(invoice.id!, orderIds);
     }
 
     return await table.update(
@@ -126,6 +88,12 @@ class InvoiceRepository {
   Future<List<Invoice>> getAll({int? limit, int? offset}) async {
     final table = await _invoiceTable;
     return await table.getAll(limit: limit, offset: offset);
+  }
+
+  /// Get the latest invoices by collection time for the home archive.
+  Future<List<Invoice>> getRecentlyCreated({int limit = 10}) async {
+    final table = await _invoiceTable;
+    return table.getRecentlyCreated(limit: limit);
   }
 
   /// Read-only month index used by the virtualized ledger and fast scroller.
@@ -268,34 +236,7 @@ class InvoiceRepository {
   /// This ensures one order can only be associated with one invoice at a time.
   Future<void> updateOrderRelations(int invoiceId, List<int> orderIds) async {
     final relationTable = await _relationTable;
-
-    // Get current order IDs for this invoice
-    final currentOrderIds = await relationTable.getOrderIdsForInvoice(
-      invoiceId,
-    );
-
-    // Find orders to remove and add
-    final ordersToRemove = currentOrderIds
-        .where((id) => !orderIds.contains(id))
-        .toList();
-    final ordersToAdd = orderIds
-        .where((id) => !currentOrderIds.contains(id))
-        .toList();
-
-    // Remove orders that are no longer selected
-    for (final orderId in ordersToRemove) {
-      await relationTable.deleteRelation(invoiceId, orderId);
-    }
-
-    // For new orders, remove any existing relations with other invoices first
-    for (final orderId in ordersToAdd) {
-      await relationTable.deleteByOrderId(orderId);
-    }
-
-    // Insert new relations
-    if (ordersToAdd.isNotEmpty) {
-      await relationTable.insertRelationsForInvoice(invoiceId, ordersToAdd);
-    }
+    await relationTable.replaceRelationsForInvoice(invoiceId, orderIds);
   }
 
   /// Get seller names with count, ordered by count (highest first)

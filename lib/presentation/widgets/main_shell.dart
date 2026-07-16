@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:receipt_tamer/data/services/update_preferences.dart';
 import 'package:receipt_tamer/data/services/update_service.dart';
+import 'package:receipt_tamer/data/services/share_handler_service.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_bottom_sheet.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_navigation_bar.dart';
 import 'package:receipt_tamer/presentation/widgets/common/liquid_glass_background.dart';
@@ -29,7 +30,7 @@ class _MainShellState extends ConsumerState<MainShell>
   /// Path of the downloaded APK file (for cleanup after install)
   String? _downloadedApkPath;
 
-  // Navigation destinations (excluding the center FAB)
+  // 四个连续的业务目的地；新增入口独立放在右侧。
   static const _destinations = [
     _NavDestination(
       path: '/',
@@ -50,10 +51,10 @@ class _MainShellState extends ConsumerState<MainShell>
       label: '发票',
     ),
     _NavDestination(
-      path: '/settings',
-      icon: Icons.info_outline,
-      selectedIcon: Icons.info,
-      label: '关于',
+      path: '/export',
+      icon: Icons.inventory_2_outlined,
+      selectedIcon: Icons.inventory_2,
+      label: '报销',
     ),
   ];
 
@@ -65,6 +66,11 @@ class _MainShellState extends ConsumerState<MainShell>
   }
 
   void _onAddPressed() {
+    final shareHandler = ShareHandlerService();
+    final pendingItems = shareHandler.pendingSharedMedia ?? const [];
+    final pendingImages = pendingItems.where((item) => item.isImage).length;
+    final pendingPdfs = pendingItems.where((item) => item.isPdf).length;
+
     showGlassBottomSheet<void>(
       context: context,
       builder: (context) => GlassBottomSheet(
@@ -83,10 +89,40 @@ class _MainShellState extends ConsumerState<MainShell>
                 borderRadius: BorderRadius.circular(999),
               ),
             ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '新增',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (pendingItems.isNotEmpty) ...[
+              GlassActionTile(
+                key: const ValueKey('resume_shared_media'),
+                icon: Icons.move_to_inbox_outlined,
+                title: '待处理文件',
+                subtitle: '图片 $pendingImages · PDF $pendingPdfs',
+                onTap: () {
+                  Navigator.pop(context);
+                  context.push('/share');
+                },
+              ),
+              const SizedBox(height: 6),
+            ],
             GlassActionTile(
               icon: Icons.receipt_long,
               title: '添加订单',
-              subtitle: '通过订单截图导入',
+              subtitle: '导入订单截图',
               onTap: () {
                 Navigator.pop(context);
                 context.push('/orders/new');
@@ -96,7 +132,7 @@ class _MainShellState extends ConsumerState<MainShell>
             GlassActionTile(
               icon: Icons.description,
               title: '添加发票',
-              subtitle: '通过图片或PDF导入',
+              subtitle: '导入图片或 PDF',
               onTap: () {
                 Navigator.pop(context);
                 context.push('/invoices/new');
@@ -111,7 +147,7 @@ class _MainShellState extends ConsumerState<MainShell>
   /// 处理返回键：在主页面时将应用移到后台
   Future<bool> _handleBackPress() async {
     final now = DateTime.now();
-    // 检查是否在主Tab页面（首页、订单、发票、设置）
+    // 检查是否在主 Tab 页面（首页、订单、发票、报销）
     final state = GoRouterState.of(context);
     final location = state.matchedLocation;
     final isMainTab = _destinations.any((d) => d.path == location);
@@ -259,7 +295,7 @@ class _MainShellState extends ConsumerState<MainShell>
                     ),
                 ],
                 onDestinationSelected: _onDestinationSelected,
-                onCenterPressed: _onAddPressed,
+                onIntakePressed: _onAddPressed,
               ),
             ),
           ],

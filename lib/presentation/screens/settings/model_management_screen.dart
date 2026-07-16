@@ -9,6 +9,7 @@ import '../../../data/services/model_asset_service.dart';
 import '../../../data/services/openai_compatible_backend.dart';
 import '../../providers/ocr_provider.dart';
 import '../../widgets/common/app_text_field.dart';
+import '../../widgets/common/scroll_edge_fog.dart';
 
 enum _ModelInstallChoice { importZip, downloadHfMirror, downloadHuggingFace }
 
@@ -706,15 +707,18 @@ class _ModelManagementScreenState extends ConsumerState<ModelManagementScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('模型管理')),
-      body: RefreshIndicator(
-        onRefresh: _loadState,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _buildLocalModelCard(),
-            const SizedBox(height: 16),
-            _buildExternalModelCard(),
-          ],
+      body: ScrollEdgeFog(
+        showBottom: false,
+        child: RefreshIndicator(
+          onRefresh: _loadState,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _buildLocalModelCard(),
+              const SizedBox(height: 16),
+              _buildExternalModelCard(),
+            ],
+          ),
         ),
       ),
     );

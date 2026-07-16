@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
+import 'package:receipt_tamer/presentation/widgets/common/scroll_edge_fog.dart';
 
 typedef FloatingOverlayBodyBuilder =
     Widget Function(BuildContext context, EdgeInsets contentPadding);
@@ -17,6 +18,8 @@ class FloatingOverlayLayout extends StatefulWidget {
     this.overlayPadding = const EdgeInsets.all(12),
     this.topSpacing = 8,
     this.bottomSpacing = 8,
+    this.wrapTopInSurface = true,
+    this.wrapBottomInSurface = true,
   });
 
   final FloatingOverlayBodyBuilder bodyBuilder;
@@ -27,6 +30,8 @@ class FloatingOverlayLayout extends StatefulWidget {
   final EdgeInsetsGeometry overlayPadding;
   final double topSpacing;
   final double bottomSpacing;
+  final bool wrapTopInSurface;
+  final bool wrapBottomInSurface;
 
   @override
   State<FloatingOverlayLayout> createState() => _FloatingOverlayLayoutState();
@@ -55,7 +60,17 @@ class _FloatingOverlayLayoutState extends State<FloatingOverlayLayout> {
 
     return Stack(
       children: [
-        Positioned.fill(child: widget.bodyBuilder(context, contentPadding)),
+        Positioned.fill(
+          child: ScrollEdgeFog(
+            // 页面 body 已位于 AppBar 下方；即使没有额外的浮动顶控件，
+            // 滚动内容也应在视口顶部自然淡入。
+            showTop: true,
+            showBottom: widget.bottom != null,
+            topInset: contentPadding.top,
+            bottomInset: contentPadding.bottom,
+            child: widget.bodyBuilder(context, contentPadding),
+          ),
+        ),
         if (widget.top != null)
           Positioned(
             top: 0,
@@ -63,10 +78,11 @@ class _FloatingOverlayLayoutState extends State<FloatingOverlayLayout> {
             right: 0,
             child: _MeasureSize(
               onChange: _setTopSize,
-              child: _buildOverlaySurface(
+              child: _buildOverlay(
                 context: context,
                 margin: widget.topMargin,
                 child: widget.top!,
+                wrapInSurface: widget.wrapTopInSurface,
               ),
             ),
           ),
@@ -77,14 +93,34 @@ class _FloatingOverlayLayoutState extends State<FloatingOverlayLayout> {
             bottom: 0,
             child: _MeasureSize(
               onChange: _setBottomSize,
-              child: _buildOverlaySurface(
+              child: _buildOverlay(
                 context: context,
                 margin: _bottomMarginFor(context),
                 child: widget.bottom!,
+                wrapInSurface: widget.wrapBottomInSurface,
               ),
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildOverlay({
+    required BuildContext context,
+    required EdgeInsetsGeometry margin,
+    required Widget child,
+    required bool wrapInSurface,
+  }) {
+    if (wrapInSurface) {
+      return _buildOverlaySurface(
+        context: context,
+        margin: margin,
+        child: child,
+      );
+    }
+
+    return RepaintBoundary(
+      child: Padding(padding: margin, child: child),
     );
   }
 

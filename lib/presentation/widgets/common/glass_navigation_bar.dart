@@ -14,50 +14,65 @@ class GlassNavItem {
   final String label;
 }
 
+/// 主导航与新增收件入口组成的底部工作台。
+///
+/// 四个业务目的地保持连续，新增入口作为右侧独立实体侧键呈现，避免打断
+/// “首页 → 订单 → 发票 → 报销”的信息结构。
 class GlassNavigationBar extends StatelessWidget {
   const GlassNavigationBar({
     super.key,
     required this.selectedIndex,
     required this.items,
     required this.onDestinationSelected,
-    required this.onCenterPressed,
-  }) : assert(items.length == 4, 'GlassNavigationBar expects four tab items.');
+    this.onIntakePressed,
+    @Deprecated('请改用 onIntakePressed。') this.onCenterPressed,
+  }) : assert(items.length == 4, 'GlassNavigationBar expects four tab items.'),
+       assert(
+         onIntakePressed != null || onCenterPressed != null,
+         '必须提供新增收件入口回调。',
+       );
 
   final int selectedIndex;
   final List<GlassNavItem> items;
   final ValueChanged<int> onDestinationSelected;
-  final VoidCallback onCenterPressed;
+  final VoidCallback? onIntakePressed;
+
+  /// 迁移期兼容旧调用点；视觉上不再存在中央按钮。
+  @Deprecated('请改用 onIntakePressed。')
+  final VoidCallback? onCenterPressed;
 
   static const double islandHeight = 72;
   static const double compactIslandHeight = 68;
-  static const double centerActionSize = 54;
-  static const double compactCenterActionSize = 51;
+  static const double intakeActionSize = 72;
+  static const double compactIntakeActionSize = 68;
+  static const double dockGap = 8;
+  static const double contentFadeGap = 8;
+
+  /// Vertical area that scrolling content must clear before reaching the dock.
+  ///
+  /// It mirrors this widget's compact geometry and [SafeArea] minimum, then
+  /// leaves a small paper-colored gap so the fade finishes just above the dock.
+  static double contentFadeInset(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width <= 360;
+    final dockHeight = compact ? compactIslandHeight : islandHeight;
+    final minimumBottomInset = compact ? 10.0 : 12.0;
+    final safeBottomInset = MediaQuery.viewPaddingOf(context).bottom;
+    final dockBottomInset = safeBottomInset > minimumBottomInset
+        ? safeBottomInset
+        : minimumBottomInset;
+
+    return dockHeight + dockBottomInset + contentFadeGap;
+  }
+
+  VoidCallback get _effectiveIntakePressed =>
+      onIntakePressed ?? onCenterPressed!;
 
   @override
   Widget build(BuildContext context) {
-    final mediaSize = MediaQuery.sizeOf(context);
-    final compact = mediaSize.width <= 360;
+    final compact = MediaQuery.sizeOf(context).width <= 360;
     final horizontalInset = compact ? 12.0 : 14.0;
     final bottomInset = compact ? 10.0 : 12.0;
-    final effectiveIslandHeight = compact ? compactIslandHeight : islandHeight;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final navShadow = [
-      BoxShadow(
-        color: AppPalette.shadowDeep.withValues(alpha: isDark ? 0.34 : 0.18),
-        blurRadius: 24,
-        spreadRadius: -6,
-        offset: const Offset(0, 10),
-      ),
-      BoxShadow(
-        color: AppPalette.actionOutlineFor(
-          context,
-          alpha: isDark ? 0.10 : 0.08,
-        ),
-        blurRadius: 14,
-        spreadRadius: -8,
-        offset: const Offset(0, 1),
-      ),
-    ];
+    final height = compact ? compactIslandHeight : islandHeight;
 
     return SafeArea(
       top: false,
@@ -68,166 +83,108 @@ class GlassNavigationBar extends StatelessWidget {
         bottomInset,
       ),
       child: SizedBox(
+        key: const ValueKey('main_bottom_dock'),
         width: double.infinity,
-        height: effectiveIslandHeight,
-        child: RepaintBoundary(
-          child: GlassSurface(
-            key: const ValueKey('glass_nav_island'),
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(compact ? 24 : 26),
-              bottom: Radius.circular(compact ? 18 : 20),
-            ),
-            fillColor: AppGlassTokens.panelFillFor(context),
-            blurSigma: 12,
-            preset: GlassSurfacePreset.navigation,
-            boxShadow: navShadow,
-            edgeIntensity: 0.44,
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                compact ? 7 : 9,
-                compact ? 6 : 7,
-                compact ? 7 : 9,
-                compact ? 7 : 8,
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _NavButton(
-                      index: 0,
-                      item: items[0],
-                      selectedIndex: selectedIndex,
-                      onTap: onDestinationSelected,
-                    ),
-                  ),
-                  Expanded(
-                    child: _NavButton(
-                      index: 1,
-                      item: items[1],
-                      selectedIndex: selectedIndex,
-                      onTap: onDestinationSelected,
-                    ),
-                  ),
-                  SizedBox(
-                    width: compact ? 62 : 68,
-                    child: Center(
-                      child: _CenterAction(
-                        size: compact
-                            ? compactCenterActionSize
-                            : centerActionSize,
-                        onPressed: onCenterPressed,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: _NavButton(
-                      index: 2,
-                      item: items[2],
-                      selectedIndex: selectedIndex,
-                      onTap: onDestinationSelected,
-                    ),
-                  ),
-                  Expanded(
-                    child: _NavButton(
-                      index: 3,
-                      item: items[3],
-                      selectedIndex: selectedIndex,
-                      onTap: onDestinationSelected,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CenterAction extends StatefulWidget {
-  const _CenterAction({required this.size, required this.onPressed});
-
-  final double size;
-  final VoidCallback onPressed;
-
-  @override
-  State<_CenterAction> createState() => _CenterActionState();
-}
-
-class _CenterActionState extends State<_CenterAction> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final primary = AppPalette.actionPrimaryFor(context);
-    final reduceMotion = AppMotion.reduceMotion(context);
-    final showPressedState = _pressed && !reduceMotion;
-    final ridgeColor = Color.alphaBlend(
-      Colors.black.withValues(alpha: 0.22),
-      primary,
-    );
-    final faceRadius = widget.size <= 51 ? 15.0 : 16.0;
-
-    return AnimatedSlide(
-      duration: AppMotion.adaptive(context, AppMotion.fast),
-      curve: Curves.easeOutCubic,
-      offset: showPressedState ? const Offset(0, 0.035) : Offset.zero,
-      child: AnimatedScale(
-        duration: AppMotion.adaptive(context, AppMotion.fast),
-        curve: Curves.easeOutCubic,
-        scale: showPressedState ? 0.96 : 1,
-        child: SizedBox(
-          key: const ValueKey('glass_nav_center_action'),
-          width: widget.size,
-          height: widget.size,
-          child: RepaintBoundary(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: ridgeColor,
-                borderRadius: BorderRadius.circular(faceRadius + 1),
-                boxShadow: [
-                  BoxShadow(
-                    color: primary.withValues(alpha: 0.24),
-                    blurRadius: 14,
-                    spreadRadius: -4,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 3),
+        height: height,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: RepaintBoundary(
                 child: GlassSurface(
-                  borderRadius: BorderRadius.circular(faceRadius),
-                  fillColor: primary,
-                  borderColor: colorScheme.onPrimary.withValues(alpha: 0.48),
-                  blurSigma: 0,
-                  preset: GlassSurfacePreset.panel,
-                  boxShadow: const [],
-                  edgeIntensity: 0.48,
-                  child: Material(
-                    color: Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(faceRadius),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(faceRadius),
-                      onHighlightChanged: (pressed) {
-                        if (_pressed == pressed) return;
-                        setState(() => _pressed = pressed);
-                      },
-                      onTap: widget.onPressed,
-                      child: Icon(
-                        Icons.add,
-                        color: colorScheme.onPrimary,
-                        size: 28,
-                      ),
+                  key: const ValueKey('glass_nav_island'),
+                  borderRadius: BorderRadius.circular(compact ? 23 : 25),
+                  fillColor: AppGlassTokens.panelFillFor(context),
+                  blurSigma: 10,
+                  preset: GlassSurfacePreset.navigation,
+                  child: Padding(
+                    padding: const EdgeInsets.all(7),
+                    child: Row(
+                      children: [
+                        for (var index = 0; index < items.length; index++)
+                          Expanded(
+                            child: _NavButton(
+                              index: index,
+                              item: items[index],
+                              selectedIndex: selectedIndex,
+                              compact: compact,
+                              onTap: onDestinationSelected,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ),
               ),
             ),
+            const SizedBox(width: dockGap),
+            _IntakeAction(
+              size: compact ? compactIntakeActionSize : intakeActionSize,
+              onPressed: _effectiveIntakePressed,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _IntakeAction extends StatelessWidget {
+  const _IntakeAction({required this.size, required this.onPressed});
+
+  final double size;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final primary = AppPalette.actionPrimaryFor(context);
+    final compact = size <= GlassNavigationBar.compactIntakeActionSize;
+    final radius = compact ? 20.0 : 22.0;
+
+    return Semantics(
+      button: true,
+      label: '新增',
+      child: Tooltip(
+        message: '新增订单或发票',
+        child: SizedBox.square(
+          key: const ValueKey('glass_nav_intake_action'),
+          dimension: size,
+          child: Material(
+            color: primary,
+            elevation: 0,
+            shadowColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(radius),
+              side: BorderSide(
+                color: colorScheme.onPrimary.withValues(alpha: 0.32),
+              ),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: onPressed,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.add_rounded,
+                    color: colorScheme.onPrimary,
+                    size: compact ? 23 : 24,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '新增',
+                    maxLines: 1,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onPrimary,
+                      fontWeight: FontWeight.w700,
+                      height: 1,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -235,113 +192,71 @@ class _CenterActionState extends State<_CenterAction> {
   }
 }
 
-class _NavButton extends StatefulWidget {
+class _NavButton extends StatelessWidget {
   const _NavButton({
     required this.index,
     required this.item,
     required this.selectedIndex,
+    required this.compact,
     required this.onTap,
   });
 
   final int index;
   final GlassNavItem item;
   final int selectedIndex;
+  final bool compact;
   final ValueChanged<int> onTap;
 
   @override
-  State<_NavButton> createState() => _NavButtonState();
-}
-
-class _NavButtonState extends State<_NavButton> {
-  bool _pressed = false;
-
-  @override
   Widget build(BuildContext context) {
-    final selected = widget.index == widget.selectedIndex;
+    final selected = index == selectedIndex;
     final selectedColor = AppPalette.actionPrimaryFor(context);
     final unselectedColor = AppPalette.actionSecondaryFor(context);
-    final unselectedIconColor = unselectedColor.withValues(alpha: 0.82);
-    final reduceMotion = AppMotion.reduceMotion(context);
-    final showPressedState = _pressed && !reduceMotion;
+    final radius = compact ? 15.0 : 17.0;
 
-    return AnimatedScale(
-      duration: AppMotion.adaptive(context, AppMotion.fast),
-      curve: Curves.easeOutCubic,
-      scale: showPressedState ? 0.97 : 1,
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: item.label,
+      excludeSemantics: true,
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(radius),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onHighlightChanged: (pressed) {
-            if (_pressed == pressed) return;
-            setState(() => _pressed = pressed);
-          },
-          onTap: () => widget.onTap(widget.index),
+          borderRadius: BorderRadius.circular(radius),
+          onTap: () => onTap(index),
           child: AnimatedContainer(
             duration: AppMotion.adaptive(
               context,
               const Duration(milliseconds: 180),
             ),
             curve: Curves.easeOutCubic,
-            height: 54,
+            height: compact ? 50 : 54,
             decoration: BoxDecoration(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(14),
+              color: selected
+                  ? AppPalette.selectedFillFor(context)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(radius),
             ),
-            child: Stack(
-              alignment: Alignment.center,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                AnimatedPositioned(
-                  duration: AppMotion.adaptive(
-                    context,
-                    const Duration(milliseconds: 180),
-                  ),
-                  curve: Curves.easeOutCubic,
-                  top: selected ? 1 : -4,
-                  child: AnimatedOpacity(
-                    duration: AppMotion.adaptive(
-                      context,
-                      const Duration(milliseconds: 180),
-                    ),
-                    opacity: selected ? 1 : 0,
-                    child: Container(
-                      width: 20,
-                      height: 3,
-                      decoration: BoxDecoration(
-                        color: selectedColor,
-                        borderRadius: BorderRadius.circular(99),
-                        boxShadow: [
-                          BoxShadow(
-                            color: selectedColor.withValues(alpha: 0.28),
-                            blurRadius: 7,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                Icon(
+                  selected ? item.selectedIcon : item.icon,
+                  size: 19,
+                  color: selected ? selectedColor : unselectedColor,
                 ),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      selected ? widget.item.selectedIcon : widget.item.icon,
-                      size: 20,
-                      color: selected ? selectedColor : unselectedIconColor,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      widget.item.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: selected ? selectedColor : unselectedColor,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 2),
+                Text(
+                  item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: selected ? selectedColor : unselectedColor,
+                    fontWeight: FontWeight.w700,
+                    height: 1,
+                  ),
                 ),
               ],
             ),

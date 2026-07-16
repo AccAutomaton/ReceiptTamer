@@ -1,13 +1,14 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "contentBaseline": {
-    "sourceCommit": "ce04b3c6457f444645a4bd6cca98d5e71707115d",
-    "policy": "keep_page_content_copy_routes_and_features_unchanged"
+    "id": "reimbursement_binding_approved",
+    "design": "docs/design/reimbursement-binding-preview",
+    "policy": "preserve_confirmed_navigation_shortcuts_range_semantics_and_relationship_checks"
   },
   "visualStyle": {
-    "id": "morning_mist_ledger",
-    "name": "晨雾账簿",
-    "scope": "visual_skin_only"
+    "id": "reimbursement_binding_serif",
+    "name": "报销装订轨",
+    "scope": "approved_information_architecture_and_visual_system"
   },
   "fixedClock": "2026-07-10T10:24:00+08:00",
   "fixture": "ledger_july_redacted_v1",
@@ -31,29 +32,29 @@
       "location": "/",
       "title": "首页",
       "fixture": "ledger_july_redacted_v1",
-      "states": ["ready", "initial-loading", "recent-orders-empty", "refresh-failure", "dark"]
+      "states": ["ready", "initial-loading", "recent-orders-empty", "ten-recent-orders", "refresh-failure", "dark"]
     },
     {
       "id": "02-orders",
       "kind": "route",
       "location": "/orders",
-      "title": "订单管理",
+      "title": "订单列表",
       "fixture": "ledger_july_redacted_v1",
-      "states": ["ready", "initial-loading", "search-dialog", "filter-sheet", "empty", "error", "month-fast-scroll"]
+      "states": ["ready", "initial-loading", "search-dialog", "filter-sheet", "month-filter", "clear-filter", "sticky-month", "empty", "error", "month-fast-scroll"]
     },
     {
       "id": "03-invoices",
       "kind": "route",
       "location": "/invoices",
-      "title": "发票管理",
+      "title": "发票列表",
       "fixture": "ledger_july_redacted_v1",
-      "states": ["ready", "initial-loading", "search-dialog", "filter-sheet", "order-filter", "empty", "error", "month-fast-scroll"]
+      "states": ["ready", "initial-loading", "search-dialog", "filter-sheet", "month-filter", "clear-filter", "sticky-month", "order-filter", "empty", "error", "month-fast-scroll"]
     },
     {
       "id": "04-settings",
       "kind": "route",
       "location": "/settings",
-      "title": "关于",
+      "title": "设置",
       "fixture": "ledger_july_redacted_v1",
       "states": ["ready", "checking-update", "update-available", "dark"]
     },
@@ -129,12 +130,20 @@
       "states": ["ready", "image-source", "pdf-source", "ocr-running", "duplicate-number-confirm", "order-selection", "saving", "save-error", "dark"]
     },
     {
-      "id": "13-export-mode",
+      "id": "13-reimbursement",
       "kind": "route",
       "location": "/export",
-      "title": "导出报销材料",
+      "title": "报销",
       "fixture": "ledger_july_redacted_v1",
-      "states": ["invoice-mode", "order-mode", "dark"]
+      "states": ["no-range", "range-draft", "archive-empty", "archive-ready", "dark"]
+    },
+    {
+      "id": "13a-reimbursement-check",
+      "kind": "route",
+      "location": "/export/check",
+      "title": "检查关联",
+      "fixture": "ledger_july_redacted_v1",
+      "states": ["loading", "empty-range", "unlinked-blocked", "outside-closure", "ready", "error"]
     },
     {
       "id": "14-export-invoices",
@@ -155,7 +164,7 @@
     {
       "id": "16-export-options",
       "kind": "route",
-      "location": "/export/options?invoiceIds=201&orderIds=101,102",
+      "location": "/export/options",
       "routePattern": "/export/options",
       "title": "导出选项",
       "fixture": "ledger_july_redacted_v1",
@@ -267,13 +276,13 @@
       "states": ["loading", "root", "directories", "files", "empty", "share", "share-failure"]
     },
     {
-      "id": "30-add-receipt-sheet",
+      "id": "30-receipt-intake-sheet",
       "kind": "overlay",
-      "location": "sheet://add-receipt",
-      "title": "添加订单 / 添加发票面板",
+      "location": "sheet://receipt-intake",
+      "title": "新增",
       "fixture": "ledger_july_redacted_v1",
-      "notes": "仅包含 ce04b3c 原有的“添加订单 / 通过订单截图导入”和“添加发票 / 通过图片或PDF导入”",
-      "states": ["two-original-actions", "compact", "dark"]
+      "notes": "包含待处理分享资料恢复、添加订单和添加发票入口",
+      "states": ["two-actions", "pending-share", "compact", "dark"]
     }
   ]
 }

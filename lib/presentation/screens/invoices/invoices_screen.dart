@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:receipt_tamer/core/constants/app_constants.dart';
 import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
+import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/order.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
@@ -12,11 +12,13 @@ import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/empty_state.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_bottom_sheet.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_navigation_bar.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_search_dialog.dart';
+import 'package:receipt_tamer/presentation/widgets/common/ledger_month_sheet.dart';
+import 'package:receipt_tamer/presentation/widgets/common/scroll_edge_fog.dart';
 import 'package:receipt_tamer/presentation/widgets/common/syncfusion_month_range_picker.dart';
-import 'package:receipt_tamer/presentation/widgets/invoice/invoice_card.dart';
+import 'package:receipt_tamer/presentation/widgets/invoice/invoice_ledger_row.dart';
 import 'package:receipt_tamer/presentation/widgets/invoice/invoice_month_group.dart';
-import 'package:receipt_tamer/presentation/widgets/invoice/invoice_month_section_header.dart';
 import 'package:receipt_tamer/presentation/widgets/order/month_fast_scroll_bar.dart';
 
 /// Invoices screen - displays list of all invoices grouped by month
@@ -31,12 +33,20 @@ class InvoicesScreen extends ConsumerStatefulWidget {
 
 class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
   final ScrollController _scrollController = ScrollController();
+  final Map<String, GlobalKey> _monthAnchors = {};
   Order? _filterOrder;
   List<InvoiceMonthGroup> _monthGroups = [];
   Map<int, int> _invoiceOrderCounts = {}; // invoiceId -> order count
   InvoiceState? _invoiceOrderCountState;
   List<int> _invoiceOrderCountIds = const [];
   Future<Map<int, int>>? _invoiceOrderCountsFuture;
+  _InvoiceLedgerFilter _activeFilter = _InvoiceLedgerFilter.all;
+  MonthRangeResult? _selectedMonthRange;
+  String? _activeSearchQuery;
+  bool _isTodayFilter = false;
+  int _knownTotalCount = 0;
+  int _knownLinkedCount = 0;
+  int _monthJumpRequest = 0;
 
   @override
   void initState() {
@@ -51,6 +61,12 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
       _filterOrder = null;
       _monthGroups = [];
       _invoiceOrderCounts = {};
+      _activeFilter = _InvoiceLedgerFilter.all;
+      _selectedMonthRange = null;
+      _activeSearchQuery = null;
+      _isTodayFilter = false;
+      _knownTotalCount = 0;
+      _knownLinkedCount = 0;
       _resetInvoiceOrderCountsFuture();
       _init();
     }
@@ -117,25 +133,21 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
     context.push('/invoices/$invoiceId');
   }
 
-  void _scrollToGroup(int index) {
-    if (!_scrollController.hasClients || _monthGroups.isEmpty) return;
+  Future<void> _scrollToGroup(int index) async {
     if (index < 0 || index >= _monthGroups.length) return;
-
-    // Calculate approximate offset for the group
-    const estimatedItemHeight = 80.0;
-    const estimatedHeaderHeight = 64.0;
-    double targetOffset = 0;
-
-    for (int i = 0; i < index; i++) {
-      final group = _monthGroups[i];
-      targetOffset +=
-          estimatedHeaderHeight + (group.count * estimatedItemHeight);
-    }
-
-    _scrollController.animateTo(
-      targetOffset,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
+    final request = ++_monthJumpRequest;
+    await revealMonthAnchor(
+      controller: _scrollController,
+      targetIndex: index,
+      anchors: [
+        for (final group in _monthGroups)
+          _monthAnchors.putIfAbsent(group.key, GlobalKey.new),
+      ],
+      itemCounts: [for (final group in _monthGroups) group.count],
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 300),
+      isCurrent: () => mounted && request == _monthJumpRequest,
     );
   }
 
@@ -144,14 +156,11 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
     final Map<String, List<Invoice>> grouped = {};
 
     for (final invoice in invoices) {
-      // Use invoiceDate if available, otherwise fall back to createdAt
-      final dateStr = invoice.invoiceDate ?? invoice.createdAt;
-      DateTime? date;
-      try {
-        date = DateTime.parse(dateStr);
-      } catch (_) {
-        continue;
-      }
+      final date = DateFormatter.resolveLedgerDate(
+        businessDate: invoice.invoiceDate,
+        createdAt: invoice.createdAt,
+      );
+      if (date == null) continue;
 
       final key = '${date.year}-${date.month}';
       grouped.putIfAbsent(key, () => []);
@@ -167,8 +176,17 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
       // Sort invoices within group by date (descending)
       final sortedInvoices = entry.value.toList()
         ..sort((a, b) {
-          final dateA = a.invoiceDate ?? a.createdAt;
-          final dateB = b.invoiceDate ?? b.createdAt;
+          final dateA = DateFormatter.resolveLedgerDate(
+            businessDate: a.invoiceDate,
+            createdAt: a.createdAt,
+          );
+          final dateB = DateFormatter.resolveLedgerDate(
+            businessDate: b.invoiceDate,
+            createdAt: b.createdAt,
+          );
+          if (dateA == null && dateB == null) return 0;
+          if (dateA == null) return 1;
+          if (dateB == null) return -1;
           return dateB.compareTo(dateA);
         });
 
@@ -211,6 +229,10 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
   @override
   Widget build(BuildContext context) {
     final invoiceState = ref.watch(invoiceProvider);
+    final textScale = MediaQuery.textScalerOf(context).scale(1);
+    if (invoiceState.invoices.isEmpty) {
+      _monthGroups = [];
+    }
 
     return Scaffold(
       extendBody: true,
@@ -218,59 +240,82 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
       appBar: AppBar(
         centerTitle: false,
         titleSpacing: 16,
+        toolbarHeight: textScale >= 1.6 ? 96 : 74,
         title: _buildPageTitle(
           context,
-          _filterOrder != null
-              ? '${_filterOrder!.shopName} 的发票'
-              : AppConstants.titleInvoices,
+          _filterOrder != null ? '${_filterOrder!.shopName} 的发票' : '发票列表',
         ),
         elevation: 0,
         actions: [
           if (widget.filterOrderId == null) ...[
             AppIconButton(
-              icon: Icons.filter_list,
-              onPressed: () => _showFilterDialog(context),
-              tooltip: '筛选',
-            ),
-            const SizedBox(width: 8),
-            AppIconButton(
               icon: Icons.search,
               onPressed: () => _showSearchDialog(context),
               tooltip: '搜索',
+            ),
+            const SizedBox(width: 8),
+            AppIconButton(
+              icon: Icons.filter_list,
+              onPressed: () => _showFilterDialog(context),
+              tooltip: '筛选',
             ),
             const SizedBox(width: 12),
           ],
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await ref
-              .read(invoiceProvider.notifier)
-              .loadInvoices(filterOrderId: widget.filterOrderId, refresh: true);
-        },
-        child: invoiceState.isLoading && invoiceState.invoices.isEmpty
-            ? const Center(child: CircularProgressIndicator())
-            : invoiceState.invoices.isEmpty
-            ? EmptyInvoices(onAdd: _handleAddInvoice)
-            : FutureBuilder<Map<int, int>>(
-                future: _orderCountsFutureFor(invoiceState),
-                builder: (context, snapshot) {
-                  if (snapshot.hasData) {
-                    _invoiceOrderCounts = snapshot.data!;
+      body: ScrollEdgeFog(
+        topHeight: ledgerMonthFadeSafeTop,
+        bottomHeight: 104,
+        bottomInset: GlassNavigationBar.contentFadeInset(context),
+        child: RefreshIndicator(
+          onRefresh: _refreshCurrentView,
+          child:
+              invoiceState.isLoading &&
+                  invoiceState.invoices.isEmpty &&
+                  _activeFilter == _InvoiceLedgerFilter.all
+              ? const Center(child: CircularProgressIndicator())
+              : invoiceState.invoices.isEmpty &&
+                    _activeFilter == _InvoiceLedgerFilter.all
+              ? EmptyInvoices(onAdd: _handleAddInvoice)
+              : invoiceState.invoices.isEmpty
+              ? MonthFastScrollLayout(
+                  items: const [],
+                  onJumpToIndex: _scrollToGroup,
+                  child: _buildGroupedList(),
+                )
+              : FutureBuilder<Map<int, int>>(
+                  future: _orderCountsFutureFor(invoiceState),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData) {
+                      _invoiceOrderCounts = snapshot.data!;
+                      if (_activeFilter == _InvoiceLedgerFilter.all &&
+                          !invoiceState.isLoading) {
+                        _knownTotalCount = invoiceState.invoices.length;
+                        _knownLinkedCount = invoiceState.invoices.where((item) {
+                          final id = item.id;
+                          return id != null &&
+                              (_invoiceOrderCounts[id] ?? 0) > 0;
+                        }).length;
+                      }
+                    }
                     _monthGroups = _groupInvoicesByMonth(invoiceState.invoices);
-                  }
 
-                  return MonthFastScrollLayout(
-                    items: _monthGroups
-                        .map(
-                          (g) => MonthScrollItem(year: g.year, month: g.month),
-                        )
-                        .toList(),
-                    onJumpToIndex: _scrollToGroup,
-                    child: _buildGroupedList(),
-                  );
-                },
-              ),
+                    return MonthFastScrollLayout(
+                      items: _monthGroups
+                          .map(
+                            (g) =>
+                                MonthScrollItem(year: g.year, month: g.month),
+                          )
+                          .toList(),
+                      onJumpToIndex: _scrollToGroup,
+                      listRightInset: _monthGroups.length > 1
+                          ? monthFastScrollBarListRightInset
+                          : 0,
+                      child: _buildGroupedList(),
+                    );
+                  },
+                ),
+        ),
       ),
     );
   }
@@ -284,16 +329,38 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
       overflow: TextOverflow.ellipsis,
       style: theme.textTheme.headlineMedium?.copyWith(
         color: AppPalette.textPrimaryFor(context),
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w600,
       ),
     );
   }
 
   Widget _buildGroupedList() {
+    final validKeys = _monthGroups.map((group) => group.key).toSet();
+    _monthAnchors.removeWhere((key, value) => !validKeys.contains(key));
+
     return CustomScrollView(
       controller: _scrollController,
       slivers: [
+        if (widget.filterOrderId == null)
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 28, 16, 12),
+            sliver: SliverToBoxAdapter(child: _buildFilterStrip()),
+          )
+        else
+          const SliverPadding(padding: EdgeInsets.only(top: 28)),
         ..._buildSliverGroups(),
+        if (_monthGroups.isEmpty && widget.filterOrderId == null)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: EmptyState(
+              icon: Icons.filter_alt_off,
+              title: '无匹配发票',
+              subtitle: '请调整筛选条件',
+              actionLabel: '清除筛选',
+              actionIcon: Icons.close,
+              onAction: _clearFilter,
+            ),
+          ),
         const SliverPadding(padding: EdgeInsets.only(bottom: 112)),
       ],
     );
@@ -301,35 +368,178 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
 
   List<Widget> _buildSliverGroups() {
     return _monthGroups.map((group) {
-      return SliverMainAxisGroup(
-        slivers: [
-          // Pinned section header (sticky)
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _StickyMonthHeaderDelegate(
-              year: group.year,
-              month: group.month,
-              invoiceCount: group.count,
-              totalAmount: group.totalAmount,
+      final anchor = _monthAnchors.putIfAbsent(group.key, GlobalKey.new);
+
+      return LedgerMonthSheetSliver(
+        key: anchor,
+        monthLabel: '${group.year} 年 ${group.month} 月',
+        summary: '${group.count} 张',
+        totalLabel: '合计',
+        totalAmount: DateFormatter.formatAmount(group.totalAmount),
+        entries: [
+          for (final invoice in group.invoices)
+            InvoiceLedgerRow(
+              key: ValueKey('invoice-ledger-row-${invoice.id}'),
+              invoice: invoice,
+              orderCount: invoice.id == null
+                  ? 0
+                  : group.getOrderCount(invoice.id!),
+              onTap: invoice.id != null && invoice.id! > 0
+                  ? () => _handleInvoiceTap(invoice.id!)
+                  : null,
             ),
-          ),
-          // Invoice cards with padding
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate((context, index) {
-                final invoice = group.invoices[index];
-                return InvoiceCard(
-                  invoice: invoice,
-                  orderCount: group.getOrderCount(invoice.id!),
-                  onTap: () => _handleInvoiceTap(invoice.id!),
-                );
-              }, childCount: group.invoices.length),
-            ),
-          ),
         ],
       );
     }).toList();
+  }
+
+  Widget _buildFilterStrip() {
+    final unlinkedCount = _knownTotalCount - _knownLinkedCount;
+
+    return LedgerFilterStrip(
+      key: ValueKey('invoice-filter-strip-${_activeFilter.name}'),
+      children: [
+        if (_activeFilter != _InvoiceLedgerFilter.all)
+          LedgerFilterChip(
+            label: '清除筛选',
+            icon: Icons.close,
+            onPressed: _clearFilter,
+          ),
+        LedgerFilterChip(
+          label: '全部 $_knownTotalCount',
+          selected: _activeFilter == _InvoiceLedgerFilter.all,
+          onPressed: () => _applyRelationFilter(_InvoiceLedgerFilter.all),
+        ),
+        LedgerFilterChip(
+          label: '未关联 $unlinkedCount',
+          selected: _activeFilter == _InvoiceLedgerFilter.unlinked,
+          onPressed: () => _activeFilter == _InvoiceLedgerFilter.unlinked
+              ? _clearFilter()
+              : _applyRelationFilter(_InvoiceLedgerFilter.unlinked),
+        ),
+        LedgerFilterChip(
+          label: '已关联 $_knownLinkedCount',
+          selected: _activeFilter == _InvoiceLedgerFilter.linked,
+          onPressed: () => _activeFilter == _InvoiceLedgerFilter.linked
+              ? _clearFilter()
+              : _applyRelationFilter(_InvoiceLedgerFilter.linked),
+        ),
+        LedgerFilterChip(
+          label: _monthFilterLabel(),
+          icon: Icons.calendar_month,
+          selected: _activeFilter == _InvoiceLedgerFilter.month,
+          onPressed: () => _activeFilter == _InvoiceLedgerFilter.month
+              ? _clearFilter()
+              : _pickMonthRange(),
+        ),
+      ],
+    );
+  }
+
+  String _monthFilterLabel() {
+    final range = _selectedMonthRange;
+    if (range == null) return '月份';
+
+    final start = range.startDate;
+    final end = range.endDate;
+    final startMonth = start.month.toString().padLeft(2, '0');
+    final endMonth = end.month.toString().padLeft(2, '0');
+    if (start.year == end.year && start.month == end.month) {
+      return '${start.year}.$startMonth';
+    }
+    if (start.year == end.year) {
+      return '${start.year}.$startMonth–$endMonth';
+    }
+    return '${start.year}.$startMonth–${end.year}.$endMonth';
+  }
+
+  void _applyRelationFilter(_InvoiceLedgerFilter filter) {
+    setState(() {
+      _activeFilter = filter;
+      _activeSearchQuery = null;
+      _isTodayFilter = false;
+      if (filter != _InvoiceLedgerFilter.month) {
+        _selectedMonthRange = null;
+      }
+    });
+    switch (filter) {
+      case _InvoiceLedgerFilter.all:
+        _loadInvoices();
+        return;
+      case _InvoiceLedgerFilter.unlinked:
+        ref.read(invoiceProvider.notifier).loadInvoicesWithoutOrders();
+        return;
+      case _InvoiceLedgerFilter.linked:
+        ref.read(invoiceProvider.notifier).searchInvoices(hasLinkedOrder: true);
+        return;
+      case _InvoiceLedgerFilter.month:
+      case _InvoiceLedgerFilter.custom:
+        return;
+    }
+  }
+
+  Future<void> _pickMonthRange() async {
+    final result = await SyncfusionMonthRangePicker.show(
+      context,
+      initialStartMonth: _selectedMonthRange?.startDate,
+      initialEndMonth: _selectedMonthRange?.endDate,
+    );
+    if (result == null || !mounted) return;
+    setState(() {
+      _activeFilter = _InvoiceLedgerFilter.month;
+      _selectedMonthRange = result;
+      _activeSearchQuery = null;
+      _isTodayFilter = false;
+    });
+    ref
+        .read(invoiceProvider.notifier)
+        .searchInvoices(startDate: result.startDate, endDate: result.endDate);
+  }
+
+  void _clearFilter() {
+    _applyRelationFilter(_InvoiceLedgerFilter.all);
+  }
+
+  Future<void> _refreshCurrentView() async {
+    final notifier = ref.read(invoiceProvider.notifier);
+    switch (_activeFilter) {
+      case _InvoiceLedgerFilter.all:
+        await notifier.loadInvoices(
+          filterOrderId: widget.filterOrderId,
+          refresh: true,
+        );
+        return;
+      case _InvoiceLedgerFilter.unlinked:
+        await notifier.loadInvoicesWithoutOrders();
+        return;
+      case _InvoiceLedgerFilter.linked:
+        await notifier.searchInvoices(hasLinkedOrder: true);
+        return;
+      case _InvoiceLedgerFilter.month:
+        final range = _selectedMonthRange;
+        if (range == null) {
+          await notifier.loadThisMonthInvoices();
+        } else {
+          await notifier.searchInvoices(
+            startDate: range.startDate,
+            endDate: range.endDate,
+          );
+        }
+        return;
+      case _InvoiceLedgerFilter.custom:
+        final query = _activeSearchQuery;
+        if (query != null) {
+          await notifier.searchInvoices(sellerName: query);
+        } else if (_isTodayFilter) {
+          await notifier.loadTodayInvoices();
+        } else {
+          await notifier.loadInvoices(
+            filterOrderId: widget.filterOrderId,
+            refresh: true,
+          );
+        }
+        return;
+    }
   }
 
   void _showFilterDialog(BuildContext context) {
@@ -359,7 +569,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
               leading: const Icon(Icons.list),
               title: const Text('全部发票'),
               onTap: () {
-                ref.read(invoiceProvider.notifier).loadInvoices();
+                _applyRelationFilter(_InvoiceLedgerFilter.all);
                 Navigator.pop(context);
               },
             ),
@@ -367,6 +577,12 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
               leading: const Icon(Icons.today),
               title: const Text('今日发票'),
               onTap: () {
+                setState(() {
+                  _activeFilter = _InvoiceLedgerFilter.custom;
+                  _selectedMonthRange = null;
+                  _activeSearchQuery = null;
+                  _isTodayFilter = true;
+                });
                 ref.read(invoiceProvider.notifier).loadTodayInvoices();
                 Navigator.pop(context);
               },
@@ -375,6 +591,16 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
               leading: const Icon(Icons.calendar_month),
               title: const Text('本月发票'),
               onTap: () {
+                final now = DateTime.now();
+                setState(() {
+                  _activeFilter = _InvoiceLedgerFilter.month;
+                  _selectedMonthRange = MonthRangeResult(
+                    startDate: DateTime(now.year, now.month),
+                    endDate: DateTime(now.year, now.month + 1, 0),
+                  );
+                  _activeSearchQuery = null;
+                  _isTodayFilter = false;
+                });
                 ref.read(invoiceProvider.notifier).loadThisMonthInvoices();
                 Navigator.pop(context);
               },
@@ -384,22 +610,14 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
               title: const Text('按月份范围'),
               onTap: () async {
                 Navigator.pop(context);
-                final result = await SyncfusionMonthRangePicker.show(context);
-                if (result != null) {
-                  ref
-                      .read(invoiceProvider.notifier)
-                      .searchInvoices(
-                        startDate: result.startDate,
-                        endDate: result.endDate,
-                      );
-                }
+                await _pickMonthRange();
               },
             ),
             ListTile(
               leading: const Icon(Icons.link_off),
               title: const Text('未关联订单'),
               onTap: () {
-                ref.read(invoiceProvider.notifier).loadInvoicesWithoutOrders();
+                _applyRelationFilter(_InvoiceLedgerFilter.unlinked);
                 Navigator.pop(context);
               },
             ),
@@ -407,9 +625,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
               leading: const Icon(Icons.link),
               title: const Text('已关联订单'),
               onTap: () {
-                ref
-                    .read(invoiceProvider.notifier)
-                    .searchInvoices(hasLinkedOrder: true);
+                _applyRelationFilter(_InvoiceLedgerFilter.linked);
                 Navigator.pop(context);
               },
             ),
@@ -429,60 +645,17 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
     if (query == null) return;
 
     if (query.isNotEmpty) {
+      setState(() {
+        _activeFilter = _InvoiceLedgerFilter.custom;
+        _selectedMonthRange = null;
+        _activeSearchQuery = query;
+        _isTodayFilter = false;
+      });
       ref.read(invoiceProvider.notifier).searchInvoices(sellerName: query);
     } else {
-      // Empty search returns all invoices
-      ref.read(invoiceProvider.notifier).loadInvoices();
+      _applyRelationFilter(_InvoiceLedgerFilter.all);
     }
   }
 }
 
-/// Delegate for sticky month header
-class _StickyMonthHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final int year;
-  final int month;
-  final int invoiceCount;
-  final double totalAmount;
-
-  _StickyMonthHeaderDelegate({
-    required this.year,
-    required this.month,
-    required this.invoiceCount,
-    required this.totalAmount,
-  });
-
-  @override
-  double get minExtent => 64;
-
-  @override
-  double get maxExtent => 64;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return SizedBox(
-      height: 64,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 4, bottom: 4),
-        child: InvoiceMonthSectionHeader(
-          year: year,
-          month: month,
-          invoiceCount: invoiceCount,
-          totalAmount: totalAmount,
-          isPinned: overlapsContent,
-        ),
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(covariant _StickyMonthHeaderDelegate oldDelegate) {
-    return year != oldDelegate.year ||
-        month != oldDelegate.month ||
-        invoiceCount != oldDelegate.invoiceCount ||
-        totalAmount != oldDelegate.totalAmount;
-  }
-}
+enum _InvoiceLedgerFilter { all, unlinked, linked, month, custom }

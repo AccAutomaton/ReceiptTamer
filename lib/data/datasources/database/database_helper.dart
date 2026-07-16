@@ -67,7 +67,9 @@ class DatabaseHelper {
   }
 
   Future<void> _onOpen(Database db) async {
-    await InvoiceOrderRelationTable(database: db).deleteOrphanedRelations();
+    final relationTable = InvoiceOrderRelationTable(database: db);
+    await relationTable.deleteOrphanedRelations();
+    await relationTable.enforceSingleInvoicePerOrder();
   }
 
   /// Create tables when database is first created
@@ -136,7 +138,7 @@ class DatabaseHelper {
     ''');
 
     await db.execute('''
-      CREATE INDEX idx_invoice_order_relations_order_id
+      CREATE UNIQUE INDEX ${InvoiceOrderRelationTable.orderIdUniqueIndexName}
       ON ${AppConstants.invoiceOrderRelationsTable}(${AppConstants.colOrderId})
     ''');
 
@@ -150,7 +152,12 @@ class DatabaseHelper {
   /// Upgrade database when version changes
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     logService.i(LogConfig.moduleDb, '数据库升级，从版本 $oldVersion 到 $newVersion');
-    // No migrations for initial release
+    if (oldVersion < 2) {
+      final relationTable = InvoiceOrderRelationTable(database: db);
+      await relationTable.deleteOrphanedRelations();
+      final removedCount = await relationTable.enforceSingleInvoicePerOrder();
+      logService.i(LogConfig.moduleDb, '数据库版本 2 迁移完成，清理重复关联 $removedCount 条');
+    }
   }
 
   /// Close database connection

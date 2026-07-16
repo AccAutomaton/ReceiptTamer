@@ -63,9 +63,6 @@ class GlassSurface extends StatelessWidget {
       fillColor: effectiveFill,
       borderColor: borderColor,
       blurSigma: blurSigma,
-      boxShadow: boxShadow,
-      showHighlights: showHighlights,
-      edgeIntensity: edgeIntensity,
       preset: preset,
       child: content,
     );
@@ -81,9 +78,6 @@ class _GlassSurfaceFallback extends StatelessWidget {
     required this.child,
     this.borderColor,
     this.blurSigma = AppGlassTokens.blurSigma,
-    this.boxShadow,
-    this.showHighlights = true,
-    this.edgeIntensity = 1,
     this.preset = GlassSurfacePreset.panel,
   });
 
@@ -91,9 +85,6 @@ class _GlassSurfaceFallback extends StatelessWidget {
   final Color fillColor;
   final Color? borderColor;
   final double blurSigma;
-  final List<BoxShadow>? boxShadow;
-  final bool showHighlights;
-  final double edgeIntensity;
   final GlassSurfacePreset preset;
   final Widget child;
 
@@ -106,41 +97,13 @@ class _GlassSurfaceFallback extends StatelessWidget {
         (isFloating
             ? (isDark ? AppGlassTokens.darkBorder : AppGlassTokens.lightBorder)
             : AppEntityTokens.borderFor(context));
-    final highlightColor = AppEntityTokens.highlightFor(context).withValues(
-      alpha: AppEntityTokens.highlightFor(context).a * edgeIntensity,
-    );
-    final ridgeColor = AppEntityTokens.ridgeFor(
-      context,
-    ).withValues(alpha: AppEntityTokens.ridgeFor(context).a * edgeIntensity);
-
-    final surfaceBody = Stack(
-      fit: StackFit.passthrough,
-      children: [
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: fillColor,
-            borderRadius: borderRadius,
-            border: Border.all(color: effectiveBorder),
-          ),
-          child: child,
-        ),
-        if (showHighlights) ...[
-          Positioned(
-            top: 1,
-            right: borderRadius.topRight.x * 0.72,
-            left: borderRadius.topLeft.x * 0.72,
-            height: 1,
-            child: IgnorePointer(child: ColoredBox(color: highlightColor)),
-          ),
-          Positioned(
-            right: borderRadius.bottomRight.x * 0.72,
-            bottom: 0,
-            left: borderRadius.bottomLeft.x * 0.72,
-            height: isFloating ? 1 : 2,
-            child: IgnorePointer(child: ColoredBox(color: ridgeColor)),
-          ),
-        ],
-      ],
+    final surfaceBody = DecoratedBox(
+      decoration: BoxDecoration(
+        color: fillColor,
+        borderRadius: borderRadius,
+        border: Border.all(color: effectiveBorder),
+      ),
+      child: child,
     );
     final effectiveBlurSigma = blurSigma.clamp(0.0, 12.0).toDouble();
     final clippedBody = !isFloating || effectiveBlurSigma <= 0
@@ -153,25 +116,6 @@ class _GlassSurfaceFallback extends StatelessWidget {
             child: surfaceBody,
           );
 
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: borderRadius,
-        boxShadow:
-            boxShadow ??
-            (isFloating
-                ? [
-                    BoxShadow(
-                      color: Theme.of(context).colorScheme.shadow.withValues(
-                        alpha: isDark ? 0.46 : 0.16,
-                      ),
-                      blurRadius: 30,
-                      spreadRadius: -8,
-                      offset: const Offset(0, 12),
-                    ),
-                  ]
-                : AppEntityTokens.shadowFor(context)),
-      ),
-      child: ClipRRect(borderRadius: borderRadius, child: clippedBody),
-    );
+    return ClipRRect(borderRadius: borderRadius, child: clippedBody);
   }
 }

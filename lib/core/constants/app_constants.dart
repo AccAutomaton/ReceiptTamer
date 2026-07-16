@@ -6,7 +6,7 @@ class AppConstants {
 
   // Database
   static const String databaseName = 'receipt_tamer.db';
-  static const int databaseVersion = 1;
+  static const int databaseVersion = 2;
 
   // Table names
   static const String ordersTable = 'orders';
@@ -76,10 +76,8 @@ class AppConstants {
   static const String successExported = '导出成功';
 
   // Empty state messages
-  static const String emptyOrders = '暂无订单记录';
-  static const String emptyInvoices = '暂无发票记录';
-  static const String emptyOrdersDetail = '点击下方按钮添加新订单';
-  static const String emptyInvoicesDetail = '点击下方按钮添加新发票';
+  static const String emptyOrders = '暂无订单';
+  static const String emptyInvoices = '暂无发票';
 
   // Confirmation messages
   static const String confirmDelete = '确认删除';

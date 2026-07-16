@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 /// not need to know which concrete paint treatment a surface uses.
 enum AppSurfaceStyle { ledger, raised, glass, danger }
 
-/// Shared visual tokens for the "morning-mist relief ledger" direction.
+/// Shared visual tokens for the flat "morning-mist ledger" direction.
 ///
 /// The names from the ce04b3c theme remain intact so the original screens and
 /// widgets can adopt the new appearance without structural changes.
@@ -48,9 +48,11 @@ class AppPalette {
   static const successMuted = Color(0xFF27765F);
   static const warningMuted = Color(0xFF896225);
   static const errorMuted = coralAccent;
-  static const shadowMuted = Color(0x1F1A4541);
-  static const shadowDeep = Color(0x2E183B39);
-  static const frostHighlight = Color(0xE0FFFFFF);
+  // Compatibility shadow/highlight names stay available, but flat surfaces do
+  // not paint them.
+  static const shadowMuted = Colors.transparent;
+  static const shadowDeep = Colors.transparent;
+  static const frostHighlight = Colors.transparent;
   static const frostLine = Color(0x66BFD2CC);
   static const darkSurface = Color(0xFF0F191A);
 
@@ -113,18 +115,22 @@ class AppPalette {
           .withValues(alpha: alpha);
 }
 
-/// Typeface roles used by the theme and compatibility widgets.
+/// Typeface roles for the paper-ledger interface.
 ///
-/// Display text deliberately uses MiSans rather than a serif face; this is the
-/// principal typographic difference from the ink-ledger direction.
+/// Tinos shapes Latin text and tabular numbers while Noto Serif SC supplies
+/// the Chinese glyphs. Keeping the same pairing for titles, body copy, labels
+/// and utility text gives the archive a single, deliberate typographic voice.
 class AppTypography {
   const AppTypography._();
 
-  static const displayFamily = 'MiSans';
-  static const bodyFamily = 'NotoSansSC';
-  static const labelFamily = 'MiSans';
-  static const numberFamily = 'MiSans';
-  static const utilityFamily = 'CourierPrime';
+  static const primaryFamily = 'Tinos';
+  static const serifFallback = <String>['NotoSerifSC'];
+
+  static const displayFamily = primaryFamily;
+  static const bodyFamily = primaryFamily;
+  static const labelFamily = primaryFamily;
+  static const numberFamily = primaryFamily;
+  static const utilityFamily = primaryFamily;
 
   static const tabularFigures = <FontFeature>[FontFeature.tabularFigures()];
 
@@ -139,62 +145,70 @@ class AppTypography {
     return TextTheme(
       displayLarge: TextStyle(
         fontFamily: displayFamily,
+        fontFamilyFallback: serifFallback,
         fontSize: 44,
         height: 1.12,
         fontWeight: FontWeight.w500,
-        letterSpacing: -1.1,
+        letterSpacing: -0.8,
         color: primary,
       ),
       displayMedium: TextStyle(
         fontFamily: displayFamily,
+        fontFamilyFallback: serifFallback,
         fontSize: 38,
         height: 1.15,
         fontWeight: FontWeight.w500,
-        letterSpacing: -0.9,
+        letterSpacing: -0.68,
         color: primary,
       ),
       displaySmall: TextStyle(
         fontFamily: displayFamily,
+        fontFamilyFallback: serifFallback,
         fontSize: 32,
         height: 1.18,
         fontWeight: FontWeight.w500,
-        letterSpacing: -0.7,
+        letterSpacing: -0.56,
         color: primary,
       ),
       headlineLarge: TextStyle(
         fontFamily: displayFamily,
+        fontFamilyFallback: serifFallback,
         fontSize: 30,
         height: 1.2,
-        fontWeight: FontWeight.w500,
-        letterSpacing: -0.6,
-        color: primary,
-      ),
-      headlineMedium: TextStyle(
-        fontFamily: displayFamily,
-        fontSize: 26,
-        height: 1.22,
         fontWeight: FontWeight.w500,
         letterSpacing: -0.45,
         color: primary,
       ),
+      headlineMedium: TextStyle(
+        fontFamily: displayFamily,
+        fontFamilyFallback: serifFallback,
+        fontSize: 26,
+        height: 1.22,
+        fontWeight: FontWeight.w500,
+        letterSpacing: -0.3,
+        color: primary,
+      ),
       headlineSmall: TextStyle(
         fontFamily: displayFamily,
+        fontFamilyFallback: serifFallback,
         fontSize: 22,
         height: 1.25,
         fontWeight: FontWeight.w500,
-        letterSpacing: -0.25,
+        letterSpacing: -0.18,
         color: primary,
       ),
       titleLarge: TextStyle(
         fontFamily: displayFamily,
+        fontFamilyFallback: serifFallback,
         fontSize: 20,
         height: 1.3,
         fontWeight: FontWeight.w500,
-        letterSpacing: -0.15,
+        letterSpacing: -0.1,
         color: primary,
       ),
       titleMedium: TextStyle(
         fontFamily: bodyFamily,
+        fontFamilyFallback: serifFallback,
         fontSize: 16,
         height: 1.4,
         fontWeight: FontWeight.w600,
@@ -202,6 +216,7 @@ class AppTypography {
       ),
       titleSmall: TextStyle(
         fontFamily: labelFamily,
+        fontFamilyFallback: serifFallback,
         fontSize: 14,
         height: 1.35,
         fontWeight: FontWeight.w500,
@@ -209,6 +224,7 @@ class AppTypography {
       ),
       bodyLarge: TextStyle(
         fontFamily: bodyFamily,
+        fontFamilyFallback: serifFallback,
         fontSize: 16,
         height: 1.55,
         fontWeight: FontWeight.w400,
@@ -216,6 +232,7 @@ class AppTypography {
       ),
       bodyMedium: TextStyle(
         fontFamily: bodyFamily,
+        fontFamilyFallback: serifFallback,
         fontSize: 14,
         height: 1.5,
         fontWeight: FontWeight.w400,
@@ -223,6 +240,7 @@ class AppTypography {
       ),
       bodySmall: TextStyle(
         fontFamily: bodyFamily,
+        fontFamilyFallback: serifFallback,
         fontSize: 12,
         height: 1.45,
         fontWeight: FontWeight.w400,
@@ -230,25 +248,29 @@ class AppTypography {
       ),
       labelLarge: TextStyle(
         fontFamily: labelFamily,
+        fontFamilyFallback: serifFallback,
         fontSize: 14,
         height: 1.25,
         fontWeight: FontWeight.w500,
+        letterSpacing: 0.1,
         color: primary,
       ),
       labelMedium: TextStyle(
         fontFamily: labelFamily,
+        fontFamilyFallback: serifFallback,
         fontSize: 12,
         height: 1.25,
         fontWeight: FontWeight.w500,
-        letterSpacing: 0.1,
+        letterSpacing: 0.2,
         color: secondary,
       ),
       labelSmall: TextStyle(
         fontFamily: labelFamily,
+        fontFamilyFallback: serifFallback,
         fontSize: 10,
         height: 1.25,
         fontWeight: FontWeight.w500,
-        letterSpacing: 0.2,
+        letterSpacing: 0.3,
         color: secondary,
       ),
     );
@@ -262,6 +284,7 @@ class AppTypography {
   }) {
     return TextStyle(
       fontFamily: numberFamily,
+      fontFamilyFallback: serifFallback,
       fontSize: fontSize,
       height: 1.1,
       fontWeight: fontWeight,
@@ -276,10 +299,11 @@ class AppTypography {
     Color? color,
   }) => TextStyle(
     fontFamily: utilityFamily,
+    fontFamilyFallback: serifFallback,
     fontSize: fontSize,
     height: 1.25,
     fontFeatures: tabularFigures,
-    letterSpacing: 0.15,
+    letterSpacing: 0.24,
     color: color ?? AppPalette.textSecondaryFor(context),
   );
 }
@@ -336,48 +360,20 @@ class AppEntityTokens {
   static const lightSubtleFill = AppPalette.mistLayer;
   static const lightBorder = Color(0xFFD7E4DF);
   static const lightStrongBorder = Color(0xFFBFD2CC);
-  static const lightRidge = Color(0xFFC9DBD5);
-  static const lightHighlight = Color(0xE0FFFFFF);
+  static const lightRidge = Colors.transparent;
+  static const lightHighlight = Colors.transparent;
 
   static const darkFill = Color(0xFF172526);
   static const darkSubtleFill = Color(0xFF203836);
   static const darkBorder = Color(0xFF2B3F3E);
   static const darkStrongBorder = Color(0xFF3D5552);
-  static const darkRidge = Color(0xFF0C1718);
-  static const darkHighlight = Color(0x1FFFFFFF);
+  static const darkRidge = Colors.transparent;
+  static const darkHighlight = Colors.transparent;
 
-  static const lightShadow = <BoxShadow>[
-    BoxShadow(
-      color: Color(0x241B4642),
-      blurRadius: 28,
-      spreadRadius: -20,
-      offset: Offset(0, 13),
-    ),
-  ];
-  static const darkShadow = <BoxShadow>[
-    BoxShadow(
-      color: Color(0xB8000000),
-      blurRadius: 28,
-      spreadRadius: -18,
-      offset: Offset(0, 15),
-    ),
-  ];
-  static const lightControlShadow = <BoxShadow>[
-    BoxShadow(
-      color: Color(0x2919433F),
-      blurRadius: 16,
-      spreadRadius: -12,
-      offset: Offset(0, 8),
-    ),
-  ];
-  static const darkControlShadow = <BoxShadow>[
-    BoxShadow(
-      color: Color(0xA6000000),
-      blurRadius: 18,
-      spreadRadius: -12,
-      offset: Offset(0, 9),
-    ),
-  ];
+  static const lightShadow = <BoxShadow>[];
+  static const darkShadow = <BoxShadow>[];
+  static const lightControlShadow = <BoxShadow>[];
+  static const darkControlShadow = <BoxShadow>[];
 
   static Color fillFor(BuildContext context) =>
       AppPalette.isDark(context) ? darkFill : lightFill;
@@ -404,16 +400,21 @@ class AppEntityTokens {
       AppPalette.isDark(context) ? darkControlShadow : lightControlShadow;
 }
 
-/// A tactile shape for native Material cards and buttons. The highlight and
-/// ridge are painted inside the shape so they add no layout or hit-test cost.
+/// Compatibility shape for widgets that still use the former relief API.
+///
+/// It now paints only [RoundedRectangleBorder]'s uniform outline. The former
+/// highlight and ridge values remain as inert fields so feature widgets can be
+/// migrated independently without changing their public API.
 class AppReliefRoundedRectangleBorder extends RoundedRectangleBorder {
   const AppReliefRoundedRectangleBorder({
-    required this.highlightColor,
-    required this.ridgeColor,
-    this.ridgeWidth = 2,
+    required Color highlightColor,
+    required Color ridgeColor,
+    double ridgeWidth = 0,
     super.side,
     super.borderRadius,
-  });
+  }) : highlightColor = Colors.transparent,
+       ridgeColor = Colors.transparent,
+       ridgeWidth = 0;
 
   final Color highlightColor;
   final Color ridgeColor;
@@ -496,37 +497,6 @@ class AppReliefRoundedRectangleBorder extends RoundedRectangleBorder {
   }
 
   @override
-  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
-    super.paint(canvas, rect, textDirection: textDirection);
-    final radius = borderRadius.resolve(textDirection);
-    final topInset = radius.topLeft.x > 8 ? radius.topLeft.x * 0.72 : 8.0;
-    final bottomInset = radius.bottomLeft.x > 8
-        ? radius.bottomLeft.x * 0.72
-        : 8.0;
-
-    if (highlightColor.a > 0) {
-      canvas.drawLine(
-        Offset(rect.left + topInset, rect.top + 1.25),
-        Offset(rect.right - topInset, rect.top + 1.25),
-        Paint()
-          ..color = highlightColor
-          ..strokeWidth = 1
-          ..strokeCap = StrokeCap.round,
-      );
-    }
-    if (ridgeColor.a > 0 && ridgeWidth > 0) {
-      canvas.drawLine(
-        Offset(rect.left + bottomInset, rect.bottom - ridgeWidth / 2),
-        Offset(rect.right - bottomInset, rect.bottom - ridgeWidth / 2),
-        Paint()
-          ..color = ridgeColor
-          ..strokeWidth = ridgeWidth
-          ..strokeCap = StrokeCap.round,
-      );
-    }
-  }
-
-  @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is AppReliefRoundedRectangleBorder &&
@@ -541,18 +511,19 @@ class AppReliefRoundedRectangleBorder extends RoundedRectangleBorder {
       Object.hash(side, borderRadius, highlightColor, ridgeColor, ridgeWidth);
 }
 
-/// An opaque input outline with a paper-edge highlight and a shallow bottom
-/// ridge. Both accents are painted inside the field bounds, so helper/error
-/// copy keeps Material's original layout and semantics.
+/// Compatibility input outline for widgets that still use the former relief
+/// API. It now paints only [OutlineInputBorder]'s uniform outline.
 class AppReliefInputBorder extends OutlineInputBorder {
   const AppReliefInputBorder({
-    required this.highlightColor,
-    required this.ridgeColor,
-    this.ridgeWidth = 2,
+    required Color highlightColor,
+    required Color ridgeColor,
+    double ridgeWidth = 0,
     super.borderSide,
     super.borderRadius,
     super.gapPadding,
-  });
+  }) : highlightColor = Colors.transparent,
+       ridgeColor = Colors.transparent,
+       ridgeWidth = 0;
 
   final Color highlightColor;
   final Color ridgeColor;
@@ -643,36 +614,6 @@ class AppReliefInputBorder extends OutlineInputBorder {
       gapPercentage: gapPercentage,
       textDirection: textDirection,
     );
-
-    final resolvedRadius = borderRadius.resolve(textDirection);
-    final horizontalInset = resolvedRadius.topLeft.x > 8
-        ? resolvedRadius.topLeft.x * 0.72
-        : 8.0;
-    final bottomInset = resolvedRadius.bottomLeft.x > 8
-        ? resolvedRadius.bottomLeft.x * 0.72
-        : 8.0;
-
-    if (highlightColor.a > 0 && gapPercentage == 0) {
-      canvas.drawLine(
-        Offset(rect.left + horizontalInset, rect.top + 1.25),
-        Offset(rect.right - horizontalInset, rect.top + 1.25),
-        Paint()
-          ..color = highlightColor
-          ..strokeWidth = 1
-          ..strokeCap = StrokeCap.round,
-      );
-    }
-
-    if (ridgeColor.a > 0 && ridgeWidth > 0) {
-      canvas.drawLine(
-        Offset(rect.left + bottomInset, rect.bottom - ridgeWidth / 2),
-        Offset(rect.right - bottomInset, rect.bottom - ridgeWidth / 2),
-        Paint()
-          ..color = ridgeColor
-          ..strokeWidth = ridgeWidth
-          ..strokeCap = StrokeCap.round,
-      );
-    }
   }
 
   @override
@@ -711,7 +652,7 @@ class AppGlassTokens {
   static const sheetFill = lightModalFill;
   static const contentFill = AppEntityTokens.lightFill;
   static const refractionTint = Color(0x1470B9AE);
-  static const innerHairline = Color(0x80FFFFFF);
+  static const innerHairline = Colors.transparent;
   static const navHeight = 72.0;
   static const navCenterSlotWidth = 68.0;
   static const navCenterButtonSize = 58.0;
@@ -730,13 +671,5 @@ class AppShadows {
   const AppShadows._();
 
   static const card = AppEntityTokens.lightShadow;
-
-  static const glass = <BoxShadow>[
-    BoxShadow(
-      color: AppPalette.shadowDeep,
-      blurRadius: 30,
-      spreadRadius: -6,
-      offset: Offset(0, 12),
-    ),
-  ];
+  static const glass = <BoxShadow>[];
 }

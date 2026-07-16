@@ -2,8 +2,88 @@ import 'package:flutter/material.dart';
 import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 
 const monthFastScrollBarWidth = 32.0;
-const monthFastScrollBarListRightInset = monthFastScrollBarWidth / 2;
+// The list stops 4dp before the rail's leading edge. Together with the sheet's
+// own 16dp trailing padding, reserving half the rail plus 4dp keeps the rail
+// distinct without repeating its entire width as empty page margin.
+const monthFastScrollBarListRightInset = monthFastScrollBarWidth / 2 + 4;
 const monthFastScrollBarBottomInset = AppGlassTokens.navCenterButtonSize + 44;
+
+/// Reveals a lazily built month sheet without assuming fixed row heights.
+///
+/// The first jump uses item counts only to bring the target sliver into the
+/// viewport cache. Once its [GlobalKey] has a context, [Scrollable.ensureVisible]
+/// performs the precise alignment. This remains accurate when text scaling
+/// changes the actual height of headers and entries.
+Future<void> revealMonthAnchor({
+  required ScrollController controller,
+  required int targetIndex,
+  required List<GlobalKey> anchors,
+  required List<int> itemCounts,
+  required Duration duration,
+  bool Function()? isCurrent,
+}) async {
+  if (!controller.hasClients ||
+      targetIndex < 0 ||
+      targetIndex >= anchors.length ||
+      anchors.length != itemCounts.length) {
+    return;
+  }
+
+  bool requestIsCurrent() => isCurrent?.call() ?? true;
+
+  Future<bool> alignBuiltAnchor() async {
+    final anchorContext = anchors[targetIndex].currentContext;
+    if (anchorContext == null || !requestIsCurrent()) return false;
+    await Scrollable.ensureVisible(
+      anchorContext,
+      alignment: 0.02,
+      duration: duration,
+      curve: Curves.easeInOut,
+    );
+    return true;
+  }
+
+  if (await alignBuiltAnchor()) return;
+
+  final position = controller.position;
+  final totalWeight = itemCounts.fold<double>(
+    0,
+    (sum, count) => sum + (count < 0 ? 0 : count) + 1,
+  );
+  final precedingWeight = itemCounts
+      .take(targetIndex)
+      .fold<double>(0, (sum, count) => sum + (count < 0 ? 0 : count) + 1);
+  final estimatedContentExtent =
+      position.maxScrollExtent + position.viewportDimension;
+  final estimatedOffset = totalWeight <= 0
+      ? 0.0
+      : estimatedContentExtent * precedingWeight / totalWeight;
+  controller.jumpTo(estimatedOffset.clamp(0.0, position.maxScrollExtent));
+
+  for (var attempt = 0; attempt < 12 && requestIsCurrent(); attempt++) {
+    await WidgetsBinding.instance.endOfFrame;
+    if (await alignBuiltAnchor()) return;
+
+    final builtIndices = <int>[
+      for (var index = 0; index < anchors.length; index++)
+        if (anchors[index].currentContext != null) index,
+    ];
+    if (builtIndices.isEmpty || !controller.hasClients) return;
+
+    final currentPosition = controller.position;
+    final moveForward = targetIndex > builtIndices.last;
+    final moveBackward = targetIndex < builtIndices.first;
+    if (!moveForward && !moveBackward) return;
+
+    final direction = moveForward ? 1.0 : -1.0;
+    final nextOffset =
+        (currentPosition.pixels +
+                currentPosition.viewportDimension * 0.82 * direction)
+            .clamp(0, currentPosition.maxScrollExtent);
+    if ((nextOffset - currentPosition.pixels).abs() < 0.5) return;
+    controller.jumpTo(nextOffset.toDouble());
+  }
+}
 
 class MonthFastScrollLayout extends StatelessWidget {
   final Widget child;

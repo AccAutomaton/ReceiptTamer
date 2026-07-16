@@ -5,6 +5,7 @@ import 'package:image/image.dart' as image;
 import 'package:receipt_tamer/core/models/ledger_month_summary.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/data/models/order.dart';
+import 'package:receipt_tamer/data/models/uninvoiced_shop_summary.dart';
 import 'package:receipt_tamer/data/repositories/invoice_repository.dart';
 import 'package:receipt_tamer/data/repositories/order_repository.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
@@ -249,6 +250,13 @@ class LedgerFixtureOrderRepository extends OrderRepository {
       _page(items, limit: limit, offset: offset);
 
   @override
+  Future<List<Order>> getRecentlyCreated({int limit = 10}) async {
+    final sorted = [...items]
+      ..sort((left, right) => right.createdAt.compareTo(left.createdAt));
+    return _page(sorted, limit: limit);
+  }
+
+  @override
   Future<Order?> getById(int id) async =>
       items.where((order) => order.id == id).firstOrNull;
 
@@ -282,6 +290,19 @@ class LedgerFixtureOrderRepository extends OrderRepository {
         orderId: (await getInvoiceIdsForOrder(orderId)).length,
     };
   }
+
+  @override
+  Future<List<UninvoicedShopSummary>> getUninvoicedShopSummaries({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async => const [
+    UninvoicedShopSummary(
+      shopKey: '青禾餐食 · 测试店',
+      displayName: '青禾餐食 · 测试店',
+      orderCount: 1,
+      totalAmount: 42.80,
+    ),
+  ];
 }
 
 class LedgerFixtureInvoiceRepository extends InvoiceRepository {
@@ -292,6 +313,13 @@ class LedgerFixtureInvoiceRepository extends InvoiceRepository {
   @override
   Future<List<Invoice>> getAll({int? limit, int? offset}) async =>
       _page(items, limit: limit, offset: offset);
+
+  @override
+  Future<List<Invoice>> getRecentlyCreated({int limit = 10}) async {
+    final sorted = [...items]
+      ..sort((left, right) => right.createdAt.compareTo(left.createdAt));
+    return _page(sorted, limit: limit);
+  }
 
   @override
   Future<Invoice?> getById(int id) async =>

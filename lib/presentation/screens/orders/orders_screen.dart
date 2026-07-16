@@ -1,16 +1,18 @@
-import 'package:receipt_tamer/core/constants/app_constants.dart';
 import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
+import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/order.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/empty_state.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_bottom_sheet.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_navigation_bar.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_search_dialog.dart';
+import 'package:receipt_tamer/presentation/widgets/common/ledger_month_sheet.dart';
+import 'package:receipt_tamer/presentation/widgets/common/scroll_edge_fog.dart';
 import 'package:receipt_tamer/presentation/widgets/common/syncfusion_month_range_picker.dart';
 import 'package:receipt_tamer/presentation/widgets/order/month_group.dart';
-import 'package:receipt_tamer/presentation/widgets/order/month_section_header.dart';
 import 'package:receipt_tamer/presentation/widgets/order/month_fast_scroll_bar.dart';
-import 'package:receipt_tamer/presentation/widgets/order/order_card.dart';
+import 'package:receipt_tamer/presentation/widgets/order/order_ledger_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -25,7 +27,15 @@ class OrdersScreen extends ConsumerStatefulWidget {
 
 class _OrdersScreenState extends ConsumerState<OrdersScreen> {
   final ScrollController _scrollController = ScrollController();
+  final Map<String, GlobalKey> _monthAnchors = {};
   List<MonthGroup> _monthGroups = [];
+  _OrderLedgerFilter _activeFilter = _OrderLedgerFilter.all;
+  MonthRangeResult? _selectedMonthRange;
+  String? _activeSearchQuery;
+  bool _isTodayFilter = false;
+  int _knownTotalCount = 0;
+  int _knownLinkedCount = 0;
+  int _monthJumpRequest = 0;
 
   @override
   void initState() {
@@ -47,14 +57,11 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
     final Map<String, List<Order>> grouped = {};
 
     for (final order in orders) {
-      // Use orderDate if available, otherwise fall back to createdAt
-      final dateStr = order.orderDate ?? order.createdAt;
-      DateTime? date;
-      try {
-        date = DateTime.parse(dateStr);
-      } catch (_) {
-        continue;
-      }
+      final date = DateFormatter.resolveLedgerDate(
+        businessDate: order.orderDate,
+        createdAt: order.createdAt,
+      );
+      if (date == null) continue;
 
       final key = '${date.year}-${date.month}';
       grouped.putIfAbsent(key, () => []);
@@ -70,8 +77,17 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
       // Sort orders within group by date (descending)
       final sortedOrders = entry.value.toList()
         ..sort((a, b) {
-          final dateA = a.orderDate ?? a.createdAt;
-          final dateB = b.orderDate ?? b.createdAt;
+          final dateA = DateFormatter.resolveLedgerDate(
+            businessDate: a.orderDate,
+            createdAt: a.createdAt,
+          );
+          final dateB = DateFormatter.resolveLedgerDate(
+            businessDate: b.orderDate,
+            createdAt: b.createdAt,
+          );
+          if (dateA == null && dateB == null) return 0;
+          if (dateA == null) return 1;
+          if (dateB == null) return -1;
           return dateB.compareTo(dateA);
         });
 
@@ -95,36 +111,39 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
     context.push('/orders/$orderId');
   }
 
-  void _scrollToGroup(int index) {
-    if (!_scrollController.hasClients || _monthGroups.isEmpty) return;
+  Future<void> _scrollToGroup(int index) async {
     if (index < 0 || index >= _monthGroups.length) return;
-
-    // Calculate approximate offset for the group
-    const estimatedItemHeight = 80.0;
-    const estimatedHeaderHeight = 64.0;
-    double targetOffset = 0;
-
-    for (int i = 0; i < index; i++) {
-      final group = _monthGroups[i];
-      targetOffset +=
-          estimatedHeaderHeight + (group.count * estimatedItemHeight);
-    }
-
-    _scrollController.animateTo(
-      targetOffset,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
+    final request = ++_monthJumpRequest;
+    await revealMonthAnchor(
+      controller: _scrollController,
+      targetIndex: index,
+      anchors: [
+        for (final group in _monthGroups)
+          _monthAnchors.putIfAbsent(group.key, GlobalKey.new),
+      ],
+      itemCounts: [for (final group in _monthGroups) group.count],
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 300),
+      isCurrent: () => mounted && request == _monthJumpRequest,
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final orderState = ref.watch(orderProvider);
+    final textScale = MediaQuery.textScalerOf(context).scale(1);
 
     // Group orders by month
     _monthGroups = orderState.orders.isEmpty
         ? []
         : _groupOrdersByMonth(orderState.orders);
+    if (_activeFilter == _OrderLedgerFilter.all && !orderState.isLoading) {
+      _knownTotalCount = orderState.orders.length;
+      _knownLinkedCount = orderState.orders
+          .where((order) => order.hasInvoice)
+          .length;
+    }
 
     return Scaffold(
       extendBody: true,
@@ -132,38 +151,49 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
       appBar: AppBar(
         centerTitle: false,
         titleSpacing: 16,
-        title: _buildPageTitle(context, AppConstants.titleOrders),
+        toolbarHeight: textScale >= 1.6 ? 96 : 74,
+        title: _buildPageTitle(context, '订单列表'),
         elevation: 0,
         actions: [
-          AppIconButton(
-            icon: Icons.filter_list,
-            onPressed: () => _showFilterDialog(context),
-            tooltip: '筛选',
-          ),
-          const SizedBox(width: 8),
           AppIconButton(
             icon: Icons.search,
             onPressed: () => _showSearchDialog(context),
             tooltip: '搜索',
           ),
+          const SizedBox(width: 8),
+          AppIconButton(
+            icon: Icons.filter_list,
+            onPressed: () => _showFilterDialog(context),
+            tooltip: '筛选',
+          ),
           const SizedBox(width: 12),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await ref.read(orderProvider.notifier).loadOrders(refresh: true);
-        },
-        child: orderState.isLoading && orderState.orders.isEmpty
-            ? const Center(child: CircularProgressIndicator())
-            : orderState.orders.isEmpty
-            ? EmptyOrders(onAdd: _handleAddOrder)
-            : MonthFastScrollLayout(
-                items: _monthGroups
-                    .map((g) => MonthScrollItem(year: g.year, month: g.month))
-                    .toList(),
-                onJumpToIndex: _scrollToGroup,
-                child: _buildGroupedList(),
-              ),
+      body: ScrollEdgeFog(
+        topHeight: ledgerMonthFadeSafeTop,
+        bottomHeight: 104,
+        bottomInset: GlassNavigationBar.contentFadeInset(context),
+        child: RefreshIndicator(
+          onRefresh: _refreshCurrentView,
+          child:
+              orderState.isLoading &&
+                  orderState.orders.isEmpty &&
+                  _activeFilter == _OrderLedgerFilter.all
+              ? const Center(child: CircularProgressIndicator())
+              : orderState.orders.isEmpty &&
+                    _activeFilter == _OrderLedgerFilter.all
+              ? EmptyOrders(onAdd: _handleAddOrder)
+              : MonthFastScrollLayout(
+                  items: _monthGroups
+                      .map((g) => MonthScrollItem(year: g.year, month: g.month))
+                      .toList(),
+                  onJumpToIndex: _scrollToGroup,
+                  listRightInset: _monthGroups.length > 1
+                      ? monthFastScrollBarListRightInset
+                      : 0,
+                  child: _buildGroupedList(),
+                ),
+        ),
       ),
     );
   }
@@ -177,16 +207,35 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
       overflow: TextOverflow.ellipsis,
       style: theme.textTheme.headlineMedium?.copyWith(
         color: AppPalette.textPrimaryFor(context),
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w600,
       ),
     );
   }
 
   Widget _buildGroupedList() {
+    final validKeys = _monthGroups.map((group) => group.key).toSet();
+    _monthAnchors.removeWhere((key, value) => !validKeys.contains(key));
+
     return CustomScrollView(
       controller: _scrollController,
       slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 28, 16, 12),
+          sliver: SliverToBoxAdapter(child: _buildFilterStrip()),
+        ),
         ..._buildSliverGroups(),
+        if (_monthGroups.isEmpty)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: EmptyState(
+              icon: Icons.filter_alt_off,
+              title: '无匹配订单',
+              subtitle: '请调整筛选条件',
+              actionLabel: '清除筛选',
+              actionIcon: Icons.close,
+              onAction: _clearFilter,
+            ),
+          ),
         const SliverPadding(padding: EdgeInsets.only(bottom: 112)),
       ],
     );
@@ -194,37 +243,170 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
 
   List<Widget> _buildSliverGroups() {
     return _monthGroups.map((group) {
-      return SliverMainAxisGroup(
-        slivers: [
-          // Pinned section header (sticky)
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _StickyMonthHeaderDelegate(
-              year: group.year,
-              month: group.month,
-              orderCount: group.count,
-              totalAmount: group.totalAmount,
+      final anchor = _monthAnchors.putIfAbsent(group.key, GlobalKey.new);
+
+      return LedgerMonthSheetSliver(
+        key: anchor,
+        monthLabel: '${group.year} 年 ${group.month} 月',
+        summary: '${group.count} 笔',
+        totalLabel: '合计',
+        totalAmount: DateFormatter.formatAmount(group.totalAmount),
+        entries: [
+          for (final order in group.orders)
+            OrderLedgerRow(
+              key: ValueKey('order-ledger-row-${order.id}'),
+              order: order,
+              onTap: order.id != null && order.id! > 0
+                  ? () => _handleOrderTap(order.id!)
+                  : null,
             ),
-          ),
-          // Order cards with padding
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate((context, index) {
-                final order = group.orders[index];
-                final orderId = order.id;
-                return OrderCard(
-                  order: order,
-                  onTap: orderId != null && orderId > 0
-                      ? () => _handleOrderTap(orderId)
-                      : null,
-                );
-              }, childCount: group.orders.length),
-            ),
-          ),
         ],
       );
     }).toList();
+  }
+
+  Widget _buildFilterStrip() {
+    final unlinkedCount = _knownTotalCount - _knownLinkedCount;
+
+    return LedgerFilterStrip(
+      key: ValueKey('order-filter-strip-${_activeFilter.name}'),
+      children: [
+        if (_activeFilter != _OrderLedgerFilter.all)
+          LedgerFilterChip(
+            label: '清除筛选',
+            icon: Icons.close,
+            onPressed: _clearFilter,
+          ),
+        LedgerFilterChip(
+          label: '全部 $_knownTotalCount',
+          selected: _activeFilter == _OrderLedgerFilter.all,
+          onPressed: () => _applyRelationFilter(_OrderLedgerFilter.all),
+        ),
+        LedgerFilterChip(
+          label: '未关联 $unlinkedCount',
+          icon: Icons.link_off,
+          selected: _activeFilter == _OrderLedgerFilter.unlinked,
+          onPressed: () => _activeFilter == _OrderLedgerFilter.unlinked
+              ? _clearFilter()
+              : _applyRelationFilter(_OrderLedgerFilter.unlinked),
+        ),
+        LedgerFilterChip(
+          label: '已关联 $_knownLinkedCount',
+          selected: _activeFilter == _OrderLedgerFilter.linked,
+          onPressed: () => _activeFilter == _OrderLedgerFilter.linked
+              ? _clearFilter()
+              : _applyRelationFilter(_OrderLedgerFilter.linked),
+        ),
+        LedgerFilterChip(
+          label: _monthFilterLabel(),
+          icon: Icons.calendar_month,
+          selected: _activeFilter == _OrderLedgerFilter.month,
+          onPressed: () => _activeFilter == _OrderLedgerFilter.month
+              ? _clearFilter()
+              : _pickMonthRange(),
+        ),
+      ],
+    );
+  }
+
+  String _monthFilterLabel() {
+    final range = _selectedMonthRange;
+    if (range == null) return '月份';
+
+    final start = range.startDate;
+    final end = range.endDate;
+    final startMonth = start.month.toString().padLeft(2, '0');
+    final endMonth = end.month.toString().padLeft(2, '0');
+    if (start.year == end.year && start.month == end.month) {
+      return '${start.year}.$startMonth';
+    }
+    if (start.year == end.year) {
+      return '${start.year}.$startMonth–$endMonth';
+    }
+    return '${start.year}.$startMonth–${end.year}.$endMonth';
+  }
+
+  void _applyRelationFilter(_OrderLedgerFilter filter) {
+    setState(() {
+      _activeFilter = filter;
+      _activeSearchQuery = null;
+      _isTodayFilter = false;
+      if (filter != _OrderLedgerFilter.month) {
+        _selectedMonthRange = null;
+      }
+    });
+    switch (filter) {
+      case _OrderLedgerFilter.all:
+        ref.read(orderProvider.notifier).loadOrders();
+        return;
+      case _OrderLedgerFilter.unlinked:
+        ref.read(orderProvider.notifier).searchOrders(hasLinkedInvoice: false);
+        return;
+      case _OrderLedgerFilter.linked:
+        ref.read(orderProvider.notifier).searchOrders(hasLinkedInvoice: true);
+        return;
+      case _OrderLedgerFilter.month:
+      case _OrderLedgerFilter.custom:
+        return;
+    }
+  }
+
+  Future<void> _pickMonthRange() async {
+    final result = await SyncfusionMonthRangePicker.show(
+      context,
+      initialStartMonth: _selectedMonthRange?.startDate,
+      initialEndMonth: _selectedMonthRange?.endDate,
+    );
+    if (result == null || !mounted) return;
+    setState(() {
+      _activeFilter = _OrderLedgerFilter.month;
+      _selectedMonthRange = result;
+      _activeSearchQuery = null;
+      _isTodayFilter = false;
+    });
+    ref
+        .read(orderProvider.notifier)
+        .searchOrders(startDate: result.startDate, endDate: result.endDate);
+  }
+
+  void _clearFilter() {
+    _applyRelationFilter(_OrderLedgerFilter.all);
+  }
+
+  Future<void> _refreshCurrentView() async {
+    final notifier = ref.read(orderProvider.notifier);
+    switch (_activeFilter) {
+      case _OrderLedgerFilter.all:
+        await notifier.loadOrders(refresh: true);
+        return;
+      case _OrderLedgerFilter.unlinked:
+        await notifier.searchOrders(hasLinkedInvoice: false);
+        return;
+      case _OrderLedgerFilter.linked:
+        await notifier.searchOrders(hasLinkedInvoice: true);
+        return;
+      case _OrderLedgerFilter.month:
+        final range = _selectedMonthRange;
+        if (range == null) {
+          await notifier.loadThisMonthOrders();
+        } else {
+          await notifier.searchOrders(
+            startDate: range.startDate,
+            endDate: range.endDate,
+          );
+        }
+        return;
+      case _OrderLedgerFilter.custom:
+        final query = _activeSearchQuery;
+        if (query != null) {
+          await notifier.searchOrders(shopName: query, orderNumber: query);
+        } else if (_isTodayFilter) {
+          await notifier.loadTodayOrders();
+        } else {
+          await notifier.loadOrders(refresh: true);
+        }
+        return;
+    }
   }
 
   void _showFilterDialog(BuildContext context) {
@@ -254,7 +436,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
               leading: const Icon(Icons.list),
               title: const Text('全部订单'),
               onTap: () {
-                ref.read(orderProvider.notifier).loadOrders();
+                _applyRelationFilter(_OrderLedgerFilter.all);
                 Navigator.pop(context);
               },
             ),
@@ -262,6 +444,12 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
               leading: const Icon(Icons.today),
               title: const Text('今日订单'),
               onTap: () {
+                setState(() {
+                  _activeFilter = _OrderLedgerFilter.custom;
+                  _selectedMonthRange = null;
+                  _activeSearchQuery = null;
+                  _isTodayFilter = true;
+                });
                 ref.read(orderProvider.notifier).loadTodayOrders();
                 Navigator.pop(context);
               },
@@ -270,6 +458,16 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
               leading: const Icon(Icons.calendar_month),
               title: const Text('本月订单'),
               onTap: () {
+                final now = DateTime.now();
+                setState(() {
+                  _activeFilter = _OrderLedgerFilter.month;
+                  _selectedMonthRange = MonthRangeResult(
+                    startDate: DateTime(now.year, now.month),
+                    endDate: DateTime(now.year, now.month + 1, 0),
+                  );
+                  _activeSearchQuery = null;
+                  _isTodayFilter = false;
+                });
                 ref.read(orderProvider.notifier).loadThisMonthOrders();
                 Navigator.pop(context);
               },
@@ -279,24 +477,14 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
               title: const Text('按月份范围'),
               onTap: () async {
                 Navigator.pop(context);
-                final result = await SyncfusionMonthRangePicker.show(context);
-                if (result != null) {
-                  ref
-                      .read(orderProvider.notifier)
-                      .searchOrders(
-                        startDate: result.startDate,
-                        endDate: result.endDate,
-                      );
-                }
+                await _pickMonthRange();
               },
             ),
             ListTile(
               leading: const Icon(Icons.link_off),
               title: const Text('未关联发票'),
               onTap: () {
-                ref
-                    .read(orderProvider.notifier)
-                    .searchOrders(hasLinkedInvoice: false);
+                _applyRelationFilter(_OrderLedgerFilter.unlinked);
                 Navigator.pop(context);
               },
             ),
@@ -304,9 +492,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
               leading: const Icon(Icons.link),
               title: const Text('已关联发票'),
               onTap: () {
-                ref
-                    .read(orderProvider.notifier)
-                    .searchOrders(hasLinkedInvoice: true);
+                _applyRelationFilter(_OrderLedgerFilter.linked);
                 Navigator.pop(context);
               },
             ),
@@ -326,62 +512,19 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
     if (query == null) return;
 
     if (query.isNotEmpty) {
+      setState(() {
+        _activeFilter = _OrderLedgerFilter.custom;
+        _selectedMonthRange = null;
+        _activeSearchQuery = query;
+        _isTodayFilter = false;
+      });
       ref
           .read(orderProvider.notifier)
           .searchOrders(shopName: query, orderNumber: query);
     } else {
-      // Empty search returns all orders
-      ref.read(orderProvider.notifier).loadOrders();
+      _applyRelationFilter(_OrderLedgerFilter.all);
     }
   }
 }
 
-/// Delegate for sticky month header
-class _StickyMonthHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final int year;
-  final int month;
-  final int orderCount;
-  final double totalAmount;
-
-  _StickyMonthHeaderDelegate({
-    required this.year,
-    required this.month,
-    required this.orderCount,
-    required this.totalAmount,
-  });
-
-  @override
-  double get minExtent => 64;
-
-  @override
-  double get maxExtent => 64;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return SizedBox(
-      height: 64,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 4, bottom: 4),
-        child: MonthSectionHeader(
-          year: year,
-          month: month,
-          orderCount: orderCount,
-          totalAmount: totalAmount,
-          isPinned: overlapsContent,
-        ),
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(covariant _StickyMonthHeaderDelegate oldDelegate) {
-    return year != oldDelegate.year ||
-        month != oldDelegate.month ||
-        orderCount != oldDelegate.orderCount ||
-        totalAmount != oldDelegate.totalAmount;
-  }
-}
+enum _OrderLedgerFilter { all, unlinked, linked, month, custom }

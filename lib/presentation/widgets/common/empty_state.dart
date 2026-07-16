@@ -6,6 +6,7 @@ class EmptyState extends StatelessWidget {
   final String title;
   final String? subtitle;
   final String? actionLabel;
+  final IconData? actionIcon;
   final VoidCallback? onAction;
   final Widget? customWidget;
   final double iconSize;
@@ -17,6 +18,7 @@ class EmptyState extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.actionLabel,
+    this.actionIcon = Icons.add,
     this.onAction,
     this.customWidget,
     this.iconSize = 64,
@@ -103,11 +105,14 @@ class EmptyState extends StatelessWidget {
             ],
             if (actionLabel != null && onAction != null) ...[
               const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: onAction,
-                icon: const Icon(Icons.add),
-                label: Text(actionLabel!),
-              ),
+              if (actionIcon == null)
+                ElevatedButton(onPressed: onAction, child: Text(actionLabel!))
+              else
+                ElevatedButton.icon(
+                  onPressed: onAction,
+                  icon: Icon(actionIcon),
+                  label: Text(actionLabel!),
+                ),
             ],
           ],
         ),
@@ -126,8 +131,7 @@ class EmptyOrders extends StatelessWidget {
   Widget build(BuildContext context) {
     return EmptyState(
       icon: Icons.receipt_long_outlined,
-      title: '暂无订单记录',
-      subtitle: '点击下方按钮添加新订单',
+      title: '暂无订单',
       actionLabel: '添加订单',
       onAction: onAdd,
     );
@@ -144,8 +148,7 @@ class EmptyInvoices extends StatelessWidget {
   Widget build(BuildContext context) {
     return EmptyState(
       icon: Icons.description_outlined,
-      title: '暂无发票记录',
-      subtitle: '点击下方按钮添加新发票',
+      title: '暂无发票',
       actionLabel: '添加发票',
       onAction: onAdd,
     );
@@ -162,8 +165,8 @@ class EmptySearchResults extends StatelessWidget {
   Widget build(BuildContext context) {
     return EmptyState(
       icon: Icons.search_off,
-      title: '未找到匹配的结果',
-      subtitle: '尝试调整搜索条件',
+      title: '无匹配结果',
+      subtitle: '请调整搜索条件',
       actionLabel: '清除搜索',
       onAction: onClear,
     );
@@ -181,8 +184,8 @@ class EmptyError extends StatelessWidget {
   Widget build(BuildContext context) {
     return EmptyState(
       icon: Icons.error_outline,
-      title: '出错了',
-      subtitle: message ?? '加载失败，请重试',
+      title: '加载失败',
+      subtitle: message,
       actionLabel: onRetry != null ? '重试' : null,
       onAction: onRetry,
     );

@@ -109,6 +109,18 @@ flutter:
     - assets/fonts/
 
   fonts:
+    - family: Tinos
+      fonts:
+        - asset: assets/fonts/Tinos-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Tinos-Italic.ttf
+          weight: 400
+          style: italic
+        - asset: assets/fonts/Tinos-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Tinos-BoldItalic.ttf
+          weight: 700
+          style: italic
     - family: NotoSerifSC
       fonts:
         - asset: assets/fonts/NotoSerifSC-VF.ttf

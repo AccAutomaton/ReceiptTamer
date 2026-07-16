@@ -31,7 +31,6 @@ class InvoiceMonthSectionHeader extends StatelessWidget {
           ? AppGlassTokens.sheetFillFor(context)
           : AppGlassTokens.panelFillFor(context),
       borderRadius: BorderRadius.circular(AppRadii.control),
-      boxShadow: isPinned ? AppShadows.glass : null,
       child: Row(
         children: [
           // Left side: Year and Month

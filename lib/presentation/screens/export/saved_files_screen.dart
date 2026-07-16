@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../data/services/file_service.dart';
 import '../../../core/services/log_service.dart';
 import '../../../core/services/log_config.dart';
+import '../../widgets/common/scroll_edge_fog.dart';
 
 /// Saved file item model
 class SavedFile {
@@ -92,7 +93,9 @@ class _SavedFilesScreenState extends State<SavedFilesScreen> {
       _files = await _loadFiles(_currentPath);
 
       // Update display path
-      _currentDisplayPath = await _fileService.getDownloadDirectoryPath(subDir: _currentPath) ?? '';
+      _currentDisplayPath =
+          await _fileService.getDownloadDirectoryPath(subDir: _currentPath) ??
+          '';
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleUi, '加载内容失败', e, stackTrace);
     }
@@ -140,9 +143,9 @@ class _SavedFilesScreenState extends State<SavedFilesScreen> {
     final mimeType = _fileService.getMimeType(file.name);
     final success = await _fileService.shareFile(file.uri, file.name, mimeType);
     if (!success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('分享失败')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('分享失败')));
     }
   }
 
@@ -162,9 +165,12 @@ class _SavedFilesScreenState extends State<SavedFilesScreen> {
             ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _buildContent(theme),
+      body: ScrollEdgeFog(
+        showBottom: false,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _buildContent(theme),
+      ),
     );
   }
 
@@ -310,7 +316,10 @@ class _SavedFilesScreenState extends State<SavedFilesScreen> {
 }
 
 /// Show saved files screen
-Future<void> showSavedFilesScreen(BuildContext context, {String initialSubDir = ''}) async {
+Future<void> showSavedFilesScreen(
+  BuildContext context, {
+  String initialSubDir = '',
+}) async {
   await Navigator.push(
     context,
     MaterialPageRoute(

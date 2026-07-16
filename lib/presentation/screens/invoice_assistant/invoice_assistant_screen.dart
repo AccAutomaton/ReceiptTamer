@@ -27,8 +27,9 @@ class _InvoiceAssistantScreenState
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
-      ref.read(invoiceAssistantProvider.notifier).loadSummaries();
+    Future.microtask(() async {
+      // 每次从首页进入都从“全部日期”开始，避免延续上次任务的筛选。
+      await ref.read(invoiceAssistantProvider.notifier).clearDateRange();
     });
   }
 
@@ -52,7 +53,7 @@ class _InvoiceAssistantScreenState
     if (state.selectedOrderIds.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('请先选择订单')));
+      ).showSnackBar(const SnackBar(content: Text('请选择订单')));
       return;
     }
 
@@ -81,8 +82,7 @@ class _InvoiceAssistantScreenState
             _buildFilterSection(context, state),
             if (state.startDate != null || state.endDate != null)
               _buildDateFilterChip(context, state),
-            if (state.errorMessage != null)
-              _buildErrorBanner(context, state.errorMessage!),
+            if (state.errorMessage != null) _buildErrorBanner(context),
           ],
         ),
         bodyBuilder: (context, contentPadding) =>
@@ -127,7 +127,7 @@ class _InvoiceAssistantScreenState
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '${state.summaries.length} 个店铺 / $totalOrders 条订单',
+                '${state.summaries.length} 家店铺 · $totalOrders 笔订单',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
@@ -178,7 +178,7 @@ class _InvoiceAssistantScreenState
     );
   }
 
-  Widget _buildErrorBanner(BuildContext context, String message) {
+  Widget _buildErrorBanner(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Container(
@@ -194,7 +194,7 @@ class _InvoiceAssistantScreenState
               color: Theme.of(context).colorScheme.error,
             ),
             const SizedBox(width: 8),
-            Expanded(child: Text(message, maxLines: 2)),
+            const Expanded(child: Text('加载失败', maxLines: 2)),
           ],
         ),
       ),
@@ -216,11 +216,7 @@ class _InvoiceAssistantScreenState
     if (state.summaries.isEmpty) {
       return Padding(
         padding: contentPadding,
-        child: EmptyState(
-          icon: Icons.receipt_long,
-          title: '没有未开票订单',
-          subtitle: '可以调整日期范围后再查看',
-        ),
+        child: EmptyState(icon: Icons.receipt_long, title: '暂无未开票订单'),
       );
     }
 
@@ -281,8 +277,8 @@ class _InvoiceAssistantScreenState
             children: [
               Text(
                 state.hasSelection
-                    ? '已选择 ${state.selectedOrderIds.length} 条订单'
-                    : '未选择订单',
+                    ? '已选 ${state.selectedOrderIds.length} 笔'
+                    : '未选择',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
@@ -290,8 +286,8 @@ class _InvoiceAssistantScreenState
               const SizedBox(height: 2),
               Text(
                 state.hasSelection
-                    ? '合计: ${DateFormatter.formatAmount(state.selectedTotalAmount)}'
-                    : '选择订单后关联发票',
+                    ? '合计 ${DateFormatter.formatAmount(state.selectedTotalAmount)}'
+                    : '选择订单',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: state.hasSelection
                       ? AppPalette.amountFor(context)
@@ -371,7 +367,7 @@ class _ShopSummaryCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${summary.orderCount} 条未开票订单',
+                          '${summary.orderCount} 笔未开票订单',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: colorScheme.onSurfaceVariant,
                           ),
@@ -416,7 +412,7 @@ class _ShopSummaryCard extends StatelessWidget {
                     TextButton.icon(
                       onPressed: orders.isEmpty ? null : onSelectAll,
                       icon: const Icon(Icons.select_all, size: 18),
-                      label: const Text('全选本店'),
+                      label: const Text('全选'),
                     ),
                     const SizedBox(width: 8),
                     if (selectedOrderIds.isNotEmpty)

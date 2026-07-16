@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>报销装订轨 · 边界状态</title>
+  <link rel="stylesheet" href="shared.css">
+</head>
+<body>
+  <main class="board-page">
+    <header class="board-header">
+      <div>
+        <div class="board-kicker">Exploration · boundary states</div>
+        <h1 class="board-title">04 · 暗色与连续发票账页</h1>
+      </div>
+      <p class="board-note"><b>发票不再是一摞独立圆角卡，而是一张带日期边栏的连续登记页。</b>金额、销售方和一对多关系沿同一轴读取；暗色失败与设置页用于验证全衬线体系的边界。</p>
+    </header>
+
+    <section class="phone-grid">
+      <article class="phone-card">
+        <div class="phone dark">
+          <div class="screen">
+            <div class="statusbar"><span>22:18</span><span>5G&nbsp;&nbsp;61%</span></div>
+            <header class="appbar with-back">
+              <button class="back-button"><svg class="icon"><use href="icons.svg#i-back"/></svg></button>
+              <div class="appbar-copy"><div class="appbar-eyebrow">部分完成</div><h2 class="screen-title">生成结果</h2></div>
+            </header>
+            <div class="scroll no-nav">
+              <section class="ticket assistant-summary">
+                <div><b>2 / 3 已生成</b><p>本次报销材料 · 已完成项目可直接查看</p></div>
+                <div class="assistant-total" style="color:var(--warn)">1 项失败<small>可以重试</small></div>
+              </section>
+              <div class="section-title"><b>生成明细</b><span>10:26</span></div>
+              <div class="build-track">
+                <div class="build-row">
+                  <div class="row-mark"><svg class="icon"><use href="icons.svg#i-check"/></svg></div>
+                  <div class="copy"><b>用餐证明 PDF</b><small>已保存 · 4.2 MB</small></div>
+                  <div class="status-pill">已生成</div>
+                </div>
+                <div class="build-row error">
+                  <div class="row-mark" style="background:var(--danger-soft);color:var(--danger)"><svg class="icon"><use href="icons.svg#i-alert"/></svg></div>
+                  <div class="copy"><b>发票汇总 PDF</b><small>发票 0440••••9801 · 源文件不可读</small></div>
+                  <div class="status-pill pending">需处理</div>
+                </div>
+                <div class="build-row">
+                  <div class="row-mark"><svg class="icon"><use href="icons.svg#i-check"/></svg></div>
+                  <div class="copy"><b>用餐明细 XLSX</b><small>已保存 · 28 KB</small></div>
+                  <div class="status-pill">已生成</div>
+                </div>
+              </div>
+              <div class="inline-action" style="border-color:color-mix(in srgb,var(--danger) 42%,var(--rule));background:var(--danger-soft)">
+                <div class="action-mark" style="background:var(--surface);color:var(--danger)"><svg class="icon"><use href="icons.svg#i-alert"/></svg></div>
+                <div class="copy"><b>问题发票 0440••••9801</b><small>查看发票并重新选择源文件后，可继续生成</small></div>
+              </div>
+            </div>
+            <div class="bottom-action"><div class="secondary-button">查看已生成</div><div class="primary-button"><svg class="icon"><use href="icons.svg#i-edit"/></svg>处理问题文件</div></div>
+          </div>
+        </div>
+        <div class="phone-label"><strong>暗色 · 部分失败</strong><span>定位问题文件后继续</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen">
+            <div class="statusbar"><span>10:28</span><span>5G&nbsp;&nbsp;82%</span></div>
+            <header class="appbar">
+              <div class="appbar-copy"><h2 class="screen-title">发票</h2></div>
+              <div class="appbar-actions">
+                <button class="icon-button"><svg class="icon"><use href="icons.svg#i-search"/></svg></button>
+                <button class="icon-button"><svg class="icon"><use href="icons.svg#i-filter"/></svg></button>
+              </div>
+            </header>
+            <div class="scroll">
+              <div class="filter-strip">
+                <div class="chip active">全部 3</div>
+                <div class="chip">未关联 1</div>
+                <div class="chip">已关联 2</div>
+              </div>
+              <section class="ledger-sheet invoice-sheet">
+                <header class="ledger-head"><div class="ledger-month"><b>2026 年 7 月</b><small>3 张</small></div><div class="ledger-total"><small>合计</small>¥202.64</div></header>
+                <div class="ledger-entries">
+                  <article class="ledger-entry"><time class="ledger-date"><b>10</b><span>开票</span></time><div class="ledger-main"><b>青禾餐饮管理有限公司</b><small>发票号 0440••••9801</small></div><div class="ledger-end"><strong class="ledger-amount">¥128.64</strong><span class="relation-label is-linked">已关联 3 笔</span></div></article>
+                  <article class="ledger-entry"><time class="ledger-date"><b>07</b><span>开票</span></time><div class="ledger-main"><b>云帆城市服务有限公司</b><small>发票号 0330••••7712</small></div><div class="ledger-end"><strong class="ledger-amount">¥48.00</strong><span class="relation-label is-linked">已关联 1 笔</span></div></article>
+                  <article class="ledger-entry"><time class="ledger-date"><b>03</b><span>开票</span></time><div class="ledger-main"><b>纸上餐饮服务有限公司</b><small>发票号 0210••••4061</small></div><div class="ledger-end"><strong class="ledger-amount">¥26.00</strong><span class="relation-label is-action">未关联订单</span></div></article>
+                </div>
+              </section>
+            </div>
+            <nav class="bottom-nav">
+              <div class="nav-item"><span><svg class="icon"><use href="icons.svg#i-home"/></svg>首页</span></div>
+              <div class="nav-item"><span><svg class="icon"><use href="icons.svg#i-orders"/></svg>订单</span></div>
+              <div class="nav-item active"><span><svg class="icon"><use href="icons.svg#i-invoice"/></svg>发票</span></div>
+              <div class="nav-item"><span><svg class="icon"><use href="icons.svg#i-package"/></svg>报销</span></div>
+            </nav>
+            <div class="intake-dock"><svg class="icon"><use href="icons.svg#i-plus"/></svg><span>新增</span></div>
+          </div>
+        </div>
+        <div class="phone-label"><strong>发票 · 连续账页</strong><span>日期栏、金额与一对多关系同轴</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen">
+            <div class="statusbar"><span>10:28</span><span>5G&nbsp;&nbsp;82%</span></div>
+            <header class="appbar with-back">
+              <button class="back-button"><svg class="icon"><use href="icons.svg#i-back"/></svg></button>
+              <div class="appbar-copy"><div class="appbar-eyebrow">应用</div><h2 class="screen-title">设置</h2></div>
+            </header>
+            <div class="scroll flush-bottom">
+              <section class="ticket settings-intro">
+                <div class="brand-mark"><svg class="icon"><use href="icons.svg#i-orders"/></svg></div>
+                <div><h2>ReceiptTamer</h2><p>版本 0.5.2 · 本地优先的报销票据整理工具</p></div>
+              </section>
+              <div class="section-title"><b>模型与数据</b><span></span></div>
+              <div class="settings-list">
+                <div class="setting-row"><div class="row-mark"><svg class="icon"><use href="icons.svg#i-spark"/></svg></div><div class="row-copy"><b>模型管理</b><small>本地与外部模型</small></div><div class="row-end"><svg class="icon"><use href="icons.svg#i-chevron"/></svg></div></div>
+                <div class="setting-row"><div class="row-mark"><svg class="icon"><use href="icons.svg#i-storage"/></svg></div><div class="row-copy"><b>存储管理</b><small>存储占用、缓存与数据</small></div><div class="row-end"><svg class="icon"><use href="icons.svg#i-chevron"/></svg></div></div>
+                <div class="setting-row"><div class="row-mark"><svg class="icon"><use href="icons.svg#i-cloud"/></svg></div><div class="row-copy"><b>备份与还原</b><small>备份或恢复应用数据</small></div><div class="row-end"><svg class="icon"><use href="icons.svg#i-chevron"/></svg></div></div>
+                <div class="setting-row"><div class="row-mark warn"><svg class="icon"><use href="icons.svg#i-alert"/></svg></div><div class="row-copy"><b>数据清理</b><small>清理订单或发票</small></div><div class="row-end"><svg class="icon"><use href="icons.svg#i-chevron"/></svg></div></div>
+              </div>
+              <div class="section-title"><b>应用信息</b><span></span></div>
+              <div class="settings-list">
+                <div class="setting-row"><div class="row-mark info"><svg class="icon"><use href="icons.svg#i-info"/></svg></div><div class="row-copy"><b>更新历史</b><small>版本发布记录</small></div><div class="row-end"><svg class="icon"><use href="icons.svg#i-chevron"/></svg></div></div>
+                <div class="setting-row"><div class="row-mark info"><svg class="icon"><use href="icons.svg#i-shield"/></svg></div><div class="row-copy"><b>隐私政策</b></div><div class="row-end"><svg class="icon"><use href="icons.svg#i-chevron"/></svg></div></div>
+                <div class="setting-row"><div class="row-mark info"><svg class="icon"><use href="icons.svg#i-more"/></svg></div><div class="row-copy"><b>开源信息</b><small>开源许可证</small></div><div class="row-end"><svg class="icon"><use href="icons.svg#i-chevron"/></svg></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-label"><strong>设置 · 原“关于”逐项迁移</strong><span>每行只有一个明确目的地</span></div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

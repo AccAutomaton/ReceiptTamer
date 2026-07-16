@@ -145,24 +145,24 @@ class _AppTextFieldState extends State<AppTextField> {
         ? _buildManualPasteContextMenu
         : _buildDefaultContextMenu;
     final fieldRadius = BorderRadius.circular(effectiveBorderRadius);
-    final highlightColor = AppEntityTokens.highlightFor(context);
-    final ridgeColor = AppEntityTokens.ridgeFor(context);
     final enabledFieldBorder = AppReliefInputBorder(
-      highlightColor: highlightColor,
-      ridgeColor: ridgeColor,
+      highlightColor: Colors.transparent,
+      ridgeColor: Colors.transparent,
+      ridgeWidth: 0,
       borderRadius: fieldRadius,
       borderSide: BorderSide(color: AppEntityTokens.strongBorderFor(context)),
     );
     final focusedFieldBorder = AppReliefInputBorder(
-      highlightColor: highlightColor,
-      ridgeColor: colorScheme.primary,
-      ridgeWidth: 2.5,
+      highlightColor: Colors.transparent,
+      ridgeColor: Colors.transparent,
+      ridgeWidth: 0,
       borderRadius: fieldRadius,
-      borderSide: BorderSide(color: colorScheme.primary, width: 1.4),
+      borderSide: BorderSide(color: colorScheme.primary),
     );
     final errorFieldBorder = AppReliefInputBorder(
-      highlightColor: highlightColor,
-      ridgeColor: colorScheme.error,
+      highlightColor: Colors.transparent,
+      ridgeColor: Colors.transparent,
+      ridgeWidth: 0,
       borderRadius: fieldRadius,
       borderSide: BorderSide(color: colorScheme.error),
     );
@@ -214,12 +214,12 @@ class _AppTextFieldState extends State<AppTextField> {
             focusedBorder: focusedFieldBorder,
             errorBorder: errorFieldBorder,
             focusedErrorBorder: errorFieldBorder.copyWith(
-              borderSide: BorderSide(color: colorScheme.error, width: 1.4),
+              borderSide: BorderSide(color: colorScheme.error),
             ),
             disabledBorder: AppReliefInputBorder(
-              highlightColor: highlightColor.withValues(alpha: 0.55),
-              ridgeColor: ridgeColor,
-              ridgeWidth: 1,
+              highlightColor: Colors.transparent,
+              ridgeColor: Colors.transparent,
+              ridgeWidth: 0,
               borderRadius: fieldRadius,
               borderSide: BorderSide(color: AppEntityTokens.borderFor(context)),
             ),
@@ -579,21 +579,23 @@ class AppSelectField<T> extends StatelessWidget {
       colorScheme.onSurface,
     );
     final reliefBorder = AppReliefInputBorder(
-      highlightColor: AppEntityTokens.highlightFor(context),
-      ridgeColor: AppEntityTokens.ridgeFor(context),
+      highlightColor: Colors.transparent,
+      ridgeColor: Colors.transparent,
+      ridgeWidth: 0,
       borderRadius: controlBorderRadius,
       borderSide: BorderSide(color: AppEntityTokens.strongBorderFor(context)),
     );
     final focusedReliefBorder = AppReliefInputBorder(
-      highlightColor: AppEntityTokens.highlightFor(context),
-      ridgeColor: colorScheme.primary,
-      ridgeWidth: 2.5,
+      highlightColor: Colors.transparent,
+      ridgeColor: Colors.transparent,
+      ridgeWidth: 0,
       borderRadius: controlBorderRadius,
-      borderSide: BorderSide(color: colorScheme.primary, width: 1.4),
+      borderSide: BorderSide(color: colorScheme.primary),
     );
     final errorReliefBorder = AppReliefInputBorder(
-      highlightColor: AppEntityTokens.highlightFor(context),
-      ridgeColor: colorScheme.error,
+      highlightColor: Colors.transparent,
+      ridgeColor: Colors.transparent,
+      ridgeWidth: 0,
       borderRadius: controlBorderRadius,
       borderSide: BorderSide(color: colorScheme.error),
     );
@@ -636,6 +638,7 @@ class AppSelectField<T> extends StatelessWidget {
         DropdownButtonHideUnderline(
           child: DropdownButtonFormField<T>(
             initialValue: value,
+            elevation: 0,
             items: options.map((option) {
               return DropdownMenuItem<T>(
                 value: option,
@@ -666,14 +669,12 @@ class AppSelectField<T> extends StatelessWidget {
               focusedBorder: focusedReliefBorder,
               errorBorder: errorReliefBorder,
               focusedErrorBorder: errorReliefBorder.copyWith(
-                borderSide: BorderSide(color: colorScheme.error, width: 1.4),
+                borderSide: BorderSide(color: colorScheme.error),
               ),
               disabledBorder: AppReliefInputBorder(
-                highlightColor: AppEntityTokens.highlightFor(
-                  context,
-                ).withValues(alpha: 0.55),
-                ridgeColor: AppEntityTokens.ridgeFor(context),
-                ridgeWidth: 1,
+                highlightColor: Colors.transparent,
+                ridgeColor: Colors.transparent,
+                ridgeWidth: 0,
                 borderRadius: controlBorderRadius,
                 borderSide: BorderSide(
                   color: AppEntityTokens.borderFor(context),

@@ -1,453 +1,123 @@
-import 'package:receipt_tamer/core/constants/app_constants.dart';
-import 'package:receipt_tamer/core/services/log_service.dart';
-import 'package:receipt_tamer/core/services/log_config.dart';
-import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
-import 'package:receipt_tamer/core/utils/date_formatter.dart';
-import 'package:receipt_tamer/presentation/providers/order_provider.dart';
-import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
-import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
-import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
-import 'package:easy_refresh/easy_refresh.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-const _quickAccessCardShadows = [
-  BoxShadow(
-    color: AppPalette.shadowDeep,
-    blurRadius: 30,
-    spreadRadius: -4,
-    offset: Offset(0, 14),
-  ),
-  BoxShadow(color: Color(0x44FFFFFF), blurRadius: 1, offset: Offset(0, -1)),
-];
+import '../../../core/theme/app_design_tokens.dart';
+import '../../../core/utils/date_formatter.dart';
+import '../../providers/home_overview_provider.dart';
+import '../../widgets/common/app_button.dart';
+import '../../widgets/common/glass_navigation_bar.dart';
+import '../../widgets/common/scroll_edge_fog.dart';
 
-/// Home screen - main dashboard with statistics overview
-class HomeScreen extends ConsumerStatefulWidget {
+/// The app's filing desk: a task directory followed by recent orders.
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
-  @override
-  ConsumerState<HomeScreen> createState() => _HomeScreenState();
-}
+  static const _regularBottomClearance = 120.0;
+  static const _compactBottomClearance = 112.0;
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
-  final EasyRefreshController _refreshController = EasyRefreshController(
-    controlFinishRefresh: true,
-  );
-
-  bool _initialized = false;
-  bool _dataLoaded = false;
-
-  @override
-  void dispose() {
-    _refreshController.dispose();
-    super.dispose();
+  Future<void> _refresh(WidgetRef ref) async {
+    ref.invalidate(homeOverviewProvider);
+    await ref.read(homeOverviewProvider.future);
   }
 
   @override
-  void initState() {
-    super.initState();
-  }
-
-  /// 刷新所有数据
-  Future<void> _refreshData() async {
-    await Future.wait([
-      ref.refresh(orderCountProvider.future),
-      ref.refresh(invoiceCountProvider.future),
-    ]);
-    await ref.read(orderProvider.notifier).loadOrders();
-    if (mounted) {
-      setState(() {
-        _dataLoaded = true;
-      });
-    }
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // 确保数据只加载一次
-    if (!_initialized) {
-      _initialized = true;
-      // 首帧后加载数据，确保 UI 已经构建完成
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _refreshData();
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    // 数据未加载完成时显示加载界面
-    if (!_dataLoaded) {
-      return Scaffold(
-        backgroundColor: Colors.transparent,
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    final orderCountAsync = ref.watch(orderCountProvider);
-    final invoiceCountAsync = ref.watch(invoiceCountProvider);
-    final orderState = ref.watch(orderProvider);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final overview = ref.watch(homeOverviewProvider);
+    final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+    final toolbarHeight = (72 + (textScale - 1).clamp(0, 1) * 24).toDouble();
 
     return Scaffold(
       extendBody: true,
       backgroundColor: Colors.transparent,
-      body: EasyRefresh(
-        controller: _refreshController,
-        onRefresh: () async {
-          try {
-            await _refreshData();
-            _refreshController.finishRefresh(IndicatorResult.success);
-          } catch (e, stackTrace) {
-            _refreshController.finishRefresh(IndicatorResult.fail);
-            logService.e(LogConfig.moduleUi, '刷新数据失败', e, stackTrace);
-          }
-        },
-        header: ClassicHeader(
-          dragText: '下拉刷新',
-          armedText: '松手刷新',
-          readyText: '正在刷新...',
-          processingText: '正在刷新...',
-          processedText: '刷新完成',
-          noMoreText: '',
-          showMessage: false,
-          iconDimension: 20,
-          iconTheme: IconThemeData(color: colorScheme.primary),
-          textStyle: TextStyle(
-            color: colorScheme.primary,
-            fontWeight: FontWeight.w500,
+      appBar: AppBar(
+        toolbarHeight: toolbarHeight,
+        centerTitle: false,
+        titleSpacing: 16,
+        title: const _HomeTitle(),
+        actions: [
+          AppIconButton(
+            key: const ValueKey('home-settings-action'),
+            icon: Icons.settings_outlined,
+            tooltip: '设置',
+            onPressed: () => context.push('/settings'),
           ),
-        ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 112),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SafeArea(bottom: false, child: _buildPageHeader(context)),
-              const SizedBox(height: 18),
-              _buildStatisticsCards(
-                context,
-                orderCountAsync,
-                invoiceCountAsync,
-              ),
-
-              const SizedBox(height: 22),
-
-              Text(
-                '快捷功能',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: AppPalette.textPrimaryFor(context),
-                ),
-              ),
-              const SizedBox(height: 12),
-              _buildQuickAccessGrid(context),
-
-              const SizedBox(height: 22),
-
-              // Recent orders
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '最近订单',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: AppPalette.textPrimaryFor(context),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () => context.push('/orders'),
-                    child: const Text('查看全部'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              _buildRecentOrders(context, orderState),
-            ],
-          ),
+          const SizedBox(width: 12),
+        ],
+      ),
+      body: ScrollEdgeFog(
+        topHeight: textScale >= 1.7 ? 42 : 34,
+        bottomHeight: textScale >= 1.7 ? 68 : 58,
+        bottomInset: GlassNavigationBar.contentFadeInset(context),
+        child: overview.when(
+          skipLoadingOnRefresh: true,
+          data: (data) =>
+              _HomeScroll(overview: data, onRefresh: () => _refresh(ref)),
+          loading: () => const _HomeLoading(),
+          error: (error, stackTrace) =>
+              _HomeError(onRetry: () => ref.invalidate(homeOverviewProvider)),
         ),
       ),
-    );
-  }
-
-  Widget _buildPageHeader(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Text(
-      AppConstants.titleHome,
-      style: theme.textTheme.headlineMedium?.copyWith(
-        color: AppPalette.textPrimaryFor(context),
-        fontWeight: FontWeight.w800,
-      ),
-    );
-  }
-
-  Widget _buildStatisticsCards(
-    BuildContext context,
-    AsyncValue<int> orderCount,
-    AsyncValue<int> invoiceCount,
-  ) {
-    return Row(
-      children: [
-        Expanded(
-          child: _StatCard(
-            title: '订单总数',
-            value: orderCount.value?.toString() ?? '-',
-            icon: Icons.receipt_long,
-            color: AppPalette.amountFor(context),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _StatCard(
-            title: '发票总数',
-            value: invoiceCount.value?.toString() ?? '-',
-            icon: Icons.description,
-            color: AppPalette.actionSecondaryFor(context),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQuickAccessGrid(BuildContext context) {
-    return Column(
-      children: [
-        // 第一行：用餐证明导出 + 发票导出
-        Row(
-          children: [
-            Expanded(
-              child: _QuickAccessButton(
-                icon: Icons.restaurant_menu,
-                label: '用餐证明导出',
-                color: AppPalette.actionPrimaryFor(context),
-                onTap: () => context.push('/export/meal-proof'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _QuickAccessButton(
-                icon: Icons.receipt_long,
-                label: '发票导出',
-                color: AppPalette.actionSecondaryFor(context),
-                onTap: () => context.push('/export/invoice'),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        // 第二行：开票助手 + 报销材料导出
-        Row(
-          children: [
-            Expanded(
-              child: _QuickAccessButton(
-                icon: Icons.storefront,
-                label: '开票助手',
-                color: AppPalette.actionSecondaryFor(context),
-                onTap: () => context.push('/invoice-assistant'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _QuickAccessButton(
-                icon: Icons.file_download_outlined,
-                label: '报销材料导出',
-                color: AppPalette.actionPrimaryFor(context),
-                onTap: () => context.push('/export'),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRecentOrders(BuildContext context, dynamic orderState) {
-    final orders = orderState.orders;
-    final isLoading = orderState.isLoading;
-
-    if (isLoading && orders.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-
-    if (orders.isEmpty) {
-      return SizedBox(
-        width: double.infinity,
-        child: AppCard(
-          margin: EdgeInsets.zero,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                Icon(
-                  Icons.inbox_outlined,
-                  size: 48,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '暂无订单',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                AppButton(
-                  text: '添加订单',
-                  onPressed: () => context.push('/orders/new'),
-                  type: AppButtonType.primary,
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    final recentOrders = orders.take(5).toList();
-
-    return Column(
-      children: recentOrders
-          .map((order) {
-            final orderDate =
-                order.orderDate != null && order.orderDate!.isNotEmpty
-                ? DateTime.tryParse(order.orderDate!)
-                : null;
-
-            return AppCard(
-              onTap: () {
-                if (order.id != null && order.id! > 0) {
-                  context.push('/orders/${order.id}');
-                }
-              },
-              padding: const EdgeInsets.all(12),
-              margin: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: AppPalette.elevatedFillFor(context),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Icon(
-                      Icons.receipt_long,
-                      color: AppPalette.amountFor(context),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          order.shopName.isEmpty ? '未命名店铺' : order.shopName,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w500),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (orderDate != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              DateFormatter.formatDisplay(orderDate),
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
-                                  ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    DateFormatter.formatAmount(order.amount),
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppPalette.amountFor(context),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    Icons.chevron_right,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ],
-              ),
-            );
-          })
-          .cast<Widget>()
-          .toList(),
     );
   }
 }
 
-/// Stat card widget
-class _StatCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  const _StatCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
+class _HomeTitle extends StatelessWidget {
+  const _HomeTitle();
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.all(16),
-      margin: EdgeInsets.zero,
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(icon, color: color),
+    final theme = Theme.of(context);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '首页',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.headlineMedium?.copyWith(
+            color: AppPalette.textPrimaryFor(context),
+            fontWeight: FontWeight.w600,
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+        ),
+      ],
+    );
+  }
+}
+
+class _HomeScroll extends StatelessWidget {
+  const _HomeScroll({required this.overview, required this.onRefresh});
+
+  final HomeOverview overview;
+  final Future<void> Function() onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 380;
+    final bottomClearance = compact
+        ? HomeScreen._compactBottomClearance
+        : HomeScreen._regularBottomClearance;
+
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: CustomScrollView(
+        key: const ValueKey('home-scroll-view'),
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(
+              compact ? 12 : 16,
+              14,
+              compact ? 12 : 16,
+              bottomClearance + MediaQuery.paddingOf(context).bottom,
+            ),
+            sliver: SliverList.list(
               children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: AppPalette.amountFor(context),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                _FilingDirectory(overview: overview),
+                const SizedBox(height: 14),
+                _RecentOrders(items: overview.recentOrders),
               ],
             ),
           ),
@@ -457,66 +127,812 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-/// Quick access button widget
-class _QuickAccessButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
+class _FilingDirectory extends StatelessWidget {
+  const _FilingDirectory({required this.overview});
 
-  const _QuickAccessButton({
-    required this.icon,
+  final HomeOverview overview;
+
+  @override
+  Widget build(BuildContext context) {
+    final border = AppEntityTokens.strongBorderFor(context);
+    final divider = AppEntityTokens.borderFor(context);
+    final fill = AppEntityTokens.fillFor(context);
+
+    return _PaperSurface(
+      key: const ValueKey('home-directory-card'),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            height: 28,
+            decoration: BoxDecoration(
+              color: Color.alphaBlend(
+                Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+                fill,
+              ),
+              border: Border(bottom: BorderSide(color: divider)),
+            ),
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  _BindingHole(),
+                  SizedBox(width: 38),
+                  _BindingHole(),
+                  SizedBox(width: 38),
+                  _BindingHole(),
+                ],
+              ),
+            ),
+          ),
+          IntrinsicHeight(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _DirectoryStat(
+                      key: const ValueKey('home-order-stat-column'),
+                      value: overview.orderCount,
+                      label: '订单总数',
+                    ),
+                  ),
+                  VerticalDivider(width: 1, thickness: 1, color: divider),
+                  Expanded(
+                    child: _DirectoryStat(
+                      key: const ValueKey('home-invoice-stat-column'),
+                      value: overview.invoiceCount,
+                      label: '发票总数',
+                    ),
+                  ),
+                  VerticalDivider(width: 1, thickness: 1, color: divider),
+                  Expanded(
+                    child: _DirectoryStat(
+                      key: const ValueKey('home-uninvoiced-stat-column'),
+                      value: overview.uninvoicedOrderCount,
+                      label: '未关联订单',
+                      emphasized: true,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Divider(height: 1, thickness: 1, color: divider),
+          _DirectoryTask(
+            key: const ValueKey('home-invoice-assistant-action'),
+            shopCount: overview.uninvoicedShopCount,
+            orderCount: overview.uninvoicedOrderCount,
+            onTap: () => context.push('/invoice-assistant'),
+          ),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: Color.alphaBlend(
+                Theme.of(context).colorScheme.primary.withValues(alpha: 0.06),
+                fill,
+              ),
+              border: Border(top: BorderSide(color: divider)),
+            ),
+            child: IntrinsicHeight(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _DirectoryTool(
+                      key: const ValueKey('home-meal-proof-action'),
+                      icon: Icons.restaurant_menu,
+                      title: '用餐证明导出',
+                      description: '选择订单生成 PDF',
+                      onTap: () => context.push('/export/meal-proof'),
+                    ),
+                  ),
+                  VerticalDivider(width: 1, thickness: 1, color: border),
+                  Expanded(
+                    child: _DirectoryTool(
+                      key: const ValueKey('home-invoice-export-action'),
+                      icon: Icons.description_outlined,
+                      title: '发票导出',
+                      description: '选择发票生成 PDF',
+                      onTap: () => context.push('/export/invoice'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BindingHole extends StatelessWidget {
+  const _BindingHole();
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+
+    return Container(
+      width: 9,
+      height: 9,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppEntityTokens.fillFor(context),
+        border: Border.all(color: accent, width: 1.4),
+      ),
+    );
+  }
+}
+
+class _DirectoryStat extends StatelessWidget {
+  const _DirectoryStat({
+    super.key,
+    required this.value,
     required this.label,
-    required this.color,
-    required this.onTap,
+    this.emphasized = false,
   });
+
+  final int value;
+  final String label;
+  final bool emphasized;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = AppPalette.isDark(context);
-    final iconChip = Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(16),
+    final color = emphasized
+        ? theme.colorScheme.primary
+        : AppPalette.textPrimaryFor(context);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$value',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontFeatures: AppTypography.tabularFigures,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
-      child: Icon(icon, color: color),
     );
-    final labelText = FittedBox(
-      fit: BoxFit.scaleDown,
-      alignment: Alignment.centerLeft,
-      child: Text(
-        label,
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: AppPalette.textPrimaryFor(context),
-          fontWeight: FontWeight.w700,
+  }
+}
+
+class _DirectoryTask extends StatelessWidget {
+  const _DirectoryTask({
+    super.key,
+    required this.shopCount,
+    required this.orderCount,
+    required this.onTap,
+  });
+
+  final int shopCount;
+  final int orderCount;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final accent = theme.colorScheme.primary;
+    final divider = AppEntityTokens.borderFor(context);
+    final fill = AppEntityTokens.fillFor(context);
+
+    return Semantics(
+      button: true,
+      label: '开票助手，$shopCount 家店铺，$orderCount 笔订单，查看未关联订单',
+      child: InkWell(
+        onTap: onTap,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Color.alphaBlend(accent.withValues(alpha: 0.025), fill),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 104),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: Center(
+                      key: const ValueKey('home-assistant-icon-column'),
+                      child: Container(
+                        key: const ValueKey('home-assistant-icon-seal'),
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: Color.alphaBlend(
+                            accent.withValues(alpha: 0.11),
+                            fill,
+                          ),
+                          borderRadius: BorderRadius.circular(AppRadii.control),
+                        ),
+                        child: Icon(
+                          Icons.receipt_long_outlined,
+                          size: 25,
+                          color: accent,
+                        ),
+                      ),
+                    ),
+                  ),
+                  _AssistantPerforation(color: divider),
+                  Expanded(
+                    child: Padding(
+                      key: const ValueKey('home-assistant-copy-column'),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 13,
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '开票助手',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: AppPalette.textPrimaryFor(context),
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          _AssistantMetric(value: shopCount, label: '家店铺'),
+                          const SizedBox(height: 1),
+                          _AssistantMetric(value: orderCount, label: '笔订单'),
+                        ],
+                      ),
+                    ),
+                  ),
+                  _AssistantPerforation(color: divider),
+                  Expanded(
+                    child: Center(
+                      key: const ValueKey('home-assistant-action-column'),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 11,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '查看未关联订单',
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: accent,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Container(
+                              key: const ValueKey('home-assistant-action-mark'),
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: Color.alphaBlend(
+                                  accent.withValues(alpha: 0.10),
+                                  fill,
+                                ),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.arrow_forward_rounded,
+                                size: 16,
+                                color: accent,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
-        maxLines: 1,
       ),
+    );
+  }
+}
+
+class _AssistantMetric extends StatelessWidget {
+  const _AssistantMetric({required this.value, required this.label});
+
+  final int value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Text.rich(
+      TextSpan(
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+        children: [
+          TextSpan(
+            text: '$value',
+            style: TextStyle(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w700,
+              fontFeatures: AppTypography.tabularFigures,
+            ),
+          ),
+          TextSpan(text: ' $label'),
+        ],
+      ),
+      textAlign: TextAlign.center,
+    );
+  }
+}
+
+class _AssistantPerforation extends StatelessWidget {
+  const _AssistantPerforation({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 1,
+      child: Center(
+        child: SizedBox(
+          height: 30,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: List.generate(
+              4,
+              (index) => Container(width: 1, height: 4, color: color),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DirectoryTool extends StatelessWidget {
+  const _DirectoryTool({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+    final compact = MediaQuery.sizeOf(context).width < 380;
+    final horizontalPadding = compact ? 12.0 : 16.0;
+
+    return Semantics(
+      button: true,
+      label: '$title，$description',
+      child: InkWell(
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 76),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontalPadding,
+              vertical: 10,
+            ),
+            child: Row(
+              children: [
+                Icon(icon, size: 20, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: AppPalette.textPrimaryFor(context),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (textScale < 1.7) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          description,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward,
+                  size: 15,
+                  color: theme.colorScheme.primary,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RecentOrders extends StatelessWidget {
+  const _RecentOrders({required this.items});
+
+  final List<RecentOrderItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final divider = AppEntityTokens.borderFor(context);
+    final fill = AppEntityTokens.fillFor(context);
+
+    return _PaperSurface(
+      key: const ValueKey('home-recent-orders-sheet'),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            constraints: const BoxConstraints(minHeight: 54),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            decoration: BoxDecoration(
+              color: Color.alphaBlend(
+                theme.colorScheme.secondary.withValues(alpha: 0.06),
+                fill,
+              ),
+              border: Border(bottom: BorderSide(color: divider)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '最近订单',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  key: const ValueKey('home-recent-orders-more'),
+                  onPressed: () => context.go('/orders'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: theme.colorScheme.primary,
+                    minimumSize: const Size(48, 48),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    '查看更多',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (items.isEmpty)
+            const _EmptyOrders()
+          else
+            for (var index = 0; index < items.length; index++) ...[
+              if (index > 0) Divider(height: 1, thickness: 1, color: divider),
+              _RecentOrderRow(item: items[index]),
+            ],
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyOrders extends StatelessWidget {
+  const _EmptyOrders();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 150),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.receipt_long_outlined,
+                size: 34,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(height: 10),
+              Text('暂无订单', style: theme.textTheme.titleMedium),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RecentOrderRow extends StatelessWidget {
+  const _RecentOrderRow({required this.item});
+
+  final RecentOrderItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+    final stacked = textScale >= 1.7;
+    final route = '/orders/${item.id}';
+
+    final mainCopy = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          item.title,
+          maxLines: stacked ? 2 : 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: AppPalette.textPrimaryFor(context),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          _metadata(item),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+    final endCopy = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(
+          DateFormatter.formatAmount(item.amount),
+          maxLines: 1,
+          style: theme.textTheme.titleSmall?.copyWith(
+            color: theme.colorScheme.primary,
+            fontWeight: FontWeight.w600,
+            fontFeatures: AppTypography.tabularFigures,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          _relationLabel(item),
+          maxLines: 1,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
     );
 
-    return AppCard(
-      padding: const EdgeInsets.all(16),
-      margin: EdgeInsets.zero,
-      backgroundColor: Color.alphaBlend(
-        color.withValues(alpha: 0.08),
-        AppGlassTokens.contentFillFor(context),
-      ),
-      borderRadius: BorderRadius.circular(AppRadii.card),
-      boxShadow: isDark ? AppShadows.card : _quickAccessCardShadows,
-      onTap: onTap,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 58),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            iconChip,
-            const SizedBox(width: 12),
-            Expanded(child: labelText),
-          ],
+    return Semantics(
+      button: item.id != null,
+      label: '订单，${item.title}，${_relationLabel(item)}',
+      child: InkWell(
+        key: ValueKey('recent-order-${item.id ?? 'unknown'}'),
+        onTap: item.id == null ? null : () => context.push(route),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: stacked ? 96 : 64),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _ArchiveDate(date: item.collectedAt),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 9,
+                    ),
+                    child: stacked
+                        ? Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              mainCopy,
+                              const SizedBox(height: 8),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: endCopy,
+                              ),
+                            ],
+                          )
+                        : Row(
+                            children: [
+                              Expanded(child: mainCopy),
+                              const SizedBox(width: 8),
+                              endCopy,
+                            ],
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
+    );
+  }
+
+  static String _metadata(RecentOrderItem item) {
+    final parts = <String>['订单'];
+    final mealTime = DateFormatter.mealTimeToDisplayName(
+      DateFormatter.mealTimeFromString(item.mealTime),
+    );
+    if (mealTime != '-') parts.add(mealTime);
+    if (item.referenceNumber.isNotEmpty) {
+      final tailLength = item.referenceNumber.length.clamp(0, 5);
+      parts.add(
+        '#${item.referenceNumber.substring(item.referenceNumber.length - tailLength)}',
+      );
+    }
+    return parts.join(' · ');
+  }
+
+  static String _relationLabel(RecentOrderItem item) {
+    if (!item.hasInvoice) {
+      return '未关联发票';
+    }
+    return '已关联发票';
+  }
+}
+
+class _ArchiveDate extends StatelessWidget {
+  const _ArchiveDate({required this.date});
+
+  final DateTime? date;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      width: 52,
+      decoration: BoxDecoration(
+        border: Border(
+          right: BorderSide(color: AppEntityTokens.borderFor(context)),
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            date?.day.toString().padLeft(2, '0') ?? '--',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w600,
+              fontFeatures: AppTypography.tabularFigures,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            date == null ? '未知' : '${date!.month}月',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PaperSurface extends StatelessWidget {
+  const _PaperSurface({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    const radius = BorderRadius.all(Radius.circular(AppRadii.large));
+
+    return Material(
+      color: AppEntityTokens.fillFor(context),
+      shape: RoundedRectangleBorder(
+        borderRadius: radius,
+        side: BorderSide(color: AppEntityTokens.strongBorderFor(context)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: child,
+    );
+  }
+}
+
+class _HomeLoading extends StatelessWidget {
+  const _HomeLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const CustomScrollView(
+      physics: AlwaysScrollableScrollPhysics(),
+      slivers: [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ],
+    );
+  }
+}
+
+class _HomeError extends StatelessWidget {
+  const _HomeError({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.cloud_off_outlined,
+                    size: 38,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(height: 12),
+                  Text('加载失败', style: theme.textTheme.titleMedium),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: onRetry,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('重试'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -22,16 +22,27 @@ class MealDetailsExportService {
   }) async {
     // Map to store daily amounts: date -> mealTime -> {paid, invoice}
     final dailyAmounts = <String, Map<String, _MealAmount>>{};
+    final invoiceIdByOrder = <int, int>{};
+    final processedInvoiceIds = <int>{};
 
     for (final invoice in invoices) {
       if (invoice.id == null) continue;
+      if (!processedInvoiceIds.add(invoice.id!)) continue;
 
-      final orderIds = await getOrderIdsForInvoice(invoice.id!);
+      final orderIds = (await getOrderIdsForInvoice(invoice.id!)).toSet();
       if (orderIds.isEmpty) continue;
 
       // Get all orders for this invoice
       final orders = <Order>[];
       for (final orderId in orderIds) {
+        final previousInvoiceId = invoiceIdByOrder[orderId];
+        if (previousInvoiceId != null && previousInvoiceId != invoice.id) {
+          throw StateError(
+            '订单 $orderId 同时关联发票 $previousInvoiceId 与 ${invoice.id}',
+          );
+        }
+        invoiceIdByOrder[orderId] = invoice.id!;
+
         final order = await getOrderById(orderId);
         if (order != null) {
           orders.add(order);

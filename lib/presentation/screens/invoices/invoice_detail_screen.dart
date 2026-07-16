@@ -13,6 +13,7 @@ import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/data/models/order.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
+import 'package:receipt_tamer/presentation/widgets/common/scroll_edge_fog.dart';
 import 'package:receipt_tamer/presentation/widgets/invoice/invoice_image_preview.dart';
 
 /// Invoice detail screen
@@ -151,43 +152,51 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image preview
-            if (invoice.imagePath.isNotEmpty &&
-                File(invoice.imagePath).existsSync())
-              InvoiceImagePreview(imagePath: invoice.imagePath, height: 250),
+      body: ScrollEdgeFog(
+        showBottom: false,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Image preview
+              if (invoice.imagePath.isNotEmpty &&
+                  File(invoice.imagePath).existsSync())
+                InvoiceImagePreview(imagePath: invoice.imagePath, height: 250),
 
-            // Invoice details
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Amount card
-                  _buildAmountCard(context, invoice, colorScheme),
+              // Invoice details
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Amount card
+                    _buildAmountCard(context, invoice, colorScheme),
 
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                  // Details card
-                  _buildDetailsCard(context, invoice, invoiceDate, colorScheme),
+                    // Details card
+                    _buildDetailsCard(
+                      context,
+                      invoice,
+                      invoiceDate,
+                      colorScheme,
+                    ),
 
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                  // Related orders card
-                  if (_relatedOrders.isNotEmpty) ...[
-                    for (final order in _relatedOrders)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: _buildOrderCard(context, order, colorScheme),
-                      ),
+                    // Related orders card
+                    if (_relatedOrders.isNotEmpty) ...[
+                      for (final order in _relatedOrders)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: _buildOrderCard(context, order, colorScheme),
+                        ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

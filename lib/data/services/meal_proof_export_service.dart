@@ -21,16 +21,27 @@ class MealProofExportService {
     required Future<Order?> Function(int) getOrderById,
   }) async {
     final items = <MealProofItem>[];
+    final invoiceIdByOrder = <int, int>{};
+    final processedInvoiceIds = <int>{};
 
     for (final invoice in invoices) {
       if (invoice.id == null) continue;
+      if (!processedInvoiceIds.add(invoice.id!)) continue;
 
-      final orderIds = await getOrderIdsForInvoice(invoice.id!);
+      final orderIds = (await getOrderIdsForInvoice(invoice.id!)).toSet();
       if (orderIds.isEmpty) continue;
 
       // Get all orders for this invoice
       final orders = <Order>[];
       for (final orderId in orderIds) {
+        final previousInvoiceId = invoiceIdByOrder[orderId];
+        if (previousInvoiceId != null && previousInvoiceId != invoice.id) {
+          throw StateError(
+            '订单 $orderId 同时关联发票 $previousInvoiceId 与 ${invoice.id}',
+          );
+        }
+        invoiceIdByOrder[orderId] = invoice.id!;
+
         final order = await getOrderById(orderId);
         if (order != null) {
           orders.add(order);
@@ -76,16 +87,20 @@ class MealProofExportService {
     // Group orders by their associated invoice
     final invoiceToOrdersMap = <int, List<Order>>{};
     final ordersWithoutInvoice = <Order>[];
+    final processedOrderIds = <int>{};
 
     for (final order in orders) {
       if (order.id == null) continue;
+      if (!processedOrderIds.add(order.id!)) continue;
 
-      final invoiceIds = await getInvoiceIdsForOrder(order.id!);
+      final invoiceIds = (await getInvoiceIdsForOrder(order.id!)).toSet();
       if (invoiceIds.isEmpty) {
         ordersWithoutInvoice.add(order);
       } else {
-        // An order should only associate with one invoice, take the first one
-        final invoiceId = invoiceIds.first;
+        if (invoiceIds.length > 1) {
+          throw StateError('订单 ${order.id} 同时关联 ${invoiceIds.length} 张发票');
+        }
+        final invoiceId = invoiceIds.single;
         invoiceToOrdersMap.putIfAbsent(invoiceId, () => []);
         invoiceToOrdersMap[invoiceId]!.add(order);
       }

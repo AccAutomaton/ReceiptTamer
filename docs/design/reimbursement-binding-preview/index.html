@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ReceiptTamer · 报销装订轨视觉设计稿</title>
+  <link rel="stylesheet" href="shared.css">
+  <style>
+    .overview-page{min-height:100vh;padding:54px 48px 74px;background:radial-gradient(circle at 7% 0,rgba(112,185,174,.25),transparent 32rem),radial-gradient(circle at 92% 15rem,rgba(53,111,137,.14),transparent 32rem),linear-gradient(145deg,#eef6f3,#e2ece8 68%,#edf4f1)}
+    .overview-shell{width:min(1400px,calc(100vw - 96px));margin:auto}
+    .hero{position:relative;min-height:410px;padding:48px 54px;overflow:hidden;border:1px solid rgba(39,111,106,.14);border-radius:34px;background:rgba(252,254,253,.86);box-shadow:0 28px 65px rgba(29,69,65,.13)}
+    .hero::after{position:absolute;right:-80px;bottom:-165px;width:510px;height:510px;border:65px solid rgba(112,185,174,.13);border-radius:50%;content:""}
+    .hero-grid{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1.1fr) .9fr;gap:70px;align-items:center}
+    .hero-badge{display:inline-flex;align-items:center;gap:9px;padding:9px 13px;border:1px solid #bbd0c9;border-radius:999px;background:#fff;color:#276f6a;font:700 11px/1.3 "RT Latin Serif","RT CJK Serif",serif;letter-spacing:.06em}
+    .hero-badge::before{width:7px;height:7px;border-radius:50%;background:#896225;content:""}
+    .hero h1{max-width:720px;margin:22px 0 13px;font:700 62px/1.12 "RT Latin Serif","RT CJK Serif",serif;letter-spacing:-.018em}
+    .hero h1 span{color:#276f6a}
+    .hero-lead{max-width:700px;margin:0;color:#536b6c;font-size:16px;line-height:1.8}
+    .hero-tags{margin-top:25px;display:flex;flex-wrap:wrap;gap:8px}
+    .hero-tags span{padding:7px 10px;border-radius:999px;background:#e2f1ed;color:#276f6a;font-size:11px;font-weight:700}
+    .rail-demo{position:relative;padding:20px 22px 25px 62px;border:1px solid #d4e2dd;border-radius:24px;background:#fffdf7}
+    .rail-demo::before{position:absolute;top:123px;bottom:36px;left:32px;width:4px;border-radius:99px;background:linear-gradient(#276f6a 0 62%,#bbd0c9 62%);content:""}
+    .demo-range{min-height:79px;margin:0 0 12px -40px;padding:13px 15px;border:1px solid #d4e2dd;border-radius:16px;background:#e2f1ed}.demo-range span{display:block;color:#5d7172;font:650 10px/1.3 "RT Latin Serif","RT CJK Serif",serif;letter-spacing:.05em}.demo-range b{display:block;margin-top:8px;color:#193638;font:600 18px/1.3 "RT Latin Serif","RT CJK Serif",serif}.demo-range small{display:block;margin-top:4px;color:#536b6c;font-size:10px}
+    .demo-step{position:relative;min-height:74px;padding:10px 0;display:flex;align-items:center;justify-content:space-between;border-bottom:1px dashed #d4e2dd}
+    .demo-step:last-child{border:0}
+    .demo-step::before{position:absolute;left:-37px;width:16px;height:16px;border:4px solid #fffdf7;border-radius:50%;background:#276f6a;content:""}
+    .demo-step.pending::before{background:#896225}
+    .demo-step.wait::before{background:#bbd0c9}
+    .demo-step b{display:block;font-size:14px}.demo-step small{display:block;margin-top:4px;color:#5d7172;font-size:10px}.demo-step strong{color:#276f6a;font:500 16px/1 "RT Latin Serif","RT CJK Serif",serif}.demo-step.pending strong{color:#896225}
+    .overview-section{margin-top:34px;padding:32px;border:1px solid rgba(39,111,106,.13);border-radius:28px;background:rgba(252,254,253,.86);box-shadow:0 18px 44px rgba(29,69,65,.09)}
+    .section-head{display:flex;justify-content:space-between;gap:34px;align-items:end;margin-bottom:25px}.section-head h2{margin:0;font:650 31px/1.25 "RT Latin Serif","RT CJK Serif",serif;letter-spacing:-.01em}.section-head p{max-width:650px;margin:0;color:#536b6c;font-size:13px;line-height:1.8;text-align:right}
+    .change-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:13px}.change-card{min-height:155px;padding:19px;border:1px solid #d4e2dd;border-radius:19px;background:#fff}.change-no{color:#276f6a;font:700 10px/1.3 "RT Latin Serif","RT CJK Serif",serif;letter-spacing:.06em}.change-card h3{margin:14px 0 7px;font:650 18px/1.35 "RT Latin Serif","RT CJK Serif",serif}.change-card p{margin:0;color:#5d7172;font-size:11px;line-height:1.75}
+    .comparison{display:grid;grid-template-columns:320px minmax(0,1fr);gap:18px;align-items:stretch}.compare-card{overflow:hidden;border:1px solid #d4e2dd;border-radius:22px;background:#eaf2ef}.compare-label{padding:15px 17px;background:#fff}.compare-label b{display:block;font-size:13px}.compare-label span{display:block;margin-top:3px;color:#5d7172;font-size:10px}.current-shot{height:520px;padding:20px;display:grid;place-items:center}.current-shot img{height:480px;border-radius:25px;box-shadow:0 16px 34px rgba(29,69,65,.16)}.candidate-shot{height:520px;overflow:hidden}.candidate-shot img{width:100%;height:100%;object-fit:cover;object-position:top}
+    .token-row{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}.swatch{overflow:hidden;border:1px solid #d4e2dd;border-radius:16px;background:#fff}.swatch-color{height:62px}.swatch-copy{padding:11px}.swatch-copy b{display:block;font-size:11px}.swatch-copy code{display:block;margin-top:3px;color:#5d7172;font:400 10px/1.3 "RT Latin Serif","RT CJK Serif",serif}
+    .gallery{display:grid;grid-template-columns:1fr 1fr;gap:18px}.board-thumb{overflow:hidden;border:1px solid #d4e2dd;border-radius:22px;background:#e7efec}.board-thumb:last-child{grid-column:1/-1}.board-thumb header{padding:15px 17px;background:#fff}.board-thumb b{display:block;font-size:13px}.board-thumb span{display:block;margin-top:3px;color:#5d7172;font-size:10px}.board-thumb img{display:block;width:100%;height:610px;object-fit:cover;object-position:top}.board-thumb:last-child img{height:660px}
+    .type-shot{overflow:hidden;border:1px solid #d4e2dd;border-radius:22px;background:#e7efec}.type-shot img{display:block;width:100%;height:760px;object-fit:cover;object-position:top}
+    .boundary{margin-top:34px;padding:19px 22px;border-left:6px solid #276f6a;border-radius:5px 18px 18px 5px;background:#fff;color:#536b6c;font-size:12px;line-height:1.75}.boundary b{color:#193638}
+  </style>
+</head>
+<body>
+  <main class="overview-page">
+    <div class="overview-shell">
+      <section class="hero">
+        <div class="hero-grid">
+          <div>
+            <div class="hero-badge">EXPLORATION · VISUAL / FUNCTION DRAFT</div>
+            <h1>让票据像纸一样<br><span>摊开、装订、流动</span></h1>
+            <p class="hero-lead">全界面换成衬线体系：首页由三栏开票助手目录与独立“最近订单”长账页组成；所有按钮、卡片、字段、导航与 Sheet 统一为无阴影的平面实体，中间列表仍在固定控件之间自然淡入、渐隐。</p>
+            <div class="hero-tags"><span>全衬线排版</span><span>平面实体控件</span><span>双纸共滚动首页</span><span>列表双向雾边</span><span>连续账页</span></div>
+          </div>
+          <div class="rail-demo">
+            <div class="demo-range"><span>报销范围 · 用户选择</span><b>2026/07/07—07/11</b><small>仅用于完整材料的检查与生成</small></div>
+            <div class="demo-step"><div><b>收录订单</b><small>2 笔 · 已收录</small></div><strong>¥128.64</strong></div>
+            <div class="demo-step pending"><div><b>关联发票</b><small>2 笔订单中 1 笔已关联</small></div><strong>1 / 2 笔</strong></div>
+            <div class="demo-step wait"><div><b>导出材料</b><small>用餐证明 · 发票 · 用餐明细</small></div><strong>未检查</strong></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="overview-section">
+        <div class="section-head"><h2>这次大胆在哪里</h2><p>大胆度集中在产品专属的闭环与入口优先级；控件层级只靠填充、细描边与状态色表达，不再依赖厚底边、高光或投影。</p></div>
+        <div class="change-grid">
+          <article class="change-card"><div class="change-no">CHANGE 01</div><h3>两张工作纸组成首页</h3><p>目录承载三项快捷能力，最近订单连续展示 10 条；两张卡整体滚动，不做嵌套列表。</p></article>
+          <article class="change-card"><div class="change-no">CHANGE 02</div><h3>导航与新增分体</h3><p>首页—订单—发票—报销保持连续；新增成为右下角同高侧键。</p></article>
+          <article class="change-card"><div class="change-no">CHANGE 03</div><h3>全部换成衬线体</h3><p>中文用 Noto Serif SC，英文与数字用 Tinos，金额和标签也不例外。</p></article>
+          <article class="change-card"><div class="change-no">CHANGE 04</div><h3>列表流入固定控件</h3><p>连续账页在顶栏下方淡入、在导航或操作栏上方渐隐，内容与固定层不再生硬相撞。</p></article>
+          <article class="change-card"><div class="change-no">CHANGE 05</div><h3>所有控件回到平面</h3><p>按钮、输入框、卡片、导航与 Sheet 保留圆角和状态色，移除厚底边、内高光、按压下沉与实体阴影。</p></article>
+        </div>
+      </section>
+
+      <section class="overview-section">
+        <div class="section-head"><h2>从通用四宫格到两张连续工作纸</h2><p>开票助手与两项导出留在上方目录，最近 10 条订单另成一张长账页；二者共用滚动区，“订单 → 发票 → 报销”的关系仍留在导航结构中。</p></div>
+        <div class="comparison">
+          <article class="compare-card"><div class="compare-label"><b>当前 Flutter</b><span>三栏目录与最近订单共滚动 + 全衬线实现</span></div><div class="current-shot"><img src="../../../test/goldens/baselines/home-android_regular-light-1.0.png" alt="当前首页"></div></article>
+          <article class="compare-card"><div class="compare-label"><b>确认基准</b><span>连续任务导航 + 独立收件侧键</span></div><div class="candidate-shot"><img src="rendered/board-01.png" alt="确认主导航画板"></div></article>
+        </div>
+      </section>
+
+      <section class="overview-section">
+        <div class="section-head"><h2>字体与视觉 token</h2><p>Noto Serif SC + Tinos 统一全部文字；平面表面以填充和 1px 描边区分层级，青色代表已收录或可继续，暖金只用于明确需要确认的步骤。</p></div>
+        <div class="token-row">
+          <div class="swatch"><div class="swatch-color" style="background:#edf4f1"></div><div class="swatch-copy"><b>晨雾</b><code>#EDF4F1</code></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#fcfefd"></div><div class="swatch-copy"><b>归档白</b><code>#FCFEFD</code></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#193638"></div><div class="swatch-copy"><b>正文墨青</b><code>#193638</code></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#276f6a"></div><div class="swatch-copy"><b>装订青</b><code>#276F6A</code></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#896225"></div><div class="swatch-copy"><b>待办暖金</b><code>#896225</code></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#356f89"></div><div class="swatch-copy"><b>文件天空蓝</b><code>#356F89</code></div></div>
+        </div>
+      </section>
+
+      <section class="overview-section">
+        <div class="section-head"><h2>5 张画板 · 15 个状态</h2><p>覆盖主壳、AI 收件与校对、完整报销、暗色边界，以及无发票证明和按店开票两条独立路径。</p></div>
+        <div class="gallery">
+          <article class="board-thumb"><header><b>01 · 早期目录共滚动概念</b><span>最新首页细节以左侧 Flutter 截图为准</span></header><img src="rendered/board-01.png" alt="画板一"></article>
+          <article class="board-thumb"><header><b>02 · 从导入到确认</b><span>新增、订单校对、发票建议关联</span></header><img src="rendered/board-02.png" alt="画板二"></article>
+          <article class="board-thumb"><header><b>03 · 范围由用户决定</b><span>关系检查、材料生成、已导出文件</span></header><img src="rendered/board-03.png" alt="画板三"></article>
+          <article class="board-thumb"><header><b>04 · 暗色与连续发票账页</b><span>暗色部分失败、发票登记页、设置</span></header><img src="rendered/board-04.png" alt="画板四"></article>
+          <article class="board-thumb"><header><b>05 · 不必经过完整报销</b><span>无发票证明、同店批选、保存并关联</span></header><img src="rendered/board-05.png" alt="画板五"></article>
+        </div>
+      </section>
+
+      <section class="overview-section">
+        <div class="section-head"><h2>大字体布局策略</h2><p>概念上让票据目录、最近长账页与日期边栏在 1.3×/2.0× 仍保留完整操作名称和滚动提示；正式验收仍以 Flutter `TextScaler.linear` Golden 为准。</p></div>
+        <div class="type-shot"><img src="rendered/type-scale-check.png" alt="1.3 与 2.0 大字体重排检查"></div>
+      </section>
+
+      <div class="boundary"><b>实现边界：</b>“未关联”只描述应用内关系，不判断税务平台是否已开票，也不阻止用餐证明导出；用餐证明和开票助手中的日期仅是页面筛选，报销范围只在生成完整材料时由用户选择。开票助手一次只选择一个店铺，保存新发票后才写入关系；发票建议也只在用户确认后提交。Flutter 迁移没有新增持久化字段；旧 `ce04` 哈希契约已由报销装订轨语义契约替代，并已更新真实 Golden。</div>
+    </div>
+  </main>
+</body>
+</html>

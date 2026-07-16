@@ -14,7 +14,9 @@ import 'package:receipt_tamer/presentation/screens/invoices/invoice_edit_screen.
 import 'package:receipt_tamer/presentation/widgets/common/app_text_field.dart';
 
 void main() {
-  testWidgets('home quick access includes invoice assistant', (tester) async {
+  testWidgets('home quick access includes shop-based invoice assistant', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -25,8 +27,7 @@ void main() {
       ),
     );
 
-    await tester.pump();
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('开票助手'), findsOneWidget);
 
@@ -91,6 +92,13 @@ class _FakeOrderRepository extends OrderRepository {
   Future<int> getCount() async => 0;
 
   @override
+  Future<List<Order>> getRecentlyCreated({int limit = 10}) async => const [];
+
+  @override
+  Future<Map<int, int>> getInvoiceCountsForOrders(List<int> orderIds) async =>
+      const {};
+
+  @override
   Future<List<UninvoicedShopSummary>> getUninvoicedShopSummaries({
     DateTime? startDate,
     DateTime? endDate,
@@ -105,6 +113,13 @@ class _FakeInvoiceRepository extends InvoiceRepository {
 
   @override
   Future<int> getCount() async => 0;
+
+  @override
+  Future<List<Invoice>> getRecentlyCreated({int limit = 10}) async => const [];
+
+  @override
+  Future<Map<int, int>> getOrderCountsForInvoices(List<int> invoiceIds) async =>
+      const {};
 
   @override
   Future<List<Map<String, dynamic>>> getSellerNamesWithCount() async =>

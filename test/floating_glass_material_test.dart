@@ -23,6 +23,7 @@ void main() {
     expect(surface.fillColor?.a, closeTo(0.94, 0.002));
     expect(surface.blurSigma, 10);
     expect(surface.preset, GlassSurfacePreset.sheet);
+    expect(surface.boxShadow, isNull);
     expect(find.byType(BackdropFilter), findsOneWidget);
   });
 
@@ -51,6 +52,7 @@ void main() {
     expect(surface.fillColor?.a, closeTo(0.94, 0.002));
     expect(surface.blurSigma, 12);
     expect(surface.preset, GlassSurfacePreset.dialog);
+    expect(surface.boxShadow, isNull);
 
     final blur = find.byType(BackdropFilter);
     expect(blur, findsOneWidget);

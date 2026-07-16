@@ -7,7 +7,9 @@ import 'package:receipt_tamer/data/services/update_service.dart';
 import 'package:receipt_tamer/presentation/screens/export/saved_files_screen.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
+import 'package:receipt_tamer/presentation/widgets/common/glass_page_scaffold.dart';
 import 'package:receipt_tamer/presentation/widgets/common/receipt_icon.dart';
+import 'package:receipt_tamer/presentation/widgets/common/scroll_edge_fog.dart';
 import 'package:receipt_tamer/presentation/widgets/common/update_dialog.dart';
 import 'package:receipt_tamer/presentation/widgets/settings/backup_dialog.dart';
 import 'package:flutter/material.dart';
@@ -17,7 +19,7 @@ import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// About screen
+/// 设置页面
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
@@ -106,7 +108,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
       if (exportedPath != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('日志已导出到: $exportedPath'),
+            content: Text('日志已导出：$exportedPath'),
             action: SnackBarAction(
               label: '查看',
               onPressed: () {
@@ -169,24 +171,43 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
       } else if (response.result == UpdateCheckResult.notAvailable) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('当前已是最新版本')));
+        ).showSnackBar(const SnackBar(content: Text('已是最新版本')));
       } else {
-        // Handle rate limit error specifically
-        String errorMessage;
-        if (response.errorMessage == 'RATE_LIMITED') {
-          errorMessage = '检查更新请求因 GitHub 限流被拒绝，请前往 GitHub 仓库查看最新版本。';
-        } else {
-          errorMessage = '检查更新失败: ${response.errorMessage ?? "未知错误"}';
-        }
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(errorMessage)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_updateFailureMessage(response.errorMessage))),
+        );
       }
     } finally {
       if (mounted) {
         setState(() => _isCheckingUpdate = false);
       }
     }
+  }
+
+  String _updateFailureMessage(String? errorMessage) {
+    if (errorMessage == 'RATE_LIMITED') {
+      return 'GitHub 请求受限，请前往项目页面查看最新版本';
+    }
+
+    final normalized = errorMessage?.toLowerCase() ?? '';
+    final isNetworkFailure = const [
+      'socketexception',
+      'clientexception',
+      'failed host lookup',
+      'connection refused',
+      'connection reset',
+      'network is unreachable',
+      'timed out',
+      'timeout',
+    ].any(normalized.contains);
+
+    if (isNetworkFailure) {
+      return '网络连接失败，请检查网络后重试';
+    }
+    if (normalized.startsWith('server returned')) {
+      return 'GitHub 服务暂时不可用，请稍后重试';
+    }
+    return '检查更新失败，请稍后重试';
   }
 
   void _navigateToInfo(BuildContext context, String type) {
@@ -219,11 +240,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
         // 无法用外部应用打开，直接用浏览器
         await launchUrl(uri, mode: LaunchMode.platformDefault);
       }
-    } catch (e) {
+    } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('打开链接失败: $e')));
+        ).showSnackBar(const SnackBar(content: Text('打开链接失败，请重试')));
       }
     }
   }
@@ -233,12 +254,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
+    return GlassPageScaffold(
       appBar: AppBar(
         centerTitle: true,
         title: Text(
-          '关于',
+          '设置',
           style: theme.textTheme.headlineMedium?.copyWith(
             color: AppPalette.textPrimaryFor(context),
             fontWeight: FontWeight.w800,
@@ -246,109 +266,120 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
         ),
         elevation: 0,
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 128),
-        children: [
-          // 应用信息头部
-          _buildAppHeader(context, theme),
+      body: ScrollEdgeFog(
+        showTop: true,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+          children: [
+            // 应用信息头部
+            _buildAppHeader(context, theme),
 
-          // 管理入口与应用信息
-          _buildSection(context, '', [
-            _buildListTile(
-              context,
-              icon: Icons.tune_outlined,
-              title: '模型管理',
-              subtitle: '选择本地模型或外部模型',
-              onTap: () => context.push('/settings/model-management'),
-            ),
-            _buildListTile(
-              context,
-              icon: Icons.storage_outlined,
-              title: '存储管理',
-              subtitle: '查看占用、清理缓存和数据',
-              onTap: () => context.push('/settings/storage'),
-            ),
-            _buildListTile(
-              context,
-              icon: Icons.privacy_tip_outlined,
-              title: '隐私政策',
-              subtitle: '查看隐私政策',
-              onTap: () => _navigateToInfo(context, 'privacy'),
-            ),
-            _buildListTile(
-              context,
-              icon: Icons.code_outlined,
-              title: '开源信息',
-              subtitle: '查看开源许可证',
-              onTap: () => _navigateToInfo(context, 'opensource'),
-            ),
-            _buildListTile(
-              context,
-              icon: Icons.history_outlined,
-              title: '更新历史',
-              subtitle: '查看版本发布记录',
-              onTap: () => context.push('/settings/release-history'),
-            ),
-            _buildListTile(
-              context,
-              icon: Icons.backup_outlined,
-              title: '备份与还原',
-              subtitle: '导出或恢复应用数据',
-              onTap: () => showBackupDialog(context),
-            ),
-          ]),
+            _buildSection(context, '模型与数据', [
+              _buildListTile(
+                context,
+                icon: Icons.tune_outlined,
+                title: '模型管理',
+                subtitle: '本地与外部模型',
+                onTap: () => context.push('/settings/model-management'),
+              ),
+              _buildListTile(
+                context,
+                icon: Icons.storage_outlined,
+                title: '存储管理',
+                subtitle: '存储占用、缓存与数据',
+                onTap: () => context.push('/settings/storage'),
+              ),
+              _buildListTile(
+                context,
+                icon: Icons.backup_outlined,
+                title: '备份与还原',
+                subtitle: '备份或恢复应用数据',
+                onTap: () => showBackupDialog(context),
+              ),
+              _buildListTile(
+                context,
+                icon: Icons.cleaning_services_outlined,
+                title: '数据清理',
+                subtitle: '清理订单或发票',
+                onTap: () => context.push('/settings/cleanup'),
+              ),
+            ]),
 
-          const SizedBox(height: 32),
+            const SizedBox(height: 14),
 
-          // 底部版权信息
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: Column(
-              children: [
-                Text(
-                  'Copyright 2026 acautomaton.com. All rights reserved.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
+            _buildSection(context, '应用信息', [
+              _buildListTile(
+                context,
+                icon: Icons.privacy_tip_outlined,
+                title: '隐私政策',
+                onTap: () => _navigateToInfo(context, 'privacy'),
+              ),
+              _buildListTile(
+                context,
+                icon: Icons.code_outlined,
+                title: '开源信息',
+                onTap: () => _navigateToInfo(context, 'opensource'),
+              ),
+              _buildListTile(
+                context,
+                icon: Icons.history_outlined,
+                title: '更新历史',
+                onTap: () => context.push('/settings/release-history'),
+              ),
+            ]),
+
+            const SizedBox(height: 32),
+
+            // 底部版权信息
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Column(
+                children: [
+                  Text(
+                    'Copyright 2026 acautomaton.com. All rights reserved.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Powered By Codex With GPT-5.5',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
+                  const SizedBox(height: 4),
+                  Text(
+                    'Powered By Codex With GPT-5.5',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
-                ),
-                // GitHub 链接按钮
-                InkWell(
-                  onTap: () => _launchGitHubUrl(context),
-                  borderRadius: BorderRadius.circular(20),
-                  child: Padding(
-                    padding: const EdgeInsets.all(6),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          FontAwesomeIcons.github,
-                          size: 20,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'View on GitHub',
-                          style: theme.textTheme.bodySmall?.copyWith(
+                  // GitHub 链接按钮
+                  InkWell(
+                    onTap: () => _launchGitHubUrl(context),
+                    borderRadius: BorderRadius.circular(20),
+                    child: Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            FontAwesomeIcons.github,
+                            size: 20,
                             color: colorScheme.onSurfaceVariant,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 6),
+                          Text(
+                            'GitHub',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -359,7 +390,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
       fillColor: AppGlassTokens.sheetFillFor(context),
       borderRadius: BorderRadius.circular(AppRadii.glassLarge),
-      boxShadow: AppShadows.glass,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -392,7 +422,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.refresh, size: 18),
-            label: Text(_isCheckingUpdate ? '检查中...' : '检查更新'),
+            label: Text(_isCheckingUpdate ? '检查中…' : '检查更新'),
             style: TextButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
@@ -435,7 +465,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     BuildContext context, {
     required IconData icon,
     required String title,
-    required String subtitle,
+    String? subtitle,
     Widget? trailing,
     VoidCallback? onTap,
   }) {
@@ -443,6 +473,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     final colorScheme = theme.colorScheme;
 
     return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       leading: Container(
         width: 42,
         height: 42,
@@ -457,12 +488,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
         ),
       ),
       title: Text(title),
-      subtitle: Text(
-        subtitle,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: colorScheme.onSurfaceVariant,
-        ),
-      ),
+      subtitle: subtitle == null
+          ? null
+          : Text(
+              subtitle,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
       trailing:
           trailing ?? (onTap != null ? const Icon(Icons.chevron_right) : null),
       onTap: onTap,

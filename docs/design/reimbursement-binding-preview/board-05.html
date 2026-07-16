@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>报销装订轨 · 独立快捷任务</title>
+  <link rel="stylesheet" href="shared.css">
+</head>
+<body>
+  <main class="board-page">
+    <header class="board-header">
+      <div>
+        <div class="board-kicker">Exploration · direct task routes</div>
+        <h1 class="board-title">05 · 不必经过完整报销</h1>
+      </div>
+      <p class="board-note"><b>用餐证明与开票助手是两条独立路径，不共享报销范围。</b>前者允许没有发票的订单直接导出；后者默认查看全部日期的未关联订单，按店铺批选，录入发票时自动带入关系。</p>
+    </header>
+
+    <section class="phone-grid">
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen">
+            <div class="statusbar"><span>10:28</span><span>5G&nbsp;&nbsp;82%</span></div>
+            <header class="appbar with-back">
+              <button class="back-button"><svg class="icon"><use href="icons.svg#i-back"/></svg></button>
+              <div class="appbar-copy"><div class="appbar-eyebrow">独立导出</div><h2 class="screen-title">用餐证明</h2></div>
+              <div class="appbar-actions"><button class="icon-button"><svg class="icon"><use href="icons.svg#i-search"/></svg></button></div>
+            </header>
+            <div class="scroll no-nav">
+              <section class="ticket assistant-summary">
+                <div><b>全部日期 · 7 笔订单</b><p>选择订单即可，不要求关联发票</p></div>
+                <div class="assistant-total">3 笔<small>当前已选</small></div>
+              </section>
+              <div class="filter-strip" style="padding-top:10px">
+                <div class="chip active">全部 7</div>
+                <div class="chip">无发票 3</div>
+                <div class="chip">有发票 4</div>
+                <div class="chip"><svg class="icon"><use href="icons.svg#i-calendar"/></svg>筛选日期</div>
+              </div>
+              <div class="bound-banner">
+                <div class="row-mark"><svg class="icon"><use href="icons.svg#i-orders"/></svg></div>
+                <div class="copy"><b>没有发票也可以导出</b><small>无发票按截图与订单信息生成；有发票时沿用分摊金额</small></div>
+                <div class="status-pill">可直接生成</div>
+              </div>
+              <div class="section-title"><b>已选订单</b><span>全选当前结果</span></div>
+              <div class="ledger-list">
+                <div class="ledger-row">
+                  <div class="selection-check active"><svg class="icon"><use href="icons.svg#i-check"/></svg></div>
+                  <div class="row-copy"><b>青禾餐食 · 测试店</b><small>7月9日 · 午餐 · 无发票</small></div>
+                  <div class="row-amount">¥42.80</div>
+                </div>
+                <div class="ledger-row">
+                  <div class="selection-check active"><svg class="icon"><use href="icons.svg#i-check"/></svg></div>
+                  <div class="row-copy"><b>青禾餐食 · 测试店</b><small>7月6日 · 晚餐 · 无发票</small></div>
+                  <div class="row-amount">¥40.80</div>
+                </div>
+                <div class="ledger-row">
+                  <div class="selection-check active"><svg class="icon"><use href="icons.svg#i-check"/></svg></div>
+                  <div class="row-copy"><b>纸上食堂 · 样本门店</b><small>7月2日 · 晚餐 · 无发票</small></div>
+                  <div class="row-amount">¥26.00</div>
+                </div>
+              </div>
+            </div>
+            <div class="selection-bar"><div class="copy"><b>已选 3 笔 · ¥109.60</b><small>导出设置：订单截图 2×2 · 无备注</small></div><div class="primary-button"><svg class="icon"><use href="icons.svg#i-download"/></svg>生成用餐证明</div></div>
+          </div>
+        </div>
+        <div class="phone-label"><strong>用餐证明 · 无发票可导出</strong><span>日期只是可选筛选，不是周期</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen">
+            <div class="statusbar"><span>10:28</span><span>5G&nbsp;&nbsp;82%</span></div>
+            <header class="appbar with-back">
+              <button class="back-button"><svg class="icon"><use href="icons.svg#i-back"/></svg></button>
+              <div class="appbar-copy"><div class="appbar-eyebrow">订单先到</div><h2 class="screen-title">开票助手</h2></div>
+              <div class="appbar-actions"><button class="icon-button"><svg class="icon"><use href="icons.svg#i-calendar"/></svg></button></div>
+            </header>
+            <div class="scroll no-nav">
+              <section class="ticket assistant-summary">
+                <div><b>2 家店铺 · 3 笔订单</b><p>全部日期</p></div>
+                <div class="assistant-total">¥109.60<small>未关联订单合计</small></div>
+              </section>
+              <div class="filter-strip" style="padding-top:10px">
+                <div class="chip active">全部日期</div>
+                <div class="chip">未关联 3</div>
+                <div class="chip"><svg class="icon"><use href="icons.svg#i-filter"/></svg>金额</div>
+              </div>
+              <section class="shop-card">
+                <div class="shop-head">
+                  <div class="row-mark"><svg class="icon"><use href="icons.svg#i-store"/></svg></div>
+                  <div class="copy"><b>青禾餐食 · 测试店</b><small>2 笔未关联订单 · 已展开</small></div>
+                  <div class="shop-total">¥83.60</div>
+                </div>
+                <div class="order-check-row"><div class="check-box"><svg class="icon"><use href="icons.svg#i-check"/></svg></div><div class="row-copy"><b>7月9日 · 午餐</b><small>#23891 · 未关联发票</small></div><div class="row-amount">¥42.80</div></div>
+                <div class="order-check-row"><div class="check-box"><svg class="icon"><use href="icons.svg#i-check"/></svg></div><div class="row-copy"><b>7月6日 · 晚餐</b><small>#19027 · 未关联发票</small></div><div class="row-amount">¥40.80</div></div>
+                <div class="suggestion-other">已全选 · 清空选择</div>
+              </section>
+              <section class="shop-card">
+                <div class="shop-head">
+                  <div class="row-mark info"><svg class="icon"><use href="icons.svg#i-store"/></svg></div>
+                  <div class="copy"><b>纸上食堂 · 样本门店</b><small>1 笔未关联订单</small></div>
+                  <div class="shop-total">¥26.00</div>
+                  <svg class="icon"><use href="icons.svg#i-chevron"/></svg>
+                </div>
+              </section>
+            </div>
+            <div class="selection-bar"><div class="copy"><b>已选 2 笔 · ¥83.60</b><small>仅选择同一店铺的订单</small></div><div class="primary-button"><svg class="icon"><use href="icons.svg#i-plus"/></svg>关联发票</div></div>
+          </div>
+        </div>
+        <div class="phone-label"><strong>开票助手 · 同店批选</strong><span>默认全部日期，一次只选一家</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen">
+            <div class="statusbar"><span>10:28</span><span>5G&nbsp;&nbsp;82%</span></div>
+            <header class="appbar with-back">
+              <button class="back-button"><svg class="icon"><use href="icons.svg#i-back"/></svg></button>
+              <div class="appbar-copy"><div class="appbar-eyebrow">来自开票助手</div><h2 class="screen-title">录入发票</h2></div>
+              <div class="appbar-actions"><button class="icon-button"><svg class="icon"><use href="icons.svg#i-more"/></svg></button></div>
+            </header>
+            <div class="scroll no-nav">
+              <section class="ticket amount-ticket"><span>所选订单合计<br>青禾餐食 · 2 笔</span><b>¥83.60</b></section>
+              <div class="bound-banner">
+                <div class="row-mark"><svg class="icon"><use href="icons.svg#i-link"/></svg></div>
+                <div class="copy"><b>已带入刚才选择的 2 笔订单</b><small>保存发票时自动关联，不需要再次选择</small></div>
+                <div class="status-pill">已预选</div>
+              </div>
+              <div class="field-group">
+                <div class="field"><label>销售方</label><b>青禾餐饮管理有限公司</b><span class="field-complete">已填</span></div>
+                <div class="field"><label>价税合计</label><b>¥83.60</b><span class="field-complete">已填</span></div>
+                <div class="field"><label>开票日期</label><b>2026/07/11</b><svg class="icon"><use href="icons.svg#i-chevron"/></svg></div>
+                <div class="field"><label>发票号码</label><b class="period-code">0440••••6621</b><span class="field-complete">已填</span></div>
+              </div>
+              <div class="section-title"><b>保存后自动关联</b><span>2 笔订单</span></div>
+              <section class="suggestion" style="margin-top:0">
+                <div class="suggested-orders">
+                  <div class="suggested-row"><div class="check-box"><svg class="icon"><use href="icons.svg#i-check"/></svg></div><div class="row-copy"><b>7月9日 · 午餐</b><small>青禾餐食 · #23891</small></div><div class="row-amount">¥42.80</div></div>
+                  <div class="suggested-row"><div class="check-box"><svg class="icon"><use href="icons.svg#i-check"/></svg></div><div class="row-copy"><b>7月6日 · 晚餐</b><small>青禾餐食 · #19027</small></div><div class="row-amount">¥40.80</div></div>
+                </div>
+              </section>
+            </div>
+            <div class="bottom-action"><div class="secondary-button">保存但不关联</div><div class="primary-button"><svg class="icon"><use href="icons.svg#i-link"/></svg>保存并关联 2 笔</div></div>
+          </div>
+        </div>
+        <div class="phone-label"><strong>发票录入 · 选择只做一次</strong><span>保存与关联成为同一动作</span></div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

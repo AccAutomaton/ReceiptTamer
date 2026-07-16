@@ -130,6 +130,23 @@ class InvoiceTable {
     }
   }
 
+  /// Get recently collected invoices, ordered by creation time.
+  Future<List<Invoice>> getRecentlyCreated({int limit = 10}) async {
+    try {
+      final List<Map<String, dynamic>> maps = await database.query(
+        AppConstants.invoicesTable,
+        orderBy:
+            '${AppConstants.colCreatedAt} DESC, ${AppConstants.colId} DESC',
+        limit: limit,
+      );
+
+      return maps.map(Invoice.fromJson).toList(growable: false);
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleDb, '获取最近收录发票失败', e, stackTrace);
+      rethrow;
+    }
+  }
+
   /// Return a lightweight month index without loading every invoice model.
   Future<List<LedgerMonthSummary>> getMonthSummaries() async {
     try {

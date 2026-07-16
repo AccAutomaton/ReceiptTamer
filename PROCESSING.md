@@ -19,20 +19,21 @@
 | 项目基础架构    | ✅  | 依赖包、入口配置、Material 3 主题、路由、数据库                           |
 | 数据层       | ✅  | Order/Invoice/OcrResult/InvoiceOrderRelation 模型、仓库层、服务层 |
 | 状态管理      | ✅  | Riverpod StateNotifier (order/invoice/ocr)              |
-| UI组件库     | ✅  | `AppCard`、按钮、字段与状态标签使用不透明实体层、高光和底脊；顶栏浮签、悬浮岛导航、Sheet 与 Dialog 使用有界高实色模糊 |
-| 晨雾浮签视觉系统 | ✅ | 页面功能、内容、文案和路由以 `ce04b3c` 为基线；已迁移实体层、悬浮岛、岛内同高中央新增、浅暗色和减少动态效果支持 |
-| 订单管理      | ✅  | 保留原订单列表、月份分组与快速滚动、搜索筛选、详情编辑和发票关联流程；当前 UI 未改为 40 条分页台账 |
-| 发票管理      | ✅  | 保留原发票列表、月份分组与快速滚动、订单过滤、详情编辑和订单关联流程；当前 UI 未改为 40 条分页台账 |
+| UI组件库     | ✅  | `AppCard`、按钮、字段与状态标签使用扁平不透明填充和等宽细描边；顶栏、导航、Sheet 与 Dialog 仅在需要区分悬浮层级时使用有界高实色模糊 |
+| 报销装订轨视觉系统 | ✅ | 全局 Tinos + Noto Serif SC 衬线体系、扁平控件、连续四栏导航、独立新增侧键、连续月账页、浅暗色与减少动态效果支持 |
+| 订单管理      | ✅  | “订单列表”按月连续纸页、组内粘性月份栏、日期侧栏与 hairline 行，支持月份/关系筛选后直接恢复全部，保留搜索、详情编辑和发票关联流程 |
+| 发票管理      | ✅  | “发票列表”按月连续纸页、组内粘性月份栏与批量关联订单统计，支持月份/关系筛选后直接恢复全部，保留详情编辑和订单关联流程 |
 | 发票-订单关联   | ✅  | 一对多关系（一张发票关联多个订单）、双向选择器、关联计数显示                          |
 | 用餐证明导出    | ✅  | 保留原订单选择与导出流程；PDF格式、订单截图2x2排版、金额分摊、自动保存到Download/ReceiptTamer |
 | 发票导出      | ✅  | 保留原发票选择与导出流程；PDF格式、2张/页、PDFium位图化渲染、字体兜底、自动旋转、时间标签选项、自动保存到Download/ReceiptTamer |
 | 用餐明细导出    | ✅  | 保留原导出选项与结果流程；Excel格式、按日期/餐时分类、金额分摊、汇总行、自动保存到Download/ReceiptTamer |
 | 发票金额分摊    | ✅  | 按订单金额比例分摊、精确无舍入误差                                       |
-| 首页统计      | ✅  | 保留原首页的订单总数、发票总数、四个快捷功能和最近订单；未改为月度账单首页 |
-| 开票助手      | ✅  | 快捷功能入口；按订单日期筛选未关联发票的订单，按店铺聚合查看数量、总额和明细，并可批量预选订单新建发票 |
+| 首页工作台    | ✅  | 开票助手以印章图标、数字摘要和行动箭头组成无整高分隔线的三等分主入口；用餐证明/发票导出小卡与最近订单长纸页共用外层滚动，按 `createdAt` 展示最新 10 条订单，“查看更多”切换到订单主导航，不建立报销周期 |
+| 完整报销流程  | ✅  | 进入“报销”即按订单选择，也可通过屏幕水平居中的紧凑菜单切为按发票，菜单副标题说明同票联动方式；日期仅作可选筛选，账页日期栏继承整行底色并与勾选栏以细线分隔，同票订单自动联动，联动变化以状态栏下方的低饱和纸签提示且只统计本次增减，随后复用原导出选项生成三类材料 |
+| 开票助手      | ✅  | 默认全部日期；按店铺聚合未关联发票订单，并可批量预选订单新建发票及写入关联 |
 | 分享功能      | ✅  | 保留原图片/PDF分享导入、批量处理和导出文件分享流程与文案 |
 | PDF预览     | ✅  | syncfusion_flutter_pdfviewer                            |
-| 关于页面      | ✅  | 第四栏继续显示“关于”，原应用信息、模型、存储、隐私、开源、更新、备份与还原入口及文案均保持不变 |
+| 设置        | ✅  | 从主导航移出，由首页齿轮进入；整合模型、存储、清理、备份、隐私、开源、版本、更新与应用信息 |
 | 数据清理      | ✅  | 保留原订单/发票清理、级联选择、确认、执行与结果流程，仅由主题提供珊瑚色危险语义 |
 | OCR引擎     | ✅  | RapidOcrAndroidOnnx (ONNX格式，内置模型)                       |
 | LLM推理     | ✅  | 本地 MNN 或 OpenAI-compatible 云端模型                         |
@@ -95,8 +96,11 @@ lib/
 │   │   ├── order_provider.dart
 │   │   ├── invoice_provider.dart
 │   │   ├── ocr_provider.dart
-│   │   ├── export_provider.dart
+│   │   ├── export_provider.dart           # 按订单导出的选择与同票联动状态
+│   │   ├── invoice_export_provider.dart   # 按发票导出的选择状态
 │   │   ├── invoice_assistant_provider.dart
+│   │   ├── home_overview_provider.dart      # 首页统计与最近订单只读投影
+│   │   ├── reimbursement_provider.dart      # 旧日期闭包子路由的进程内兼容状态
 │   │   └── cleanup_provider.dart        # 清理状态管理
 │   ├── screens/
 │   │   ├── home/home_screen.dart
@@ -111,9 +115,10 @@ lib/
 │   │   │   ├── invoice_edit_screen.dart
 │   │   │   └── order_selector_screen.dart    # 订单选择器
 │   │   ├── export/
-│   │   │   ├── export_screen.dart            # 导出主页面
-│   │   │   ├── export_options_screen.dart    # 导出选项页面
-│   │   │   ├── export_mode_screen.dart
+│   │   │   ├── reimbursement_screen.dart     # 双依据报销选择账页与导出记录入口
+│   │   │   ├── reimbursement_check_screen.dart # 旧日期范围检查兼容页面
+│   │   │   ├── export_screen.dart            # 旧发票选择兼容页面
+│   │   │   ├── export_options_screen.dart    # 报销材料导出选项
 │   │   │   ├── order_export_screen.dart
 │   │   │   ├── meal_proof_order_select_screen.dart
 │   │   │   ├── invoice_quick_select_screen.dart
@@ -143,10 +148,13 @@ lib/
 │       │   ├── glass_alert_dialog.dart
 │       │   ├── glass_bottom_sheet.dart
 │       │   ├── liquid_glass_background.dart
+│       │   ├── ledger_month_sheet.dart       # 连续月账纸页与扁平账行
+│       │   ├── scroll_edge_fog.dart           # 滚动视口上下雾边
 │       │   ├── date_range_picker.dart
 │       │   ├── syncfusion_month_range_picker.dart
 │       │   └── storage_ring_chart.dart
 │       ├── order/                  # 订单相关组件
+│       │   ├── order_ledger_row.dart
 │       │   ├── order_card.dart
 │       │   ├── order_image_preview.dart
 │       │   ├── invoice_selector_card.dart
@@ -154,6 +162,7 @@ lib/
 │       │   ├── month_section_header.dart
 │       │   └── month_fast_scroll_bar.dart
 │       ├── invoice/                # 发票相关组件
+│       │   ├── invoice_ledger_row.dart
 │       │   ├── invoice_card.dart
 │       │   ├── invoice_image_preview.dart
 │       │   ├── order_selector_card.dart
@@ -174,9 +183,11 @@ docs/design/
 ├── fresh-redesign/                 # 晨雾视觉探索稿，不作为页面内容基线
 ├── hybrid-redesign/                # 历史混合方案，不作为页面内容基线
 ├── ledger-redesign/                # 历史墨色账簿方案，不作为页面内容基线
-├── morning-ledger-ce04/            # 当前 Flutter 首页 Golden Gallery
+├── morning-ledger-ce04/            # 历史 ce04 首页 Golden Gallery
 ├── morning-ledger-mid-bold-preview/ # 已否决的“单张连续归档页”候选稿
-└── morning-ledger-relief-island-preview/ # 已确认并迁移的“晨雾浮签·实体层与悬浮岛”设计基准
+├── morning-ledger-relief-island-preview/ # 已确认并迁移的“晨雾浮签·实体层与悬浮岛”设计基准
+├── reimbursement-binding-preview/  # 已确认并迁移 Flutter 的整体信息架构基准
+└── reimbursement-export-mode-preview/ # 已确认并迁移的报销双依据选择高保真基准
 
 android/app/src/main/
 ├── cpp/
@@ -213,54 +224,55 @@ tools/
 ├── render_hybrid_design.cjs
 ├── render_morning_ledger_mid_bold.cjs # 渲染已否决的连续归档页候选
 ├── generate_morning_ledger_relief_island_preview.cjs
-└── render_morning_ledger_relief_island.cjs # 渲染实体层与悬浮岛候选画板
+├── render_morning_ledger_relief_island.cjs # 渲染实体层与悬浮岛候选画板
+├── render_reimbursement_binding_preview.cjs # 渲染“报销装订轨”整体画板
+└── render_reimbursement_export_mode_preview.cjs # 渲染报销双依据选择画板
 ```
 
 ---
 
-## 晨雾账簿视觉换肤与性能边界
+## 报销装订轨视觉与性能边界
 
 ### 页面内容与功能基线
 
-- 本轮页面语义严格以 Commit `ce04b3c6457f444645a4bd6cca98d5e71707115d` 为唯一基线。受保护范围包括 presentation screens、providers、订单/发票/设置业务组件、`main_shell.dart` 与 `app_router.dart`，不得因换肤改写页面结构、业务能力或任何可见文案。
-- 首页继续展示“订单总数”“发票总数”、四个原快捷功能和“最近订单”，没有改成月度账单、待关联任务面板或新的统计口径。
-- 主导航继续是“首页—订单—中央新增—发票—关于”。第四栏仍为“关于”；中央新增面板继续使用“添加订单 / 通过订单截图导入”和“添加发票 / 通过图片或PDF导入”等原文案与原路由。
-- 订单、发票、详情、编辑、关联选择、导出、开票助手、分享导入、关于、清理及维护弹层均保留 `ce04b3c` 的原层级和操作顺序。历史墨色或混合画板中的台账重排、固定保存栏、信息增删和文案改写均不是当前实现。
-- `test/ui_contract/ce04_source_contract_test.dart` 以 FNV-1a 64 哈希冻结 46 个内容与功能源文件；`test/ui_contract/fixtures/ce04b3c_source_hashes.json` 记录完整文件集合和来源 Commit。契约 schema 2 只批准订单编辑 2 处、订单详情 1 处、发票编辑 2 处将原生 `showModalBottomSheet` 等价替换为 `showGlassContentBottomSheet`，哈希前会把这 5 处函数名还原，其余字节仍必须与 `ce04b3c` 一致。
+- `docs/design/reimbursement-binding-preview/` 与 `reimbursement-export-mode-preview/` 已升级为当前信息架构与报销选择页视觉基准；旧 `ce04b3c` 哈希冻结契约已退役，导航、快捷任务、双依据报销选择、连续账页、衬线字体和雾边等长期语义由业务单元测试、Widget 测试与真实 Golden 共同约束，不再保留迁移期的源码字符串冻结测试。
+- 主导航连续呈现“首页—订单—发票—报销”。新增不再打断导航，作为右侧同高收件侧键打开“新增”；待处理分享资料可从该入口恢复，添加订单和添加发票仍使用原录入路由。
+- “设置”移出主导航，由首页顶栏齿轮进入。模型、存储、数据清理、备份还原、隐私、开源、版本更新、GitHub 和隐藏日志导出能力继续保留。
+- 首页顶部装订目录保留三条独立任务：开票助手使用整行主入口，以柔和印章图标、标题与两行强调数字、“查看未关联订单”及行动箭头组成和上方统计同宽的三栏；栏间仅使用短票据虚线，不绘制整高表格分隔。用餐证明导出与发票导出并列为两张小卡，报销材料只从连续主导航进入，不在首页重复。下方“最近订单”按 `createdAt` 展示最新 10 条订单；“查看更多”切换到订单主导航并同步底栏选中态。
+- 完整报销进入页面即默认“按订单导出”，顶栏中央以无背景、无边框的正文墨色下拉切换“按发票导出”。两种依据都使用连续月份账页；未关联记录不可选，按订单时同一张发票下的订单自动联动，按发票时自动带入其全部关联订单。同票联动提示位于系统状态栏下方，使用低饱和扁平纸签；提示数量取操作前后选中集合的差值并排除用户直接操作项，不累计此前联动项。全选、反选、可清除的日期筛选、金额统计与固定“下一步”栏继续保留。日期只过滤当前清单，不定义报销范围；最终范围始终由本次勾选确定，不创建或持久化报销批次。
+- 材料生成页接收显式的发票与订单 ID，默认开启用餐证明 PDF、发票 PDF 和用餐明细 XLSX；现有生成、逐项错误保留与 Download/ReceiptTamer 归档能力继续复用。“导出记录”作为报销页轻量入口按生成日期浏览归档，不从旧文件伪造报销范围。旧日期闭包检查路由暂留作兼容，但不再是主导航流程。
 
-### 晨雾视觉系统
+### 视觉系统
 
-- `AppPalette` 使用晨雾白 `#EEF5F2`、归档白 `#FCFEFD`、正文墨青 `#193335`、石墨青 `#52686A`、装订深青 `#2B716C`、薄荷 `#70B9AE`、天空蓝与珊瑚 `#A4473F`；浅色和暗色均由 Material `ColorScheme` 提供，应用继续使用 `ThemeMode.system`。
-- `AppTypography` 的标题和标签使用 MiSans，正文使用 Noto Sans SC；UI 标题不再使用衬线字体。金额使用 MiSans 与等宽数字特性，编号等工具文本可使用 Courier Prime。
-- `AppEntityTokens` 管理完全不透明的实体填充、边线、高光、底脊与阴影；圆角主层级为 10/14/16/18。`AppCard`、普通 `GlassSurfacePreset.panel`、输入框和列表内容不创建 `BackdropFilter`。
-- `GlassSurfacePreset.floating/navigation` 使用浅色约 92%、暗色约 94% 的高实色底；`sheet/dialog` 使用约 94% 底色。实时背景模糊集中在 `glass_surface.dart`，sigma 会钳制到不超过 12，且由圆角裁剪和局部 `RepaintBoundary` 限定绘制范围。
-- 主导航是左右 14dp、底部 12dp、高 72dp 的悬浮岛；360dp 宽时为左右 12dp、底部 10dp、高 68dp。中央新增为常规 54dp、紧凑 51dp 的岛内同高圆角主操作，与四个目的地共享垂直基线，不再越出岛面。普通 `IconButton` 保持透明贴附式，只有 `AppIconButton` 等真实浮控件启用模糊。
-- 原 5 个直接创建的业务 Bottom Sheet 已通过受控等价 wrapper 接入同一悬浮材质，泛型返回值、最近 Navigator、拖动、遮罩关闭与原参数保持不变；Sheet 四周保留 8dp 安全间距并闭合四角。
-- 交互卡、按钮、导航和票签只在按压/选择时使用 160–220ms 位移、缩放或透明度变化；`MediaQuery.disableAnimations` 开启后时长归零。`LiquidGlassBackground` 只绘制静态晨雾渐变，不包含常驻动画、自定义 shader 或持续调度帧。
-- 非重叠的同页浮签通过 `BackdropGroup` 共享背景采样；中央新增已并入导航岛的单一模糊层，自身使用不透明实体面与底脊，不再叠加第二层背景滤镜。
+- `AppPalette` 继续使用晨雾白 `#EEF5F2`、归档白 `#FCFEFD`、正文墨青 `#193335`、石墨青 `#52686A`、装订深青 `#2B716C`、薄荷与珊瑚语义；浅色和暗色均由 Material `ColorScheme` 提供，应用使用 `ThemeMode.system`。
+- `AppTypography` 的所有 UI 角色统一以 Tinos 处理拉丁字符和数字，以 Noto Serif SC 回退中文；金额保留等宽数字特性。MiSans、Noto Sans SC 与 Courier Prime 资产仍为 PDF 或兼容路径保留，但不再作为 UI 主字体。
+- 首页目录卡与最近资料卡保持 12–14dp 间隔并共用单一外层滚动；订单和发票按月使用 `LedgerMonthSheet` 连续纸页、日期侧栏与 hairline 分隔，不再逐行创建圆角阴影卡片。每个月份账页的四个外角统一为 16dp，内部记录仍以直线连续相接；月份标题在各自 `SliverMainAxisGroup` 内粘性停靠，并在该月末行完全离开后由下一月推走。总结内容上下各保留 28dp 雾边安全区，外轮廓以前景描边确保圆角完整。月份快速跳转先按条目权重预定位，再以真实锚点校准未构建的远端 Sliver；右侧轨只侵入半个命中宽度，账页右缘与轨道保留 4dp 间隔，不重复计算页边距。
+- 主导航在 412dp 视口使用左右 14dp、底部 12dp、高 72dp 的四等分玻璃岛，右侧以 8dp 间隔放置 72dp 扁平新增键；360dp 时为左右 12dp、底部 10dp、高 68dp 与 68dp 新增键。所有交互满足至少 48dp 命中区，并遵循减少动态效果设置。
+- `AppBar` 与 `ScrollEdgeFog` 共用页面纸色，标题栏下方不再出现异色横带。雾边只使用 `Stack`、`IgnorePointer`、实体保护区和线性渐变，不使用 `BackdropFilter` 或 `ShaderMask`：滚动内容在固定顶控件下方淡入，在固定导航、操作栏或批选栏上方完成渐隐，控件占位内不再透出列表；没有固定底控件时只显示顶部雾边。主导航按实际高度、安全区和 8dp 间隔确定淡出落点，`FloatingOverlayLayout` 则按实测控件高度自动放置雾边与保护区。
+- `AppEntityTokens` 统一管理不透明填充与等宽细描边；按钮、卡片、输入框、导航和弹层不绘制顶部高光、底部厚脊、按压下沉或实体阴影，顶栏 `AppIconButton` 仅保留透明背景与透明边框的 48dp 命中区。实时模糊只用于有界的 floating/navigation/sheet/dialog 表面，sigma 不超过 12，并由圆角裁剪与局部 `RepaintBoundary` 限制。
 
 ### 数据层查询优化
 
 - `DatabaseHelper` 复用同一个数据库打开 Future，避免冷启动期间并发初始化同一数据库。
-- 订单和发票 DAO 的默认排序、日期过滤、关键词组合与关联条件严格沿用 `ce04b3c`；在不传参数时结果与原实现一致。数据层另提供可独立使用的 `limit` / `offset` 查询参数和轻量月份汇总查询；raw SQL 的 offset-only 请求使用 SQLite 合法的 `LIMIT -1 OFFSET n`。发票搜索可同时组合 `orderId` 与 `hasLinkedOrder`，只生成一组 `WHERE` 条件；`LedgerMonthSummary` 只是只读查询结果，不写入数据库。
-- 发票—订单关系支持按最多 500 个 ID 分块批量查询关联 ID 和数量，供批量业务减少逐条数据库往返。
-- 以上能力是数据层基础设施和性能测试对象，当前 `ce04b3c` 页面及 Provider 仍按原方式加载和呈现数据。不得据此声称订单/发票 UI 已实现“每页 40 条”、下一视口预取、250ms 搜索防抖、按月定向加载或月度账单首页。
+- 订单和发票 DAO 保留默认排序、日期过滤、关键词组合及 `limit` / `offset` 边界；新增按 `createdAt` 排序的最近收录查询、轻量月份汇总和批量按 ID 读取。raw SQL 的 offset-only 请求使用 SQLite 合法的 `LIMIT -1 OFFSET n`。
+- 发票—订单关系按最多 500 个 ID 分块批量查询关联 ID 和数量；`order_id` 唯一索引将关系强制为“一张发票可含多笔订单、每笔订单至多一张发票”。首页关联状态、发票月份摘要、订单/发票报销选择及兼容闭包均使用批量 API，避免逐行数据库往返。
+- `LedgerMonthSummary`、`HomeOverview`、`ExportState`、`InvoiceExportState` 和兼容的 `ReimbursementState` 都是只读或进程内投影，不写入数据库。订单与发票 UI 仍是长列表虚拟化，不把性能测试中的“40 条一页”声明为产品分页规则。
 - `test/performance/ledger_sqlite_performance_test.dart` 使用 1,000 条订单、500 张发票和 36 个月的真实 SQLite 夹具，包含 40 条一页的查询工作负载、月份汇总、连续筛选和分块关系查询；其中“40 条”是 DAO 性能测试参数，不是当前 UI 的分页行为。
 
 ### 设计预览与回归资产
 
-- `docs/design/ledger-redesign/`、`fresh-redesign/` 和 `hybrid-redesign/` 保存的是本轮决策过程中的可复现视觉探索稿。它们可用于比较色彩和材质，但其中改变过的信息层级或文案不构成当前页面验收标准。
-- `docs/design/morning-ledger-mid-bold-preview/` 保存已被否决的“单张连续归档页”候选；`docs/design/morning-ledger-relief-island-preview/` 是已确认并迁移的“晨雾浮签 · 实体层与悬浮岛”基准。它以 `ce04b3c` 原内容和文案展示 12 个 412×915 状态与三个 360×800 紧凑状态。
+- `docs/design/ledger-redesign/`、`fresh-redesign/`、`hybrid-redesign/` 与 `morning-ledger-*` 保存历史探索或前代视觉，不再作为当前页面验收标准。
+- `docs/design/reimbursement-binding-preview/` 是已迁移的整体信息架构基准；`reimbursement-export-mode-preview/` 补充已迁移的报销一级页面，覆盖默认按订单、下拉展开与按发票三种状态。迁移后的首页三入口重排、透明顶栏操作、可取消的双列表月份筛选、报销双依据选择与组内粘性月份栏，以本节说明、真实 Flutter、Widget 测试和 Golden 为最终验收标准；HTML 大字体画板只用于策略说明。
 - HTML 设计画板统一使用根目录 `package.json` 与 `pnpm-lock.yaml` 锁定的 `playwright-core`，配合本机 Chrome/Edge 渲染；脚本不再读取用户目录下的 Codex runtime。干净 checkout 先执行 `pnpm install --frozen-lockfile`，再使用对应的 `pnpm run render:design:*` 命令。
-- 最终页面内容以 46 文件受控源契约为准，最终 Flutter 视觉以 `test/goldens/baselines/` 中的 16 张真实 Golden 为准。其中 12 张直接渲染原 `HomeScreen`，覆盖 412×915、360×800、浅色、暗色及 1.0/1.3/2.0 文本缩放；另 4 张主壳组件基线覆盖双视口浅暗色下的顶部浮签、实体月份/行与底部悬浮岛。
-- `test/goldens/scenarios/manifest.json` 仍保存 28 个路由、`SavedFilesScreen` 和中央新增面板共 30 个候选截图场景，用于后续接入计划；该 manifest 不是“已经生成 30 张截图”的声明。目前真实、可比较的 Flutter Golden 数量是 16 张。
+- Flutter 视觉以 `test/goldens/baselines/` 中的 19 张真实 Golden 为准：12 张首页覆盖 412×915、360×800、浅色、暗色及 1.0/1.3/2.0 文本缩放；4 张主壳组件覆盖双视口浅暗色下的连续账页、四栏导航和独立新增键；3 张关联检查页覆盖常规、紧凑和暗色 2.0× 字号状态。
+- `test/goldens/scenarios/manifest.json` 是后续路由截图计划，不代表所有场景已生成；实际可比较 Golden 数量以上述基线文件为准。
 - Golden 使用固定时钟、脱敏夹具、仓库字体和减少动态效果设置，不依赖用户数据或远程资源。新增或更新基线前必须人工核对差异，不得在普通修复中无条件执行 `--update-goldens`。
-- 真实组件回归覆盖浅暗色提示文字、导航小字和状态标签至少 `4.5:1` 的对比度，`AppIconButton` 至少 `48dp` 的命中与语义区域，以及 common 导航在系统减少动态效果开启时禁用选择动画；受保护路由仍保持 `ce04b3c` 的原过渡行为。
+- 真实组件回归覆盖浅暗色提示文字、导航小字和状态标签至少 `4.5:1` 的对比度、`AppIconButton` 与收件键至少 `48dp` 的命中与语义区域，以及系统减少动态效果下的零时长选择动画。
 - SQLite 性能测试与 x86_64 profile 报告只验证数据查询或测试流程。迁移后的 1,738 帧模拟器回归为 build p90/p99 `1.58/2.992ms`、raster p90/p99 `6.275/8.973ms`、慢帧比例 `0.23%`，流程目标通过；`docs/performance/profile-x86-emulator.json` 仍明确为 `certified: false`。认证 harness 直接使用 `kProfileMode`、`device_info_plus.isPhysicalDevice` 与 `Abi.current()` 核验构建模式、物理设备和实际进程 ABI，并强制采集月份快速滚动帧；调用方不能通过 `dart-define` 自报认证条件。只有中档 ARM64 真机 profile mode 结果才可用于正式性能认证，当前不作该声明。
 
 ### 兼容性边界
 
-本轮视觉换肤、数据层查询优化与查询边界修复没有改变持久化数据模型、数据库版本、备份包格式、还原兼容性、应用版本号或业务计算规则，因此不需要数据库迁移或备份格式升级。除 5 处受契约控制的 Bottom Sheet 视觉 wrapper 外，现有路由、首页内容、四栏“关于”、中央新增面板、发票—订单关系、金额分摊、导出计算及备份/还原行为继续保持 `ce04b3c` 兼容。
+本轮信息架构与视觉迁移调整了主导航、首页内容、设置入口及完整报销步骤。随后的一对多约束修复将数据库从版本 1 升至版本 2：启动时清理同一订单的重复发票关联，保留最近更新/收录的发票，并为 `order_id` 建立唯一索引。备份包格式和应用版本号不变；版本 1 的覆盖还原会自动迁移，增量还原会按同一规则归一化关联。报销双依据清单只新增 Riverpod 进程内选择状态，不新增数据字段；金额分摊公式、备份还原逻辑和导出文件归档方式均未改变。
 
 ---
 
@@ -284,7 +296,8 @@ tools/
 - **一张发票** 可关联多个订单
 - **一个订单** 只能关联一张发票
 - 通过 `invoice_order_relations` 中间表实现
-- 关联时自动解除订单与原发票的关联（确保一对一约束）
+- `order_id` 唯一索引在 SQLite 层强制约束，普通写入、批量写入和恢复数据都不能绕过
+- 关联时以事务替换原关系；版本 1 的非法重复数据升级时保留最近更新/收录的发票
 
 ### 发票金额分摊算法
 
@@ -298,6 +311,7 @@ tools/
 - 保证所有分摊金额之和精确等于发票总额（无舍入误差）
 - 按订单ID排序，确定性调整余数
 - 每个分摊金额不超过订单实际支付金额
+- 用餐证明和用餐明细生成前会再次检测跨发票重复订单，发现异常即停止导出，避免重复计入
 
 ---
 
@@ -373,6 +387,8 @@ tools/
 
 **特点**：
 - 文件按日期自动分类存储
+- Android 10+ 的归档列表按 `MediaStore.RELATIVE_PATH` 精确匹配当前目录；父目录只显示日期文件夹，不重复展示子目录文件
+- 完整报销、用餐证明快捷导出与发票快捷导出均先写入临时文件，再仅复制一次到 `materials/YYYYMMDD/`；无论成功或失败都会清理临时文件
 - 文件可在系统文件管理器中直接查看
 - 成功导出后自动跳转到文件管理器的目标目录，点击"查看"按钮可再次跳转
 
@@ -536,8 +552,8 @@ backup.zip
 ```json
 {
   "version": "1.0",
-  "app_version": "0.1.2",
-  "database_version": 1,
+  "app_version": "0.5.2",
+  "database_version": 2,
   "backup_time": "2026-03-27T10:30:00Z",
   "order_count": 50,
   "invoice_count": 30,
@@ -554,6 +570,7 @@ backup.zip
 
 **增量还原**：
 - 保留现有数据，与备份数据叠加
+- 旧备份若含同一订单的多张发票关联，只导入最近更新/收录的那一张
 
 ### 版本兼容性
 

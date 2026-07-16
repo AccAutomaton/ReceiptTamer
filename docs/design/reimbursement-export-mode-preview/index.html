@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ReceiptTamer · 报销导出依据高保真稿</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="board">
+    <header class="board-header">
+      <div>
+        <div class="kicker">REIMBURSEMENT · SELECTION FIRST</div>
+        <h1>导出依据，放回“报销”标题旁</h1>
+      </div>
+      <p>
+        默认按订单导出，进入页面即可勾选；切换为按发票时，仅替换清单与统计口径。
+        日期筛选、全选、反选、同票联动及下一步导出选项均沿用老版能力。
+      </p>
+    </header>
+
+    <section class="phone-grid" aria-label="报销导出一级页面三种状态">
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen">
+            <div class="statusbar"><span>3:43</span><span>◢&nbsp;&nbsp;◤&nbsp;&nbsp;▮</span></div>
+            <header class="appbar">
+              <h2>报销</h2>
+              <button class="basis-tab" type="button" aria-haspopup="listbox" aria-expanded="false">
+                <span class="basis-value">按订单导出</span>
+                <svg class="icon chevron-down"><use href="../reimbursement-binding-preview/icons.svg#i-chevron"/></svg>
+              </button>
+            </header>
+
+            <div class="top-controls">
+              <section class="intro-line">
+                <p>选择订单后，关联同一发票的订单将被一并选中</p>
+                <button type="button">导出记录</button>
+              </section>
+
+              <div class="action-strip" aria-label="批量操作">
+                <button class="action-chip active" type="button">
+                  <svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-check"/></svg>
+                  全选 <b>400</b>
+                </button>
+                <button class="action-chip" type="button">反选</button>
+                <button class="action-chip" type="button">
+                  <svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-calendar"/></svg>
+                  日期
+                </button>
+              </div>
+              <div class="selection-summary">
+                <span>480 笔订单 · 400 笔可选</span>
+                <b>已选 2 笔</b>
+              </div>
+            </div>
+
+            <div class="scroll-region">
+              <section class="ledger-sheet">
+                <header class="month-header">
+                  <div><h3>2026 年 7 月</h3><span>按订单日期</span></div>
+                  <div class="month-total"><span>本月</span><b>42 笔</b></div>
+                </header>
+
+                <article class="ledger-row selected">
+                  <div class="selection-check checked"><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-check"/></svg></div>
+                  <time><b>12</b><span>早餐</span></time>
+                  <div class="entry-main"><b>青禾餐厅·软件园店</b><span>#RT-2026-100000</span></div>
+                  <div class="entry-end"><b>¥18.00</b><span>已关联发票</span></div>
+                </article>
+                <article class="ledger-row selected cascade">
+                  <div class="selection-check linked"><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-link"/></svg></div>
+                  <time><b>11</b><span>晚餐</span></time>
+                  <div class="entry-main"><b>山茶面馆</b><span>#RT-2024-100089</span></div>
+                  <div class="entry-end"><b>¥336.99</b><span>同票带入</span></div>
+                </article>
+                <article class="ledger-row">
+                  <div class="selection-check"></div>
+                  <time><b>08</b><span>午餐</span></time>
+                  <div class="entry-main"><b>半亩田湘菜</b><span>#RT-2025-100178</span></div>
+                  <div class="entry-end"><b>¥270.98</b><span>已关联发票</span></div>
+                </article>
+                <article class="ledger-row">
+                  <div class="selection-check"></div>
+                  <time><b>06</b><span>午餐</span></time>
+                  <div class="entry-main"><b>云帆便当·高新店</b><span>#RT-2026-100478</span></div>
+                  <div class="entry-end"><b>¥333.98</b><span>已关联发票</span></div>
+                </article>
+                <article class="ledger-row disabled">
+                  <div class="selection-check disabled-check"></div>
+                  <time><b>04</b><span>晚餐</span></time>
+                  <div class="entry-main"><b>星港茶楼</b><span>#RT-2026-100425</span></div>
+                  <div class="entry-end"><b>¥299.75</b><span>未关联发票</span></div>
+                </article>
+              </section>
+            </div>
+
+            <div class="selection-bar">
+              <div><b>2 笔订单 · 1 张发票</b><span>合计 ¥354.99</span></div>
+              <button type="button">下一步 <svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-arrow"/></svg></button>
+            </div>
+            <nav class="bottom-nav" aria-label="主导航">
+              <div class="nav-item"><span><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-home"/></svg>首页</span></div>
+              <div class="nav-item"><span><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-orders"/></svg>订单</span></div>
+              <div class="nav-item"><span><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-invoice"/></svg>发票</span></div>
+              <div class="nav-item active"><span><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-package"/></svg>报销</span></div>
+            </nav>
+            <div class="intake-dock"><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-plus"/></svg><span>新增</span></div>
+          </div>
+        </div>
+        <div class="phone-label"><strong>默认 · 按订单</strong><span>进入即开始选择</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen menu-open">
+            <div class="statusbar"><span>3:43</span><span>◢&nbsp;&nbsp;◤&nbsp;&nbsp;▮</span></div>
+            <header class="appbar">
+              <h2>报销</h2>
+              <button class="basis-tab is-open" type="button" aria-haspopup="listbox" aria-expanded="true">
+                <span class="basis-value">按订单导出</span>
+                <svg class="icon chevron-down"><use href="../reimbursement-binding-preview/icons.svg#i-chevron"/></svg>
+              </button>
+            </header>
+
+            <div class="basis-menu" role="listbox" aria-label="选择导出依据">
+              <button class="basis-option selected" role="option" aria-selected="true" type="button">
+                <span class="option-mark"><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-orders"/></svg></span>
+                <span><b>按订单导出</b><small>联动同一张发票的订单</small></span>
+                <svg class="icon option-check"><use href="../reimbursement-binding-preview/icons.svg#i-check"/></svg>
+              </button>
+              <button class="basis-option" role="option" aria-selected="false" type="button">
+                <span class="option-mark"><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-invoice"/></svg></span>
+                <span><b>按发票导出</b><small>自动带入关联订单</small></span>
+                <span class="option-check"></span>
+              </button>
+            </div>
+
+            <div class="top-controls">
+              <section class="intro-line">
+                <p>选择订单后，关联同一发票的订单将被一并选中</p>
+                <button type="button">导出记录</button>
+              </section>
+              <div class="action-strip">
+                <button class="action-chip active" type="button"><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-check"/></svg>全选 <b>400</b></button>
+                <button class="action-chip" type="button">反选</button>
+                <button class="action-chip" type="button"><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-calendar"/></svg>日期</button>
+              </div>
+              <div class="selection-summary"><span>480 笔订单 · 400 笔可选</span><b>已选 2 笔</b></div>
+            </div>
+            <div class="scroll-region">
+              <section class="ledger-sheet">
+                <header class="month-header"><div><h3>2026 年 7 月</h3><span>按订单日期</span></div><div class="month-total"><span>本月</span><b>42 笔</b></div></header>
+                <article class="ledger-row selected">
+                  <div class="selection-check checked"><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-check"/></svg></div>
+                  <time><b>12</b><span>早餐</span></time>
+                  <div class="entry-main"><b>青禾餐厅·软件园店</b><span>#RT-2026-100000</span></div>
+                  <div class="entry-end"><b>¥18.00</b><span>已关联发票</span></div>
+                </article>
+                <article class="ledger-row selected cascade">
+                  <div class="selection-check linked"><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-link"/></svg></div>
+                  <time><b>11</b><span>晚餐</span></time>
+                  <div class="entry-main"><b>山茶面馆</b><span>#RT-2024-100089</span></div>
+                  <div class="entry-end"><b>¥336.99</b><span>同票带入</span></div>
+                </article>
+                <article class="ledger-row"><div class="selection-check"></div><time><b>08</b><span>午餐</span></time><div class="entry-main"><b>半亩田湘菜</b><span>#RT-2025-100178</span></div><div class="entry-end"><b>¥270.98</b><span>已关联发票</span></div></article>
+                <article class="ledger-row"><div class="selection-check"></div><time><b>06</b><span>午餐</span></time><div class="entry-main"><b>云帆便当·高新店</b><span>#RT-2026-100478</span></div><div class="entry-end"><b>¥333.98</b><span>已关联发票</span></div></article>
+                <article class="ledger-row disabled"><div class="selection-check disabled-check"></div><time><b>04</b><span>晚餐</span></time><div class="entry-main"><b>星港茶楼</b><span>#RT-2026-100425</span></div><div class="entry-end"><b>¥299.75</b><span>未关联发票</span></div></article>
+              </section>
+            </div>
+            <div class="selection-bar"><div><b>2 笔订单 · 1 张发票</b><span>合计 ¥354.99</span></div><button type="button">下一步 <svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-arrow"/></svg></button></div>
+            <nav class="bottom-nav"><div class="nav-item"><span><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-home"/></svg>首页</span></div><div class="nav-item"><span><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-orders"/></svg>订单</span></div><div class="nav-item"><span><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-invoice"/></svg>发票</span></div><div class="nav-item active"><span><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-package"/></svg>报销</span></div></nav>
+            <div class="intake-dock"><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-plus"/></svg><span>新增</span></div>
+          </div>
+        </div>
+        <div class="phone-label"><strong>下拉展开</strong><span>只切换导出依据</span></div>
+      </article>
+
+      <article class="phone-card">
+        <div class="phone">
+          <div class="screen">
+            <div class="statusbar"><span>3:43</span><span>◢&nbsp;&nbsp;◤&nbsp;&nbsp;▮</span></div>
+            <header class="appbar">
+              <h2>报销</h2>
+              <button class="basis-tab" type="button" aria-haspopup="listbox" aria-expanded="false">
+                <span class="basis-value">按发票导出</span>
+                <svg class="icon chevron-down"><use href="../reimbursement-binding-preview/icons.svg#i-chevron"/></svg>
+              </button>
+            </header>
+
+            <div class="top-controls">
+              <section class="intro-line">
+                <p>选择发票后，关联订单将被自动选中</p>
+                <button type="button">导出记录</button>
+              </section>
+              <div class="action-strip">
+                <button class="action-chip active" type="button"><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-check"/></svg>全选 <b>200</b></button>
+                <button class="action-chip" type="button">反选</button>
+                <button class="action-chip" type="button"><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-calendar"/></svg>日期</button>
+              </div>
+              <div class="selection-summary"><span>260 张发票 · 200 张可选</span><b>已选 2 张</b></div>
+            </div>
+
+            <div class="scroll-region">
+              <section class="ledger-sheet invoice-sheet">
+                <header class="month-header"><div><h3>2026 年 7 月</h3><span>按开票日期</span></div><div class="month-total"><span>本月</span><b>9 张</b></div></header>
+                <article class="ledger-row selected">
+                  <div class="selection-check checked"><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-check"/></svg></div>
+                  <time><b>13</b><span>日</span></time>
+                  <div class="entry-main"><b>青禾餐厅·软件园店</b><span>INV-202607-880000</span></div>
+                  <div class="entry-end"><b>¥25.60</b><span>关联 1 笔订单</span></div>
+                </article>
+                <article class="ledger-row selected">
+                  <div class="selection-check checked"><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-check"/></svg></div>
+                  <time><b>13</b><span>日</span></time>
+                  <div class="entry-main"><b>塔可研究所</b><span>INV-202607-880178</span></div>
+                  <div class="entry-end"><b>¥1077.90</b><span>关联 4 笔订单</span></div>
+                </article>
+                <article class="ledger-row">
+                  <div class="selection-check"></div>
+                  <time><b>13</b><span>日</span></time>
+                  <div class="entry-main"><b>青禾餐厅·软件园店</b><span>INV-202607-880180</span></div>
+                  <div class="entry-end"><b>¥346.80</b><span>关联 1 笔订单</span></div>
+                </article>
+                <article class="ledger-row disabled">
+                  <div class="selection-check disabled-check"></div>
+                  <time><b>10</b><span>日</span></time>
+                  <div class="entry-main"><b>南风小馆</b><span>INV-202607-880235</span></div>
+                  <div class="entry-end"><b>¥171.95</b><span>未关联订单</span></div>
+                </article>
+                <article class="ledger-row">
+                  <div class="selection-check"></div>
+                  <time><b>08</b><span>日</span></time>
+                  <div class="entry-main"><b>禾木烘焙</b><span>INV-202607-880163</span></div>
+                  <div class="entry-end"><b>¥1235.55</b><span>关联 5 笔订单</span></div>
+                </article>
+              </section>
+            </div>
+            <div class="selection-bar"><div><b>2 张发票 · 5 笔订单</b><span>合计 ¥1103.50</span></div><button type="button">下一步 <svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-arrow"/></svg></button></div>
+            <nav class="bottom-nav"><div class="nav-item"><span><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-home"/></svg>首页</span></div><div class="nav-item"><span><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-orders"/></svg>订单</span></div><div class="nav-item"><span><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-invoice"/></svg>发票</span></div><div class="nav-item active"><span><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-package"/></svg>报销</span></div></nav>
+            <div class="intake-dock"><svg class="icon"><use href="../reimbursement-binding-preview/icons.svg#i-plus"/></svg><span>新增</span></div>
+          </div>
+        </div>
+        <div class="phone-label"><strong>切换 · 按发票</strong><span>同一套选择结构</span></div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

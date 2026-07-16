@@ -519,7 +519,7 @@ class _OrderExportCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          invoiceCount > 0 ? '关联 $invoiceCount 张发票' : '未关联发票',
+                          invoiceCount > 0 ? '已关联发票' : '未关联发票',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: invoiceCount > 0
                                 ? AppPalette.amountFor(context)

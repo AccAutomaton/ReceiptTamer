@@ -245,6 +245,63 @@ void main() {
     },
   );
 
+  test(
+    'home recent queries use collection time, limit results, and retain relations',
+    () async {
+      await _insertOrder(
+        db,
+        orderDate: '2026-12-31',
+        createdAt: '2026-06-01T08:00:00',
+        orderNumber: 'OLD-COLLECTION',
+      );
+      final secondNewestOrderId = await _insertOrder(
+        db,
+        orderDate: '2026-01-01',
+        createdAt: '2026-07-02T08:00:00',
+        orderNumber: 'SECOND-COLLECTION',
+      );
+      final newestOrderId = await _insertOrder(
+        db,
+        orderDate: '2025-01-01',
+        createdAt: '2026-07-03T08:00:00',
+        orderNumber: 'NEWEST-COLLECTION',
+      );
+
+      await _insertInvoice(
+        db,
+        invoiceDate: '2026-12-31',
+        createdAt: '2026-06-01T08:00:00',
+        invoiceNumber: 'OLD-INVOICE-COLLECTION',
+      );
+      final secondNewestInvoiceId = await _insertInvoice(
+        db,
+        invoiceDate: '2026-01-01',
+        createdAt: '2026-07-02T08:00:00',
+        invoiceNumber: 'SECOND-INVOICE-COLLECTION',
+      );
+      final newestInvoiceId = await _insertInvoice(
+        db,
+        invoiceDate: '2025-01-01',
+        createdAt: '2026-07-03T08:00:00',
+        invoiceNumber: 'NEWEST-INVOICE-COLLECTION',
+      );
+      await _link(db, invoiceId: newestInvoiceId, orderId: newestOrderId);
+
+      final recentOrders = await orderTable.getRecentlyCreated(limit: 2);
+      final recentInvoices = await invoiceTable.getRecentlyCreated(limit: 2);
+
+      expect(recentOrders.map((order) => order.id), [
+        newestOrderId,
+        secondNewestOrderId,
+      ]);
+      expect(recentOrders.first.hasInvoice, isTrue);
+      expect(recentInvoices.map((invoice) => invoice.id), [
+        newestInvoiceId,
+        secondNewestInvoiceId,
+      ]);
+    },
+  );
+
   test('raw SQL pagination supports offset without a limit', () async {
     final newestOrderId = await _insertOrder(
       db,
@@ -291,8 +348,6 @@ void main() {
       invoiceNumber: 'INVOICE-NEWEST',
       createdAt: '2026-06-03T00:00:00',
     );
-    await _link(db, invoiceId: oldestInvoiceId, orderId: oldestOrderId);
-    await _link(db, invoiceId: middleInvoiceId, orderId: oldestOrderId);
     await _link(db, invoiceId: newestInvoiceId, orderId: oldestOrderId);
 
     expect(
@@ -300,7 +355,7 @@ void main() {
         oldestOrderId,
         offset: 1,
       )).map((invoice) => invoice.id),
-      [middleInvoiceId, oldestInvoiceId],
+      isEmpty,
     );
     expect(
       (await invoiceTable.search(offset: 1)).map((invoice) => invoice.id),
@@ -399,28 +454,71 @@ void main() {
         invoiceNumber: 'BATCH-2',
       );
       final thirdInvoiceId = await _insertInvoice(db, invoiceNumber: 'BATCH-3');
-      await _link(db, invoiceId: firstInvoiceId, orderId: 1);
-      await _link(db, invoiceId: secondInvoiceId, orderId: 1);
-      await _link(db, invoiceId: firstInvoiceId, orderId: 500);
-      await _link(db, invoiceId: firstInvoiceId, orderId: 501);
-      await _link(db, invoiceId: secondInvoiceId, orderId: 501);
-      await _link(db, invoiceId: thirdInvoiceId, orderId: 501);
-      await _link(db, invoiceId: thirdInvoiceId, orderId: 1000);
+      await relationTable.insertRelationsForInvoice(firstInvoiceId, [
+        1,
+        500,
+        501,
+      ]);
+      await relationTable.insertRelationsForInvoice(secondInvoiceId, [1, 501]);
+      await relationTable.insertRelationsForInvoice(thirdInvoiceId, [
+        501,
+        1000,
+      ]);
 
       final orderIds = List<int>.generate(1000, (index) => 1000 - index);
       final counts = await relationTable.getInvoiceCountsForOrders(orderIds);
       final invoiceIds = await relationTable.getInvoiceIdsForOrders(orderIds);
 
-      expect(counts, {1: 2, 500: 1, 501: 3, 1000: 1});
+      expect(counts, {1: 1, 500: 1, 501: 1, 1000: 1});
       expect(invoiceIds, hasLength(1000));
-      expect(invoiceIds[1], unorderedEquals([firstInvoiceId, secondInvoiceId]));
+      expect(invoiceIds[1], {secondInvoiceId});
       expect(invoiceIds[2], isEmpty);
       expect(invoiceIds[500], {firstInvoiceId});
-      expect(
-        invoiceIds[501],
-        unorderedEquals([firstInvoiceId, secondInvoiceId, thirdInvoiceId]),
-      );
+      expect(invoiceIds[501], {thirdInvoiceId});
       expect(invoiceIds[1000], {thirdInvoiceId});
+    },
+  );
+
+  test(
+    'legacy duplicate order relations keep the newest invoice and become unique',
+    () async {
+      final orderId = await _insertOrder(db);
+      final olderInvoiceId = await _insertInvoice(
+        db,
+        invoiceNumber: 'OLDER',
+        createdAt: '2026-06-01T00:00:00',
+      );
+      final newerInvoiceId = await _insertInvoice(
+        db,
+        invoiceNumber: 'NEWER',
+        createdAt: '2026-06-02T00:00:00',
+      );
+
+      await db.execute(
+        'DROP INDEX ${InvoiceOrderRelationTable.orderIdUniqueIndexName}',
+      );
+      await _link(db, invoiceId: olderInvoiceId, orderId: orderId);
+      await _link(db, invoiceId: newerInvoiceId, orderId: orderId);
+
+      final removedCount = await relationTable.enforceSingleInvoicePerOrder();
+
+      expect(removedCount, 1);
+      expect(await relationTable.getInvoiceIdsForOrder(orderId), [
+        newerInvoiceId,
+      ]);
+
+      final indexes = await db.rawQuery(
+        "PRAGMA index_list('${AppConstants.invoiceOrderRelationsTable}')",
+      );
+      final orderIndex = indexes.singleWhere(
+        (index) =>
+            index['name'] == InvoiceOrderRelationTable.orderIdUniqueIndexName,
+      );
+      expect((orderIndex['unique'] as num).toInt(), 1);
+      expect(
+        _link(db, invoiceId: olderInvoiceId, orderId: orderId),
+        throwsA(isA<DatabaseException>()),
+      );
     },
   );
 }
@@ -528,5 +626,9 @@ Future<void> _createSchema(Database db) async {
       ${AppConstants.colOrderId} INTEGER NOT NULL,
       PRIMARY KEY (${AppConstants.colInvoiceId}, ${AppConstants.colOrderId})
     )
+  ''');
+  await db.execute('''
+    CREATE UNIQUE INDEX ${InvoiceOrderRelationTable.orderIdUniqueIndexName}
+    ON ${AppConstants.invoiceOrderRelationsTable}(${AppConstants.colOrderId})
   ''');
 }

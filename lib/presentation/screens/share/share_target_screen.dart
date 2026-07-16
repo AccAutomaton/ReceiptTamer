@@ -10,32 +10,26 @@ import 'package:receipt_tamer/core/services/log_service.dart';
 import 'package:receipt_tamer/core/services/log_config.dart';
 import 'package:receipt_tamer/data/services/share_handler_service.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
+import 'package:receipt_tamer/presentation/widgets/common/scroll_edge_fog.dart';
 
 /// Share target type
-enum ShareTargetType {
-  order,
-  invoice,
-}
+enum ShareTargetType { order, invoice }
 
 /// Result of share target selection
 class ShareTargetResult {
   final ShareTargetType targetType;
   final List<SharedMediaItem> items;
 
-  const ShareTargetResult({
-    required this.targetType,
-    required this.items,
-  });
+  const ShareTargetResult({required this.targetType, required this.items});
 }
 
 /// Screen for selecting where to import shared files
 class ShareTargetScreen extends ConsumerWidget {
   final List<SharedMediaItem> sharedItems;
 
-  const ShareTargetScreen({
-    super.key,
-    required this.sharedItems,
-  });
+  const ShareTargetScreen({super.key, required this.sharedItems});
+
+  static const selectionBarKey = ValueKey<String>('share-target-selection-bar');
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -45,30 +39,29 @@ class ShareTargetScreen extends ConsumerWidget {
     final hasMixed = service.hasMixedTypes(sharedItems);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('导入分享内容'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('导入分享内容'), elevation: 0),
       body: SafeArea(
         child: Column(
           children: [
             // File preview section
             Expanded(
-              child: _FilePreviewList(items: sharedItems),
+              child: ScrollEdgeFog(
+                showBottom: true,
+                child: _FilePreviewList(items: sharedItems),
+              ),
             ),
 
             // Target selection section
             Container(
+              key: selectionBarKey,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, -2),
+                border: Border(
+                  top: BorderSide(
+                    color: Theme.of(context).colorScheme.outlineVariant,
                   ),
-                ],
+                ),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -77,8 +70,8 @@ class ShareTargetScreen extends ConsumerWidget {
                   Text(
                     '选择导入类型',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 16),
 
@@ -89,7 +82,10 @@ class ShareTargetScreen extends ConsumerWidget {
                           ? '添加为订单 (${sharedItems.length} 个)'
                           : '添加为订单 (${service.filterByType(sharedItems, SharedMediaType.image).length} 个图片)',
                       onPressed: () {
-                        final imageItems = service.filterByType(sharedItems, SharedMediaType.image);
+                        final imageItems = service.filterByType(
+                          sharedItems,
+                          SharedMediaType.image,
+                        );
                         if (imageItems.isNotEmpty) {
                           _navigateToOrderEdit(context, imageItems);
                         }
@@ -106,12 +102,14 @@ class ShareTargetScreen extends ConsumerWidget {
                     text: allPdfs
                         ? '添加为发票 (${sharedItems.length} 个)'
                         : hasMixed
-                            ? '添加为发票 (${sharedItems.length} 个)'
-                            : '添加为发票 (${sharedItems.length} 个)',
+                        ? '添加为发票 (${sharedItems.length} 个)'
+                        : '添加为发票 (${sharedItems.length} 个)',
                     onPressed: () {
                       _navigateToInvoiceEdit(context, sharedItems);
                     },
-                    type: allPdfs ? AppButtonType.primary : AppButtonType.secondary,
+                    type: allPdfs
+                        ? AppButtonType.primary
+                        : AppButtonType.secondary,
                     isFullWidth: true,
                     icon: const Icon(Icons.description),
                   ),
@@ -146,7 +144,9 @@ class ShareTargetScreen extends ConsumerWidget {
     // 保存剩余图片到 ShareHandlerService（用于后续处理）
     // 但设置一个临时标志防止 app.dart 自动导航
     final service = ShareHandlerService();
-    service.sharedMediaNotifier.value = remainingItems.isNotEmpty ? remainingItems : null;
+    service.sharedMediaNotifier.value = remainingItems.isNotEmpty
+        ? remainingItems
+        : null;
 
     // 使用 push 而不是 go，这样可以在编辑页面处理完后正确返回
     context.go(
@@ -154,7 +154,10 @@ class ShareTargetScreen extends ConsumerWidget {
     );
   }
 
-  void _navigateToInvoiceEdit(BuildContext context, List<SharedMediaItem> items) {
+  void _navigateToInvoiceEdit(
+    BuildContext context,
+    List<SharedMediaItem> items,
+  ) {
     logService.i(LogConfig.moduleUi, '导航到发票编辑页面: ${items.length} 个文件');
     // Navigate to invoice edit with the first file
     // Pass remaining items as pending
@@ -163,7 +166,9 @@ class ShareTargetScreen extends ConsumerWidget {
 
     // 保存剩余文件到 ShareHandlerService（用于后续处理）
     final service = ShareHandlerService();
-    service.sharedMediaNotifier.value = remainingItems.isNotEmpty ? remainingItems : null;
+    service.sharedMediaNotifier.value = remainingItems.isNotEmpty
+        ? remainingItems
+        : null;
 
     context.go(
       '/invoices/new?sharedPath=${Uri.encodeComponent(firstItem.path)}&remainingCount=${remainingItems.length}',
@@ -180,9 +185,7 @@ class _FilePreviewList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
-      return const Center(
-        child: Text('没有可分享的文件'),
-      );
+      return const Center(child: Text('没有可分享的文件'));
     }
 
     return ListView.builder(
@@ -224,16 +227,22 @@ class _FilePreviewCard extends StatelessWidget {
                         File(item.path),
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) => Container(
-                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
                           child: const Icon(Icons.broken_image, size: 32),
                         ),
                       )
                     : Container(
                         color: Theme.of(context).colorScheme.primaryContainer,
                         child: Icon(
-                          isPdf ? Icons.picture_as_pdf : Icons.insert_drive_file,
+                          isPdf
+                              ? Icons.picture_as_pdf
+                              : Icons.insert_drive_file,
                           size: 32,
-                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onPrimaryContainer,
                         ),
                       ),
               ),
@@ -248,8 +257,8 @@ class _FilePreviewCard extends StatelessWidget {
                   Text(
                     _getFileName(item.path),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
+                      fontWeight: FontWeight.w500,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -257,8 +266,8 @@ class _FilePreviewCard extends StatelessWidget {
                   Text(
                     isImage ? '图片' : (isPdf ? 'PDF文件' : '文件'),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),

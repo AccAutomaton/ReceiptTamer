@@ -143,6 +143,35 @@ class OrderTable {
     }
   }
 
+  /// 批量读取指定订单，避免关系闭包检查按 ID 循环访问数据库。
+  Future<List<Order>> getByIds(List<int> ids) async {
+    if (ids.isEmpty) return const [];
+
+    try {
+      final uniqueIds = ids.toSet().toList(growable: false);
+      final orders = <Order>[];
+      for (var offset = 0; offset < uniqueIds.length; offset += 500) {
+        final end = offset + 500 < uniqueIds.length
+            ? offset + 500
+            : uniqueIds.length;
+        final chunk = uniqueIds.sublist(offset, end);
+        final placeholders = List.filled(chunk.length, '?').join(', ');
+        final maps = await database.rawQuery(
+          'SELECT o.*, $_hasInvoiceColumn '
+          'FROM ${AppConstants.ordersTable} o '
+          '$_invoiceJoinClause '
+          'WHERE o.${AppConstants.colId} IN ($placeholders)',
+          chunk,
+        );
+        orders.addAll(maps.map(_parseOrderWithInvoice));
+      }
+      return orders;
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleDb, '批量获取订单失败', e, stackTrace);
+      rethrow;
+    }
+  }
+
   /// Get all orders, ordered by order date (newest first), then by meal time (dinner > lunch > breakfast)
   Future<List<Order>> getAll({int? limit, int? offset}) async {
     try {
@@ -159,6 +188,30 @@ class OrderTable {
       return maps.map(_parseOrderWithInvoice).toList();
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleDb, '获取所有订单失败', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  /// Get recently collected orders, ordered by creation time.
+  ///
+  /// This query is intentionally separate from [getAll], whose ordering is
+  /// based on the business date of an order. The home archive uses collection
+  /// time so newly imported older receipts still appear first.
+  Future<List<Order>> getRecentlyCreated({int limit = 10}) async {
+    try {
+      final List<Map<String, dynamic>> maps = await database.rawQuery(
+        'SELECT o.*, $_hasInvoiceColumn '
+        'FROM ${AppConstants.ordersTable} o '
+        '$_invoiceJoinClause '
+        'ORDER BY o.${AppConstants.colCreatedAt} DESC, '
+        'o.${AppConstants.colId} DESC '
+        'LIMIT ?',
+        [limit],
+      );
+
+      return maps.map(_parseOrderWithInvoice).toList(growable: false);
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleDb, '获取最近收录订单失败', e, stackTrace);
       rethrow;
     }
   }

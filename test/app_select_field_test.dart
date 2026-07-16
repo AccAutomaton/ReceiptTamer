@@ -5,51 +5,51 @@ import 'package:receipt_tamer/core/theme/app_theme.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_text_field.dart';
 
 void main() {
-  testWidgets(
-    'AppSelectField uses an opaque rounded relief decorator without blur',
-    (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.lightTheme,
-          home: Scaffold(
-            body: Center(
-              child: SizedBox(
-                width: 240,
-                child: AppSelectField<String>(
-                  value: 'breakfast',
-                  options: const ['breakfast', 'lunch'],
-                  displayValue: (value) => value,
-                  onChanged: (_) {},
-                ),
+  testWidgets('AppSelectField uses an opaque flat outline without blur', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme,
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 240,
+              child: AppSelectField<String>(
+                value: 'breakfast',
+                options: const ['breakfast', 'lunch'],
+                displayValue: (value) => value,
+                onChanged: (_) {},
               ),
             ),
           ),
         ),
-      );
+      ),
+    );
 
-      final inputDecorator = tester.widget<InputDecorator>(
-        find.byType(InputDecorator),
-      );
+    final inputDecorator = tester.widget<InputDecorator>(
+      find.byType(InputDecorator),
+    );
+    final dropdown = tester.widget<DropdownButton<String>>(
+      find.byType(DropdownButton<String>),
+    );
 
-      expect(inputDecorator.decoration.fillColor, AppEntityTokens.lightFill);
-      expect(inputDecorator.decoration.fillColor?.a, 1);
-      expect(
-        inputDecorator.decoration.border,
-        isA<AppReliefInputBorder>()
-            .having(
-              (border) => border.borderRadius,
-              'borderRadius',
-              BorderRadius.circular(AppRadii.control),
-            )
-            .having(
-              (border) => border.borderSide,
-              'borderSide',
-              const BorderSide(color: AppEntityTokens.lightStrongBorder),
-            ),
-      );
-      expect(find.byType(BackdropFilter), findsNothing);
-    },
-  );
+    expect(inputDecorator.decoration.fillColor, AppEntityTokens.lightFill);
+    expect(inputDecorator.decoration.fillColor?.a, 1);
+    expect(dropdown.elevation, 0);
+    final border = inputDecorator.decoration.border;
+    expect(border, isA<AppReliefInputBorder>());
+    final flatBorder = border! as AppReliefInputBorder;
+    expect(flatBorder.borderRadius, BorderRadius.circular(AppRadii.control));
+    expect(
+      flatBorder.borderSide,
+      const BorderSide(color: AppEntityTokens.lightStrongBorder),
+    );
+    expect(flatBorder.highlightColor, Colors.transparent);
+    expect(flatBorder.ridgeColor, Colors.transparent);
+    expect(flatBorder.ridgeWidth, 0);
+    expect(find.byType(BackdropFilter), findsNothing);
+  });
 
   testWidgets('AppSelectField opens menu with control border radius', (
     tester,

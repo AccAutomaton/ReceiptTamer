@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('30 个 Android 截图场景与验收矩阵保持完整', () {
+  test('31 个 Android 截图场景与验收矩阵保持完整', () {
     final manifest =
         jsonDecode(
               File('test/goldens/scenarios/manifest.json').readAsStringSync(),
@@ -13,10 +13,15 @@ void main() {
     final scenarios = manifest['scenarios'] as List<dynamic>;
     final matrix = manifest['matrix'] as Map<String, dynamic>;
 
-    expect(scenarios, hasLength(30));
+    expect(manifest['schemaVersion'], 3);
+    expect(
+      (manifest['contentBaseline'] as Map<String, dynamic>)['id'],
+      'reimbursement_binding_approved',
+    );
+    expect(scenarios, hasLength(31));
     expect(
       scenarios.map((item) => (item as Map<String, dynamic>)['id']).toSet(),
-      hasLength(30),
+      hasLength(31),
     );
     expect(
       scenarios.every(
@@ -46,10 +51,11 @@ void main() {
         '/orders/new',
         '/invoices/new?orderIds=101,102',
         '/export',
+        '/export/check',
         '/invoice-assistant',
         '/settings/cleanup',
         'dialog://saved-files',
-        'sheet://add-receipt',
+        'sheet://receipt-intake',
       }),
     );
 
@@ -76,6 +82,7 @@ void main() {
       '/invoices/:id',
       '/invoices/:id/edit',
       '/export',
+      '/export/check',
       '/export/invoices',
       '/export/orders',
       '/export/options',

@@ -61,10 +61,22 @@ class OrderRepository {
     return await table.getById(id);
   }
 
+  /// Batch-read orders by ID for relation closure checks.
+  Future<List<Order>> getByIds(List<int> ids) async {
+    final table = await _orderTable;
+    return table.getByIds(ids);
+  }
+
   /// Get all orders
   Future<List<Order>> getAll({int? limit, int? offset}) async {
     final table = await _orderTable;
     return await table.getAll(limit: limit, offset: offset);
+  }
+
+  /// Get the latest orders by collection time for the home archive.
+  Future<List<Order>> getRecentlyCreated({int limit = 10}) async {
+    final table = await _orderTable;
+    return table.getRecentlyCreated(limit: limit);
   }
 
   /// Read-only month index used by the virtualized ledger and fast scroller.

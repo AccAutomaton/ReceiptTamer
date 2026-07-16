@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 
-/// Opaque filing surface with a restrained highlight, ridge and press depth.
-class AppCard extends StatefulWidget {
+/// Opaque flat filing surface with a uniform outline.
+class AppCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
@@ -34,53 +34,27 @@ class AppCard extends StatefulWidget {
   });
 
   @override
-  State<AppCard> createState() => _AppCardState();
-}
-
-class _AppCardState extends State<AppCard> {
-  bool _isPressed = false;
-
-  @override
   Widget build(BuildContext context) {
-    final isInteractive = widget.onTap != null || widget.onLongPress != null;
     final entityFill = AppEntityTokens.fillFor(context);
-    final requestedBackgroundColor = widget.backgroundColor ?? entityFill;
+    final requestedBackgroundColor = backgroundColor ?? entityFill;
     final effectiveBackgroundColor = requestedBackgroundColor.a < 1
         ? Color.alphaBlend(requestedBackgroundColor, entityFill)
         : requestedBackgroundColor;
     final effectivePadding =
-        widget.padding ??
-        const EdgeInsets.symmetric(horizontal: 16, vertical: 12);
+        padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 12);
     final effectiveMargin =
-        widget.margin ?? const EdgeInsets.symmetric(horizontal: 8, vertical: 6);
+        margin ?? const EdgeInsets.symmetric(horizontal: 8, vertical: 6);
     final effectiveBorderRadius =
-        widget.borderRadius ?? BorderRadius.circular(AppRadii.card);
+        borderRadius ?? BorderRadius.circular(AppRadii.card);
     final effectiveBorderSide =
-        widget.borderSide ??
-        BorderSide(color: AppEntityTokens.borderFor(context));
-    final effectiveShadows =
-        widget.boxShadow ??
-        (widget.elevation == null
-            ? AppEntityTokens.shadowFor(context)
-            : widget.elevation! > 0
-            ? [
-                BoxShadow(
-                  color: Theme.of(context).colorScheme.shadow.withValues(
-                    alpha: AppPalette.isDark(context) ? 0.46 : 0.14,
-                  ),
-                  blurRadius: widget.elevation! * 3.2,
-                  spreadRadius: -widget.elevation!,
-                  offset: Offset(0, widget.elevation!),
-                ),
-              ]
-            : null);
+        borderSide ?? BorderSide(color: AppEntityTokens.borderFor(context));
 
-    Widget content = Padding(padding: effectivePadding, child: widget.child);
-    if (widget.foregroundColor != null) {
+    Widget content = Padding(padding: effectivePadding, child: child);
+    if (foregroundColor != null) {
       content = IconTheme.merge(
-        data: IconThemeData(color: widget.foregroundColor),
+        data: IconThemeData(color: foregroundColor),
         child: DefaultTextStyle.merge(
-          style: TextStyle(color: widget.foregroundColor),
+          style: TextStyle(color: foregroundColor),
           child: content,
         ),
       );
@@ -90,34 +64,20 @@ class _AppCardState extends State<AppCard> {
       borderRadius: effectiveBorderRadius,
       backgroundColor: effectiveBackgroundColor,
       borderSide: effectiveBorderSide,
-      shadows: effectiveShadows,
-      highlightColor: AppEntityTokens.highlightFor(context),
-      ridgeColor: AppEntityTokens.ridgeFor(context),
       child: content,
     );
 
-    Widget interactiveCard = _withInk(card, effectiveBorderRadius);
-    if (isInteractive) {
-      final duration = AppMotion.adaptive(context, AppMotion.fast);
-      final pressedVisual = _isPressed && !AppMotion.reduceMotion(context);
-      interactiveCard = AnimatedSlide(
-        duration: duration,
-        curve: AppMotion.curve,
-        offset: pressedVisual ? const Offset(0, 0.018) : Offset.zero,
-        child: AnimatedScale(
-          duration: duration,
-          curve: AppMotion.curve,
-          scale: pressedVisual ? 0.985 : 1,
-          child: interactiveCard,
-        ),
-      );
-    }
-
-    return Padding(padding: effectiveMargin, child: interactiveCard);
+    return Semantics(
+      container: semanticContainer,
+      child: Padding(
+        padding: effectiveMargin,
+        child: _withInk(card, effectiveBorderRadius),
+      ),
+    );
   }
 
   Widget _withInk(Widget child, BorderRadius borderRadius) {
-    if (widget.onTap == null && widget.onLongPress == null) return child;
+    if (onTap == null && onLongPress == null) return child;
 
     return Stack(
       fit: StackFit.passthrough,
@@ -130,12 +90,8 @@ class _AppCardState extends State<AppCard> {
             borderRadius: borderRadius,
             clipBehavior: Clip.antiAlias,
             child: InkWell(
-              onTap: widget.onTap,
-              onLongPress: widget.onLongPress,
-              onHighlightChanged: (value) {
-                if (!mounted || _isPressed == value) return;
-                setState(() => _isPressed = value);
-              },
+              onTap: onTap,
+              onLongPress: onLongPress,
               borderRadius: borderRadius,
             ),
           ),
@@ -150,50 +106,25 @@ class _AppCardChrome extends StatelessWidget {
     required this.borderRadius,
     required this.backgroundColor,
     required this.borderSide,
-    required this.shadows,
-    required this.highlightColor,
-    required this.ridgeColor,
     required this.child,
   });
 
   final BorderRadius borderRadius;
   final Color backgroundColor;
   final BorderSide borderSide;
-  final List<BoxShadow>? shadows;
-  final Color highlightColor;
-  final Color ridgeColor;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final decoration = BoxDecoration(
-      color: backgroundColor,
-      borderRadius: borderRadius,
-      border: borderSide == BorderSide.none
-          ? null
-          : Border.fromBorderSide(borderSide),
-      boxShadow: shadows,
-    );
-
-    return Stack(
-      fit: StackFit.passthrough,
-      children: [
-        DecoratedBox(decoration: decoration, child: child),
-        Positioned(
-          top: 1,
-          left: borderRadius.topLeft.x,
-          right: borderRadius.topRight.x,
-          height: 1,
-          child: IgnorePointer(child: ColoredBox(color: highlightColor)),
-        ),
-        Positioned(
-          right: borderRadius.bottomRight.x * 0.72,
-          bottom: 0,
-          left: borderRadius.bottomLeft.x * 0.72,
-          height: 2,
-          child: IgnorePointer(child: ColoredBox(color: ridgeColor)),
-        ),
-      ],
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: borderRadius,
+        border: borderSide == BorderSide.none
+            ? null
+            : Border.fromBorderSide(borderSide),
+      ),
+      child: child,
     );
   }
 }

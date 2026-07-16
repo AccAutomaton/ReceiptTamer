@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
-import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
 
 /// App Button - Unified button styles for the application
 enum AppButtonType { primary, secondary, tertiary, outlined, text }
@@ -121,33 +120,7 @@ class AppButton extends StatelessWidget {
         break;
     }
 
-    final enabled = !effectiveDisabled || onPressedWhileLoading != null;
-    final pressedSurface = type != AppButtonType.text;
-    final effectiveFill = _backgroundForType(context, colorScheme);
-    final ridgeColor = type == AppButtonType.primary
-        ? Color.alphaBlend(
-            Colors.black.withValues(
-              alpha: AppPalette.isDark(context) ? 0.18 : 0.24,
-            ),
-            effectiveFill,
-          )
-        : AppEntityTokens.ridgeFor(context);
-
-    return _applyWidth(
-      _PressRelief(
-        enabled: enabled,
-        borderRadius: BorderRadius.circular(borderRadius),
-        ridgeColor: ridgeColor,
-        highlightColor: type == AppButtonType.primary
-            ? Colors.white.withValues(alpha: 0.28)
-            : AppEntityTokens.highlightFor(context),
-        boxShadow: pressedSurface
-            ? AppEntityTokens.controlShadowFor(context)
-            : const <BoxShadow>[],
-        showChrome: pressedSurface,
-        child: button,
-      ),
-    );
+    return _applyWidth(button);
   }
 
   Widget _applyWidth(Widget child) {
@@ -218,6 +191,9 @@ class AppButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(borderRadius),
       ),
       minimumSize: Size(width ?? 0, height ?? (isDense ? 40 : 46)),
+    ).copyWith(
+      elevation: const WidgetStatePropertyAll(0),
+      shadowColor: const WidgetStatePropertyAll(Colors.transparent),
     );
   }
 
@@ -245,6 +221,9 @@ class AppButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(borderRadius),
       ),
       minimumSize: Size(width ?? 0, height ?? (isDense ? 40 : 46)),
+    ).copyWith(
+      elevation: const WidgetStatePropertyAll(0),
+      shadowColor: const WidgetStatePropertyAll(Colors.transparent),
     );
   }
 
@@ -272,6 +251,9 @@ class AppButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(borderRadius),
       ),
       minimumSize: Size(width ?? 0, height ?? (isDense ? 40 : 46)),
+    ).copyWith(
+      elevation: const WidgetStatePropertyAll(0),
+      shadowColor: const WidgetStatePropertyAll(Colors.transparent),
     );
   }
 
@@ -282,7 +264,7 @@ class AppButton extends StatelessWidget {
           borderSide ??
           BorderSide(
             color: AppPalette.actionOutlineFor(context, alpha: 0.72),
-            width: 1.2,
+            width: 1,
           ),
       backgroundColor: backgroundColor ?? AppEntityTokens.fillFor(context),
       disabledBackgroundColor: colorScheme.surfaceContainerHigh,
@@ -313,17 +295,6 @@ class AppButton extends StatelessWidget {
       ),
       minimumSize: Size(width ?? 0, height ?? 36),
     );
-  }
-
-  Color _backgroundForType(BuildContext context, ColorScheme colorScheme) {
-    if (backgroundColor != null) return backgroundColor!;
-    return switch (type) {
-      AppButtonType.primary => colorScheme.primary,
-      AppButtonType.secondary ||
-      AppButtonType.outlined => AppEntityTokens.fillFor(context),
-      AppButtonType.tertiary => colorScheme.tertiaryContainer,
-      AppButtonType.text => Colors.transparent,
-    };
   }
 
   Color _foregroundForType(BuildContext context) {
@@ -369,10 +340,8 @@ class AppIconButton extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final effectiveDisabled = isLoading || onPressed == null;
     final effectiveRadius = BorderRadius.circular(borderRadius);
-    final effectiveBackground =
-        backgroundColor ?? AppGlassTokens.panelFillFor(context);
 
-    final button = IconButton(
+    return IconButton(
       onPressed: effectiveDisabled ? null : onPressed,
       onLongPress: onLongPress,
       tooltip: tooltip,
@@ -389,8 +358,8 @@ class AppIconButton extends StatelessWidget {
             )
           : Icon(icon),
       style: IconButton.styleFrom(
-        backgroundColor: Colors.transparent,
-        disabledBackgroundColor: Colors.transparent,
+        backgroundColor: backgroundColor ?? Colors.transparent,
+        disabledBackgroundColor: backgroundColor ?? Colors.transparent,
         foregroundColor: foregroundColor ?? colorScheme.primary,
         disabledForegroundColor: colorScheme.onSurfaceVariant,
         side: BorderSide.none,
@@ -398,125 +367,6 @@ class AppIconButton extends StatelessWidget {
         maximumSize: Size(size, size),
         tapTargetSize: MaterialTapTargetSize.padded,
         shape: RoundedRectangleBorder(borderRadius: effectiveRadius),
-      ),
-    );
-
-    final floatingSurface = GlassSurface(
-      preset: GlassSurfacePreset.floating,
-      borderRadius: effectiveRadius,
-      fillColor: effectiveBackground,
-      blurSigma: AppGlassTokens.blurSigma,
-      boxShadow: [
-        BoxShadow(
-          color: colorScheme.shadow.withValues(
-            alpha: AppPalette.isDark(context) ? 0.46 : 0.16,
-          ),
-          blurRadius: 18,
-          spreadRadius: -8,
-          offset: const Offset(0, 8),
-        ),
-      ],
-      edgeIntensity: 1,
-      child: button,
-    );
-
-    return _PressRelief(
-      enabled: !effectiveDisabled,
-      borderRadius: effectiveRadius,
-      ridgeColor: Colors.transparent,
-      highlightColor: Colors.transparent,
-      boxShadow: const <BoxShadow>[],
-      showChrome: false,
-      child: floatingSurface,
-    );
-  }
-}
-
-class _PressRelief extends StatefulWidget {
-  const _PressRelief({
-    required this.enabled,
-    required this.borderRadius,
-    required this.ridgeColor,
-    required this.highlightColor,
-    required this.boxShadow,
-    required this.showChrome,
-    required this.child,
-  });
-
-  final bool enabled;
-  final BorderRadius borderRadius;
-  final Color ridgeColor;
-  final Color highlightColor;
-  final List<BoxShadow> boxShadow;
-  final bool showChrome;
-  final Widget child;
-
-  @override
-  State<_PressRelief> createState() => _PressReliefState();
-}
-
-class _PressReliefState extends State<_PressRelief> {
-  bool _pressed = false;
-
-  void _setPressed(bool value) {
-    if (!mounted || _pressed == value || !widget.enabled) return;
-    setState(() => _pressed = value);
-  }
-
-  @override
-  void didUpdateWidget(covariant _PressRelief oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!widget.enabled && _pressed) _pressed = false;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final reduceMotion = AppMotion.reduceMotion(context);
-    final pressedVisual = _pressed && !reduceMotion;
-    final duration = AppMotion.adaptive(context, AppMotion.fast);
-
-    Widget result = widget.child;
-    if (widget.showChrome) {
-      result = AnimatedContainer(
-        duration: duration,
-        curve: AppMotion.curve,
-        decoration: BoxDecoration(
-          color: widget.ridgeColor,
-          borderRadius: widget.borderRadius,
-          boxShadow: pressedVisual ? const <BoxShadow>[] : widget.boxShadow,
-        ),
-        child: Stack(
-          fit: StackFit.passthrough,
-          children: [
-            Padding(padding: const EdgeInsets.only(bottom: 2), child: result),
-            Positioned(
-              top: 1,
-              right: widget.borderRadius.topRight.x * 0.72,
-              left: widget.borderRadius.topLeft.x * 0.72,
-              height: 1,
-              child: IgnorePointer(
-                child: ColoredBox(color: widget.highlightColor),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Listener(
-      onPointerDown: widget.enabled ? (_) => _setPressed(true) : null,
-      onPointerUp: widget.enabled ? (_) => _setPressed(false) : null,
-      onPointerCancel: widget.enabled ? (_) => _setPressed(false) : null,
-      child: AnimatedSlide(
-        duration: duration,
-        curve: AppMotion.curve,
-        offset: pressedVisual ? const Offset(0, 0.035) : Offset.zero,
-        child: AnimatedScale(
-          duration: duration,
-          curve: AppMotion.curve,
-          scale: pressedVisual ? 0.98 : 1,
-          child: result,
-        ),
       ),
     );
   }

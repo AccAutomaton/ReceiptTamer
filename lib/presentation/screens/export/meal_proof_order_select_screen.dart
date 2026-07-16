@@ -60,10 +60,7 @@ class _MealProofOrderSelectScreenState
   @override
   void initState() {
     super.initState();
-    // Default to current month range
-    final now = DateTime.now();
-    _startDate = DateTime(now.year, now.month, 1);
-    _endDate = DateTime(now.year, now.month + 1, 0);
+    // 独立用餐证明默认查看全部订单；日期在这里仅是可选筛选。
     _loadOrders();
   }
 
@@ -243,6 +240,7 @@ class _MealProofOrderSelectScreenState
     }
 
     setState(() => _isExporting = true);
+    String? tempPath;
 
     try {
       // Get selected orders
@@ -271,31 +269,27 @@ class _MealProofOrderSelectScreenState
       }
 
       // Generate PDF to temp directory
+      final now = DateTime.now();
       final tempDir = await getTemporaryDirectory();
-      final timestamp = DateFormatter.formatStorageWithTime(DateTime.now());
-      final tempPath = '${tempDir.path}/用餐证明_$timestamp.pdf';
+      final timestamp = DateFormatter.formatStorageWithTime(now);
+      final workingPath = '${tempDir.path}/用餐证明_$timestamp.pdf';
+      tempPath = workingPath;
 
       await MealProofExportService.generatePdf(
         items: items,
-        outputPath: tempPath,
+        outputPath: workingPath,
         getImagePath: (path) => path,
         remark: _addRemark ? _remarkContent : null, // 新增参数
       );
 
       // Copy to download directory
-      final now = DateTime.now();
       final dateDir =
           '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
       final fileService = FileService();
       final savedPath = await fileService.copyToDownloadDirectory(
-        tempPath,
+        workingPath,
         subDir: 'materials/$dateDir',
       );
-
-      // Clean up temp file
-      try {
-        await File(tempPath).delete();
-      } catch (_) {}
 
       logService.i(LogConfig.moduleFile, '用餐证明PDF已保存: $savedPath');
 
@@ -322,6 +316,14 @@ class _MealProofOrderSelectScreenState
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('导出失败: $e')));
+      }
+    } finally {
+      final workingPath = tempPath;
+      if (workingPath != null) {
+        try {
+          final tempFile = File(workingPath);
+          if (await tempFile.exists()) await tempFile.delete();
+        } catch (_) {}
       }
     }
   }

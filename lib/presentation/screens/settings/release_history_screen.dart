@@ -7,6 +7,7 @@ import '../../../data/models/app_version.dart';
 import '../../../data/services/release_history_cache.dart';
 import '../../../data/services/update_service.dart';
 import '../../widgets/common/empty_state.dart';
+import '../../widgets/common/scroll_edge_fog.dart';
 
 /// Preprocess changelog to convert HTML img tags to Markdown image syntax
 String _preprocessChangelog(String changelog) {
@@ -99,10 +100,7 @@ class _ReleaseHistoryScreenState extends State<ReleaseHistoryScreen> {
     }
 
     // Fetch from network
-    final result = await _updateService.fetchAllReleases(
-      perPage: 30,
-      page: 1,
-    );
+    final result = await _updateService.fetchAllReleases(perPage: 30, page: 1);
 
     if (!mounted) return;
 
@@ -119,7 +117,9 @@ class _ReleaseHistoryScreenState extends State<ReleaseHistoryScreen> {
       await ReleaseHistoryCache.saveCache(result.releases);
     } else {
       // Handle error
-      if (cachedReleases != null && cachedReleases.isNotEmpty && !forceRefresh) {
+      if (cachedReleases != null &&
+          cachedReleases.isNotEmpty &&
+          !forceRefresh) {
         // Have cache, show toast
         setState(() {
           _isLoading = false;
@@ -183,9 +183,9 @@ class _ReleaseHistoryScreenState extends State<ReleaseHistoryScreen> {
       message = '刷新失败: ${errorMessage ?? "未知错误"}';
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   String _formatDate(DateTime? date) {
@@ -199,11 +199,11 @@ class _ReleaseHistoryScreenState extends State<ReleaseHistoryScreen> {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('更新历史'),
-        elevation: 0,
+      appBar: AppBar(title: const Text('更新历史'), elevation: 0),
+      body: ScrollEdgeFog(
+        showBottom: false,
+        child: _buildBody(theme, colorScheme),
       ),
-      body: _buildBody(theme, colorScheme),
     );
   }
 
@@ -218,13 +218,12 @@ class _ReleaseHistoryScreenState extends State<ReleaseHistoryScreen> {
       return Center(
         child: EmptyState(
           icon: Icons.error_outline,
-          title: _rateLimited
-              ? 'GitHub API 请求受限'
-              : '加载失败',
+          title: _rateLimited ? 'GitHub API 请求受限' : '加载失败',
           subtitle: _rateLimited
               ? '请前往 GitHub 仓库查看最新版本'
               : _errorMessage ?? '未知错误',
           actionLabel: '重试',
+          actionIcon: null,
           onAction: () => _loadReleases(forceRefresh: true),
         ),
       );
@@ -303,7 +302,9 @@ class _ReleaseHistoryScreenState extends State<ReleaseHistoryScreen> {
                   child: Text(
                     release.isPreRelease ? 'Pre-release' : 'Release',
                     style: TextStyle(
-                      color: release.isPreRelease ? Colors.orange : Colors.green,
+                      color: release.isPreRelease
+                          ? Colors.orange
+                          : Colors.green,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),

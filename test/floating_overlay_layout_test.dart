@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:receipt_tamer/presentation/widgets/common/floating_overlay_layout.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
+import 'package:receipt_tamer/presentation/widgets/common/scroll_edge_fog.dart';
 
 void main() {
   testWidgets('wraps floating overlays and reserves measured space', (
@@ -40,6 +41,14 @@ void main() {
     expect(find.byType(SafeArea), findsNothing);
     expect(latestPadding?.top, 94);
     expect(latestPadding?.bottom, 156);
+    expect(
+      tester.getSize(find.byKey(ScrollEdgeFog.topGuardKey)).height,
+      latestPadding?.top,
+    );
+    expect(
+      tester.getSize(find.byKey(ScrollEdgeFog.bottomGuardKey)).height,
+      latestPadding?.bottom,
+    );
 
     for (final surface in tester.widgetList<GlassSurface>(
       find.byType(GlassSurface),

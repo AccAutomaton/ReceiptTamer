@@ -35,7 +35,7 @@ void main() {
     expect(style.side!.resolve(<WidgetState>{}), BorderSide.none);
   });
 
-  testWidgets('AppTextField uses an opaque relief field without blur', (
+  testWidgets('AppTextField uses an opaque flat field without blur', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -48,7 +48,13 @@ void main() {
     final field = tester.widget<TextField>(find.byType(TextField));
     expect(field.decoration!.fillColor, AppEntityTokens.lightFill);
     expect(field.decoration!.fillColor!.a, 1);
-    expect(field.decoration!.enabledBorder, isA<AppReliefInputBorder>());
+    final border = field.decoration!.enabledBorder;
+    expect(border, isA<AppReliefInputBorder>());
+    final flatBorder = border! as AppReliefInputBorder;
+    expect(flatBorder.borderSide.width, 1);
+    expect(flatBorder.highlightColor, Colors.transparent);
+    expect(flatBorder.ridgeColor, Colors.transparent);
+    expect(flatBorder.ridgeWidth, 0);
     expect(find.byType(BackdropFilter), findsNothing);
   });
 }

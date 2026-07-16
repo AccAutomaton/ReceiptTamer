@@ -12,6 +12,9 @@ class InvoiceOrderRelationTable {
 
   InvoiceOrderRelationTable({required this.database});
 
+  static const String orderIdUniqueIndexName =
+      'idx_invoice_order_relations_order_id';
+
   static const String _validRelationFromClause =
       'FROM ${AppConstants.invoiceOrderRelationsTable} r '
       'INNER JOIN ${AppConstants.invoicesTable} i '
@@ -48,8 +51,9 @@ class InvoiceOrderRelationTable {
     List<int> orderIds,
   ) async {
     try {
+      final uniqueOrderIds = orderIds.toSet().toList(growable: false);
       final batch = database.batch();
-      for (final orderId in orderIds) {
+      for (final orderId in uniqueOrderIds) {
         batch.insert(
           AppConstants.invoiceOrderRelationsTable,
           InvoiceOrderRelation(invoiceId: invoiceId, orderId: orderId).toJson(),
@@ -59,12 +63,61 @@ class InvoiceOrderRelationTable {
       await batch.commit(noResult: true);
       logService.i(
         LogConfig.moduleDb,
-        '发票关联已插入: invoiceId=$invoiceId, orderCount=${orderIds.length}',
+        '发票关联已插入: invoiceId=$invoiceId, orderCount=${uniqueOrderIds.length}',
       );
     } catch (e, stackTrace) {
       logService.e(
         LogConfig.moduleDb,
         '批量插入发票关联失败: invoiceId=$invoiceId',
+        e,
+        stackTrace,
+      );
+      rethrow;
+    }
+  }
+
+  /// Atomically replace all order relations for one invoice.
+  ///
+  /// The unique order index and REPLACE conflict policy move an order away
+  /// from any previous invoice before linking it to [invoiceId].
+  Future<void> replaceRelationsForInvoice(
+    int invoiceId,
+    List<int> orderIds,
+  ) async {
+    final uniqueOrderIds = orderIds.toSet().toList(growable: false);
+
+    try {
+      await database.transaction((transaction) async {
+        await transaction.delete(
+          AppConstants.invoiceOrderRelationsTable,
+          where: '${AppConstants.colInvoiceId} = ?',
+          whereArgs: [invoiceId],
+        );
+
+        if (uniqueOrderIds.isEmpty) return;
+
+        final batch = transaction.batch();
+        for (final orderId in uniqueOrderIds) {
+          batch.insert(
+            AppConstants.invoiceOrderRelationsTable,
+            InvoiceOrderRelation(
+              invoiceId: invoiceId,
+              orderId: orderId,
+            ).toJson(),
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
+        await batch.commit(noResult: true);
+      });
+
+      logService.i(
+        LogConfig.moduleDb,
+        '发票关联已替换: invoiceId=$invoiceId, orderCount=${uniqueOrderIds.length}',
+      );
+    } catch (e, stackTrace) {
+      logService.e(
+        LogConfig.moduleDb,
+        '替换发票关联失败: invoiceId=$invoiceId',
         e,
         stackTrace,
       );
@@ -158,6 +211,86 @@ class InvoiceOrderRelationTable {
       return count;
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleDb, '清理孤儿发票关联失败', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  /// Repair legacy many-to-many rows and enforce invoice -> orders as 1:N.
+  ///
+  /// Version-1 databases only had a composite primary key, so the same order
+  /// could appear under multiple invoices. For each duplicate order we keep
+  /// the most recently updated/created invoice, then make order_id unique.
+  Future<int> enforceSingleInvoicePerOrder() async {
+    try {
+      final duplicateOrders = await database.rawQuery('''
+        SELECT ${AppConstants.colOrderId}, COUNT(*) AS relation_count
+        FROM ${AppConstants.invoiceOrderRelationsTable}
+        GROUP BY ${AppConstants.colOrderId}
+        HAVING COUNT(*) > 1
+      ''');
+
+      var removedCount = 0;
+      for (final duplicate in duplicateOrders) {
+        final orderId = duplicate[AppConstants.colOrderId] as int;
+        final candidates = await database.rawQuery(
+          '''
+          SELECT r.${AppConstants.colInvoiceId}
+          FROM ${AppConstants.invoiceOrderRelationsTable} r
+          INNER JOIN ${AppConstants.invoicesTable} i
+            ON i.${AppConstants.colId} = r.${AppConstants.colInvoiceId}
+          WHERE r.${AppConstants.colOrderId} = ?
+          ORDER BY
+            COALESCE(i.${AppConstants.colUpdatedAt}, '') DESC,
+            COALESCE(i.${AppConstants.colCreatedAt}, '') DESC,
+            r.${AppConstants.colInvoiceId} DESC
+          LIMIT 1
+          ''',
+          [orderId],
+        );
+        if (candidates.isEmpty) continue;
+
+        final retainedInvoiceId =
+            candidates.first[AppConstants.colInvoiceId] as int;
+        removedCount += await database.delete(
+          AppConstants.invoiceOrderRelationsTable,
+          where:
+              '${AppConstants.colOrderId} = ? AND ${AppConstants.colInvoiceId} <> ?',
+          whereArgs: [orderId, retainedInvoiceId],
+        );
+      }
+
+      final indexes = await database.rawQuery(
+        "PRAGMA index_list('${AppConstants.invoiceOrderRelationsTable}')",
+      );
+      Map<String, Object?>? orderIndex;
+      for (final index in indexes) {
+        if (index['name'] == orderIdUniqueIndexName) {
+          orderIndex = index;
+          break;
+        }
+      }
+
+      final indexIsUnique = (orderIndex?['unique'] as num?)?.toInt() == 1;
+      if (!indexIsUnique) {
+        if (orderIndex != null) {
+          await database.execute('DROP INDEX $orderIdUniqueIndexName');
+        }
+        await database.execute('''
+          CREATE UNIQUE INDEX $orderIdUniqueIndexName
+          ON ${AppConstants.invoiceOrderRelationsTable}(${AppConstants.colOrderId})
+        ''');
+        logService.i(LogConfig.moduleDb, '已建立订单单发票唯一索引');
+      }
+
+      if (removedCount > 0) {
+        logService.i(
+          LogConfig.moduleDb,
+          '已修复重复订单关联: removed=$removedCount, orders=${duplicateOrders.length}',
+        );
+      }
+      return removedCount;
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleDb, '修复订单重复发票关联失败', e, stackTrace);
       rethrow;
     }
   }

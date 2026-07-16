@@ -54,17 +54,41 @@ class DateFormatter {
     if (dateString == null || dateString.isEmpty) return null;
     try {
       // Try parsing with time first
-      var date = DateFormat(AppConstants.dateFormatStorageWithTime).parse(dateString, true);
+      var date = DateFormat(
+        AppConstants.dateFormatStorageWithTime,
+      ).parse(dateString, true);
       return date;
     } catch (e) {
       try {
         // Try parsing without time
-        var date = DateFormat(AppConstants.dateFormatStorage).parse(dateString, true);
+        var date = DateFormat(
+          AppConstants.dateFormatStorage,
+        ).parse(dateString, true);
         return date;
       } catch (e) {
         return null;
       }
     }
+  }
+
+  /// Resolve the business date shown in a ledger.
+  ///
+  /// A missing or malformed order/invoice date must not make an otherwise
+  /// valid record disappear from its month. In that case the record's
+  /// creation timestamp is the stable fallback.
+  static DateTime? resolveLedgerDate({
+    required String? businessDate,
+    required String createdAt,
+  }) {
+    final normalizedBusinessDate = businessDate?.trim();
+    if (normalizedBusinessDate != null && normalizedBusinessDate.isNotEmpty) {
+      final parsedBusinessDate = DateTime.tryParse(normalizedBusinessDate);
+      if (parsedBusinessDate != null) return parsedBusinessDate;
+    }
+
+    final normalizedCreatedAt = createdAt.trim();
+    if (normalizedCreatedAt.isEmpty) return null;
+    return DateTime.tryParse(normalizedCreatedAt);
   }
 
   /// Parse date from input format
@@ -114,8 +138,18 @@ class DateFormatter {
   /// Get month name in Chinese
   static String getMonthName(int month) {
     const months = [
-      '一月', '二月', '三月', '四月', '五月', '六月',
-      '七月', '八月', '九月', '十月', '十一月', '十二月'
+      '一月',
+      '二月',
+      '三月',
+      '四月',
+      '五月',
+      '六月',
+      '七月',
+      '八月',
+      '九月',
+      '十月',
+      '十一月',
+      '十二月',
     ];
     if (month < 1 || month > 12) return '';
     return months[month - 1];
@@ -189,7 +223,9 @@ class DateFormatter {
 
   /// Parse datetime string and extract date and meal time
   /// Returns (date string in yyyy-MM-dd format, MealTime)
-  static (String?, MealTime?) parseDateTimeToOrderDateAndMealTime(String? dateTimeStr) {
+  static (String?, MealTime?) parseDateTimeToOrderDateAndMealTime(
+    String? dateTimeStr,
+  ) {
     if (dateTimeStr == null || dateTimeStr.isEmpty) return (null, null);
 
     final dateTime = parseStorage(dateTimeStr);

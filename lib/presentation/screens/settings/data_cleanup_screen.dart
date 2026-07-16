@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
+import 'package:receipt_tamer/presentation/widgets/common/scroll_edge_fog.dart';
 import '../../providers/cleanup_provider.dart';
 
 /// Data cleanup mode selection screen
@@ -44,27 +45,30 @@ class _DataCleanupScreenState extends ConsumerState<DataCleanupScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('清理数据')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Warning banner
-            _buildWarningBanner(colorScheme),
-            const SizedBox(height: 24),
+      body: ScrollEdgeFog(
+        showBottom: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Warning banner
+              _buildWarningBanner(colorScheme),
+              const SizedBox(height: 24),
 
-            // Cleanup mode selection
-            _buildModeSelectionCard(colorScheme),
+              // Cleanup mode selection
+              _buildModeSelectionCard(colorScheme),
 
-            const SizedBox(height: 32),
+              const SizedBox(height: 32),
 
-            // Next button
-            FilledButton.icon(
-              onPressed: _navigateToCleanupScreen,
-              icon: const Icon(Icons.arrow_forward),
-              label: const Text('下一步'),
-            ),
-          ],
+              // Next button
+              FilledButton.icon(
+                onPressed: _navigateToCleanupScreen,
+                icon: const Icon(Icons.arrow_forward),
+                label: const Text('下一步'),
+              ),
+            ],
+          ),
         ),
       ),
     );

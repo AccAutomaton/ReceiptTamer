@@ -13,10 +13,11 @@ import '../presentation/screens/invoices/invoice_edit_screen.dart';
 import '../presentation/screens/invoices/order_selector_screen.dart';
 import '../presentation/screens/export/export_screen.dart';
 import '../presentation/screens/export/export_options_screen.dart';
-import '../presentation/screens/export/export_mode_screen.dart';
 import '../presentation/screens/export/order_export_screen.dart';
 import '../presentation/screens/export/meal_proof_order_select_screen.dart';
 import '../presentation/screens/export/invoice_quick_select_screen.dart';
+import '../presentation/screens/export/reimbursement_screen.dart';
+import '../presentation/screens/export/reimbursement_check_screen.dart';
 import '../presentation/screens/invoice_assistant/invoice_assistant_screen.dart';
 import '../presentation/screens/settings/settings_screen.dart';
 import '../presentation/screens/settings/data_cleanup_screen.dart';
@@ -85,9 +86,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/settings',
-                name: 'settings',
-                builder: (context, state) => const SettingsScreen(),
+                path: '/export',
+                name: 'export',
+                builder: (context, state) => const ReimbursementScreen(),
               ),
             ],
           ),
@@ -241,9 +242,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        path: '/export',
-        name: 'export',
-        builder: (context, state) => const ExportModeScreen(),
+        path: '/export/check',
+        name: 'reimbursement_check',
+        builder: (context, state) => const ReimbursementCheckScreen(),
       ),
       GoRoute(
         path: '/export/invoices',
@@ -299,6 +300,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/invoice-assistant',
         name: 'invoice_assistant',
         builder: (context, state) => const InvoiceAssistantScreen(),
+      ),
+      // 设置移出主导航，但保留全部原有能力。
+      GoRoute(
+        path: '/settings',
+        name: 'settings',
+        builder: (context, state) => const SettingsScreen(),
       ),
       // Data cleanup routes
       GoRoute(

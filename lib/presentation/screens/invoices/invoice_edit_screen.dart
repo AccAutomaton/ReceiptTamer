@@ -23,6 +23,7 @@ import 'package:receipt_tamer/presentation/providers/ocr_provider.dart';
 import 'package:receipt_tamer/presentation/screens/invoices/order_selector_screen.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_text_field.dart';
+import 'package:receipt_tamer/presentation/widgets/common/scroll_edge_fog.dart';
 import 'package:receipt_tamer/presentation/widgets/invoice/invoice_image_preview.dart';
 
 /// Invoice edit/add screen
@@ -636,217 +637,220 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
         ),
         elevation: 0,
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // File picker section
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '发票文件',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+      body: ScrollEdgeFog(
+        showBottom: false,
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              // File picker section
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '发票文件',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    if (_filePath != null && _filePath!.isNotEmpty)
-                      InvoiceImagePreview(imagePath: _filePath!, height: 200)
-                    else
-                      Container(
-                        height: 200,
-                        decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
+                      const SizedBox(height: 12),
+                      if (_filePath != null && _filePath!.isNotEmpty)
+                        InvoiceImagePreview(imagePath: _filePath!, height: 200)
+                      else
+                        Container(
+                          height: 200,
+                          decoration: BoxDecoration(
                             color: Theme.of(
                               context,
-                            ).colorScheme.outlineVariant.withValues(alpha: 0.5),
-                            style: BorderStyle.solid,
+                            ).colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .outlineVariant
+                                  .withValues(alpha: 0.5),
+                              style: BorderStyle.solid,
+                            ),
                           ),
-                        ),
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.add_photo_alternate,
-                                size: 48,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant
-                                    .withValues(alpha: 0.5),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                '点击下方按钮选择图片或PDF',
-                                style: TextStyle(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.add_photo_alternate,
+                                  size: 48,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant
+                                      .withValues(alpha: 0.5),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _pickFile,
-                            icon: const Icon(Icons.attach_file),
-                            label: const Text('选择文件'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: (_isLoading || isOcrButtonBusy)
-                                ? null
-                                : _handleOCR,
-                            icon: isOcrButtonBusy
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.document_scanner),
-                            label: Text(
-                              isRecognizing
-                                  ? 'OCR 识别中...'
-                                  : isModelLoading
-                                  ? '模型加载中...'
-                                  : AppConstants.btnOCR,
+                                const SizedBox(height: 8),
+                                Text(
+                                  '点击下方按钮选择图片或PDF',
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Order selector (multi-select)
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.receipt_long),
-                title: const Text(AppConstants.labelRelatedOrders),
-                subtitle: Text(
-                  _getOrderSelectorSubtitle(),
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _pickFile,
+                              icon: const Icon(Icons.attach_file),
+                              label: const Text('选择文件'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: (_isLoading || isOcrButtonBusy)
+                                  ? null
+                                  : _handleOCR,
+                              icon: isOcrButtonBusy
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(Icons.document_scanner),
+                              label: Text(
+                                isRecognizing
+                                    ? 'OCR 识别中...'
+                                    : isModelLoading
+                                    ? '模型加载中...'
+                                    : AppConstants.btnOCR,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: _showOrderSelector,
               ),
-            ),
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // OCR提示
-            if (_hasOcrResult)
-              Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.errorContainer,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      color: Theme.of(context).colorScheme.error,
-                      size: 20,
+              // Order selector (multi-select)
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.receipt_long),
+                  title: const Text(AppConstants.labelRelatedOrders),
+                  subtitle: Text(
+                    _getOrderSelectorSubtitle(),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '识别结果可能存在错误，请自行核对识别结果的准确性。',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                          fontSize: 13,
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: _showOrderSelector,
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // OCR提示
+              if (_hasOcrResult)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.errorContainer,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: Theme.of(context).colorScheme.error,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '识别结果可能存在错误，请自行核对识别结果的准确性。',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                ),
+
+              // Form fields
+              AppDateField(
+                label: AppConstants.labelInvoiceDate,
+                initialValue: _invoiceDate,
+                onChanged: (date) {
+                  setState(() {
+                    _invoiceDate = date;
+                  });
+                },
+                required: true,
+              ),
+
+              const SizedBox(height: 16),
+
+              AppAmountField(
+                label: AppConstants.labelTotalAmount,
+                hint: AppConstants.hintAmount,
+                controller: _amountController,
+                required: true,
+              ),
+
+              const SizedBox(height: 16),
+
+              AppTextField(
+                label: AppConstants.labelSellerName,
+                hint: AppConstants.hintSellerName,
+                controller: _sellerNameController,
+                required: false,
+                keyboardType: TextInputType.text,
+                prefixIcon: const Icon(Icons.store),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.arrow_drop_down),
+                  onPressed: _showSellerNamePicker,
+                  tooltip: '从历史记录选择',
                 ),
               ),
 
-            // Form fields
-            AppDateField(
-              label: AppConstants.labelInvoiceDate,
-              initialValue: _invoiceDate,
-              onChanged: (date) {
-                setState(() {
-                  _invoiceDate = date;
-                });
-              },
-              required: true,
-            ),
+              const SizedBox(height: 16),
 
-            const SizedBox(height: 16),
-
-            AppAmountField(
-              label: AppConstants.labelTotalAmount,
-              hint: AppConstants.hintAmount,
-              controller: _amountController,
-              required: true,
-            ),
-
-            const SizedBox(height: 16),
-
-            AppTextField(
-              label: AppConstants.labelSellerName,
-              hint: AppConstants.hintSellerName,
-              controller: _sellerNameController,
-              required: false,
-              keyboardType: TextInputType.text,
-              prefixIcon: const Icon(Icons.store),
-              suffixIcon: IconButton(
-                icon: const Icon(Icons.arrow_drop_down),
-                onPressed: _showSellerNamePicker,
-                tooltip: '从历史记录选择',
+              AppTextField(
+                label: AppConstants.labelInvoiceNumber,
+                hint: AppConstants.hintInvoiceNumber,
+                controller: _invoiceNumberController,
+                required: false,
+                keyboardType: TextInputType.text,
+                prefixIcon: const Icon(Icons.description),
               ),
-            ),
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
-            AppTextField(
-              label: AppConstants.labelInvoiceNumber,
-              hint: AppConstants.hintInvoiceNumber,
-              controller: _invoiceNumberController,
-              required: false,
-              keyboardType: TextInputType.text,
-              prefixIcon: const Icon(Icons.description),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Save button
-            AppButton(
-              text: AppConstants.btnSave,
-              onPressed: _handleSave,
-              isLoading: _isLoading,
-              isFullWidth: true,
-              type: AppButtonType.primary,
-            ),
-          ],
+              // Save button
+              AppButton(
+                text: AppConstants.btnSave,
+                onPressed: _handleSave,
+                isLoading: _isLoading,
+                isFullWidth: true,
+                type: AppButtonType.primary,
+              ),
+            ],
+          ),
         ),
       ),
     );

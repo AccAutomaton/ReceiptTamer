@@ -64,8 +64,12 @@ List<int>? _encodeArchiveInIsolate(Map<String, dynamic> data) {
   final archive = Archive();
   final dbBytes = data['dbBytes'] as List<int>;
 
-  archive.addFile(ArchiveFile.string('manifest.json', data['manifestJson'] as String));
-  archive.addFile(ArchiveFile(data['dbName'] as String, dbBytes.length, dbBytes));
+  archive.addFile(
+    ArchiveFile.string('manifest.json', data['manifestJson'] as String),
+  );
+  archive.addFile(
+    ArchiveFile(data['dbName'] as String, dbBytes.length, dbBytes),
+  );
 
   _addFilesToArchive(archive, data['images'] as List);
   _addFilesToArchive(archive, data['pdfs'] as List);
@@ -76,7 +80,9 @@ List<int>? _encodeArchiveInIsolate(Map<String, dynamic> data) {
 void _addFilesToArchive(Archive archive, List files) {
   for (final item in files) {
     final fileData = _FileData.fromMap(item as Map<String, dynamic>);
-    archive.addFile(ArchiveFile(fileData.relativePath, fileData.bytes.length, fileData.bytes));
+    archive.addFile(
+      ArchiveFile(fileData.relativePath, fileData.bytes.length, fileData.bytes),
+    );
   }
 }
 
@@ -135,7 +141,10 @@ class BackupService {
     logService.i(LogConfig.moduleBackup, '初始化备份服务...');
     final packageInfo = await PackageInfo.fromPlatform();
     _currentAppVersion = packageInfo.version;
-    logService.i(LogConfig.moduleBackup, '备份服务初始化完成, 应用版本: $_currentAppVersion');
+    logService.i(
+      LogConfig.moduleBackup,
+      '备份服务初始化完成, 应用版本: $_currentAppVersion',
+    );
   }
 
   /// Get current app version
@@ -186,18 +195,19 @@ class BackupService {
 
       // Get directories
       final appDir = await getApplicationDocumentsDirectory();
-      final imagesDir = Directory(path.join(appDir.path, AppConstants.imagesFolder));
-      final pdfsDir = Directory(path.join(appDir.path, AppConstants.pdfsFolder));
+      final imagesDir = Directory(
+        path.join(appDir.path, AppConstants.imagesFolder),
+      );
+      final pdfsDir = Directory(
+        path.join(appDir.path, AppConstants.pdfsFolder),
+      );
 
       // Get database path
       final dbPath = await _dbHelper.getDatabasePath();
       final dbFile = File(dbPath);
 
       if (!await dbFile.exists()) {
-        return BackupResult(
-          success: false,
-          errorMessage: '数据库文件不存在',
-        );
+        return BackupResult(success: false, errorMessage: '数据库文件不存在');
       }
 
       // Get data counts from database
@@ -225,13 +235,15 @@ class BackupService {
       final (images, imageCount) = await _collectFiles(
         imagesDir,
         'images',
-        onProgress: (fileProgress) => onProgress?.call(0.1 + fileProgress * 0.4),
+        onProgress: (fileProgress) =>
+            onProgress?.call(0.1 + fileProgress * 0.4),
       );
 
       final (pdfs, pdfCount) = await _collectFiles(
         pdfsDir,
         'pdfs',
-        onProgress: (fileProgress) => onProgress?.call(0.5 + fileProgress * 0.4),
+        onProgress: (fileProgress) =>
+            onProgress?.call(0.5 + fileProgress * 0.4),
       );
 
       // Create metadata
@@ -260,12 +272,12 @@ class BackupService {
       );
 
       // Encode zip in background isolate to avoid UI freeze
-      final zipBytes = await compute(_encodeArchiveInIsolate, archiveData.toMap());
+      final zipBytes = await compute(
+        _encodeArchiveInIsolate,
+        archiveData.toMap(),
+      );
       if (zipBytes == null) {
-        return BackupResult(
-          success: false,
-          errorMessage: '压缩备份文件失败',
-        );
+        return BackupResult(success: false, errorMessage: '压缩备份文件失败');
       }
 
       final outputFile = File(outputPath);
@@ -287,10 +299,7 @@ class BackupService {
       );
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleBackup, '备份失败', e, stackTrace);
-      return BackupResult(
-        success: false,
-        errorMessage: '备份失败: $e',
-      );
+      return BackupResult(success: false, errorMessage: '备份失败: $e');
     }
   }
 
@@ -304,10 +313,7 @@ class BackupService {
 
       final file = File(zipPath);
       if (!await file.exists()) {
-        return BackupValidationResult(
-          isValid: false,
-          errorMessage: '备份文件不存在',
-        );
+        return BackupValidationResult(isValid: false, errorMessage: '备份文件不存在');
       }
 
       // Read zip file
@@ -331,7 +337,9 @@ class BackupService {
       }
 
       // Parse metadata
-      final manifestContent = String.fromCharCodes(manifestFile.content as List<int>);
+      final manifestContent = String.fromCharCodes(
+        manifestFile.content as List<int>,
+      );
       final metadata = BackupMetadata.fromJson(
         jsonDecode(manifestContent) as Map<String, dynamic>,
       );
@@ -383,12 +391,19 @@ class BackupService {
     try {
       logService.i(LogConfig.moduleBackup, '========== 开始还原 ==========');
       logService.diag(LogConfig.moduleBackup, 'Backup path', zipPath);
-      logService.diag(LogConfig.moduleBackup, 'Mode', mode == RestoreMode.overwrite ? '覆盖' : '增量');
+      logService.diag(
+        LogConfig.moduleBackup,
+        'Mode',
+        mode == RestoreMode.overwrite ? '覆盖' : '增量',
+      );
 
       // Validate first
       final validation = await validateBackup(zipPath);
       if (!validation.isValid || !validation.canRestore) {
-        logService.w(LogConfig.moduleBackup, '备份验证失败: ${validation.errorMessage}');
+        logService.w(
+          LogConfig.moduleBackup,
+          '备份验证失败: ${validation.errorMessage}',
+        );
         return BackupResult(
           success: false,
           errorMessage: validation.errorMessage ?? '备份文件无效或无法还原',
@@ -407,10 +422,7 @@ class BackupService {
       }
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleBackup, '还原失败', e, stackTrace);
-      return BackupResult(
-        success: false,
-        errorMessage: '还原失败: $e',
-      );
+      return BackupResult(success: false, errorMessage: '还原失败: $e');
     }
   }
 
@@ -422,8 +434,12 @@ class BackupService {
     try {
       // Get directories
       final appDir = await getApplicationDocumentsDirectory();
-      final imagesDir = Directory(path.join(appDir.path, AppConstants.imagesFolder));
-      final pdfsDir = Directory(path.join(appDir.path, AppConstants.pdfsFolder));
+      final imagesDir = Directory(
+        path.join(appDir.path, AppConstants.imagesFolder),
+      );
+      final pdfsDir = Directory(
+        path.join(appDir.path, AppConstants.pdfsFolder),
+      );
 
       // Close database
       await _dbHelper.close();
@@ -476,12 +492,16 @@ class BackupService {
         } else if (filename.startsWith('images/')) {
           // Extract image file
           await imagesDir.create(recursive: true);
-          final imageFile = File(path.join(imagesDir.path, path.basename(filename)));
+          final imageFile = File(
+            path.join(imagesDir.path, path.basename(filename)),
+          );
           await imageFile.writeAsBytes(file.content as List<int>);
         } else if (filename.startsWith('pdfs/')) {
           // Extract PDF file
           await pdfsDir.create(recursive: true);
-          final pdfFile = File(path.join(pdfsDir.path, path.basename(filename)));
+          final pdfFile = File(
+            path.join(pdfsDir.path, path.basename(filename)),
+          );
           await pdfFile.writeAsBytes(file.content as List<int>);
         }
 
@@ -495,17 +515,10 @@ class BackupService {
       onProgress?.call(1.0);
 
       logService.i(LogConfig.moduleBackup, '========== 覆盖还原完成 ==========');
-      return BackupResult(
-        success: true,
-        filePath: null,
-        metadata: null,
-      );
+      return BackupResult(success: true, filePath: null, metadata: null);
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleBackup, '覆盖还原失败', e, stackTrace);
-      return BackupResult(
-        success: false,
-        errorMessage: '覆盖还原失败: $e',
-      );
+      return BackupResult(success: false, errorMessage: '覆盖还原失败: $e');
     }
   }
 
@@ -517,8 +530,12 @@ class BackupService {
     try {
       // Get directories
       final appDir = await getApplicationDocumentsDirectory();
-      final imagesDir = Directory(path.join(appDir.path, AppConstants.imagesFolder));
-      final pdfsDir = Directory(path.join(appDir.path, AppConstants.pdfsFolder));
+      final imagesDir = Directory(
+        path.join(appDir.path, AppConstants.imagesFolder),
+      );
+      final pdfsDir = Directory(
+        path.join(appDir.path, AppConstants.pdfsFolder),
+      );
 
       // Ensure directories exist
       await imagesDir.create(recursive: true);
@@ -538,10 +555,7 @@ class BackupService {
       }
 
       if (dbArchiveFile == null) {
-        return BackupResult(
-          success: false,
-          errorMessage: '备份文件缺少数据库文件',
-        );
+        return BackupResult(success: false, errorMessage: '备份文件缺少数据库文件');
       }
 
       await tempDbFile.writeAsBytes(dbArchiveFile.content as List<int>);
@@ -551,9 +565,8 @@ class BackupService {
       // Open temp database
       final tempDb = await openDatabase(
         tempDbPath,
-        version: AppConstants.databaseVersion,
-        onCreate: (db, version) {},
-        onUpgrade: (db, oldVersion, newVersion) {},
+        singleInstance: false,
+        onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       );
 
       // Get current database
@@ -594,17 +607,10 @@ class BackupService {
       onProgress?.call(1.0);
 
       logService.i(LogConfig.moduleBackup, '========== 增量还原完成 ==========');
-      return BackupResult(
-        success: true,
-        filePath: null,
-        metadata: null,
-      );
+      return BackupResult(success: true, filePath: null, metadata: null);
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleBackup, '增量还原失败', e, stackTrace);
-      return BackupResult(
-        success: false,
-        errorMessage: '增量还原失败: $e',
-      );
+      return BackupResult(success: false, errorMessage: '增量还原失败: $e');
     }
   }
 
@@ -631,10 +637,7 @@ class BackupService {
   /// Merge data from source database to destination database
   /// All records from backup are inserted as new records with new IDs
   /// Relations are updated with the new ID mappings
-  Future<void> _mergeDatabaseData(
-    Database sourceDb,
-    Database destDb,
-  ) async {
+  Future<void> _mergeDatabaseData(Database sourceDb, Database destDb) async {
     // ID mapping: old ID -> new ID
     final orderIdMap = <int, int>{};
     final invoiceIdMap = <int, int>{};
@@ -648,10 +651,7 @@ class BackupService {
       final newOrder = Map<String, dynamic>.from(order);
       newOrder.remove(AppConstants.colId);
 
-      final newId = await destDb.insert(
-        AppConstants.ordersTable,
-        newOrder,
-      );
+      final newId = await destDb.insert(AppConstants.ordersTable, newOrder);
 
       orderIdMap[oldOrderId] = newId;
     }
@@ -665,19 +665,33 @@ class BackupService {
       final newInvoice = Map<String, dynamic>.from(invoice);
       newInvoice.remove(AppConstants.colId);
 
-      final newId = await destDb.insert(
-        AppConstants.invoicesTable,
-        newInvoice,
-      );
+      final newId = await destDb.insert(AppConstants.invoicesTable, newInvoice);
 
       invoiceIdMap[oldInvoiceId] = newId;
     }
 
     // Insert relations with new IDs
-    final sourceRelations = await sourceDb.query(AppConstants.invoiceOrderRelationsTable);
+    final sourceRelations = await sourceDb.rawQuery('''
+      SELECT r.${AppConstants.colInvoiceId}, r.${AppConstants.colOrderId}
+      FROM ${AppConstants.invoiceOrderRelationsTable} r
+      INNER JOIN ${AppConstants.invoicesTable} i
+        ON i.${AppConstants.colId} = r.${AppConstants.colInvoiceId}
+      INNER JOIN ${AppConstants.ordersTable} o
+        ON o.${AppConstants.colId} = r.${AppConstants.colOrderId}
+      ORDER BY
+        r.${AppConstants.colOrderId} ASC,
+        COALESCE(i.${AppConstants.colUpdatedAt}, '') DESC,
+        COALESCE(i.${AppConstants.colCreatedAt}, '') DESC,
+        r.${AppConstants.colInvoiceId} DESC
+    ''');
+    final mergedOrderIds = <int>{};
     for (final relation in sourceRelations) {
       final oldInvoiceId = relation[AppConstants.colInvoiceId] as int;
       final oldOrderId = relation[AppConstants.colOrderId] as int;
+
+      // Legacy backups may contain several invoices for one order. The query
+      // orders the preferred invoice first, so ignore later duplicates.
+      if (!mergedOrderIds.add(oldOrderId)) continue;
 
       // Get new IDs from mapping
       final newInvoiceId = invoiceIdMap[oldInvoiceId];
@@ -691,7 +705,7 @@ class BackupService {
             AppConstants.colInvoiceId: newInvoiceId,
             AppConstants.colOrderId: newOrderId,
           },
-          conflictAlgorithm: ConflictAlgorithm.ignore,
+          conflictAlgorithm: ConflictAlgorithm.replace,
         );
       }
     }

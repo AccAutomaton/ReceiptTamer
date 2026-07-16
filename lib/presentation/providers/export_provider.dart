@@ -5,6 +5,8 @@ import '../../data/repositories/order_repository.dart';
 import '../../data/repositories/invoice_repository.dart';
 import '../../core/services/log_service.dart';
 import '../../core/services/log_config.dart';
+import 'invoice_provider.dart' as invoice_providers;
+import 'order_provider.dart' as order_providers;
 
 /// State for export operations
 /// 导出操作状态
@@ -55,10 +57,10 @@ class ExportState {
     Map<int, int>? orderInvoiceCount,
     Map<int, Set<int>>? orderInvoices,
     this.errorMessage,
-  })  : selectedIds = selectedIds ?? const {},
-        cascadeIds = cascadeIds ?? const {},
-        orderInvoiceCount = orderInvoiceCount ?? const {},
-        orderInvoices = orderInvoices ?? const {};
+  }) : selectedIds = selectedIds ?? const {},
+       cascadeIds = cascadeIds ?? const {},
+       orderInvoiceCount = orderInvoiceCount ?? const {},
+       orderInvoices = orderInvoices ?? const {};
 
   /// Copy with method for state updates
   /// 状态更新方法
@@ -90,11 +92,31 @@ class ExportState {
 
   /// Get total selected count (including cascade)
   /// 获取总选中数量（包含联动选中）
-  int get totalSelectedCount => selectedIds.length + cascadeIds.length;
+  int get totalSelectedCount => allSelectedIds.length;
+
+  bool get hasDateRange => startDate != null && endDate != null;
+
+  int get selectableCount => availableOrders.where((order) {
+    final id = order.id;
+    return id != null && isSelectable(id);
+  }).length;
+
+  Set<int> get selectedInvoiceIds {
+    final invoiceIds = <int>{};
+    for (final orderId in allSelectedIds) {
+      invoiceIds.addAll(orderInvoices[orderId] ?? const <int>{});
+    }
+    return invoiceIds;
+  }
+
+  double get selectedTotal => availableOrders
+      .where((order) => order.id != null && isSelected(order.id!))
+      .fold(0, (sum, order) => sum + order.amount);
 
   /// Check if an order is selected (directly or cascade)
   /// 检查订单是否被选中（直接选中或联动选中）
-  bool isSelected(int id) => selectedIds.contains(id) || cascadeIds.contains(id);
+  bool isSelected(int id) =>
+      selectedIds.contains(id) || cascadeIds.contains(id);
 
   /// Check if an order is cascade selected
   /// 检查订单是否被联动选中
@@ -117,8 +139,10 @@ class ExportNotifier extends Notifier<ExportState> {
     return const ExportState();
   }
 
-  OrderRepository get _orderRepository => ref.read(orderRepositoryProvider);
-  InvoiceRepository get _invoiceRepository => ref.read(invoiceRepositoryProvider);
+  OrderRepository get _orderRepository =>
+      ref.read(order_providers.orderRepositoryProvider);
+  InvoiceRepository get _invoiceRepository =>
+      ref.read(invoice_providers.invoiceRepositoryProvider);
 
   /// Load available orders and their invoice relations
   /// 加载可用订单及其发票关联信息
@@ -136,18 +160,22 @@ class ExportNotifier extends Notifier<ExportState> {
         orders = await _orderRepository.getAll();
       }
 
-      // Build invoice count and invoice ID maps
-      // 构建发票数量和发票ID映射
-      final orderInvoiceCount = <int, int>{};
-      final orderInvoices = <int, Set<int>>{};
-
-      for (final order in orders) {
-        if (order.id != null) {
-          final invoiceIds = await _orderRepository.getInvoiceIdsForOrder(order.id!);
-          orderInvoiceCount[order.id!] = invoiceIds.length;
-          orderInvoices[order.id!] = invoiceIds.toSet();
-        }
-      }
+      // Batch-load relations so a long reimbursement ledger does not issue one
+      // database query per order.
+      final orderIds = orders
+          .map((order) => order.id)
+          .whereType<int>()
+          .toList(growable: false);
+      final loadedRelations = await _orderRepository.getInvoiceIdsForOrders(
+        orderIds,
+      );
+      final orderInvoices = <int, Set<int>>{
+        for (final orderId in orderIds)
+          orderId: Set<int>.of(loadedRelations[orderId] ?? const <int>{}),
+      };
+      final orderInvoiceCount = <int, int>{
+        for (final orderId in orderIds) orderId: orderInvoices[orderId]!.length,
+      };
 
       state = state.copyWith(
         availableOrders: orders,
@@ -159,29 +187,26 @@ class ExportNotifier extends Notifier<ExportState> {
       );
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleDb, '加载订单失败', e, stackTrace);
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
 
   /// Set date range filter
   /// 设置日期范围筛选
-  void setDateRange(DateTime? startDate, DateTime? endDate) {
+  Future<void> setDateRange(DateTime? startDate, DateTime? endDate) async {
     state = state.copyWith(
       startDate: startDate,
       endDate: endDate,
       clearError: true,
     );
-    loadAvailableOrders();
+    await loadAvailableOrders();
   }
 
   /// Clear date range filter
   /// 清除日期范围筛选
-  void clearDateRange() {
+  Future<void> clearDateRange() async {
     state = state.copyWith(clearDateRange: true);
-    loadAvailableOrders();
+    await loadAvailableOrders();
   }
 
   /// Toggle selection for an order
@@ -206,6 +231,8 @@ class ExportNotifier extends Notifier<ExportState> {
   /// Select an order with cascade
   /// 选中订单并联动勾选关联订单
   Future<String?> _selectWithCascade(int orderId) async {
+    final selectedBefore = state.allSelectedIds;
+
     // Add to selected IDs
     // 添加到直接选中集合
     final newSelectedIds = {...state.selectedIds, orderId};
@@ -216,7 +243,9 @@ class ExportNotifier extends Notifier<ExportState> {
 
     // Filter out already selected IDs
     // 过滤掉已直接选中的ID
-    final newCascadeIds = cascadeIds.where((id) => !newSelectedIds.contains(id)).toSet();
+    final newCascadeIds = cascadeIds
+        .where((id) => !newSelectedIds.contains(id))
+        .toSet();
 
     // Add cascade orders to available list if not already there
     // 将联动订单添加到可用列表（如果尚未存在）
@@ -227,10 +256,11 @@ class ExportNotifier extends Notifier<ExportState> {
       cascadeIds: newCascadeIds,
     );
 
-    if (newCascadeIds.isNotEmpty) {
-      return '有${newCascadeIds.length}条订单被一并勾选（关联了同一张发票）';
-    }
-    return null;
+    return _cascadeDeltaMessage(
+      selectedBefore: selectedBefore,
+      selectedAfter: state.allSelectedIds,
+      directlyChangedIds: <int>{orderId},
+    );
   }
 
   /// Add cascade orders to the available list
@@ -248,21 +278,22 @@ class ExportNotifier extends Notifier<ExportState> {
 
     if (missingIds.isEmpty) return;
 
-    // Fetch missing orders and add to list
-    // 获取缺失的订单并添加到列表
-    final List<Order> newOrders = [];
-    final Map<int, int> newInvoiceCounts = {};
-    final Map<int, Set<int>> newInvoices = {};
-
-    for (final orderId in missingIds) {
-      final order = await _orderRepository.getById(orderId);
-      if (order != null && order.id != null) {
-        newOrders.add(order);
-        final invoiceIds = await _orderRepository.getInvoiceIdsForOrder(orderId);
-        newInvoiceCounts[orderId] = invoiceIds.length;
-        newInvoices[orderId] = invoiceIds.toSet();
-      }
-    }
+    // Fetch the complete cascade in two batch reads. A date-filtered selection
+    // can bring in orders outside the visible range, so those rows must carry
+    // their relation metadata too.
+    final missingIdList = missingIds.toList(growable: false);
+    final newOrders = await _orderRepository.getByIds(missingIdList);
+    final loadedRelations = await _orderRepository.getInvoiceIdsForOrders(
+      missingIdList,
+    );
+    final newInvoices = <int, Set<int>>{
+      for (final orderId in missingIdList)
+        orderId: Set<int>.of(loadedRelations[orderId] ?? const <int>{}),
+    };
+    final newInvoiceCounts = <int, int>{
+      for (final orderId in missingIdList)
+        orderId: newInvoices[orderId]!.length,
+    };
 
     state = state.copyWith(
       availableOrders: [...state.availableOrders, ...newOrders],
@@ -274,84 +305,89 @@ class ExportNotifier extends Notifier<ExportState> {
   /// Unselect cascade chain for an order
   /// 取消订单的整个关联链
   Future<String?> _unselectCascadeChain(int orderId) async {
+    final selectedBefore = state.allSelectedIds;
+
     // Get all IDs in the cascade chain
     // 获取关联链中的所有ID
     final idsToUnselect = await _getCascadeChainIds(orderId);
 
-    // Calculate cascade count (excluding the target order itself)
-    // 计算联动取消数量（不含目标订单本身）
-    final cascadeCount = idsToUnselect.length - 1;
-
     // Remove all IDs from selected and cascade sets
     // 从选中集合和联动集合中移除所有ID
     state = state.copyWith(
-      selectedIds: state.selectedIds.where((id) => !idsToUnselect.contains(id)).toSet(),
-      cascadeIds: state.cascadeIds.where((id) => !idsToUnselect.contains(id)).toSet(),
+      selectedIds: state.selectedIds
+          .where((id) => !idsToUnselect.contains(id))
+          .toSet(),
+      cascadeIds: state.cascadeIds
+          .where((id) => !idsToUnselect.contains(id))
+          .toSet(),
     );
 
-    if (cascadeCount > 0) {
-      return '有$cascadeCount条订单被一并取消勾选';
-    }
-    return null;
+    return _cascadeDeltaMessage(
+      selectedBefore: selectedBefore,
+      selectedAfter: state.allSelectedIds,
+      directlyChangedIds: <int>{orderId},
+    );
   }
 
   /// Calculate cascade IDs for selected orders
   /// 计算选中订单的联动ID
   Future<Set<int>> _calculateCascadeIds(Set<int> selectedIds) async {
-    final cascadeIds = <int>{};
+    if (selectedIds.isEmpty) return <int>{};
 
-    // For each selected order, find orders sharing the same invoices
-    // 对每个选中的订单，找出共享同一发票的订单
-    for (final orderId in selectedIds) {
-      // Get invoice IDs for this order (from cache or query)
-      // 获取此订单的发票ID（从缓存或查询）
-      Set<int> invoiceIds;
-      if (state.orderInvoices.containsKey(orderId)) {
-        invoiceIds = state.orderInvoices[orderId]!;
-      } else {
-        final ids = await _orderRepository.getInvoiceIdsForOrder(orderId);
-        invoiceIds = ids.toSet();
-      }
+    final relations = await _relationsForOrders(selectedIds);
+    final invoiceIds = <int>{
+      for (final orderId in selectedIds)
+        ...(relations[orderId] ?? const <int>{}),
+    };
+    if (invoiceIds.isEmpty) return <int>{};
 
-      // For each invoice, get all linked orders
-      // 对每个发票，获取所有关联订单
-      for (final invoiceId in invoiceIds) {
-        final linkedOrderIds = await _invoiceRepository.getOrderIdsForInvoice(invoiceId);
-        cascadeIds.addAll(linkedOrderIds);
-      }
-    }
-
-    return cascadeIds;
+    final ordersByInvoice = await _invoiceRepository.getOrderIdsForInvoices(
+      invoiceIds.toList(growable: false),
+    );
+    return <int>{
+      for (final invoiceId in invoiceIds)
+        ...(ordersByInvoice[invoiceId] ?? const <int>{}),
+    };
   }
 
   /// Get all IDs in the cascade chain for an order
   /// 获取订单关联链中的所有ID
   Future<Set<int>> _getCascadeChainIds(int orderId) async {
-    final chainIds = <int>{orderId};
+    final relations = await _relationsForOrders(<int>{orderId});
+    final invoiceIds = relations[orderId] ?? const <int>{};
+    if (invoiceIds.isEmpty) return <int>{orderId};
 
-    // Get invoice IDs for this order
-    // 获取此订单的发票ID
-    Set<int> invoiceIds;
-    if (state.orderInvoices.containsKey(orderId)) {
-      invoiceIds = state.orderInvoices[orderId]!;
-    } else {
-      final ids = await _orderRepository.getInvoiceIdsForOrder(orderId);
-      invoiceIds = ids.toSet();
-    }
+    final ordersByInvoice = await _invoiceRepository.getOrderIdsForInvoices(
+      invoiceIds.toList(growable: false),
+    );
+    return <int>{
+      orderId,
+      for (final invoiceId in invoiceIds)
+        ...(ordersByInvoice[invoiceId] ?? const <int>{}),
+    };
+  }
 
-    // For each invoice, get all linked orders
-    // 对每个发票，获取所有关联订单
-    for (final invoiceId in invoiceIds) {
-      final linkedOrderIds = await _invoiceRepository.getOrderIdsForInvoice(invoiceId);
-      chainIds.addAll(linkedOrderIds);
-    }
+  Future<Map<int, Set<int>>> _relationsForOrders(Set<int> orderIds) async {
+    final missingIds = orderIds
+        .where((orderId) => !state.orderInvoices.containsKey(orderId))
+        .toList(growable: false);
+    final loaded = missingIds.isEmpty
+        ? const <int, Set<int>>{}
+        : await _orderRepository.getInvoiceIdsForOrders(missingIds);
 
-    return chainIds;
+    return <int, Set<int>>{
+      for (final orderId in orderIds)
+        orderId: Set<int>.of(
+          state.orderInvoices[orderId] ?? loaded[orderId] ?? const <int>{},
+        ),
+    };
   }
 
   /// Select all selectable orders with cascade
   /// 全选所有可选订单并处理联动
   Future<String?> selectAll() async {
+    final selectedBefore = state.allSelectedIds;
+
     // Only select orders that have invoice relations (selectable orders)
     // 只选择有发票关联的订单（可选订单）
     final selectableIds = state.availableOrders
@@ -367,22 +403,29 @@ class ExportNotifier extends Notifier<ExportState> {
 
     // Filter out already selected IDs (in this case, all selectable IDs)
     // 过滤掉已直接选中的ID
-    final newCascadeIds = cascadeIds.where((id) => !selectableIds.contains(id)).toSet();
+    final newCascadeIds = cascadeIds
+        .where((id) => !selectableIds.contains(id))
+        .toSet();
+
+    await _addCascadeOrdersToList(newCascadeIds);
 
     state = state.copyWith(
       selectedIds: selectableIds,
       cascadeIds: newCascadeIds,
     );
 
-    if (newCascadeIds.isNotEmpty) {
-      return '有${newCascadeIds.length}条订单被一并勾选（关联了同一张发票）';
-    }
-    return null;
+    return _cascadeDeltaMessage(
+      selectedBefore: selectedBefore,
+      selectedAfter: state.allSelectedIds,
+      directlyChangedIds: selectableIds,
+    );
   }
 
   /// Invert selection with cascade (only for selectable orders)
   /// 反选并处理联动（只处理可选订单）
   Future<String?> invertSelection() async {
+    final selectedBefore = state.allSelectedIds;
+
     // Only invert orders that have invoice relations (selectable orders)
     // 只反选有发票关联的订单（可选订单）
     final selectableIds = state.availableOrders
@@ -394,12 +437,16 @@ class ExportNotifier extends Notifier<ExportState> {
 
     // Invert selection: select unselected, unselect selected
     // 反选：选中未选中的，取消已选中的
-    final newSelectedIds = selectableIds.where((id) => !state.isSelected(id)).toSet();
+    final newSelectedIds = selectableIds
+        .where((id) => !state.isSelected(id))
+        .toSet();
 
     // Calculate cascade IDs for new selection
     // 计算新选中的联动ID
     final cascadeIds = await _calculateCascadeIds(newSelectedIds);
-    final newCascadeIds = cascadeIds.where((id) => !newSelectedIds.contains(id)).toSet();
+    final newCascadeIds = cascadeIds
+        .where((id) => !newSelectedIds.contains(id))
+        .toSet();
 
     // Add cascade orders to available list if not already there
     // 将联动订单添加到可用列表
@@ -410,8 +457,34 @@ class ExportNotifier extends Notifier<ExportState> {
       cascadeIds: newCascadeIds,
     );
 
-    if (newCascadeIds.isNotEmpty) {
-      return '有${newCascadeIds.length}条订单被一并勾选（关联了同一张发票）';
+    return _cascadeDeltaMessage(
+      selectedBefore: selectedBefore,
+      selectedAfter: state.allSelectedIds,
+      directlyChangedIds: selectableIds,
+    );
+  }
+
+  String? _cascadeDeltaMessage({
+    required Set<int> selectedBefore,
+    required Set<int> selectedAfter,
+    required Set<int> directlyChangedIds,
+  }) {
+    final cascadeSelected = selectedAfter
+        .difference(selectedBefore)
+        .difference(directlyChangedIds);
+    final cascadeUnselected = selectedBefore
+        .difference(selectedAfter)
+        .difference(directlyChangedIds);
+
+    if (cascadeSelected.isNotEmpty && cascadeUnselected.isNotEmpty) {
+      return '同票联动：${cascadeSelected.length} 笔选中，'
+          '${cascadeUnselected.length} 笔取消';
+    }
+    if (cascadeSelected.isNotEmpty) {
+      return '另有 ${cascadeSelected.length} 笔同票订单一并选中';
+    }
+    if (cascadeUnselected.isNotEmpty) {
+      return '另有 ${cascadeUnselected.length} 笔同票订单一并取消';
     }
     return null;
   }
@@ -474,18 +547,6 @@ class ExportNotifier extends Notifier<ExportState> {
     return (state.orderInvoiceCount[orderId] ?? 0) > 0;
   }
 }
-
-/// Provider for OrderRepository
-/// OrderRepository Provider
-final orderRepositoryProvider = Provider<OrderRepository>((ref) {
-  return OrderRepository();
-});
-
-/// Provider for InvoiceRepository
-/// InvoiceRepository Provider
-final invoiceRepositoryProvider = Provider<InvoiceRepository>((ref) {
-  return InvoiceRepository();
-});
 
 /// Provider for ExportNotifier
 /// ExportNotifier Provider

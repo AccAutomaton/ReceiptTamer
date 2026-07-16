@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
-import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_navigation_bar.dart';
-import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
+import 'package:receipt_tamer/presentation/widgets/common/ledger_month_sheet.dart';
 import 'package:receipt_tamer/presentation/widgets/common/liquid_glass_background.dart';
 
 import 'harness/ledger_golden_harness.dart';
@@ -50,18 +48,15 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(find.byType(AppIconButton), findsNWidgets(2));
-      expect(find.byType(AppCard), findsNWidgets(3));
-      expect(
-        find.byKey(const ValueKey('fixture_month_surface')),
-        findsOneWidget,
-      );
+      expect(find.byType(LedgerMonthSheet), findsOneWidget);
+      expect(find.byType(LedgerEntryRow), findsNWidgets(3));
       expect(find.byKey(const ValueKey('glass_nav_island')), findsOneWidget);
 
-      final centerSize = tester.getSize(
-        find.byKey(const ValueKey('glass_nav_center_action')),
+      final intakeSize = tester.getSize(
+        find.byKey(const ValueKey('glass_nav_intake_action')),
       );
-      final expectedCenterSize = variant.size.width <= 360 ? 51.0 : 54.0;
-      expect(centerSize, Size.square(expectedCenterSize));
+      final expectedIntakeSize = variant.size.width <= 360 ? 68.0 : 72.0;
+      expect(intakeSize, Size.square(expectedIntakeSize));
 
       await expectLater(
         find.byKey(ledgerGoldenBoundaryKey),
@@ -91,9 +86,9 @@ class _ReliefShellFixture extends StatelessWidget {
       label: '发票',
     ),
     GlassNavItem(
-      icon: Icons.info_outline,
-      selectedIcon: Icons.info,
-      label: '关于',
+      icon: Icons.inventory_2_outlined,
+      selectedIcon: Icons.inventory_2,
+      label: '报销',
     ),
   ];
 
@@ -141,30 +136,39 @@ class _ReliefShellFixture extends StatelessWidget {
                   124,
                 ),
                 children: const [
-                  _MonthSurface(),
-                  SizedBox(height: 9),
-                  _FixtureOrderCard(
-                    icon: Icons.ramen_dining_outlined,
-                    shop: '南风小馆',
-                    date: '2026年07月10日 · 午餐',
-                    amount: '¥36.00',
-                    relation: '已关联发票',
-                  ),
-                  SizedBox(height: 9),
-                  _FixtureOrderCard(
-                    icon: Icons.local_cafe_outlined,
-                    shop: '青禾餐厅',
-                    date: '2026年07月08日 · 晚餐',
-                    amount: '¥28.50',
-                    relation: '未关联发票',
-                  ),
-                  SizedBox(height: 9),
-                  _FixtureOrderCard(
-                    icon: Icons.lunch_dining_outlined,
-                    shop: '云栖食堂',
-                    date: '2026年07月03日 · 午餐',
-                    amount: '¥42.00',
-                    relation: '已关联发票',
+                  LedgerMonthSheet(
+                    monthLabel: '2026 年 7 月',
+                    summary: '3 笔',
+                    totalLabel: '合计',
+                    totalAmount: '¥106.50',
+                    entries: [
+                      LedgerEntryRow(
+                        day: '10',
+                        dateCaption: '午餐',
+                        title: '南风小馆',
+                        subtitle: '#RT-0710',
+                        amount: '¥36.00',
+                        relationLabel: '已关联发票',
+                        relationTone: LedgerRelationTone.linked,
+                      ),
+                      LedgerEntryRow(
+                        day: '08',
+                        dateCaption: '晚餐',
+                        title: '青禾餐厅',
+                        subtitle: '#RT-0708',
+                        amount: '¥28.50',
+                        relationLabel: '未关联发票',
+                      ),
+                      LedgerEntryRow(
+                        day: '03',
+                        dateCaption: '午餐',
+                        title: '云栖食堂',
+                        subtitle: '#RT-0703',
+                        amount: '¥42.00',
+                        relationLabel: '已关联发票',
+                        relationTone: LedgerRelationTone.linked,
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -178,7 +182,7 @@ class _ReliefShellFixture extends StatelessWidget {
               selectedIndex: 1,
               items: _navigationItems,
               onDestinationSelected: _noopIndex,
-              onCenterPressed: _noop,
+              onIntakePressed: _noop,
             ),
           ),
         ],
@@ -189,117 +193,4 @@ class _ReliefShellFixture extends StatelessWidget {
   static void _noop() {}
 
   static void _noopIndex(int _) {}
-}
-
-class _MonthSurface extends StatelessWidget {
-  const _MonthSurface();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return GlassSurface(
-      key: const ValueKey('fixture_month_surface'),
-      preset: GlassSurfacePreset.panel,
-      borderRadius: BorderRadius.circular(16),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      edgeIntensity: 0.72,
-      child: Row(
-        children: [
-          Text(
-            '2026年7月',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const Spacer(),
-          Text(
-            '3 笔  ·  ¥106.50',
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: AppPalette.textSecondaryFor(context),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FixtureOrderCard extends StatelessWidget {
-  const _FixtureOrderCard({
-    required this.icon,
-    required this.shop,
-    required this.date,
-    required this.amount,
-    required this.relation,
-  });
-
-  final IconData icon;
-  final String shop;
-  final String date;
-  final String amount;
-  final String relation;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final linked = relation == '已关联发票';
-
-    return AppCard(
-      margin: EdgeInsets.zero,
-      padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: AppEntityTokens.subtleFillFor(context),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppEntityTokens.borderFor(context)),
-            ),
-            child: Icon(
-              icon,
-              color: AppPalette.actionPrimaryFor(context),
-              size: 23,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  shop,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  date,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall,
-                ),
-                const SizedBox(height: 7),
-                Text(
-                  relation,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: linked
-                        ? AppPalette.actionPrimaryFor(context)
-                        : AppPalette.textSecondaryFor(context),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Text(amount, style: AppTypography.amount(context, fontSize: 19)),
-        ],
-      ),
-    );
-  }
 }

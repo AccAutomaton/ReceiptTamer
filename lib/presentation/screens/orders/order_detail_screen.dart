@@ -12,6 +12,7 @@ import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/order.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
+import 'package:receipt_tamer/presentation/widgets/common/scroll_edge_fog.dart';
 import 'package:receipt_tamer/presentation/widgets/order/order_image_preview.dart';
 import 'package:receipt_tamer/presentation/screens/orders/invoice_selector_screen.dart';
 
@@ -189,43 +190,51 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image preview
-            if (order.imagePath.isNotEmpty &&
-                File(order.imagePath).existsSync())
-              OrderImagePreview(imagePath: order.imagePath, height: 250),
+      body: ScrollEdgeFog(
+        showBottom: false,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Image preview
+              if (order.imagePath.isNotEmpty &&
+                  File(order.imagePath).existsSync())
+                OrderImagePreview(imagePath: order.imagePath, height: 250),
 
-            // Order details
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Amount card
-                  _buildAmountCard(context, order, colorScheme),
+              // Order details
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Amount card
+                    _buildAmountCard(context, order, colorScheme),
 
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                  // Details card
-                  _buildDetailsCard(
-                    context,
-                    order,
-                    orderDate,
-                    mealTime,
-                    colorScheme,
-                  ),
+                    // Details card
+                    _buildDetailsCard(
+                      context,
+                      order,
+                      orderDate,
+                      mealTime,
+                      colorScheme,
+                    ),
 
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                  // Invoices section
-                  _buildInvoicesSection(context, order, invoices, colorScheme),
-                ],
+                    // Invoices section
+                    _buildInvoicesSection(
+                      context,
+                      order,
+                      invoices,
+                      colorScheme,
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -10,7 +10,9 @@
     "render:design:fresh": "node tools/render_fresh_design.cjs",
     "render:design:hybrid": "node tools/render_hybrid_design.cjs",
     "render:design:mid-bold": "node tools/render_morning_ledger_mid_bold.cjs",
-    "render:design:relief-island": "node tools/render_morning_ledger_relief_island.cjs"
+    "render:design:relief-island": "node tools/render_morning_ledger_relief_island.cjs",
+    "render:design:binding": "node tools/render_reimbursement_binding_preview.cjs",
+    "render:design:reimbursement-mode": "node tools/render_reimbursement_export_mode_preview.cjs"
   },
   "devDependencies": {
     "playwright-core": "1.61.1"

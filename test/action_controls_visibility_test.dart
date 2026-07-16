@@ -7,13 +7,14 @@ import 'package:receipt_tamer/presentation/widgets/common/glass_navigation_bar.d
 import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
 
 void main() {
-  test('light theme uses morning-mist action colors for enabled controls', () {
+  test('light theme keeps action colors while flattening every control', () {
     final theme = AppTheme.lightTheme;
     final colorScheme = theme.colorScheme;
 
     expect(colorScheme.primary, AppPalette.actionPrimary);
     expect(colorScheme.secondary, AppPalette.actionSecondary);
     expect(colorScheme.tertiary, AppPalette.warningMuted);
+    expect(colorScheme.shadow, Colors.transparent);
 
     final filledBackground = theme.filledButtonTheme.style?.backgroundColor
         ?.resolve(<WidgetState>{});
@@ -26,16 +27,100 @@ void main() {
       outlinedSide?.color,
       AppPalette.actionOutline.withValues(alpha: 0.72),
     );
-    expect(outlinedSide?.width, 1.2);
-    expect(theme.cardTheme.shape, isA<AppReliefRoundedRectangleBorder>());
+    expect(outlinedSide?.width, 1);
+
+    expect(theme.cardTheme.elevation, 0);
+    expect(theme.cardTheme.shadowColor, Colors.transparent);
+    expect(theme.cardTheme.shape, isA<RoundedRectangleBorder>());
     expect(
-      theme.filledButtonTheme.style?.shape?.resolve(<WidgetState>{}),
-      isA<AppReliefRoundedRectangleBorder>(),
+      theme.cardTheme.shape,
+      isNot(isA<AppReliefRoundedRectangleBorder>()),
+    );
+
+    final buttonStyles = [
+      theme.elevatedButtonTheme.style!,
+      theme.filledButtonTheme.style!,
+      theme.outlinedButtonTheme.style!,
+      theme.textButtonTheme.style!,
+    ];
+    const states = <Set<WidgetState>>[
+      <WidgetState>{},
+      <WidgetState>{WidgetState.hovered},
+      <WidgetState>{WidgetState.focused},
+      <WidgetState>{WidgetState.pressed},
+      <WidgetState>{WidgetState.disabled},
+    ];
+    for (final style in buttonStyles) {
+      final idleShape = style.shape?.resolve(const <WidgetState>{});
+      expect(idleShape, isA<RoundedRectangleBorder>());
+      expect(idleShape, isNot(isA<AppReliefRoundedRectangleBorder>()));
+      for (final state in states) {
+        expect(style.elevation?.resolve(state), 0);
+        expect(style.shadowColor?.resolve(state), Colors.transparent);
+        expect(style.shape?.resolve(state), idleShape);
+      }
+    }
+
+    expect(AppEntityTokens.lightShadow, isEmpty);
+    expect(AppEntityTokens.lightControlShadow, isEmpty);
+    expect(AppEntityTokens.lightHighlight, Colors.transparent);
+    expect(AppEntityTokens.lightRidge, Colors.transparent);
+
+    final inputTheme = theme.inputDecorationTheme;
+    expect(inputTheme.enabledBorder, isA<OutlineInputBorder>());
+    expect(inputTheme.enabledBorder, isNot(isA<AppReliefInputBorder>()));
+    expect(
+      (inputTheme.enabledBorder! as OutlineInputBorder).borderSide.width,
+      1,
     );
     expect(
-      theme.filledButtonTheme.style?.elevation?.resolve({WidgetState.pressed}),
-      0,
+      (inputTheme.focusedBorder! as OutlineInputBorder).borderSide,
+      BorderSide(color: colorScheme.primary),
     );
+
+    final fabTheme = theme.floatingActionButtonTheme;
+    expect(fabTheme.elevation, 0);
+    expect(fabTheme.focusElevation, 0);
+    expect(fabTheme.hoverElevation, 0);
+    expect(fabTheme.highlightElevation, 0);
+    expect(fabTheme.disabledElevation, 0);
+
+    final datePickerTheme = theme.datePickerTheme;
+    expect(datePickerTheme.elevation, 0);
+    expect(datePickerTheme.shadowColor, Colors.transparent);
+    expect(datePickerTheme.rangePickerElevation, 0);
+    expect(datePickerTheme.rangePickerShadowColor, Colors.transparent);
+  });
+
+  test('light and dark themes share the zero-elevation surface contract', () {
+    for (final theme in [AppTheme.lightTheme, AppTheme.darkTheme]) {
+      expect(theme.colorScheme.shadow, Colors.transparent);
+      expect(theme.cardTheme.elevation, 0);
+      expect(theme.cardTheme.shadowColor, Colors.transparent);
+      expect(theme.dialogTheme.elevation, 0);
+      expect(theme.bottomSheetTheme.elevation, 0);
+      expect(theme.bottomSheetTheme.modalElevation, 0);
+      expect(theme.snackBarTheme.elevation, 0);
+      expect(theme.navigationBarTheme.elevation, 0);
+
+      for (final style in [
+        theme.elevatedButtonTheme.style!,
+        theme.filledButtonTheme.style!,
+        theme.outlinedButtonTheme.style!,
+        theme.textButtonTheme.style!,
+      ]) {
+        for (final state in WidgetState.values) {
+          expect(style.elevation?.resolve({state}), 0);
+          expect(style.shadowColor?.resolve({state}), Colors.transparent);
+        }
+      }
+    }
+
+    expect(AppEntityTokens.darkShadow, isEmpty);
+    expect(AppEntityTokens.darkControlShadow, isEmpty);
+    expect(AppEntityTokens.darkHighlight, Colors.transparent);
+    expect(AppEntityTokens.darkRidge, Colors.transparent);
+    expect(AppShadows.glass, isEmpty);
   });
 
   testWidgets('custom app controls default to visible enabled action colors', (
@@ -72,13 +157,13 @@ void main() {
                     label: 'invoices',
                   ),
                   GlassNavItem(
-                    icon: Icons.settings_outlined,
-                    selectedIcon: Icons.settings,
-                    label: 'settings',
+                    icon: Icons.inventory_2_outlined,
+                    selectedIcon: Icons.inventory_2,
+                    label: 'reimbursement',
                   ),
                 ],
                 onDestinationSelected: (_) {},
-                onCenterPressed: () {},
+                onIntakePressed: () {},
               ),
             ],
           ),
@@ -110,16 +195,15 @@ void main() {
       AppPalette.actionPrimary,
     );
 
-    final centerSurface = tester.widget<GlassSurface>(
-      find
-          .descendant(
-            of: find.byKey(const ValueKey('glass_nav_center_action')),
-            matching: find.byType(GlassSurface),
-          )
-          .first,
+    final intakeFinder = find.byKey(const ValueKey('glass_nav_intake_action'));
+    final intakeMaterial = tester.widget<Material>(
+      find.descendant(of: intakeFinder, matching: find.byType(Material)).first,
     );
-    expect(centerSurface.fillColor, AppPalette.actionPrimary);
-    expect(centerSurface.preset, GlassSurfacePreset.panel);
-    expect(centerSurface.blurSigma, 0);
+    expect(intakeMaterial.color, AppPalette.actionPrimary);
+    expect(intakeMaterial.shape, isA<RoundedRectangleBorder>());
+    expect(
+      find.descendant(of: intakeFinder, matching: find.byType(GlassSurface)),
+      findsNothing,
+    );
   });
 }
