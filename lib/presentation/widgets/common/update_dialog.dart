@@ -263,7 +263,7 @@ class UpdateDialog {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '正在从 Github 拉取安装包 ...',
+                    '正在获取安装包（镜像优先）...',
                     style: TextStyle(color: Colors.grey[600], fontSize: 13),
                   ),
                   const SizedBox(height: 12),
@@ -307,6 +307,7 @@ class UpdateDialog {
       // Download APK with resume support
       final result = await updateService.downloadApkWithResume(
         version.downloadUrl!,
+        expectedTotalBytes: version.fileSize,
         onProgress: (p) {
           if (context.mounted && !downloadCancelled && dialogSetState != null) {
             dialogSetState!(() {
@@ -322,9 +323,6 @@ class UpdateDialog {
       Navigator.of(context, rootNavigator: true).pop();
 
       if (result.success && result.filePath != null && !downloadCancelled) {
-        // Notify callback about downloaded APK path
-        onApkDownloaded?.call(result.filePath);
-
         // Request install permission
         final permissionResult = await Permission.requestInstallPackages
             .request();
@@ -334,8 +332,15 @@ class UpdateDialog {
         }
 
         // Install APK
-        final installed = await updateService.installApk(result.filePath!);
+        // Register the path only after permission handling so a permission
+        // lifecycle event cannot delete the APK before the installer opens.
+        onApkDownloaded?.call(result.filePath);
+        final installed = await updateService.installApk(
+          result.filePath!,
+          targetVersion: version.version,
+        );
         if (!installed && context.mounted) {
+          onApkDownloaded?.call(null);
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(const SnackBar(content: Text('安装失败，请重试')));

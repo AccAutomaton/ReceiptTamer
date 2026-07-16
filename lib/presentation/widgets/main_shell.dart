@@ -180,6 +180,8 @@ class _MainShellState extends ConsumerState<MainShell>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Clean up an installer APK left by a process-replacing app update.
+    _updateService.cleanupPendingApk();
   }
 
   @override
@@ -195,7 +197,7 @@ class _MainShellState extends ConsumerState<MainShell>
     final apkPath = _downloadedApkPath;
     _downloadedApkPath = null; // 先清空避免重复清理
     if (apkPath != null) {
-      await _updateService.deleteApk(apkPath);
+      await _updateService.cleanupPendingApk();
     }
   }
 

@@ -149,4 +149,7 @@ class AppConstants {
   // GitHub Release Configuration
   static const String githubOwner = 'AccAutomaton';
   static const String githubRepo = 'ReceiptTamer';
+  static const String githubMirrorSourceUrl = 'https://github.akams.cn/';
+  static const String githubMirrorProxyBaseUrl = 'https://gh.dpik.top';
+  static const int githubMirrorMaxAttempts = 3;
 }

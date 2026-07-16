@@ -68,7 +68,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     final apkPath = _downloadedApkPath;
     _downloadedApkPath = null; // 先清空避免重复清理
     if (apkPath != null) {
-      await _updateService.deleteApk(apkPath);
+      await _updateService.cleanupPendingApk();
     }
   }
 
@@ -344,7 +344,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Powered By Codex With GPT-5.5',
+                    'Powered By Codex With GPT-5.6',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
@@ -366,7 +366,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            'GitHub',
+                            'View On GitHub',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: colorScheme.onSurfaceVariant,
                             ),

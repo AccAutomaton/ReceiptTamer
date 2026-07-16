@@ -38,7 +38,7 @@
 | OCR引擎     | ✅  | RapidOcrAndroidOnnx (ONNX格式，内置模型)                       |
 | LLM推理     | ✅  | 本地 MNN 或 OpenAI-compatible 云端模型                         |
 | OCR + LLM 识别 | ✅  | 本地 OCR 文本提取 + LLM 结构化；多模态云端模型可直接识别图片       |
-| 应用更新      | ✅  | 基于 GitHub Release 的检查更新与下载安装、APK保存到Download/ReceiptTamer |
+| 应用更新      | ✅  | 基于 GitHub Release 的检查更新与下载安装；优先使用 github.akams.cn 提供的镜像节点，连续失败 3 次后回退 GitHub 官方源；确认目标版本已安装后及时清理临时 APK，退出安装器则保留供重试 |
 | 数据备份与还原  | ✅  | 备份所有数据到zip包、覆盖/增量还原、版本兼容性检查、自动保存到Download/ReceiptTamer |
 
 ---
@@ -457,7 +457,7 @@ flutter build ipa
 
 ## 应用更新发布规范
 
-应用通过 GitHub Release 实现检查更新功能，发布新版本时需遵循以下规范。
+应用通过 GitHub Release 实现检查更新功能。检查最新版本、读取更新历史及下载 APK 时，优先使用 `github.akams.cn` 提供的镜像节点；镜像连续失败 3 次后回退 GitHub 官方源。下载失败后用户手动继续时，会重新从镜像源开始尝试并保留断点续传。仅在安装权限确认后、真正拉起系统安装器前持久化待清理路径、目标版本及安装前的版本/构建号；应用从安装器返回或更新后首次启动时，只有安装身份确实发生变化且当前版本达到目标版本才删除临时 APK。用户退出安装器、实际版本与构建号未变化时继续保留完整安装包，再次更新可直接复用而无需重新下载。发布新版本时需遵循以下规范。
 
 ### GitHub Release 格式约定
 
@@ -519,6 +519,9 @@ GitHub 仓库配置位于 `lib/core/constants/app_constants.dart`：
 // GitHub Release Configuration
 static const String githubOwner = 'AccAutomaton';  // GitHub 用户名
 static const String githubRepo = 'ReceiptTamer';  // 仓库名
+static const String githubMirrorSourceUrl = 'https://github.akams.cn/';
+static const String githubMirrorProxyBaseUrl = 'https://gh.dpik.top';
+static const int githubMirrorMaxAttempts = 3;
 ```
 
 ### 注意事项
@@ -527,6 +530,8 @@ static const String githubRepo = 'ReceiptTamer';  // 仓库名
 2. **APK文件**: Release 中必须包含 `.apk` 文件，否则应用无法下载更新
 3. **更新说明**: `body` 字段会在更新对话框中显示，建议填写清晰的更新内容
 4. **API限制**: GitHub API 未认证请求限制 60次/小时/IP，一般足够使用
+5. **下载源回退**: 镜像 API 或 APK 下载连续失败 3 次后才请求 GitHub 官方源；用户手动继续下载时重新执行同一顺序，并复用已下载的部分文件
+6. **安装包清理**: 系统安装器启动前记录待清理路径、目标版本及安装前版本/构建号；从安装器返回或应用更新后的首次启动会核对当前身份，只有版本或构建号已变化且达到目标版本才删除 APK 并清除记录。退出安装器而未完成安装时保留文件与记录，完整安装包可在下次尝试时直接复用
 
 ---
 

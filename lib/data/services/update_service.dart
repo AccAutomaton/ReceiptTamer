@@ -8,6 +8,7 @@ import 'package:open_file/open_file.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/services/log_service.dart';
@@ -92,10 +93,19 @@ class DownloadResult {
   });
 }
 
+class _UpdateRequestSource {
+  final String name;
+  final String url;
+
+  const _UpdateRequestSource({required this.name, required this.url});
+}
+
 /// Service for checking and downloading app updates from GitHub Releases
 class UpdateService {
   /// GitHub API base URL
   static const String _githubApiBaseUrl = 'https://api.github.com';
+
+  static const String _pendingApkCleanupKey = 'update_pending_apk_cleanup';
 
   /// APK file name for downloads (fixed name for resume support)
   static const String _apkFileName = 'app-update.apk';
@@ -119,6 +129,106 @@ class UpdateService {
     : _httpClient = httpClient ?? http.Client(),
       _connectivity = connectivity ?? Connectivity();
 
+  List<_UpdateRequestSource> _buildRequestSources(String url) {
+    final mirrorPrefix = '${AppConstants.githubMirrorProxyBaseUrl}/';
+    if (url.startsWith(mirrorPrefix)) {
+      final officialUrl = url.substring(mirrorPrefix.length);
+      if (_isGitHubUrl(officialUrl)) {
+        return [
+          _UpdateRequestSource(name: 'github.akams.cn 镜像源', url: url),
+          _UpdateRequestSource(name: 'GitHub 官方源', url: officialUrl),
+        ];
+      }
+    }
+
+    if (!_isGitHubUrl(url)) {
+      return [_UpdateRequestSource(name: '原始下载源', url: url)];
+    }
+
+    return [
+      _UpdateRequestSource(
+        name: 'github.akams.cn 镜像源',
+        url: '$mirrorPrefix$url',
+      ),
+      _UpdateRequestSource(name: 'GitHub 官方源', url: url),
+    ];
+  }
+
+  bool _isGitHubUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme) return false;
+
+    final host = uri.host.toLowerCase();
+    return host == 'github.com' ||
+        host == 'api.github.com' ||
+        host == 'codeload.github.com' ||
+        host.endsWith('.githubusercontent.com');
+  }
+
+  Future<http.Response> _getWithFallback(
+    String url, {
+    required Map<String, String> headers,
+  }) async {
+    final sources = _buildRequestSources(url);
+
+    for (var index = 0; index < sources.length; index++) {
+      final source = sources[index];
+      final hasFallback = index < sources.length - 1;
+      final maxAttempts = hasFallback
+          ? AppConstants.githubMirrorMaxAttempts
+          : 1;
+
+      for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+        logService.i(
+          LogConfig.moduleUpdate,
+          '通过 ${source.name} 请求 ${source.url} ($attempt/$maxAttempts)',
+        );
+
+        try {
+          final response = await _httpClient.get(
+            Uri.parse(source.url),
+            headers: headers,
+          );
+          logService.i(
+            LogConfig.moduleUpdate,
+            '${source.name} 第 $attempt 次响应状态 ${response.statusCode}',
+          );
+
+          if (response.statusCode == 200 || !hasFallback) {
+            return response;
+          }
+
+          if (attempt < maxAttempts) {
+            logService.w(
+              LogConfig.moduleUpdate,
+              '${source.name} 请求失败: HTTP ${response.statusCode}，准备第 ${attempt + 1} 次尝试',
+            );
+          } else {
+            logService.w(
+              LogConfig.moduleUpdate,
+              '${source.name} 已尝试 $maxAttempts 次，切换到 ${sources[index + 1].name}',
+            );
+          }
+        } catch (e) {
+          if (!hasFallback) rethrow;
+          if (attempt < maxAttempts) {
+            logService.w(
+              LogConfig.moduleUpdate,
+              '${source.name} 第 $attempt 次请求异常: $e，准备重试',
+            );
+          } else {
+            logService.w(
+              LogConfig.moduleUpdate,
+              '${source.name} 已尝试 $maxAttempts 次，切换到 ${sources[index + 1].name}',
+            );
+          }
+        }
+      }
+    }
+
+    throw StateError('没有可用的更新请求源');
+  }
+
   /// Check if connected to WiFi
   Future<bool> isWifiConnection() async {
     final results = await _connectivity.checkConnectivity();
@@ -137,6 +247,12 @@ class UpdateService {
     return packageInfo.version;
   }
 
+  /// Get current app build number
+  Future<String> getCurrentBuildNumber() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    return packageInfo.buildNumber;
+  }
+
   /// Check for updates
   /// Returns UpdateCheckResponse with the latest version info
   Future<UpdateCheckResponse> checkForUpdates() async {
@@ -150,17 +266,14 @@ class UpdateService {
         currentVersion,
       );
 
-      // Fetch latest release from GitHub
-      logService.i(LogConfig.moduleUpdate, '请求 $_latestReleaseUrl');
-      final response = await _httpClient.get(
-        Uri.parse(_latestReleaseUrl),
+      // Fetch latest release through the mirror, then GitHub as fallback.
+      final response = await _getWithFallback(
+        _latestReleaseUrl,
         headers: {
           'Accept': 'application/vnd.github.v3+json',
           'User-Agent': '${AppConstants.appName}/$currentVersion',
         },
       );
-
-      logService.i(LogConfig.moduleUpdate, '响应状态 ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final json = _parseJson(response.body);
@@ -276,69 +389,130 @@ class UpdateService {
     String url, {
     void Function(DownloadProgress progress)? onProgress,
     bool forceRestart = false,
+    int? expectedTotalBytes,
   }) async {
     try {
       logService.i(LogConfig.moduleUpdate, '========== 开始下载 APK ==========');
-      logService.diag(LogConfig.moduleUpdate, 'URL', url);
       logService.diag(LogConfig.moduleUpdate, 'Force restart', forceRestart);
 
       final filePath = await getApkFilePath();
       final file = File(filePath);
 
-      // Check existing partial download
-      int existingSize = 0;
-      bool wasResumed = false;
-
-      if (!forceRestart && await file.exists()) {
-        existingSize = await file.length();
-        if (existingSize > 0) {
-          wasResumed = true;
-          logService.i(LogConfig.moduleUpdate, '从 $existingSize 字节处继续下载');
-        }
-      } else if (forceRestart && await file.exists()) {
+      if (forceRestart && await file.exists()) {
         await file.delete();
+      } else if (expectedTotalBytes != null && await file.exists()) {
+        final existingSize = await file.length();
+        if (existingSize == expectedTotalBytes) {
+          logService.i(LogConfig.moduleUpdate, '已下载完整 APK，直接继续安装');
+          return DownloadResult(
+            filePath: filePath,
+            success: true,
+            wasResumed: true,
+          );
+        }
+        if (existingSize > expectedTotalBytes) {
+          await file.delete();
+          logService.w(LogConfig.moduleUpdate, '已有 APK 大小异常，将重新下载');
+        }
       }
 
-      // Build request with Range header if resuming
-      final request = http.Request('GET', Uri.parse(url));
+      final sources = _buildRequestSources(url);
+      DownloadResult? lastResult;
+      for (var index = 0; index < sources.length; index++) {
+        final source = sources[index];
+        final hasFallback = index < sources.length - 1;
+        final maxAttempts = hasFallback
+            ? AppConstants.githubMirrorMaxAttempts
+            : 1;
+
+        for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+          final result = await _downloadApkFromSource(
+            source,
+            file,
+            onProgress: onProgress,
+          );
+          if (result.success) return result;
+
+          lastResult = result;
+          if (attempt < maxAttempts) {
+            logService.w(
+              LogConfig.moduleUpdate,
+              '${source.name} 第 $attempt 次下载失败: ${result.errorMessage}，准备第 ${attempt + 1} 次尝试',
+            );
+          }
+        }
+
+        if (hasFallback) {
+          logService.w(
+            LogConfig.moduleUpdate,
+            '${source.name} 已尝试 $maxAttempts 次，切换到 ${sources[index + 1].name}',
+          );
+        }
+      }
+
+      logService.w(LogConfig.moduleUpdate, '所有 APK 下载源均不可用');
+      return lastResult ??
+          const DownloadResult(success: false, errorMessage: '没有可用的下载源');
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleUpdate, '下载错误', e, stackTrace);
+      return DownloadResult(success: false, errorMessage: e.toString());
+    }
+  }
+
+  Future<DownloadResult> _downloadApkFromSource(
+    _UpdateRequestSource source,
+    File file, {
+    void Function(DownloadProgress progress)? onProgress,
+  }) async {
+    try {
+      final existingSize = await file.exists() ? await file.length() : 0;
+      if (existingSize > 0) {
+        logService.i(
+          LogConfig.moduleUpdate,
+          '通过 ${source.name} 从 $existingSize 字节处继续下载',
+        );
+      } else {
+        logService.i(LogConfig.moduleUpdate, '通过 ${source.name} 开始下载');
+      }
+
+      final request = http.Request('GET', Uri.parse(source.url));
       if (existingSize > 0) {
         request.headers['Range'] = 'bytes=$existingSize-';
       }
 
       final response = await _httpClient.send(request);
-
-      // Check response status
-      // 200 = full download, 206 = partial download (resume)
       if (response.statusCode != 200 && response.statusCode != 206) {
-        logService.w(
-          LogConfig.moduleUpdate,
-          '下载失败: HTTP ${response.statusCode}',
-        );
+        await response.stream.drain<void>();
         return DownloadResult(
           success: false,
           errorMessage: '服务器返回 HTTP ${response.statusCode}',
         );
       }
 
+      final wasResumed = existingSize > 0 && response.statusCode == 206;
+      if (existingSize > 0 && !wasResumed) {
+        logService.w(
+          LogConfig.moduleUpdate,
+          '${source.name} 未接受 Range 请求，将重新下载 APK',
+        );
+      }
+
+      final initialBytes = wasResumed ? existingSize : 0;
       final contentLength = response.contentLength ?? 0;
-      final totalBytes = existingSize + contentLength;
-      int downloadedBytes = existingSize;
-
-      // Calculate download speed
-      int speed = 0;
-      int lastBytes = downloadedBytes;
+      final totalBytes = initialBytes + contentLength;
+      var downloadedBytes = initialBytes;
+      var speed = 0;
+      var lastBytes = downloadedBytes;
       final speedStopwatch = Stopwatch()..start();
-
-      // Write to file (append mode if resuming)
       final sink = file.openWrite(
-        mode: existingSize > 0 ? FileMode.append : FileMode.write,
+        mode: wasResumed ? FileMode.append : FileMode.write,
       );
+
       try {
         await for (final chunk in response.stream) {
           sink.add(chunk);
           downloadedBytes += chunk.length;
 
-          // Calculate speed every second
           if (speedStopwatch.elapsedMilliseconds >= 500) {
             final elapsed = speedStopwatch.elapsedMilliseconds;
             speed = ((downloadedBytes - lastBytes) * 1000 ~/ elapsed);
@@ -360,27 +534,27 @@ class UpdateService {
 
         await sink.flush();
         await sink.close();
-
-        logService.diag(
-          LogConfig.moduleUpdate,
-          'Total size',
-          '$downloadedBytes bytes',
-        );
-        logService.i(LogConfig.moduleUpdate, '========== 下载完成 ==========');
-        logService.i(LogConfig.moduleUpdate, '下载完成: $filePath');
-        return DownloadResult(
-          filePath: filePath,
-          success: true,
-          wasResumed: wasResumed,
-        );
-      } catch (e, stackTrace) {
+      } catch (e) {
         await sink.close();
-        logService.e(LogConfig.moduleUpdate, '下载错误', e, stackTrace);
-        // Keep partial file for resume
         return DownloadResult(success: false, errorMessage: e.toString());
       }
-    } catch (e, stackTrace) {
-      logService.e(LogConfig.moduleUpdate, '下载错误', e, stackTrace);
+
+      logService.diag(
+        LogConfig.moduleUpdate,
+        'Total size',
+        '$downloadedBytes bytes',
+      );
+      logService.i(LogConfig.moduleUpdate, '========== 下载完成 ==========');
+      logService.i(
+        LogConfig.moduleUpdate,
+        '通过 ${source.name} 下载完成: ${file.path}',
+      );
+      return DownloadResult(
+        filePath: file.path,
+        success: true,
+        wasResumed: wasResumed,
+      );
+    } catch (e) {
       return DownloadResult(success: false, errorMessage: e.toString());
     }
   }
@@ -402,7 +576,10 @@ class UpdateService {
 
   /// Install APK file
   /// Returns true if installation was initiated successfully
-  Future<bool> installApk(String filePath) async {
+  Future<bool> installApk(
+    String filePath, {
+    required String targetVersion,
+  }) async {
     try {
       logService.i(LogConfig.moduleUpdate, '========== 开始安装 APK ==========');
       logService.diag(LogConfig.moduleUpdate, 'APK path', filePath);
@@ -413,6 +590,7 @@ class UpdateService {
         return false;
       }
 
+      await markApkForCleanup(filePath, targetVersion: targetVersion);
       final result = await OpenFile.open(filePath);
       logService.i(
         LogConfig.moduleUpdate,
@@ -420,10 +598,94 @@ class UpdateService {
       );
 
       logService.i(LogConfig.moduleUpdate, '========== 安装请求已发送 ==========');
-      return result.type == ResultType.done;
+      final installStarted = result.type == ResultType.done;
+      if (!installStarted) {
+        await deleteApk(filePath);
+      }
+      return installStarted;
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleUpdate, '安装错误', e, stackTrace);
+      await deleteApk(filePath);
       return false;
+    }
+  }
+
+  /// Persist the APK path and target version before opening the installer.
+  Future<void> markApkForCleanup(
+    String filePath, {
+    required String targetVersion,
+  }) async {
+    if (targetVersion.trim().isEmpty) {
+      throw ArgumentError.value(targetVersion, 'targetVersion', '不能为空');
+    }
+
+    final sourceVersion = await getCurrentVersion();
+    final sourceBuildNumber = await getCurrentBuildNumber();
+    final preferences = await SharedPreferences.getInstance();
+    final saved = await preferences.setString(
+      _pendingApkCleanupKey,
+      json.encode({
+        'filePath': filePath,
+        'targetVersion': targetVersion,
+        'sourceVersion': sourceVersion,
+        'sourceBuildNumber': sourceBuildNumber,
+      }),
+    );
+    if (!saved) {
+      throw StateError('无法记录待清理 APK');
+    }
+    logService.i(
+      LogConfig.moduleUpdate,
+      '已记录待确认安装 APK: source=$sourceVersion+$sourceBuildNumber, target=$targetVersion',
+    );
+  }
+
+  /// Delete the APK only after the installed app reaches the target version.
+  Future<void> cleanupPendingApk() async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      final encodedMarker = preferences.getString(_pendingApkCleanupKey);
+      if (encodedMarker == null) return;
+
+      final marker = json.decode(encodedMarker) as Map<String, dynamic>;
+      final filePath = marker['filePath'] as String?;
+      final targetVersion = marker['targetVersion'] as String?;
+      final sourceVersion = marker['sourceVersion'] as String?;
+      final sourceBuildNumber = marker['sourceBuildNumber'] as String?;
+      if (filePath == null ||
+          targetVersion == null ||
+          sourceVersion == null ||
+          sourceBuildNumber == null) {
+        logService.w(LogConfig.moduleUpdate, '待确认安装 APK 记录不完整，暂不清理');
+        return;
+      }
+
+      final currentVersion = await getCurrentVersion();
+      final currentBuildNumber = await getCurrentBuildNumber();
+      final installedVersion = AppVersion(
+        version: currentVersion,
+        tagName: currentVersion,
+      );
+      final installedIdentityChanged =
+          currentVersion != sourceVersion ||
+          currentBuildNumber != sourceBuildNumber;
+      final targetVersionReached =
+          installedVersion.compareTo(targetVersion) >= 0;
+      if (!installedIdentityChanged || !targetVersionReached) {
+        logService.i(
+          LogConfig.moduleUpdate,
+          '目标版本尚未确认安装，保留 APK: source=$sourceVersion+$sourceBuildNumber, current=$currentVersion+$currentBuildNumber, target=$targetVersion',
+        );
+        return;
+      }
+
+      logService.i(
+        LogConfig.moduleUpdate,
+        '已确认目标版本安装，开始清理 APK: current=$currentVersion+$currentBuildNumber, target=$targetVersion',
+      );
+      await deleteApk(filePath);
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleUpdate, '清理安装后的 APK 失败', e, stackTrace);
     }
   }
 
@@ -437,8 +699,23 @@ class UpdateService {
         await file.delete();
         logService.i(LogConfig.moduleUpdate, '已删除 APK: $filePath');
       }
+      await _clearPendingApkCleanupMarker(filePath);
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleUpdate, '删除 APK 失败', e, stackTrace);
+    }
+  }
+
+  Future<void> _clearPendingApkCleanupMarker(String filePath) async {
+    final preferences = await SharedPreferences.getInstance();
+    final encodedMarker = preferences.getString(_pendingApkCleanupKey);
+    if (encodedMarker == null) return;
+
+    final marker = json.decode(encodedMarker) as Map<String, dynamic>;
+    if (marker['filePath'] != filePath) return;
+
+    final removed = await preferences.remove(_pendingApkCleanupKey);
+    if (!removed) {
+      throw StateError('无法清除待清理 APK 记录');
     }
   }
 
@@ -477,16 +754,13 @@ class UpdateService {
       final currentVersion = await getCurrentVersion();
       final url = getAllReleasesUrl(perPage: perPage, page: page);
 
-      logService.i(LogConfig.moduleUpdate, '请求 $url');
-      final response = await _httpClient.get(
-        Uri.parse(url),
+      final response = await _getWithFallback(
+        url,
         headers: {
           'Accept': 'application/vnd.github.v3+json',
           'User-Agent': '${AppConstants.appName}/$currentVersion',
         },
       );
-
-      logService.i(LogConfig.moduleUpdate, '响应状态 ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final jsonList = _parseJsonList(response.body);
