@@ -167,6 +167,7 @@ class _MonthFastScrollBarState extends State<MonthFastScrollBar> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final textScaler = MediaQuery.textScalerOf(context);
 
     if (widget.items.isEmpty) return const SizedBox.shrink();
 
@@ -200,6 +201,7 @@ class _MonthFastScrollBarState extends State<MonthFastScrollBar> {
                 hoveredIndex: _isDragging ? _hoveredIndex : -1,
                 colorScheme: colorScheme,
                 labelBackgroundColor: widget.labelBackgroundColor,
+                textScaler: textScaler,
               ),
             ),
           ),
@@ -312,12 +314,14 @@ class _ScrollBarPainter extends CustomPainter {
   final int hoveredIndex;
   final ColorScheme colorScheme;
   final Color labelBackgroundColor;
+  final TextScaler textScaler;
 
   _ScrollBarPainter({
     required this.items,
     required this.hoveredIndex,
     required this.colorScheme,
     required this.labelBackgroundColor,
+    required this.textScaler,
   });
 
   @override
@@ -390,6 +394,7 @@ class _ScrollBarPainter extends CustomPainter {
         final yearPainter = TextPainter(
           text: yearSpan,
           textDirection: TextDirection.ltr,
+          textScaler: textScaler,
         )..layout();
 
         if (bgPaint != null) {
@@ -422,6 +427,7 @@ class _ScrollBarPainter extends CustomPainter {
       final textPainter = TextPainter(
         text: textSpan,
         textDirection: TextDirection.ltr,
+        textScaler: textScaler,
       )..layout();
 
       if (bgPaint != null) {
@@ -447,6 +453,7 @@ class _ScrollBarPainter extends CustomPainter {
   bool shouldRepaint(covariant _ScrollBarPainter oldDelegate) {
     return oldDelegate.hoveredIndex != hoveredIndex ||
         oldDelegate.items != items ||
-        oldDelegate.labelBackgroundColor != labelBackgroundColor;
+        oldDelegate.labelBackgroundColor != labelBackgroundColor ||
+        oldDelegate.textScaler != textScaler;
   }
 }

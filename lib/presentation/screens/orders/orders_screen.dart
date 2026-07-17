@@ -132,7 +132,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
   @override
   Widget build(BuildContext context) {
     final orderState = ref.watch(orderProvider);
-    final textScale = MediaQuery.textScalerOf(context).scale(1);
+    final textScale = AppTypography.accessibilityScaleOf(context);
 
     // Group orders by month
     _monthGroups = orderState.orders.isEmpty
@@ -149,11 +149,16 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
       extendBody: true,
       backgroundColor: Colors.transparent,
       appBar: AppBar(
+        forceMaterialTransparency: true,
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.transparent,
         centerTitle: false,
         titleSpacing: 16,
         toolbarHeight: textScale >= 1.6 ? 96 : 74,
         title: _buildPageTitle(context, '订单列表'),
         elevation: 0,
+        scrolledUnderElevation: 0,
         actions: [
           AppIconButton(
             icon: Icons.search,
@@ -169,45 +174,71 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
           const SizedBox(width: 12),
         ],
       ),
-      body: ScrollEdgeFog(
-        topHeight: ledgerMonthFadeSafeTop,
-        bottomHeight: 104,
-        bottomInset: GlassNavigationBar.contentFadeInset(context),
-        child: RefreshIndicator(
-          onRefresh: _refreshCurrentView,
-          child:
-              orderState.isLoading &&
-                  orderState.orders.isEmpty &&
-                  _activeFilter == _OrderLedgerFilter.all
-              ? const Center(child: CircularProgressIndicator())
-              : orderState.orders.isEmpty &&
-                    _activeFilter == _OrderLedgerFilter.all
-              ? EmptyOrders(onAdd: _handleAddOrder)
-              : MonthFastScrollLayout(
-                  items: _monthGroups
-                      .map((g) => MonthScrollItem(year: g.year, month: g.month))
-                      .toList(),
-                  onJumpToIndex: _scrollToGroup,
-                  listRightInset: _monthGroups.length > 1
-                      ? monthFastScrollBarListRightInset
-                      : 0,
-                  child: _buildGroupedList(),
-                ),
+      body: _buildBody(orderState),
+    );
+  }
+
+  Widget _buildBody(OrderState orderState) {
+    final isInitialLoading =
+        orderState.isLoading &&
+        orderState.orders.isEmpty &&
+        _activeFilter == _OrderLedgerFilter.all;
+    final isUnfilteredEmpty =
+        orderState.orders.isEmpty && _activeFilter == _OrderLedgerFilter.all;
+
+    if (isInitialLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (isUnfilteredEmpty) {
+      return EmptyOrders(onAdd: _handleAddOrder);
+    }
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: _buildFilterStrip(),
+          ),
         ),
-      ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _refreshCurrentView,
+            child: ScrollEdgeFog(
+              fadeTopToTransparent: true,
+              topHeight: ledgerMonthFadeSafeTop,
+              bottomHeight: 104,
+              bottomInset: GlassNavigationBar.contentFadeInset(context),
+              child: MonthFastScrollLayout(
+                items: _monthGroups
+                    .map((g) => MonthScrollItem(year: g.year, month: g.month))
+                    .toList(),
+                onJumpToIndex: _scrollToGroup,
+                listRightInset: _monthGroups.length > 1
+                    ? monthFastScrollBarListRightInset
+                    : 0,
+                child: LedgerViewportClip(child: _buildGroupedList()),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildPageTitle(BuildContext context, String title) {
     final theme = Theme.of(context);
 
-    return Text(
-      title,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: theme.textTheme.headlineMedium?.copyWith(
-        color: AppPalette.textPrimaryFor(context),
-        fontWeight: FontWeight.w600,
+    return AppTypography.preserveOriginalSize(
+      child: Text(
+        title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.headlineMedium?.copyWith(
+          color: AppPalette.textPrimaryFor(context),
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -219,10 +250,6 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
     return CustomScrollView(
       controller: _scrollController,
       slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 28, 16, 12),
-          sliver: SliverToBoxAdapter(child: _buildFilterStrip()),
-        ),
         ..._buildSliverGroups(),
         if (_monthGroups.isEmpty)
           SliverFillRemaining(
@@ -231,9 +258,6 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
               icon: Icons.filter_alt_off,
               title: '无匹配订单',
               subtitle: '请调整筛选条件',
-              actionLabel: '清除筛选',
-              actionIcon: Icons.close,
-              onAction: _clearFilter,
             ),
           ),
         const SliverPadding(padding: EdgeInsets.only(bottom: 112)),
@@ -271,12 +295,6 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
     return LedgerFilterStrip(
       key: ValueKey('order-filter-strip-${_activeFilter.name}'),
       children: [
-        if (_activeFilter != _OrderLedgerFilter.all)
-          LedgerFilterChip(
-            label: '清除筛选',
-            icon: Icons.close,
-            onPressed: _clearFilter,
-          ),
         LedgerFilterChip(
           label: '全部 $_knownTotalCount',
           selected: _activeFilter == _OrderLedgerFilter.all,

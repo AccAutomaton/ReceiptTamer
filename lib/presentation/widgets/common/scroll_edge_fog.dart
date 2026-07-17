@@ -1,13 +1,14 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 /// Paints quiet paper-colored fades over the edges of a scrolling viewport.
 ///
-/// [ScrollEdgeFog] deliberately does not own or mask the scrollable. The fog
-/// sits above [child] in a [Stack], lets every pointer event pass through, and
-/// uses only linear gradients. This keeps long ledgers inexpensive while still
-/// letting fixed controls feel visually separate from the content beneath.
-/// Insets are opaque protected zones: scrolling content fades out before a
-/// fixed control instead of remaining visible behind it.
+/// The default mode paints linear gradients above [child] in a [Stack] and
+/// lets every pointer event pass through. Transparent page shells can opt into
+/// [fadeTopToTransparent], which applies one viewport-sized alpha mask at the
+/// top so the real background shows through instead of introducing a solid
+/// color band. Insets in the default mode remain opaque protected zones.
 class ScrollEdgeFog extends StatelessWidget {
   const ScrollEdgeFog({
     super.key,
@@ -19,6 +20,7 @@ class ScrollEdgeFog extends StatelessWidget {
     this.topInset = 0,
     this.bottomInset = 0,
     this.fogColor,
+    this.fadeTopToTransparent = false,
   }) : assert(topHeight >= 0 && topHeight < double.infinity),
        assert(bottomHeight >= 0 && bottomHeight < double.infinity),
        assert(topInset >= 0 && topInset < double.infinity),
@@ -27,6 +29,9 @@ class ScrollEdgeFog extends StatelessWidget {
   static const topFogKey = ValueKey<String>('scroll-edge-fog-top');
   static const bottomFogKey = ValueKey<String>('scroll-edge-fog-bottom');
   static const topGuardKey = ValueKey<String>('scroll-edge-fog-top-guard');
+  static const topTransparencyMaskKey = ValueKey<String>(
+    'scroll-edge-fog-top-transparency-mask',
+  );
   static const bottomGuardKey = ValueKey<String>(
     'scroll-edge-fog-bottom-guard',
   );
@@ -39,6 +44,15 @@ class ScrollEdgeFog extends StatelessWidget {
   final double topInset;
   final double bottomInset;
 
+  /// Reveals the real page background by fading the scrolling content itself
+  /// at the top edge instead of painting an opaque paper-colored gradient.
+  ///
+  /// This is intended for transparent page shells where a solid fog color
+  /// would create a visible horizontal band. Keep refresh or other overlay
+  /// controls outside this widget so only scrolling content is faded. The
+  /// bottom fog remains unchanged.
+  final bool fadeTopToTransparent;
+
   /// The solid color at the outer edge of each fade.
   ///
   /// Defaults to the current scaffold background so callers only need to set
@@ -48,13 +62,37 @@ class ScrollEdgeFog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final resolvedColor = fogColor ?? Theme.of(context).scaffoldBackgroundColor;
+    final useTransparentTopFade =
+        showTop && fadeTopToTransparent && topHeight > 0;
+    final content = useTransparentTopFade
+        ? ShaderMask(
+            key: topTransparencyMaskKey,
+            blendMode: BlendMode.dstIn,
+            shaderCallback: (bounds) {
+              final start = Offset(bounds.left, bounds.top + topInset);
+              final end = Offset(
+                bounds.left,
+                bounds.top + topInset + topHeight,
+              );
+
+              return ui.Gradient.linear(
+                start,
+                end,
+                const [Color(0x00000000), Color(0x2E000000), Color(0xFF000000)],
+                const [0, 0.38, 1],
+                TileMode.clamp,
+              );
+            },
+            child: child,
+          )
+        : child;
 
     return Stack(
       fit: StackFit.passthrough,
       clipBehavior: Clip.hardEdge,
       children: [
-        child,
-        if (showTop && topInset > 0)
+        content,
+        if (showTop && !useTransparentTopFade && topInset > 0)
           Positioned(
             key: topGuardKey,
             top: 0,
@@ -63,7 +101,7 @@ class ScrollEdgeFog extends StatelessWidget {
             height: topInset,
             child: _FogGuard(color: resolvedColor),
           ),
-        if (showTop)
+        if (showTop && !useTransparentTopFade)
           Positioned(
             key: topFogKey,
             top: topInset,

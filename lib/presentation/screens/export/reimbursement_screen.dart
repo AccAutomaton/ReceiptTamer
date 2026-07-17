@@ -266,7 +266,7 @@ class _ReimbursementScreenState extends ConsumerState<ReimbursementScreen> {
   Widget build(BuildContext context) {
     final orderState = ref.watch(exportProvider);
     final invoiceState = ref.watch(invoiceExportProvider);
-    final textScale = MediaQuery.textScalerOf(context).scale(1);
+    final textScale = AppTypography.accessibilityScaleOf(context);
 
     return Scaffold(
       extendBody: true,
@@ -360,10 +360,9 @@ class _ReimbursementTitleBar extends StatelessWidget {
   final ValueChanged<_ReimbursementExportBasis> onChanged;
 
   Future<void> _showBasisPicker(BuildContext context) async {
-    final mediaQuery = MediaQuery.of(context);
     final view = View.of(context);
     final safeTop = view.padding.top / view.devicePixelRatio;
-    final textScale = mediaQuery.textScaler.scale(1);
+    final textScale = AppTypography.accessibilityScaleOf(context);
     final toolbarHeight = textScale >= 1.6 ? 96.0 : 74.0;
     final pickerTop = safeTop + (toolbarHeight - 56) / 2 + 56;
     final selected = await showGeneralDialog<_ReimbursementExportBasis>(
@@ -417,11 +416,13 @@ class _ReimbursementTitleBar extends StatelessWidget {
         children: [
           Positioned(
             left: 16,
-            child: Text(
-              '报销',
-              style: theme.textTheme.headlineMedium?.copyWith(
-                color: AppPalette.textPrimaryFor(context),
-                fontWeight: FontWeight.w600,
+            child: AppTypography.preserveOriginalSize(
+              child: Text(
+                '报销',
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  color: AppPalette.textPrimaryFor(context),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),

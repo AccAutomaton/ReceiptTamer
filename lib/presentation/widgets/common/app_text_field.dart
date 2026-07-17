@@ -300,6 +300,7 @@ class _AppTextFieldState extends State<AppTextField> {
     }
 
     return RichText(
+      textScaler: MediaQuery.textScalerOf(context),
       text: TextSpan(
         children: [
           TextSpan(text: widget.label!, style: labelStyle),
@@ -607,6 +608,7 @@ class AppSelectField<T> extends StatelessWidget {
         if (label != null) ...[
           required
               ? RichText(
+                  textScaler: MediaQuery.textScalerOf(context),
                   text: TextSpan(
                     children: [
                       TextSpan(

@@ -135,7 +135,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('订单筛选在空结果中仍可清除并恢复全部', (tester) async {
+  testWidgets('订单筛选在空结果中仍可由全部恢复', (tester) async {
     _setViewport(tester);
 
     await tester.pumpWidget(
@@ -184,19 +184,13 @@ void main() {
     await tester.drag(find.byType(CustomScrollView), const Offset(0, 300));
     await tester.pumpAndSettle();
     expect(find.text('无匹配订单'), findsOneWidget);
-    final clearChip = find.widgetWithText(LedgerFilterChip, '清除筛选');
-    expect(clearChip, findsOneWidget);
-    final clearRect = tester.getRect(clearChip);
+    expect(find.text('清除筛选'), findsNothing);
+    final allChip = find.widgetWithText(LedgerFilterChip, '全部 2');
+    final allRect = tester.getRect(allChip);
     final stripRect = tester.getRect(find.byType(LedgerFilterStrip));
-    expect(clearRect.left, greaterThanOrEqualTo(stripRect.left));
-    expect(clearRect.right, lessThanOrEqualTo(stripRect.right));
-    expect(
-      clearRect.left,
-      lessThan(
-        tester.getRect(find.widgetWithText(LedgerFilterChip, '全部 2')).left,
-      ),
-    );
-    await tester.tap(clearChip);
+    expect(allRect.left, closeTo(stripRect.left, 0.01));
+    expect(allRect.right, lessThanOrEqualTo(stripRect.right));
+    await tester.tap(allChip);
     await tester.pumpAndSettle();
 
     expect(find.text('无匹配订单'), findsNothing);
@@ -229,18 +223,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('无匹配发票'), findsOneWidget);
 
-    final clearChip = find.widgetWithText(LedgerFilterChip, '清除筛选');
-    final clearRect = tester.getRect(clearChip);
+    expect(find.text('清除筛选'), findsNothing);
+    final allChip = find.widgetWithText(LedgerFilterChip, '全部 2');
+    final allRect = tester.getRect(allChip);
     final stripRect = tester.getRect(find.byType(LedgerFilterStrip));
-    expect(clearRect.left, greaterThanOrEqualTo(stripRect.left));
-    expect(clearRect.right, lessThanOrEqualTo(stripRect.right));
-    expect(
-      clearRect.left,
-      lessThan(
-        tester.getRect(find.widgetWithText(LedgerFilterChip, '全部 2')).left,
-      ),
-    );
-    await tester.tap(clearChip);
+    expect(allRect.left, closeTo(stripRect.left, 0.01));
+    expect(allRect.right, lessThanOrEqualTo(stripRect.right));
+    await tester.tap(allChip);
     await tester.pumpAndSettle();
 
     expect(find.text('无匹配发票'), findsNothing);

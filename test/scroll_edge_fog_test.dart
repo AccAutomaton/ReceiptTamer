@@ -114,7 +114,35 @@ void main() {
     );
   });
 
-  testWidgets('雾边不引入实时模糊或 ShaderMask', (tester) async {
+  testWidgets('顶部透明渐隐只遮罩内容且保留底部雾边', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 240,
+            height: 320,
+            child: ScrollEdgeFog(
+              fadeTopToTransparent: true,
+              topHeight: 28,
+              topInset: 12,
+              bottomHeight: 52,
+              child: ColoredBox(color: Colors.white),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final maskFinder = find.byKey(ScrollEdgeFog.topTransparencyMaskKey);
+    expect(maskFinder, findsOneWidget);
+    expect(tester.widget<ShaderMask>(maskFinder).blendMode, BlendMode.dstIn);
+    expect(find.byKey(ScrollEdgeFog.topFogKey), findsNothing);
+    expect(find.byKey(ScrollEdgeFog.topGuardKey), findsNothing);
+    expect(find.byKey(ScrollEdgeFog.bottomFogKey), findsOneWidget);
+    expect(tester.getSize(find.byKey(ScrollEdgeFog.bottomFogKey)).height, 52);
+  });
+
+  testWidgets('默认实色雾边不引入实时模糊或 ShaderMask', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(

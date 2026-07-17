@@ -24,7 +24,7 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final overview = ref.watch(homeOverviewProvider);
-    final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+    final textScale = AppTypography.accessibilityScaleOf(context);
     final toolbarHeight = (72 + (textScale - 1).clamp(0, 1) * 24).toDouble();
 
     return Scaffold(
@@ -73,13 +73,15 @@ class _HomeTitle extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '首页',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.headlineMedium?.copyWith(
-            color: AppPalette.textPrimaryFor(context),
-            fontWeight: FontWeight.w600,
+        AppTypography.preserveOriginalSize(
+          child: Text(
+            '首页',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.headlineMedium?.copyWith(
+              color: AppPalette.textPrimaryFor(context),
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ],
@@ -521,7 +523,7 @@ class _DirectoryTool extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+    final textScale = AppTypography.accessibilityScaleOf(context);
     final compact = MediaQuery.sizeOf(context).width < 380;
     final horizontalPadding = compact ? 12.0 : 16.0;
 
@@ -692,7 +694,7 @@ class _RecentOrderRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+    final textScale = AppTypography.accessibilityScaleOf(context);
     final stacked = textScale >= 1.7;
     final route = '/orders/${item.id}';
 

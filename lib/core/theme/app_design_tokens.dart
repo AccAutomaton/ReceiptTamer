@@ -123,6 +123,13 @@ class AppPalette {
 class AppTypography {
   const AppTypography._();
 
+  /// The single logical-pixel step applied to application copy.
+  ///
+  /// This is composed with the platform [TextScaler] rather than baked into
+  /// individual styles so explicit widget font sizes and Material defaults
+  /// move together while accessibility scaling remains intact.
+  static const uiFontSizeStep = 1.0;
+
   static const primaryFamily = 'Tinos';
   static const serifFallback = <String>['NotoSerifSC'];
 
@@ -133,6 +140,56 @@ class AppTypography {
   static const utilityFamily = primaryFamily;
 
   static const tabularFigures = <FontFeature>[FontFeature.tabularFigures()];
+
+  static TextScaler enlargeUiText(TextScaler platformScaler) =>
+      platformScaler is _UiTextStepScaler
+      ? platformScaler
+      : _UiTextStepScaler(platformScaler);
+
+  /// Applies the app-wide font-size step while retaining the untouched
+  /// platform scaler in a separate scope. Material widgets may clamp their
+  /// descendant [MediaQuery] (for example AppBar titles), so the separate
+  /// scope is required for reliable local opt-out.
+  static Widget applyUiTextSize({
+    required BuildContext context,
+    required Widget child,
+  }) {
+    final mediaQuery = MediaQuery.of(context);
+    final currentScaler = mediaQuery.textScaler;
+    final platformScaler = currentScaler is _UiTextStepScaler
+        ? currentScaler.platformScaler
+        : currentScaler;
+
+    return _PlatformTextScalerScope(
+      scaler: platformScaler,
+      child: MediaQuery(
+        data: mediaQuery.copyWith(textScaler: enlargeUiText(platformScaler)),
+        child: child,
+      ),
+    );
+  }
+
+  /// Removes the app's fixed size step for copy that must keep its original
+  /// size, currently the four primary page titles in the upper-left corner.
+  /// Existing Material upper bounds (such as AppBar's title scale cap) remain
+  /// effective, so accessibility behavior is unchanged as well.
+  static Widget preserveOriginalSize({required Widget child}) =>
+      _PreserveOriginalTextSize(child: child);
+
+  /// Returns only the user's accessibility scale, excluding the app's fixed
+  /// one-pixel typography step. Layout breakpoints must use this value so the
+  /// normal UI size does not accidentally activate large-text layouts.
+  static double accessibilityScaleOf(BuildContext context) {
+    final scopedPlatformScaler = _PlatformTextScalerScope.maybeOf(context);
+    if (scopedPlatformScaler != null) {
+      return scopedPlatformScaler.scale(14) / 14;
+    }
+    final scaler = MediaQuery.textScalerOf(context);
+    final platformScaler = scaler is _UiTextStepScaler
+        ? scaler.platformScaler
+        : scaler;
+    return platformScaler.scale(14) / 14;
+  }
 
   static TextTheme textTheme(Brightness brightness) {
     final primary = brightness == Brightness.dark
@@ -306,6 +363,112 @@ class AppTypography {
     letterSpacing: 0.24,
     color: color ?? AppPalette.textSecondaryFor(context),
   );
+}
+
+final class _UiTextStepScaler extends TextScaler {
+  const _UiTextStepScaler(this.platformScaler);
+
+  final TextScaler platformScaler;
+
+  @override
+  double scale(double fontSize) =>
+      platformScaler.scale(fontSize + AppTypography.uiFontSizeStep);
+
+  @override
+  double get textScaleFactor => platformScaler.scale(14) / 14;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is _UiTextStepScaler && other.platformScaler == platformScaler;
+
+  @override
+  int get hashCode => platformScaler.hashCode;
+
+  @override
+  String toString() =>
+      '$platformScaler with +${AppTypography.uiFontSizeStep}px';
+}
+
+/// Uses the original platform size while retaining any maximum scale already
+/// imposed by an ancestor Material widget. The app-wide additive scaler is
+/// always larger than the platform result, so choosing the smaller effective
+/// size removes only that step or honors the ancestor cap.
+final class _OriginalSizeTextScaler extends TextScaler {
+  const _OriginalSizeTextScaler({
+    required this.platformScaler,
+    required this.effectiveScaler,
+  });
+
+  final TextScaler platformScaler;
+  final TextScaler effectiveScaler;
+
+  @override
+  double scale(double fontSize) {
+    final originalSize = platformScaler.scale(fontSize);
+    final effectiveSize = effectiveScaler.scale(fontSize);
+    return originalSize <= effectiveSize ? originalSize : effectiveSize;
+  }
+
+  @override
+  double get textScaleFactor => scale(14) / 14;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is _OriginalSizeTextScaler &&
+          other.platformScaler == platformScaler &&
+          other.effectiveScaler == effectiveScaler;
+
+  @override
+  int get hashCode => Object.hash(platformScaler, effectiveScaler);
+}
+
+/// Resolves its scaler only after it has been mounted at the final text
+/// location. AppBar adds its 1.34x MediaQuery cap around the title widget after
+/// the page builds; resolving eagerly would insert an inner MediaQuery that
+/// accidentally overrides that cap.
+class _PreserveOriginalTextSize extends StatelessWidget {
+  const _PreserveOriginalTextSize({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final effectiveScaler = mediaQuery.textScaler;
+    final scopedPlatformScaler = _PlatformTextScalerScope.maybeOf(context);
+    final platformScaler =
+        scopedPlatformScaler ??
+        (effectiveScaler is _UiTextStepScaler
+            ? effectiveScaler.platformScaler
+            : null);
+    if (platformScaler == null) return child;
+
+    return MediaQuery(
+      data: mediaQuery.copyWith(
+        textScaler: _OriginalSizeTextScaler(
+          platformScaler: platformScaler,
+          effectiveScaler: effectiveScaler,
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _PlatformTextScalerScope extends InheritedWidget {
+  const _PlatformTextScalerScope({required this.scaler, required super.child});
+
+  final TextScaler scaler;
+
+  static TextScaler? maybeOf(BuildContext context) => context
+      .dependOnInheritedWidgetOfExactType<_PlatformTextScalerScope>()
+      ?.scaler;
+
+  @override
+  bool updateShouldNotify(_PlatformTextScalerScope oldWidget) =>
+      scaler != oldWidget.scaler;
 }
 
 class AppSpacing {

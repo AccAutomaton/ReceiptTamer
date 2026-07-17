@@ -229,7 +229,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
   @override
   Widget build(BuildContext context) {
     final invoiceState = ref.watch(invoiceProvider);
-    final textScale = MediaQuery.textScalerOf(context).scale(1);
+    final textScale = AppTypography.accessibilityScaleOf(context);
     if (invoiceState.invoices.isEmpty) {
       _monthGroups = [];
     }
@@ -238,6 +238,10 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
       extendBody: true,
       backgroundColor: Colors.transparent,
       appBar: AppBar(
+        forceMaterialTransparency: true,
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.transparent,
         centerTitle: false,
         titleSpacing: 16,
         toolbarHeight: textScale >= 1.6 ? 96 : 74,
@@ -246,6 +250,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
           _filterOrder != null ? '${_filterOrder!.shopName} 的发票' : '发票列表',
         ),
         elevation: 0,
+        scrolledUnderElevation: 0,
         actions: [
           if (widget.filterOrderId == null) ...[
             AppIconButton(
@@ -263,59 +268,98 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
           ],
         ],
       ),
-      body: ScrollEdgeFog(
+      body:
+          invoiceState.isLoading &&
+              invoiceState.invoices.isEmpty &&
+              _activeFilter == _InvoiceLedgerFilter.all
+          ? _buildScrollableBody(
+              context,
+              const Center(child: CircularProgressIndicator()),
+            )
+          : invoiceState.invoices.isEmpty &&
+                _activeFilter == _InvoiceLedgerFilter.all
+          ? _buildScrollableBody(
+              context,
+              EmptyInvoices(onAdd: _handleAddInvoice),
+            )
+          : invoiceState.invoices.isEmpty
+          ? _buildLedgerBody(context)
+          : FutureBuilder<Map<int, int>>(
+              future: _orderCountsFutureFor(invoiceState),
+              builder: (context, snapshot) {
+                if (snapshot.hasData) {
+                  _invoiceOrderCounts = snapshot.data!;
+                  if (_activeFilter == _InvoiceLedgerFilter.all &&
+                      !invoiceState.isLoading) {
+                    _knownTotalCount = invoiceState.invoices.length;
+                    _knownLinkedCount = invoiceState.invoices.where((item) {
+                      final id = item.id;
+                      return id != null && (_invoiceOrderCounts[id] ?? 0) > 0;
+                    }).length;
+                  }
+                }
+                _monthGroups = _groupInvoicesByMonth(invoiceState.invoices);
+
+                return _buildLedgerBody(context);
+              },
+            ),
+    );
+  }
+
+  Widget _buildLedgerBody(BuildContext context) {
+    final groupedList = _buildGroupedList();
+    final ledger = MonthFastScrollLayout(
+      items: _monthGroups
+          .map((group) => MonthScrollItem(year: group.year, month: group.month))
+          .toList(),
+      onJumpToIndex: _scrollToGroup,
+      listRightInset: _monthGroups.length > 1
+          ? monthFastScrollBarListRightInset
+          : 0,
+      child: widget.filterOrderId == null
+          ? LedgerViewportClip(child: groupedList)
+          : groupedList,
+    );
+
+    if (widget.filterOrderId != null) {
+      return _buildScrollableBody(context, ledger);
+    }
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: _buildFilterStrip(),
+          ),
+        ),
+        Expanded(
+          child: _buildScrollableBody(
+            context,
+            ledger,
+            fadeTopToTransparent: true,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildScrollableBody(
+    BuildContext context,
+    Widget child, {
+    bool showTop = true,
+    bool fadeTopToTransparent = true,
+  }) {
+    return RefreshIndicator(
+      onRefresh: _refreshCurrentView,
+      child: ScrollEdgeFog(
+        showTop: showTop,
+        fadeTopToTransparent: fadeTopToTransparent,
         topHeight: ledgerMonthFadeSafeTop,
         bottomHeight: 104,
         bottomInset: GlassNavigationBar.contentFadeInset(context),
-        child: RefreshIndicator(
-          onRefresh: _refreshCurrentView,
-          child:
-              invoiceState.isLoading &&
-                  invoiceState.invoices.isEmpty &&
-                  _activeFilter == _InvoiceLedgerFilter.all
-              ? const Center(child: CircularProgressIndicator())
-              : invoiceState.invoices.isEmpty &&
-                    _activeFilter == _InvoiceLedgerFilter.all
-              ? EmptyInvoices(onAdd: _handleAddInvoice)
-              : invoiceState.invoices.isEmpty
-              ? MonthFastScrollLayout(
-                  items: const [],
-                  onJumpToIndex: _scrollToGroup,
-                  child: _buildGroupedList(),
-                )
-              : FutureBuilder<Map<int, int>>(
-                  future: _orderCountsFutureFor(invoiceState),
-                  builder: (context, snapshot) {
-                    if (snapshot.hasData) {
-                      _invoiceOrderCounts = snapshot.data!;
-                      if (_activeFilter == _InvoiceLedgerFilter.all &&
-                          !invoiceState.isLoading) {
-                        _knownTotalCount = invoiceState.invoices.length;
-                        _knownLinkedCount = invoiceState.invoices.where((item) {
-                          final id = item.id;
-                          return id != null &&
-                              (_invoiceOrderCounts[id] ?? 0) > 0;
-                        }).length;
-                      }
-                    }
-                    _monthGroups = _groupInvoicesByMonth(invoiceState.invoices);
-
-                    return MonthFastScrollLayout(
-                      items: _monthGroups
-                          .map(
-                            (g) =>
-                                MonthScrollItem(year: g.year, month: g.month),
-                          )
-                          .toList(),
-                      onJumpToIndex: _scrollToGroup,
-                      listRightInset: _monthGroups.length > 1
-                          ? monthFastScrollBarListRightInset
-                          : 0,
-                      child: _buildGroupedList(),
-                    );
-                  },
-                ),
-        ),
+        child: child,
       ),
     );
   }
@@ -323,13 +367,15 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
   Widget _buildPageTitle(BuildContext context, String title) {
     final theme = Theme.of(context);
 
-    return Text(
-      title,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: theme.textTheme.headlineMedium?.copyWith(
-        color: AppPalette.textPrimaryFor(context),
-        fontWeight: FontWeight.w600,
+    return AppTypography.preserveOriginalSize(
+      child: Text(
+        title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.headlineMedium?.copyWith(
+          color: AppPalette.textPrimaryFor(context),
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -341,12 +387,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
     return CustomScrollView(
       controller: _scrollController,
       slivers: [
-        if (widget.filterOrderId == null)
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 28, 16, 12),
-            sliver: SliverToBoxAdapter(child: _buildFilterStrip()),
-          )
-        else
+        if (widget.filterOrderId != null)
           const SliverPadding(padding: EdgeInsets.only(top: 28)),
         ..._buildSliverGroups(),
         if (_monthGroups.isEmpty && widget.filterOrderId == null)
@@ -356,9 +397,6 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
               icon: Icons.filter_alt_off,
               title: '无匹配发票',
               subtitle: '请调整筛选条件',
-              actionLabel: '清除筛选',
-              actionIcon: Icons.close,
-              onAction: _clearFilter,
             ),
           ),
         const SliverPadding(padding: EdgeInsets.only(bottom: 112)),
@@ -399,12 +437,6 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
     return LedgerFilterStrip(
       key: ValueKey('invoice-filter-strip-${_activeFilter.name}'),
       children: [
-        if (_activeFilter != _InvoiceLedgerFilter.all)
-          LedgerFilterChip(
-            label: '清除筛选',
-            icon: Icons.close,
-            onPressed: _clearFilter,
-          ),
         LedgerFilterChip(
           label: '全部 $_knownTotalCount',
           selected: _activeFilter == _InvoiceLedgerFilter.all,

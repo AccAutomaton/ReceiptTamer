@@ -6,6 +6,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'router/app_router.dart';
+import 'core/theme/app_design_tokens.dart';
 import 'core/theme/app_theme.dart';
 import 'core/services/log_service.dart';
 import 'core/services/log_config.dart';
@@ -164,6 +165,10 @@ class _AppState extends ConsumerState<App> {
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
       routerConfig: router,
+      builder: (context, child) => AppTypography.applyUiTextSize(
+        context: context,
+        child: child ?? const SizedBox.shrink(),
+      ),
       onNavigationNotification: _handleNavigationNotification,
       // 本地化配置 - 支持中文
       localizationsDelegates: const [

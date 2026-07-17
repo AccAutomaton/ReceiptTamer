@@ -7,6 +7,74 @@ enum LedgerRelationTone { neutral, linked, action }
 const ledgerMonthFadeSafeTop = 28.0;
 const ledgerMonthSheetRadius = 16.0;
 
+/// Clips a ledger scroll viewport to the same rounded top edge as its pinned
+/// month sheet.
+///
+/// A pinned sliver header is transparent outside its rounded corners. Without
+/// this viewport clip, rows scrolling behind that header can show through the
+/// corner cut-outs as square paper patches. Clipping the scrolling content —
+/// instead of painting a solid guard over it — keeps the page background
+/// genuinely continuous around the sheet.
+class LedgerViewportClip extends StatelessWidget {
+  final Widget child;
+  final double horizontalInset;
+  final double topRadius;
+
+  const LedgerViewportClip({
+    super.key,
+    required this.child,
+    this.horizontalInset = 16,
+    this.topRadius = ledgerMonthSheetRadius,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipPath(
+      clipper: _LedgerViewportClipper(
+        horizontalInset: horizontalInset,
+        topRadius: topRadius,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: child,
+    );
+  }
+}
+
+class _LedgerViewportClipper extends CustomClipper<Path> {
+  final double horizontalInset;
+  final double topRadius;
+
+  const _LedgerViewportClipper({
+    required this.horizontalInset,
+    required this.topRadius,
+  });
+
+  @override
+  Path getClip(Size size) {
+    final inset = horizontalInset.clamp(0, size.width / 2).toDouble();
+    final radius = Radius.circular(topRadius);
+    final roundedTop = RRect.fromRectAndCorners(
+      Rect.fromLTRB(inset, 0, size.width - inset, size.height),
+      topLeft: radius,
+      topRight: radius,
+    );
+    final fullWidthStart = topRadius.clamp(0, size.height).toDouble();
+
+    return Path()
+      ..addRRect(roundedTop)
+      // Only the two corner cut-outs need masking. Restore the full viewport
+      // below the radius so empty states and edge-originated drag gestures are
+      // never constrained by the ledger sheet's horizontal inset.
+      ..addRect(Rect.fromLTRB(0, fullWidthStart, size.width, size.height));
+  }
+
+  @override
+  bool shouldReclip(covariant _LedgerViewportClipper oldClipper) {
+    return oldClipper.horizontalInset != horizontalInset ||
+        oldClipper.topRadius != topRadius;
+  }
+}
+
 class LedgerFilterStrip extends StatelessWidget {
   final List<Widget> children;
 
@@ -238,7 +306,10 @@ double ledgerMonthHeaderExtent(BuildContext context, {double? sheetWidth}) {
   // variance below the copy so the 28dp fade-safe band remains untouched.
   const fontMetricSafety = 4.0;
   final scaler = MediaQuery.textScalerOf(context);
-  final scale = scaler.scale(1);
+  // Use a representative body size instead of scale(1). The app's additive
+  // one-pixel type step would make scale(1) report 2 at the default platform
+  // scale and almost double the sticky-header extent.
+  final scale = scaler.scale(14) / 14;
   final estimatedSheetWidth =
       sheetWidth ?? MediaQuery.sizeOf(context).width - 32;
   final usesStackedLayout = estimatedSheetWidth < 280 || scaler.scale(14) >= 22;
