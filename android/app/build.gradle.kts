@@ -103,12 +103,16 @@ android {
         noCompress += listOf("mnn", "json", "txt", "weight")
     }
 
-    if (mnnArm64Only && arm64OnlyFlutterTarget) {
-        // MNN LLM runtime is arm64-only. If x86_64 libraries remain in an
-        // arm64-target APK, Android may start a translated AVD process as x86_64
-        // and fail to load the arm64 MNN libraries.
-        packaging {
-            jniLibs {
+    packaging {
+        jniLibs {
+            // Compress native libraries in the APK; PackageManager extracts them
+            // once during installation to reduce the distributed APK size.
+            useLegacyPackaging = true
+
+            if (mnnArm64Only && arm64OnlyFlutterTarget) {
+                // MNN LLM runtime is arm64-only. If x86_64 libraries remain in an
+                // arm64-target APK, Android may start a translated AVD process as x86_64
+                // and fail to load the arm64 MNN libraries.
                 excludes += listOf("lib/x86_64/**", "lib/armeabi-v7a/**")
             }
         }

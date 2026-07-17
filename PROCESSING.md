@@ -467,6 +467,8 @@ AI 识别按用户设置路由：
 
 ## 构建与运行
 
+Android APK 使用 legacy JNI packaging：native libraries 在 APK 内压缩，并由系统在安装或升级时一次性解压，以减小 GitHub Release 的下载体积。该策略会增加安装/升级耗时及安装后的磁盘占用，但不会在每次应用启动时重复解压。
+
 ```bash
 # 开发调试
 flutter run
