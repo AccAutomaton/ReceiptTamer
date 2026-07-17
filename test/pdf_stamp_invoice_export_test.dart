@@ -290,18 +290,20 @@ void main() {
     final resolver = _TrackingFontResolver();
     final fontManager = pdfrx.PdfFontManager(resolvers: [resolver]);
 
-    await PdfrxFontService.instance.prepareFontManagerForPdfBytes(
-      fontManager,
-      utf8.encode(
-        '1 0 obj <</Type/FontDescriptor/FontName/UNBXXO+SimSun'
-        '/FontFile2 4 0 R>> endobj '
-        '2 0 obj <</Type/Font/Subtype/CIDFontType2'
-        '/BaseFont/UNBXXO+SimSun/FontDescriptor 1 0 R>> endobj '
-        '3 0 obj <</Type/Font/Subtype/Type0/BaseFont/UNBXXO+SimSun'
-        '/DescendantFonts[2 0 R]>> endobj',
-      ),
-    );
+    final fallbackCount = await PdfrxFontService.instance
+        .prepareFontManagerForPdfBytes(
+          fontManager,
+          utf8.encode(
+            '1 0 obj <</Type/FontDescriptor/FontName/UNBXXO+SimSun'
+            '/FontFile2 4 0 R>> endobj '
+            '2 0 obj <</Type/Font/Subtype/CIDFontType2'
+            '/BaseFont/UNBXXO+SimSun/FontDescriptor 1 0 R>> endobj '
+            '3 0 obj <</Type/Font/Subtype/Type0/BaseFont/UNBXXO+SimSun'
+            '/DescendantFonts[2 0 R]>> endobj',
+          ),
+        );
 
+    expect(fallbackCount, 0);
     expect(resolver.resolvedFaces, isEmpty);
   });
 
@@ -311,18 +313,20 @@ void main() {
       final resolver = _TrackingFontResolver();
       final fontManager = pdfrx.PdfFontManager(resolvers: [resolver]);
 
-      await PdfrxFontService.instance.prepareFontManagerForPdfBytes(
-        fontManager,
-        utf8.encode(
-          '1 0 obj <</Type/FontDescriptor/FontName/STKaiti-Regular>> endobj '
-          '2 0 obj <</Type/Font/Subtype/CIDFontType0'
-          '/BaseFont/STKaiti-Regular/FontDescriptor 1 0 R>> endobj '
-          '3 0 obj <</Type/Font/Subtype/Type0'
-          '/BaseFont/STKaiti-Regular-Identity-H'
-          '/DescendantFonts[2 0 R]>> endobj',
-        ),
-      );
+      final fallbackCount = await PdfrxFontService.instance
+          .prepareFontManagerForPdfBytes(
+            fontManager,
+            utf8.encode(
+              '1 0 obj <</Type/FontDescriptor/FontName/STKaiti-Regular>> endobj '
+              '2 0 obj <</Type/Font/Subtype/CIDFontType0'
+              '/BaseFont/STKaiti-Regular/FontDescriptor 1 0 R>> endobj '
+              '3 0 obj <</Type/Font/Subtype/Type0'
+              '/BaseFont/STKaiti-Regular-Identity-H'
+              '/DescendantFonts[2 0 R]>> endobj',
+            ),
+          );
 
+      expect(fallbackCount, 1);
       expect(resolver.resolvedFaces, ['STKaiti-Regular']);
     },
   );

@@ -92,8 +92,14 @@ class MealProofExportService {
     required List<Order> orders,
     required Future<List<int>> Function(int) getInvoiceIdsForOrder,
     required Future<Invoice?> Function(int) getInvoiceById,
+    required Future<List<int>> Function(int) getOrderIdsForInvoice,
+    required Future<Order?> Function(int) getOrderById,
   }) async {
     final items = <MealProofItem>[];
+    final selectedOrdersById = <int, Order>{
+      for (final order in orders)
+        if (order.id != null) order.id!: order,
+    };
 
     // Group orders by their associated invoice
     final invoiceToOrdersMap = <int, List<Order>>{};
@@ -125,16 +131,49 @@ class MealProofExportService {
       final invoice = await getInvoiceById(invoiceId);
       if (invoice == null) continue;
 
+      // Proration must use every order linked to the invoice. A quick export
+      // may contain only part of that invoice's orders, but changing the
+      // denominator would assign the full invoice amount to the selected
+      // subset and produce an incorrect label.
+      final allLinkedOrderIds = (await getOrderIdsForInvoice(
+        invoiceId,
+      )).toSet();
+      final selectedOrderIds = ordersForInvoice
+          .map((order) => order.id)
+          .whereType<int>()
+          .toSet();
+      if (!allLinkedOrderIds.containsAll(selectedOrderIds)) {
+        throw StateError('选择中的订单已不再全部关联发票 $invoiceId');
+      }
+
+      final allLinkedOrders = <Order>[];
+      for (final orderId in allLinkedOrderIds) {
+        final order =
+            selectedOrdersById[orderId] ?? await getOrderById(orderId);
+        if (order != null) {
+          allLinkedOrders.add(order);
+        }
+      }
+
       // Use shared proration utility
       final prorationResult = InvoiceProrationUtil.calculate(
         invoice: invoice,
-        orders: ordersForInvoice,
+        orders: allLinkedOrders,
       );
 
-      for (final proratedOrder in prorationResult.orderAmounts) {
+      final proratedByOrderId = <int, ProratedOrderAmount>{
+        for (final amount in prorationResult.orderAmounts)
+          if (amount.order.id != null) amount.order.id!: amount,
+      };
+
+      for (final selectedOrder in ordersForInvoice) {
+        final proratedOrder = proratedByOrderId[selectedOrder.id];
+        if (proratedOrder == null) {
+          throw StateError('订单 ${selectedOrder.id} 已不再关联发票 $invoiceId');
+        }
         items.add(
           MealProofItem(
-            order: proratedOrder.order,
+            order: selectedOrder,
             invoice: invoice,
             proratedInvoiceAmount: proratedOrder.proratedInvoiceAmount,
             totalInvoiceAmount: invoice.totalAmount,

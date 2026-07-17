@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui';
@@ -198,7 +197,6 @@ class InvoiceAttachmentUnavailableException implements Exception {
 /// Generates PDF documents from selected invoices
 class InvoiceExportService {
   static const double _pdfRasterDpi = 200;
-  static const Duration _pdfFontLoadTimeout = Duration(milliseconds: 250);
   static const Duration _slowInvoiceStepThreshold = Duration(milliseconds: 500);
 
   /// Prepare invoice export items from selected invoices and their orders
@@ -306,6 +304,7 @@ class InvoiceExportService {
     // Define fonts - use TrueType font for Chinese characters
     final labelFont = await PdfFontService.instance.getChineseFont(9);
     final exportStopwatch = Stopwatch()..start();
+    final diagnostics = _InvoiceExportDiagnostics();
 
     logService.diagBatch(LogConfig.moduleFile, {
       'invoice_export_items': items.length,
@@ -347,6 +346,7 @@ class InvoiceExportService {
           labelMargin: labelMargin,
           showTimeLabel: showTimeLabel,
           showRemark: showRemark,
+          diagnostics: diagnostics,
         );
 
         // Draw second invoice (bottom half) if exists
@@ -364,6 +364,7 @@ class InvoiceExportService {
             labelMargin: labelMargin,
             showTimeLabel: showTimeLabel,
             showRemark: showRemark,
+            diagnostics: diagnostics,
           );
         }
       }
@@ -377,11 +378,16 @@ class InvoiceExportService {
       await file.writeAsBytes(bytes);
 
       exportStopwatch.stop();
-      logService.diag(
-        LogConfig.moduleFile,
-        'invoice_export_total_ms',
-        exportStopwatch.elapsedMilliseconds,
-      );
+      logService.diagBatch(LogConfig.moduleFile, {
+        'invoice_export_total_ms': exportStopwatch.elapsedMilliseconds,
+        'invoice_export_static_fallback_documents':
+            diagnostics.staticFallbackDocuments,
+        'invoice_export_static_fallback_fonts': diagnostics.staticFallbackFonts,
+        'invoice_export_dynamic_missing_events':
+            diagnostics.dynamicMissingEvents,
+        'invoice_export_dynamic_missing_fonts': diagnostics.dynamicMissingFonts,
+        'invoice_export_font_load_ms': diagnostics.fontLoadMilliseconds,
+      });
     } catch (e) {
       document.dispose();
       rethrow;
@@ -400,6 +406,7 @@ class InvoiceExportService {
     required String Function(String) getFilePath,
     required _LabelPosition labelPosition,
     required double labelMargin,
+    required _InvoiceExportDiagnostics diagnostics,
     bool showTimeLabel = true,
     bool showRemark = true,
   }) async {
@@ -422,6 +429,7 @@ class InvoiceExportService {
           y: y,
           width: width,
           height: height,
+          diagnostics: diagnostics,
         );
       } else {
         await _drawImageInvoice(
@@ -603,10 +611,14 @@ class InvoiceExportService {
     required double y,
     required double width,
     required double height,
+    required _InvoiceExportDiagnostics diagnostics,
   }) async {
     try {
       final renderStopwatch = Stopwatch()..start();
-      final renderedPage = await _renderFirstPdfPageToPng(pdfBytes);
+      final renderedPage = await _renderFirstPdfPageToPng(
+        pdfBytes,
+        diagnostics: diagnostics,
+      );
       renderStopwatch.stop();
       if (renderedPage == null) {
         throw const FormatException('无法渲染发票 PDF 首页');
@@ -650,8 +662,9 @@ class InvoiceExportService {
 
   /// Render the first PDF page to a PNG with annotations/forms included.
   static Future<_RenderedPdfPage?> _renderFirstPdfPageToPng(
-    List<int> pdfBytes,
-  ) async {
+    List<int> pdfBytes, {
+    required _InvoiceExportDiagnostics diagnostics,
+  }) async {
     final pdfData = pdfBytes is Uint8List
         ? pdfBytes
         : Uint8List.fromList(pdfBytes);
@@ -659,15 +672,17 @@ class InvoiceExportService {
 
     try {
       final fontManager = PdfrxFontService.instance.createFontManager();
-      await PdfrxFontService.instance.prepareFontManagerForPdfBytes(
-        fontManager,
-        pdfData,
-      );
+      final staticFallbackCount = await PdfrxFontService.instance
+          .prepareFontManagerForPdfBytes(fontManager, pdfData);
+      if (staticFallbackCount > 0) {
+        diagnostics.staticFallbackDocuments++;
+        diagnostics.staticFallbackFonts += staticFallbackCount;
+      }
 
       final document = await _openPdfDocumentAfterFontWarmup(
         pdfData,
         fontManager,
-        waitForFontLoad: true,
+        diagnostics: diagnostics,
       );
       try {
         if (document.pages.isEmpty) return null;
@@ -706,7 +721,7 @@ class InvoiceExportService {
           pageImage.dispose();
         }
       } finally {
-        document.dispose();
+        await document.dispose();
       }
     } finally {
       await PdfrxFontService.instance.clearLoadedPdfiumFonts();
@@ -716,44 +731,95 @@ class InvoiceExportService {
   static Future<pdfrx.PdfDocument> _openPdfDocumentAfterFontWarmup(
     Uint8List pdfData,
     pdfrx.PdfFontManager fontManager, {
-    required bool waitForFontLoad,
+    required _InvoiceExportDiagnostics diagnostics,
   }) async {
     final document = await pdfrx.PdfDocument.openData(pdfData);
     if (document.pages.isEmpty) return document;
 
-    final loadResult = Completer<pdfrx.PdfFontLoadResult?>();
-    final association = document.associateFontManager(
-      fontManager,
-      onLoadComplete: (result) {
-        if (!loadResult.isCompleted) {
-          loadResult.complete(result);
-        }
-      },
-    );
+    final missingFonts = <pdfrx.PdfFontQuery>[];
+    final subscription = document.events.listen((event) {
+      if (event is pdfrx.PdfDocumentMissingFontsEvent) {
+        diagnostics.dynamicMissingEvents++;
+        missingFonts.addAll(event.missingFonts);
+      }
+    });
 
-    var shouldReturnInitialDocument = true;
+    pdfrx.PdfDocument? resultDocument;
+    var subscriptionCancelled = false;
     try {
       await document.reloadPages(pageNumbersToReload: const [1]);
       await _renderPdfPageWarmup(document.pages[0]);
-      if (!waitForFontLoad) return document;
 
-      final result = await loadResult.future.timeout(
-        _pdfFontLoadTimeout,
-        onTimeout: () => null,
-      );
+      // PdfPage.render starts missing-font collection on PDFium's worker but
+      // does not await it. A no-op queued on the same worker gives the event a
+      // deterministic completion barrier, so PDFs without missing fonts no
+      // longer pay a fixed timeout on every page.
+      await _waitForPdfWorkerEvents();
 
-      if (result?.hasLoadedFonts ?? false) {
-        shouldReturnInitialDocument = false;
-        return await pdfrx.PdfDocument.openData(pdfData);
+      if (missingFonts.isEmpty) {
+        resultDocument = document;
+      } else {
+        diagnostics.dynamicMissingFonts += missingFonts.length;
+        final fontLoadStopwatch = Stopwatch()..start();
+        final result = await fontManager.loadMissingFonts(missingFonts);
+        fontLoadStopwatch.stop();
+        diagnostics.fontLoadMilliseconds +=
+            fontLoadStopwatch.elapsedMilliseconds;
+
+        resultDocument = result.hasLoadedFonts
+            ? await pdfrx.PdfDocument.openData(pdfData)
+            : document;
       }
 
-      return document;
-    } finally {
-      association.dispose();
-      if (!shouldReturnInitialDocument) {
-        document.dispose();
+      await subscription.cancel();
+      subscriptionCancelled = true;
+      if (!identical(resultDocument, document)) {
+        await document.dispose();
       }
+      return resultDocument;
+    } catch (error, stackTrace) {
+      if (!subscriptionCancelled) {
+        try {
+          await subscription.cancel();
+        } catch (cleanupError, cleanupStackTrace) {
+          logService.e(
+            LogConfig.moduleFile,
+            '取消 PDF 缺字事件订阅失败',
+            cleanupError,
+            cleanupStackTrace,
+          );
+        }
+      }
+
+      if (resultDocument != null && !identical(resultDocument, document)) {
+        await _disposePdfDocumentAfterFailure(resultDocument);
+      }
+      await _disposePdfDocumentAfterFailure(document);
+      Error.throwWithStackTrace(error, stackTrace);
     }
+  }
+
+  static Future<void> _disposePdfDocumentAfterFailure(
+    pdfrx.PdfDocument document,
+  ) async {
+    try {
+      await document.dispose();
+    } catch (cleanupError, cleanupStackTrace) {
+      logService.e(
+        LogConfig.moduleFile,
+        '释放 PDF 文档失败',
+        cleanupError,
+        cleanupStackTrace,
+      );
+    }
+  }
+
+  static Future<void> _waitForPdfWorkerEvents() async {
+    final entryFunctions = pdfrx.PdfrxEntryFunctions.instance;
+    if (entryFunctions.backendType == pdfrx.PdfrxBackendType.pdfium) {
+      await entryFunctions.compute<int, int>((value) => value, 0);
+    }
+    await Future<void>.delayed(Duration.zero);
   }
 
   static Future<void> _renderPdfPageWarmup(pdfrx.PdfPage page) async {
@@ -840,4 +906,12 @@ class _RenderedPdfPage {
   final Uint8List pngBytes;
   final int width;
   final int height;
+}
+
+class _InvoiceExportDiagnostics {
+  int staticFallbackDocuments = 0;
+  int staticFallbackFonts = 0;
+  int dynamicMissingEvents = 0;
+  int dynamicMissingFonts = 0;
+  int fontLoadMilliseconds = 0;
 }

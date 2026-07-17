@@ -19,10 +19,7 @@ class ProrationResult {
   final List<ProratedOrderAmount> orderAmounts;
   final bool needsProration;
 
-  ProrationResult({
-    required this.orderAmounts,
-    required this.needsProration,
-  });
+  ProrationResult({required this.orderAmounts, required this.needsProration});
 }
 
 /// Utility class for invoice amount proration
@@ -30,8 +27,9 @@ class ProrationResult {
 class InvoiceProrationUtil {
   /// Calculate prorated invoice amounts for all orders linked to an invoice
   ///
-  /// Proration is needed when multiple orders are linked to one invoice
-  /// and the invoice amount differs from the sum of order amounts.
+  /// A proration label is needed whenever multiple orders share one invoice.
+  /// The amounts only need proportional scaling when the invoice amount differs
+  /// from the sum of the linked order amounts.
   ///
   /// The algorithm ensures:
   /// - Sum of prorated amounts exactly equals invoice total (no rounding error)
@@ -62,20 +60,27 @@ class InvoiceProrationUtil {
     // Calculate total order amount
     final totalOrderAmount = orders.fold<double>(0, (sum, o) => sum + o.amount);
 
-    // Check if proration is needed
-    final needsProration = (totalOrderAmount - invoice.totalAmount).abs() > 0.01;
+    // Multiple orders always share (prorate) the invoice, even when their
+    // amounts already add up to the invoice total. In that case each order's
+    // paid amount is also its allocated invoice amount, but the export still
+    // needs to show "allocated amount / invoice total".
+    final requiresAmountScaling =
+        (totalOrderAmount - invoice.totalAmount).abs() > 0.01;
 
-    if (!needsProration || totalOrderAmount <= 0) {
-      // No proration needed: order amounts match invoice
+    if (!requiresAmountScaling || totalOrderAmount <= 0) {
+      // No proportional scaling needed: order amounts already match the
+      // invoice total (or there is no usable positive denominator).
       return ProrationResult(
         orderAmounts: orders
-            .map((o) => ProratedOrderAmount(
-                  order: o,
-                  proratedInvoiceAmount: o.amount,
-                  isProrated: false,
-                ))
+            .map(
+              (o) => ProratedOrderAmount(
+                order: o,
+                proratedInvoiceAmount: o.amount,
+                isProrated: true,
+              ),
+            )
             .toList(),
-        needsProration: false,
+        needsProration: true,
       );
     }
 
@@ -93,7 +98,10 @@ class InvoiceProrationUtil {
     }
 
     // Adjust for rounding errors to ensure sum exactly equals invoice total
-    final totalProrated = proratedAmounts.values.fold<double>(0, (sum, v) => sum + v);
+    final totalProrated = proratedAmounts.values.fold<double>(
+      0,
+      (sum, v) => sum + v,
+    );
     final diff = invoice.totalAmount - totalProrated;
 
     if (diff.abs() > 0.001) {
@@ -116,11 +124,13 @@ class InvoiceProrationUtil {
     // Build result maintaining original order
     return ProrationResult(
       orderAmounts: orders
-          .map((o) => ProratedOrderAmount(
-                order: o,
-                proratedInvoiceAmount: proratedAmounts[o] ?? 0.0,
-                isProrated: true,
-              ))
+          .map(
+            (o) => ProratedOrderAmount(
+              order: o,
+              proratedInvoiceAmount: proratedAmounts[o] ?? 0.0,
+              isProrated: true,
+            ),
+          )
           .toList(),
       needsProration: true,
     );

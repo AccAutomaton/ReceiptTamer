@@ -37,7 +37,7 @@ class PdfrxFontService {
     return fontManager;
   }
 
-  Future<void> prepareFontManagerForPdfBytes(
+  Future<int> prepareFontManagerForPdfBytes(
     pdfrx.PdfFontManager fontManager,
     List<int> pdfBytes,
   ) async {
@@ -47,9 +47,10 @@ class PdfrxFontService {
     // emitting a missing-font event. Preload only those declared fallbacks so
     // embedded font subsets still win and large bundled fonts are not repeated.
     final declaredFallbackQueries = extractUnembeddedFontQueries(pdfBytes);
-    if (declaredFallbackQueries.isEmpty) return;
+    if (declaredFallbackQueries.isEmpty) return 0;
 
     await fontManager.loadMissingFonts(declaredFallbackQueries);
+    return declaredFallbackQueries.length;
   }
 
   List<pdfrx.PdfFontQuery> extractFontQueriesForPdfByteCollections(

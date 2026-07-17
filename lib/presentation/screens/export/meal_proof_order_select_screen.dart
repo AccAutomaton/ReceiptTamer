@@ -269,6 +269,11 @@ class _MealProofOrderSelectScreenState
                 ref.read(orderProvider.notifier).getInvoiceIdsForOrder(orderId),
             getInvoiceById: (invoiceId) =>
                 ref.read(invoiceProvider.notifier).getInvoiceById(invoiceId),
+            getOrderIdsForInvoice: (invoiceId) => ref
+                .read(invoiceProvider.notifier)
+                .getOrderIdsForInvoice(invoiceId),
+            getOrderById: (orderId) =>
+                ref.read(orderProvider.notifier).getOrderById(orderId),
           );
 
       if (!mounted) return;
