@@ -14,12 +14,14 @@ import 'package:receipt_tamer/data/services/meal_proof_export_service.dart';
 import 'package:receipt_tamer/data/services/file_service.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_notice.dart';
 import 'package:receipt_tamer/presentation/widgets/common/empty_state.dart';
 import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/floating_overlay_layout.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_page_scaffold.dart';
 import 'package:receipt_tamer/presentation/screens/export/saved_files_screen.dart';
+import 'package:receipt_tamer/presentation/utils/persistent_selection.dart';
 
 /// Invoice relation filter enum for local use
 enum InvoiceRelationFilter {
@@ -40,11 +42,14 @@ class MealProofOrderSelectScreen extends ConsumerStatefulWidget {
 
 class _MealProofOrderSelectScreenState
     extends ConsumerState<MealProofOrderSelectScreen> {
-  Set<int> _selectedOrderIds = {};
+  final PersistentSelection<Order> _selection = PersistentSelection<Order>(
+    (order) => order.id,
+  );
   List<Order> _orders = [];
   int _totalOrderCount = 0; // 全部筛选下的订单数量（用于已选计数分母）
   bool _isLoading = true;
   bool _isExporting = false;
+  int _loadRequestId = 0;
 
   // Filter state
   InvoiceRelationFilter _relationFilter = InvoiceRelationFilter.all;
@@ -71,6 +76,7 @@ class _MealProofOrderSelectScreenState
   }
 
   Future<void> _loadOrders() async {
+    final requestId = ++_loadRequestId;
     setState(() => _isLoading = true);
 
     try {
@@ -104,57 +110,60 @@ class _MealProofOrderSelectScreenState
         totalCount = allOrders.length;
       }
 
-      if (mounted) {
+      if (mounted && requestId == _loadRequestId) {
         setState(() {
           _orders = orders;
+          _selection.refreshVisible(orders);
           _totalOrderCount = totalCount;
           _isLoading = false;
         });
       }
     } catch (e, stackTrace) {
-      if (mounted) {
+      if (mounted && requestId == _loadRequestId) {
         setState(() => _isLoading = false);
         logService.e(LogConfig.moduleUi, '加载订单失败', e, stackTrace);
-        ScaffoldMessenger.of(
+        AppNotice.error(
           context,
-        ).showSnackBar(SnackBar(content: Text('加载订单失败: $e')));
+          '加载订单失败: $e',
+          duration: const Duration(seconds: 4),
+        );
       }
     }
   }
 
-  void _toggleSelection(int orderId) {
+  void _toggleSelection(Order order) {
+    final orderId = order.id;
+    if (orderId == null) return;
     setState(() {
-      if (_selectedOrderIds.contains(orderId)) {
-        _selectedOrderIds.remove(orderId);
-      } else {
-        _selectedOrderIds.add(orderId);
-      }
+      _selection.toggle(order);
     });
   }
 
   void _selectAll() {
     setState(() {
-      _selectedOrderIds = _orders
-          .where((o) => o.id != null)
-          .map((o) => o.id!)
-          .toSet();
+      _selection.selectVisible(_orders);
     });
   }
 
   void _clearSelection() {
     setState(() {
-      _selectedOrderIds.clear();
+      _selection.clear();
     });
   }
 
   void _invertSelection() {
     setState(() {
-      final allIds = _orders
-          .where((o) => o.id != null)
-          .map((o) => o.id!)
-          .toSet();
-      _selectedOrderIds = allIds.difference(_selectedOrderIds);
+      _selection.invertVisible(_orders);
     });
+  }
+
+  Future<List<Order>> _resolveSelectedOrders() async {
+    final resolved = <Order>[];
+    for (final id in _selection.ids) {
+      final order = await ref.read(orderProvider.notifier).getOrderById(id);
+      if (order != null) resolved.add(order);
+    }
+    return resolved;
   }
 
   void _showDateRangePicker() async {
@@ -232,10 +241,12 @@ class _MealProofOrderSelectScreenState
   }
 
   Future<void> _confirmAndExport() async {
-    if (_selectedOrderIds.isEmpty) {
-      ScaffoldMessenger.of(
+    if (_selection.isEmpty) {
+      AppNotice.warning(
         context,
-      ).showSnackBar(const SnackBar(content: Text('请先选择订单')));
+        '请先选择订单',
+        duration: const Duration(seconds: 4),
+      );
       return;
     }
 
@@ -243,10 +254,12 @@ class _MealProofOrderSelectScreenState
     String? tempPath;
 
     try {
-      // Get selected orders
-      final selectedOrders = _orders
-          .where((o) => _selectedOrderIds.contains(o.id))
-          .toList();
+      // Resolve by ID so a filter cannot silently remove an already selected
+      // order from the generated document.
+      final selectedOrders = await _resolveSelectedOrders();
+      if (selectedOrders.length != _selection.length) {
+        throw StateError('部分已选订单已不存在，请返回后重新选择');
+      }
 
       // Prepare meal proof items
       final items =
@@ -261,9 +274,11 @@ class _MealProofOrderSelectScreenState
       if (!mounted) return;
 
       if (items.isEmpty) {
-        ScaffoldMessenger.of(
+        AppNotice.warning(
           context,
-        ).showSnackBar(const SnackBar(content: Text('没有可导出的用餐证明')));
+          '没有可导出的用餐证明',
+          duration: const Duration(seconds: 4),
+        );
         setState(() => _isExporting = false);
         return;
       }
@@ -298,24 +313,31 @@ class _MealProofOrderSelectScreenState
 
         // Navigate to saved files screen to show exported file
         if (savedPath != null) {
-          Navigator.pop(context);
+          final navigator = Navigator.of(context);
+          final navigationContext = navigator.overlay!.context;
+          navigator.pop();
+          if (!navigationContext.mounted) return;
           await showSavedFilesScreen(
-            context,
+            navigationContext,
             initialSubDir: 'materials/$dateDir',
           );
         } else {
-          ScaffoldMessenger.of(
+          AppNotice.error(
             context,
-          ).showSnackBar(const SnackBar(content: Text('保存文件失败')));
+            '保存文件失败',
+            duration: const Duration(seconds: 4),
+          );
         }
       }
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleFile, '用餐证明PDF导出失败', e, stackTrace);
       if (mounted) {
         setState(() => _isExporting = false);
-        ScaffoldMessenger.of(
+        AppNotice.error(
           context,
-        ).showSnackBar(SnackBar(content: Text('导出失败: $e')));
+          '导出失败: $e',
+          duration: const Duration(seconds: 4),
+        );
       }
     } finally {
       final workingPath = tempPath;
@@ -461,7 +483,7 @@ class _MealProofOrderSelectScreenState
 
   Widget _buildSelectButtonsRow(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final hasSelection = _selectedOrderIds.isNotEmpty;
+    final hasSelection = _selection.isNotEmpty;
 
     return Padding(
       padding: const EdgeInsets.only(top: 8),
@@ -482,8 +504,8 @@ class _MealProofOrderSelectScreenState
             onTap: hasSelection ? _clearSelection : null,
             child: Text(
               hasSelection
-                  ? '已选 ${_selectedOrderIds.length}/$_totalOrderCount ✕'
-                  : '已选 ${_selectedOrderIds.length}/$_totalOrderCount',
+                  ? '已选 ${_selection.length}/$_totalOrderCount ✕'
+                  : '已选 ${_selection.length}/$_totalOrderCount',
               style: TextStyle(
                 color: hasSelection
                     ? AppPalette.amountFor(context)
@@ -531,13 +553,12 @@ class _MealProofOrderSelectScreenState
       itemBuilder: (context, index) {
         final order = _orders[index];
         final orderId = order.id;
-        final isSelected =
-            orderId != null && _selectedOrderIds.contains(orderId);
+        final isSelected = orderId != null && _selection.containsId(orderId);
 
         return _MealProofOrderCard(
           order: order,
           isSelected: isSelected,
-          onTap: orderId != null ? () => _toggleSelection(orderId) : null,
+          onTap: orderId != null ? () => _toggleSelection(order) : null,
           onDoubleTap: () => _showOrderDetail(order),
         );
       },
@@ -570,59 +591,70 @@ class _MealProofOrderSelectScreenState
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return InkWell(
+    return Semantics(
+      button: true,
+      checked: _addRemark,
+      label: '添加用餐证明备注',
       onTap: _showRemarkDialog,
-      borderRadius: BorderRadius.circular(20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _addRemark
-                  ? AppPalette.actionPrimaryFor(context)
-                  : Colors.transparent,
-              border: Border.all(
-                color: _addRemark
-                    ? AppPalette.actionPrimaryFor(context)
-                    : colorScheme.outline,
-                width: 2,
-              ),
-            ),
-            child: _addRemark
-                ? Icon(Icons.check, size: 14, color: colorScheme.onPrimary)
-                : null,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '添加备注',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurface,
-            ),
-          ),
-          if (_addRemark && _remarkContent != null) ...[
-            const SizedBox(width: 8),
-            Flexible(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: ExcludeSemantics(
+        child: InkWell(
+          onTap: _showRemarkDialog,
+          borderRadius: BorderRadius.circular(20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 20,
+                height: 20,
                 decoration: BoxDecoration(
-                  color: AppPalette.selectedFillFor(context),
-                  borderRadius: BorderRadius.circular(AppRadii.control),
-                ),
-                child: Text(
-                  _remarkContent!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onPrimaryContainer,
+                  shape: BoxShape.circle,
+                  color: _addRemark
+                      ? AppPalette.actionPrimaryFor(context)
+                      : Colors.transparent,
+                  border: Border.all(
+                    color: _addRemark
+                        ? AppPalette.actionPrimaryFor(context)
+                        : colorScheme.outline,
+                    width: 2,
                   ),
-                  overflow: TextOverflow.ellipsis,
+                ),
+                child: _addRemark
+                    ? Icon(Icons.check, size: 14, color: colorScheme.onPrimary)
+                    : null,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '添加备注',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface,
                 ),
               ),
-            ),
-          ],
-        ],
+              if (_addRemark && _remarkContent != null) ...[
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppPalette.selectedFillFor(context),
+                      borderRadius: BorderRadius.circular(AppRadii.control),
+                    ),
+                    child: Text(
+                      _remarkContent!,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onPrimaryContainer,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -632,11 +664,9 @@ class _MealProofOrderSelectScreenState
     final colorScheme = theme.colorScheme;
 
     // Calculate total amount of selected orders
-    final totalAmount = _orders
-        .where((o) => _selectedOrderIds.contains(o.id))
-        .fold<double>(0.0, (sum, o) => sum + o.amount);
+    final totalAmount = _selection.sum((order) => order.amount);
 
-    final hasSelection = _selectedOrderIds.isNotEmpty;
+    final hasSelection = _selection.isNotEmpty;
 
     return Row(
       children: [
@@ -646,7 +676,7 @@ class _MealProofOrderSelectScreenState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                hasSelection ? '已选择 ${_selectedOrderIds.length} 个订单' : '未选择订单',
+                hasSelection ? '已选择 ${_selection.length} 个订单' : '未选择订单',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),

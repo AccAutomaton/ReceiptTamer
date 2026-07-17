@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:pdfrx/pdfrx.dart' as pdfrx;
 import 'package:receipt_tamer/core/services/pdfrx_font_service.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_notice.dart';
 import 'package:share_plus/share_plus.dart';
 
 /// Invoice image/PDF preview widget
@@ -279,9 +280,7 @@ class FullScreenImagePreview extends StatelessWidget {
                 );
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('分享失败: $e')));
+                  AppNotice.error(context, '分享失败: $e');
                 }
               }
             },
@@ -334,9 +333,7 @@ class FullScreenPdfPreview extends StatelessWidget {
                 );
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('分享失败: $e')));
+                  AppNotice.error(context, '分享失败: $e');
                 }
               }
             },

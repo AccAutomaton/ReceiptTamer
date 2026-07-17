@@ -102,6 +102,66 @@ void main() {
     expect(success, isTrue);
     expect(invoiceRepository.getAllCalls, 2);
   });
+
+  test(
+    'updating an order preserves its creation time and invoice badge',
+    () async {
+      final orderRepository = _FakeOrderRepository([
+        _order(id: 1, hasInvoice: true),
+      ]);
+      final invoiceRepository = _FakeInvoiceRepository(orderRepository);
+      final container = _container(orderRepository, invoiceRepository);
+      addTearDown(container.dispose);
+
+      await container.read(orderProvider.notifier).loadOrders();
+      final success = await container
+          .read(orderProvider.notifier)
+          .updateOrder(
+            _order(
+              id: 1,
+              hasInvoice: false,
+            ).copyWith(shopName: 'Updated shop', createdAt: ''),
+          );
+
+      expect(success, isTrue);
+      expect(
+        orderRepository.lastUpdatedOrder?.createdAt,
+        '2026-05-31T12:00:00',
+      );
+      expect(orderRepository.lastUpdatedOrder?.hasInvoice, isTrue);
+      expect(
+        container.read(orderProvider).orders.single.createdAt,
+        '2026-05-31T12:00:00',
+      );
+      expect(container.read(orderProvider).orders.single.hasInvoice, isTrue);
+    },
+  );
+
+  test('updating an invoice preserves its creation time', () async {
+    final orderRepository = _FakeOrderRepository([]);
+    final invoiceRepository = _FakeInvoiceRepository(orderRepository)
+      ..seedInvoice(id: 7);
+    final container = _container(orderRepository, invoiceRepository);
+    addTearDown(container.dispose);
+
+    await container.read(invoiceProvider.notifier).loadInvoices();
+    final success = await container
+        .read(invoiceProvider.notifier)
+        .updateInvoice(
+          _invoice(id: 7).copyWith(sellerName: 'Updated seller', createdAt: ''),
+          orderIds: const [],
+        );
+
+    expect(success, isTrue);
+    expect(
+      invoiceRepository.lastUpdatedInvoice?.createdAt,
+      '2026-05-31T12:00:00',
+    );
+    expect(
+      container.read(invoiceProvider).invoices.single.createdAt,
+      '2026-05-31T12:00:00',
+    );
+  });
 }
 
 ProviderContainer _container(
@@ -149,12 +209,22 @@ class _FakeOrderRepository extends OrderRepository {
 
   List<Order> _orders;
   int getAllCalls = 0;
+  Order? lastUpdatedOrder;
   final Map<int, List<int>> _invoiceIdsByOrderId = {};
 
   @override
   Future<List<Order>> getAll({int? limit, int? offset}) async {
     getAllCalls++;
     return _orders;
+  }
+
+  @override
+  Future<int> update(Order order) async {
+    lastUpdatedOrder = order;
+    final index = _orders.indexWhere((candidate) => candidate.id == order.id);
+    if (index < 0) return 0;
+    _orders[index] = order;
+    return 1;
   }
 
   @override
@@ -193,6 +263,7 @@ class _FakeInvoiceRepository extends InvoiceRepository {
   final Map<int, List<int>> _relations = {};
   int _nextInvoiceId = 1;
   int getAllCalls = 0;
+  Invoice? lastUpdatedInvoice;
 
   void seedInvoice({required int id, List<int> orderIds = const []}) {
     _invoices[id] = _invoice(id: id);
@@ -220,6 +291,18 @@ class _FakeInvoiceRepository extends InvoiceRepository {
   Future<List<Invoice>> getAll({int? limit, int? offset}) async {
     getAllCalls++;
     return _invoices.values.toList();
+  }
+
+  @override
+  Future<int> update(Invoice invoice, {List<int>? orderIds}) async {
+    final id = invoice.id;
+    if (id == null || !_invoices.containsKey(id)) return 0;
+    lastUpdatedInvoice = invoice;
+    _invoices[id] = invoice;
+    if (orderIds != null) {
+      _replaceRelations(id, orderIds);
+    }
+    return 1;
   }
 
   @override

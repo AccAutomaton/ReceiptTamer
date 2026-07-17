@@ -26,7 +26,7 @@ void main() {
   });
 
   test(
-    'month summaries may fall back to createdAt while ce04 searches use business dates only',
+    'month summaries and date searches share the same ledger date fallback',
     () async {
       final emptyDateOrderId = await _insertOrder(
         db,
@@ -90,15 +90,15 @@ void main() {
         endDate: DateTime(2026, 6, 30),
       );
 
-      expect(juneOrders, isEmpty);
-      expect(juneInvoices, isEmpty);
+      expect(juneOrders, hasLength(2));
+      expect(juneInvoices, hasLength(2));
     },
   );
 
   test(
-    'ce04 date ranges use business dates and preserve invoice ascending order',
+    'date ranges prefer business dates and fall back to collection dates',
     () async {
-      await _insertOrder(
+      final fallbackOrderId = await _insertOrder(
         db,
         orderDate: 'invalid',
         createdAt: '2026-06-15T12:00:00',
@@ -108,7 +108,7 @@ void main() {
         orderDate: '2026-06-20',
         createdAt: '2026-05-01T12:00:00',
       );
-      await _insertInvoice(
+      final fallbackInvoiceId = await _insertInvoice(
         db,
         invoiceDate: '',
         createdAt: '2026-06-15T12:00:00',
@@ -133,9 +133,10 @@ void main() {
         DateTime(2026, 6, 30),
       );
 
-      expect(orders.map((order) => order.id), [validOrderId]);
+      expect(orders.map((order) => order.id), [validOrderId, fallbackOrderId]);
       expect(invoices.map((invoice) => invoice.id), [
         earlierInvoiceId,
+        fallbackInvoiceId,
         laterInvoiceId,
       ]);
     },
@@ -186,10 +187,10 @@ void main() {
 
       expect(pagedOrderIds, [
         newestFallbackId,
+        secondDinnerId,
         firstDinnerId,
         lunchId,
         breakfastId,
-        secondDinnerId,
       ]);
       expect(
         (await orderTable.getAll()).map((order) => order.id),
@@ -364,15 +365,15 @@ void main() {
   });
 
   test(
-    'invoice search keeps ce04 AND matching and does not trim keywords',
+    'invoice keyword search matches either field while explicit fields use AND',
     () async {
-      await _insertInvoice(
+      final sellerMatchId = await _insertInvoice(
         db,
         invoiceNumber: 'NO-001',
         sellerName: '青禾记账服务',
         createdAt: '2026-06-01T00:00:00',
       );
-      await _insertInvoice(
+      final numberMatchId = await _insertInvoice(
         db,
         invoiceNumber: 'FP-青禾-002',
         sellerName: '其它销售方',
@@ -395,12 +396,15 @@ void main() {
         invoiceNumber: '青禾',
         sellerName: '青禾',
       );
-      final spacedMatches = await invoiceTable.search(
-        invoiceNumber: ' 青禾 ',
-        sellerName: ' 青禾 ',
-      );
+      final keywordMatches = await invoiceTable.search(keyword: '青禾');
+      final spacedMatches = await invoiceTable.search(keyword: ' 青禾 ');
 
       expect(exactMatches.map((invoice) => invoice.id), [bothMatchId]);
+      expect(keywordMatches.map((invoice) => invoice.id), [
+        bothMatchId,
+        numberMatchId,
+        sellerMatchId,
+      ]);
       expect(spacedMatches, isEmpty);
     },
   );

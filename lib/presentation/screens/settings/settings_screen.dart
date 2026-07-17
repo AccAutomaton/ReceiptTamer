@@ -6,6 +6,7 @@ import 'package:receipt_tamer/data/services/update_preferences.dart';
 import 'package:receipt_tamer/data/services/update_service.dart';
 import 'package:receipt_tamer/presentation/screens/export/saved_files_screen.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_notice.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_surface.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_page_scaffold.dart';
 import 'package:receipt_tamer/presentation/widgets/common/receipt_icon.dart';
@@ -106,25 +107,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
       if (!mounted) return;
 
       if (exportedPath != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('日志已导出：$exportedPath'),
-            action: SnackBarAction(
-              label: '查看',
-              onPressed: () {
-                // Open saved files screen in logs directory
-                showSavedFilesScreen(
-                  context,
-                  initialSubDir: LogConfig.logDirName,
-                );
-              },
-            ),
-          ),
+        AppNotice.success(
+          context,
+          '日志已导出：$exportedPath',
+          duration: const Duration(seconds: 4),
+          actionLabel: '查看',
+          onAction: () {
+            if (!mounted) return;
+            // Open saved files screen in logs directory
+            showSavedFilesScreen(context, initialSubDir: LogConfig.logDirName);
+          },
         );
       } else {
-        ScaffoldMessenger.of(
+        AppNotice.error(
           context,
-        ).showSnackBar(const SnackBar(content: Text('日志导出失败')));
+          '日志导出失败',
+          duration: const Duration(seconds: 4),
+        );
       }
     } finally {
       if (mounted) {
@@ -169,12 +168,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
           },
         );
       } else if (response.result == UpdateCheckResult.notAvailable) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('已是最新版本')));
+        AppNotice.info(context, '已是最新版本', duration: const Duration(seconds: 4));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_updateFailureMessage(response.errorMessage))),
+        AppNotice.error(
+          context,
+          _updateFailureMessage(response.errorMessage),
+          duration: const Duration(seconds: 4),
         );
       }
     } finally {
@@ -242,9 +241,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
       }
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
+        AppNotice.error(
           context,
-        ).showSnackBar(const SnackBar(content: Text('打开链接失败，请重试')));
+          '打开链接失败，请重试',
+          duration: const Duration(seconds: 4),
+        );
       }
     }
   }

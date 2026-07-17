@@ -20,6 +20,7 @@ import 'package:receipt_tamer/data/services/image_service.dart';
 import 'package:receipt_tamer/data/services/share_handler_service.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/providers/ocr_provider.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_notice.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_text_field.dart';
 import 'package:receipt_tamer/presentation/widgets/common/scroll_edge_fog.dart';
@@ -54,7 +55,9 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
   final ImageService _imageService = ImageService();
   final FileService _fileService = FileService();
 
+  Order? _loadedOrder;
   bool _isLoading = false;
+  bool _saveInProgress = false;
   bool _hasOcrResult = false; // 是否有 OCR 识别结果
   List<Map<String, dynamic>> _shopNameOptions = []; // 店铺名称选项列表（含次数）
 
@@ -86,6 +89,7 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
 
     // 重置状态
     setState(() {
+      _loadedOrder = null;
       _orderDate = null;
       _mealTime = null;
       _imagePath = widget.initialImagePath;
@@ -124,6 +128,7 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
           .getOrderById(widget.orderId!);
       if (order != null && mounted) {
         setState(() {
+          _loadedOrder = order;
           _shopNameController.text = order.shopName;
           _amountController.text = order.amount.toStringAsFixed(2);
           _orderNumberController.text = order.orderNumber;
@@ -140,45 +145,67 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
   }
 
   Future<void> _pickImage() async {
-    final result = await showGlassContentBottomSheet<ImageSource>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text(AppConstants.btnTakePhoto),
-              onTap: () => Navigator.pop(context, ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text(AppConstants.btnSelectFromGallery),
-              onTap: () => Navigator.pop(context, ImageSource.gallery),
-            ),
-          ],
+    ImageSource? source;
+    try {
+      source = await showGlassContentBottomSheet<ImageSource>(
+        context: context,
+        builder: (context) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text(AppConstants.btnTakePhoto),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text(AppConstants.btnSelectFromGallery),
+                onTap: () => Navigator.pop(context, ImageSource.gallery),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
 
-    if (result != null) {
-      final imageFile = result == ImageSource.camera
+      if (!mounted || source == null) return;
+      final imageFile = source == ImageSource.camera
           ? await _imageService.pickImageFromCamera()
           : await _imageService.pickImageFromGallery();
 
-      if (imageFile != null) {
+      if (imageFile != null && mounted) {
         setState(() {
           _imagePath = imageFile.path;
         });
+      }
+    } on PlatformException catch (e, stackTrace) {
+      logService.e(LogConfig.moduleUi, '选择订单图片失败', e, stackTrace);
+      if (mounted) {
+        final isCamera = source == ImageSource.camera;
+        final isPermissionError =
+            e.code.contains('denied') ||
+            e.code.contains('restricted') ||
+            e.code.contains('permission');
+        AppNotice.error(
+          context,
+          isPermissionError
+              ? isCamera
+                    ? '无法访问相机，请在系统设置中允许相机权限'
+                    : '无法访问相册，请在系统设置中允许照片权限'
+              : '选择图片失败，请重试',
+        );
+      }
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleUi, '选择订单图片失败', e, stackTrace);
+      if (mounted) {
+        AppNotice.error(context, '选择图片失败，请重试');
       }
     }
   }
 
   Future<void> _handleOCR() async {
     if (_imagePath == null || _imagePath!.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请先选择图片')));
+      AppNotice.warning(context, '请先选择图片');
       return;
     }
 
@@ -193,7 +220,7 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => _OcrProgressDialog(
+        builder: (_) => _OcrProgressDialog(
           imagePath: _imagePath!,
           onResult: (ocrResult) {
             if (ocrResult?.success == true) {
@@ -226,13 +253,9 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
                 }
               });
               logService.i(LogConfig.moduleUi, '订单 OCR 识别成功');
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('OCR 识别成功')));
+              AppNotice.success(context, 'OCR 识别成功');
             } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(ocrResult?.errorMessage ?? 'OCR 识别失败')),
-              );
+              AppNotice.error(context, ocrResult?.errorMessage ?? 'OCR 识别失败');
             }
           },
         ),
@@ -396,45 +419,49 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
   }
 
   Future<void> _handleSave() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    if (_imagePath == null || _imagePath!.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请选择订单图片')));
-      return;
-    }
-
-    // Validate required fields that are not TextFormField
-    final amount = double.tryParse(_amountController.text) ?? 0.0;
-    if (amount <= 0) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请输入有效的实付金额')));
-      return;
-    }
-
-    if (_orderDate == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请选择订单日期')));
-      return;
-    }
-
-    if (_mealTime == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请选择用餐时段')));
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
+    if (_saveInProgress) return;
+    _saveInProgress = true;
     try {
+      if (!_formKey.currentState!.validate()) return;
+
+      if (_imagePath == null || _imagePath!.isEmpty) {
+        AppNotice.warning(context, '请选择订单图片');
+        return;
+      }
+
+      final amount = double.tryParse(_amountController.text) ?? 0.0;
+      if (amount <= 0) {
+        AppNotice.warning(context, '请输入有效的实付金额');
+        return;
+      }
+
+      if (_orderDate == null) {
+        AppNotice.warning(context, '请选择订单日期');
+        return;
+      }
+
+      if (_mealTime == null) {
+        AppNotice.warning(context, '请选择用餐时段');
+        return;
+      }
+
+      setState(() {
+        _isLoading = true;
+      });
+
+      final existingOrder = widget.orderId == null
+          ? null
+          : _loadedOrder ??
+                await ref
+                    .read(orderProvider.notifier)
+                    .getOrderById(widget.orderId!);
+      if (widget.orderId != null && existingOrder == null) {
+        if (mounted) {
+          AppNotice.error(context, '订单已不存在，请返回后刷新');
+        }
+        return;
+      }
+
       // Save image to app directory if not already saved
       final savedImagePath = await _imageService.saveImage(File(_imagePath!));
 
@@ -450,8 +477,9 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
               orderDate: orderDateStr,
               mealTime: mealTimeStr,
               orderNumber: _orderNumberController.text.trim(),
-              createdAt: '', // Will be preserved by repository
+              createdAt: existingOrder!.createdAt,
               updatedAt: DateTime.now().toIso8601String(),
+              hasInvoice: existingOrder.hasInvoice,
             )
           : Order.create(
               imagePath: savedImagePath,
@@ -477,9 +505,7 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
             _fileService.deleteTempFile(_imagePath!);
           }
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text(AppConstants.successSaved)),
-          );
+          AppNotice.success(context, AppConstants.successSaved);
 
           // 判断是否从分享进入
           final isFromShare = widget.initialImagePath != null;
@@ -499,15 +525,21 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
             context.pop(true);
           }
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text(AppConstants.errorSavingData)),
-          );
+          AppNotice.error(context, AppConstants.errorSavingData);
         }
       }
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleUi, '保存订单失败', e, stackTrace);
+      if (mounted) {
+        AppNotice.error(context, AppConstants.errorSavingData);
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      _saveInProgress = false;
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 

@@ -7,6 +7,7 @@ import 'package:receipt_tamer/core/services/log_config.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/order.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_notice.dart';
 import 'package:receipt_tamer/presentation/widgets/common/empty_state.dart';
 import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart';
 import 'package:receipt_tamer/presentation/widgets/common/floating_overlay_layout.dart';
@@ -47,6 +48,7 @@ class OrderSelectorScreen extends ConsumerStatefulWidget {
 
 class _OrderSelectorScreenState extends ConsumerState<OrderSelectorScreen> {
   late List<int> _selectedOrderIds;
+  Map<int, Order> _selectedOrdersById = {};
   List<Order> _orders = [];
   bool _isLoading = true;
 
@@ -71,9 +73,11 @@ class _OrderSelectorScreenState extends ConsumerState<OrderSelectorScreen> {
   }
 
   Future<void> _loadOrders() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
 
     try {
+      final orderRepository = ref.read(orderRepositoryProvider);
       final orders = await ref
           .read(orderProvider.notifier)
           .searchOrdersWithInvoiceRelation(
@@ -87,10 +91,20 @@ class _OrderSelectorScreenState extends ConsumerState<OrderSelectorScreen> {
                 : null,
             excludeInvoiceId: widget.excludeInvoiceId,
           );
+      final selectedOrders = _selectedOrderIds.isEmpty
+          ? const <Order>[]
+          : await orderRepository.getByIds(_selectedOrderIds);
 
       if (mounted) {
         setState(() {
           _orders = orders;
+          _selectedOrdersById = {
+            for (final order in selectedOrders)
+              if (order.id != null) order.id!: order,
+          };
+          _selectedOrderIds.removeWhere(
+            (orderId) => !_selectedOrdersById.containsKey(orderId),
+          );
           _isLoading = false;
         });
       }
@@ -98,19 +112,21 @@ class _OrderSelectorScreenState extends ConsumerState<OrderSelectorScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
         logService.e(LogConfig.moduleUi, '加载订单失败', e, stackTrace);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('加载订单失败: $e')));
+        AppNotice.error(context, '加载订单失败，请重试');
       }
     }
   }
 
-  void _toggleSelection(int orderId) {
+  void _toggleSelection(Order order) {
+    final orderId = order.id;
+    if (orderId == null) return;
     setState(() {
       if (_selectedOrderIds.contains(orderId)) {
         _selectedOrderIds.remove(orderId);
+        _selectedOrdersById.remove(orderId);
       } else {
         _selectedOrderIds.add(orderId);
+        _selectedOrdersById[orderId] = order;
       }
     });
   }
@@ -332,7 +348,7 @@ class _OrderSelectorScreenState extends ConsumerState<OrderSelectorScreen> {
           isSelected: isSelected,
           onTap: () => _showOrderDetail(order),
           onCheckChanged: orderId != null
-              ? (_) => _toggleSelection(orderId)
+              ? (_) => _toggleSelection(order)
               : null,
         );
       },
@@ -344,9 +360,10 @@ class _OrderSelectorScreenState extends ConsumerState<OrderSelectorScreen> {
     final colorScheme = theme.colorScheme;
 
     // Calculate total amount of selected orders
-    final totalAmount = _orders
-        .where((o) => _selectedOrderIds.contains(o.id))
-        .fold<double>(0.0, (sum, o) => sum + o.amount);
+    final totalAmount = _selectedOrderIds.fold<double>(
+      0.0,
+      (sum, orderId) => sum + (_selectedOrdersById[orderId]?.amount ?? 0.0),
+    );
 
     final hasSelection = _selectedOrderIds.isNotEmpty;
 
@@ -381,10 +398,13 @@ class _OrderSelectorScreenState extends ConsumerState<OrderSelectorScreen> {
     );
   }
 
-  void _showOrderDetail(Order order) {
+  Future<void> _showOrderDetail(Order order) async {
     // Navigate to order detail screen
     if (order.id != null && order.id! > 0) {
-      context.push('/orders/${order.id}');
+      await context.push('/orders/${order.id}');
+      if (mounted) {
+        await _loadOrders();
+      }
     }
   }
 }

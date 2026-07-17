@@ -8,7 +8,7 @@ import '../../../core/services/log_config.dart';
 /// Invoice-Order relation table data access object
 /// Handles all CRUD operations for the invoice_order_relations table
 class InvoiceOrderRelationTable {
-  final Database database;
+  final DatabaseExecutor database;
 
   InvoiceOrderRelationTable({required this.database});
 
@@ -87,28 +87,17 @@ class InvoiceOrderRelationTable {
     final uniqueOrderIds = orderIds.toSet().toList(growable: false);
 
     try {
-      await database.transaction((transaction) async {
-        await transaction.delete(
-          AppConstants.invoiceOrderRelationsTable,
-          where: '${AppConstants.colInvoiceId} = ?',
-          whereArgs: [invoiceId],
+      final executor = database;
+      if (executor is Database) {
+        await executor.transaction(
+          (transaction) =>
+              _replaceRelations(transaction, invoiceId, uniqueOrderIds),
         );
-
-        if (uniqueOrderIds.isEmpty) return;
-
-        final batch = transaction.batch();
-        for (final orderId in uniqueOrderIds) {
-          batch.insert(
-            AppConstants.invoiceOrderRelationsTable,
-            InvoiceOrderRelation(
-              invoiceId: invoiceId,
-              orderId: orderId,
-            ).toJson(),
-            conflictAlgorithm: ConflictAlgorithm.replace,
-          );
-        }
-        await batch.commit(noResult: true);
-      });
+      } else {
+        // A Transaction is already a DatabaseExecutor. Reuse it so callers
+        // can include the owning invoice write in the same transaction.
+        await _replaceRelations(executor, invoiceId, uniqueOrderIds);
+      }
 
       logService.i(
         LogConfig.moduleDb,
@@ -123,6 +112,30 @@ class InvoiceOrderRelationTable {
       );
       rethrow;
     }
+  }
+
+  Future<void> _replaceRelations(
+    DatabaseExecutor executor,
+    int invoiceId,
+    List<int> orderIds,
+  ) async {
+    await executor.delete(
+      AppConstants.invoiceOrderRelationsTable,
+      where: '${AppConstants.colInvoiceId} = ?',
+      whereArgs: [invoiceId],
+    );
+
+    if (orderIds.isEmpty) return;
+
+    final batch = executor.batch();
+    for (final orderId in orderIds) {
+      batch.insert(
+        AppConstants.invoiceOrderRelationsTable,
+        InvoiceOrderRelation(invoiceId: invoiceId, orderId: orderId).toJson(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+    await batch.commit(noResult: true);
   }
 
   /// Delete all relations for an invoice

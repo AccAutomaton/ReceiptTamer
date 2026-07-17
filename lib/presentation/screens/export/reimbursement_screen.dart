@@ -10,8 +10,10 @@ import '../../../data/models/invoice.dart';
 import '../../../data/models/order.dart';
 import '../../providers/export_provider.dart';
 import '../../providers/invoice_export_provider.dart';
+import '../../providers/ledger_data_revision_provider.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_card.dart';
+import '../../widgets/common/app_notice.dart';
 import '../../widgets/common/date_range_picker.dart';
 import '../../widgets/common/empty_state.dart';
 import '../../widgets/common/floating_overlay_layout.dart';
@@ -53,25 +55,41 @@ class ReimbursementScreen extends ConsumerStatefulWidget {
 class _ReimbursementScreenState extends ConsumerState<ReimbursementScreen> {
   _ReimbursementExportBasis _basis = _ReimbursementExportBasis.orders;
   final Set<_ReimbursementExportBasis> _loadedBases = {};
-  OverlayEntry? _cascadeNoticeEntry;
+  final Map<_ReimbursementExportBasis, Future<void>> _basisOperationTails = {};
+  final Set<_ReimbursementExportBasis> _queuedAutomaticReloads = {};
+  AppNoticeHandle? _cascadeNoticeHandle;
+  bool _isDisposed = false;
 
   @override
   void initState() {
     super.initState();
+    ref.listenManual<int>(ledgerDataRevisionProvider, (previous, next) {
+      if (previous != null && previous != next) {
+        _handleSourceDataChanged();
+      }
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _ensureBasisLoaded(_ReimbursementExportBasis.orders);
+      if (!mounted) return;
+      unawaited(_ensureBasisLoaded(_ReimbursementExportBasis.orders));
     });
   }
 
   @override
   void dispose() {
-    _removeCascadeNotice();
+    _isDisposed = true;
+    _queuedAutomaticReloads.clear();
+    _cascadeNoticeHandle?.dismiss();
     super.dispose();
   }
 
   Future<void> _ensureBasisLoaded(_ReimbursementExportBasis basis) async {
-    if (_loadedBases.contains(basis)) return;
+    if (_isDisposed || _loadedBases.contains(basis)) return;
     _loadedBases.add(basis);
+    await _enqueueBasisOperation(basis, () => _loadBasis(basis));
+  }
+
+  Future<void> _loadBasis(_ReimbursementExportBasis basis) async {
+    if (_isDisposed) return;
 
     switch (basis) {
       case _ReimbursementExportBasis.orders:
@@ -81,19 +99,66 @@ class _ReimbursementScreenState extends ConsumerState<ReimbursementScreen> {
     }
   }
 
+  void _handleSourceDataChanged() {
+    if (_isDisposed) return;
+
+    for (final basis in _loadedBases.toList(growable: false)) {
+      _queueAutomaticReload(basis);
+    }
+  }
+
+  void _queueAutomaticReload(_ReimbursementExportBasis basis) {
+    if (_isDisposed || !_queuedAutomaticReloads.add(basis)) return;
+
+    final reload = _enqueueBasisOperation(basis, () async {
+      _queuedAutomaticReloads.remove(basis);
+      if (_isDisposed || !_loadedBases.contains(basis)) return;
+      await _loadBasis(basis);
+    });
+    unawaited(reload.catchError((Object _, StackTrace _) {}));
+  }
+
+  Future<void> _enqueueBasisOperation(
+    _ReimbursementExportBasis basis,
+    Future<void> Function() operation,
+  ) {
+    if (_isDisposed) return Future<void>.value();
+
+    final previous = _basisOperationTails[basis] ?? Future<void>.value();
+    final current = previous.then<void>(
+      (_) async {
+        if (!_isDisposed) await operation();
+      },
+      onError: (Object _, StackTrace _) async {
+        if (!_isDisposed) await operation();
+      },
+    );
+    _basisOperationTails[basis] = current;
+
+    void clearTail() {
+      if (identical(_basisOperationTails[basis], current)) {
+        _basisOperationTails.remove(basis);
+      }
+    }
+
+    unawaited(
+      current.then<void>(
+        (_) => clearTail(),
+        onError: (Object _, StackTrace _) => clearTail(),
+      ),
+    );
+    return current;
+  }
+
   void _changeBasis(_ReimbursementExportBasis basis) {
     if (_basis == basis) return;
     setState(() => _basis = basis);
-    _ensureBasisLoaded(basis);
+    unawaited(_ensureBasisLoaded(basis));
   }
 
   Future<void> _refresh() async {
-    switch (_basis) {
-      case _ReimbursementExportBasis.orders:
-        await ref.read(exportProvider.notifier).loadAvailableOrders();
-      case _ReimbursementExportBasis.invoices:
-        await ref.read(invoiceExportProvider.notifier).loadAvailableInvoices();
-    }
+    final basis = _basis;
+    await _enqueueBasisOperation(basis, () => _loadBasis(basis));
   }
 
   Future<void> _chooseDateRange() async {
@@ -114,25 +179,31 @@ class _ReimbursementScreenState extends ConsumerState<ReimbursementScreen> {
     );
     if (result == null || !mounted) return;
 
-    switch (_basis) {
-      case _ReimbursementExportBasis.orders:
-        await ref
-            .read(exportProvider.notifier)
-            .setDateRange(result.startDate, result.endDate);
-      case _ReimbursementExportBasis.invoices:
-        await ref
-            .read(invoiceExportProvider.notifier)
-            .setDateRange(result.startDate, result.endDate);
-    }
+    final basis = _basis;
+    await _enqueueBasisOperation(basis, () async {
+      switch (basis) {
+        case _ReimbursementExportBasis.orders:
+          await ref
+              .read(exportProvider.notifier)
+              .setDateRange(result.startDate, result.endDate);
+        case _ReimbursementExportBasis.invoices:
+          await ref
+              .read(invoiceExportProvider.notifier)
+              .setDateRange(result.startDate, result.endDate);
+      }
+    });
   }
 
   Future<void> _clearDateRange() async {
-    switch (_basis) {
-      case _ReimbursementExportBasis.orders:
-        await ref.read(exportProvider.notifier).clearDateRange();
-      case _ReimbursementExportBasis.invoices:
-        await ref.read(invoiceExportProvider.notifier).clearDateRange();
-    }
+    final basis = _basis;
+    await _enqueueBasisOperation(basis, () async {
+      switch (basis) {
+        case _ReimbursementExportBasis.orders:
+          await ref.read(exportProvider.notifier).clearDateRange();
+        case _ReimbursementExportBasis.invoices:
+          await ref.read(invoiceExportProvider.notifier).clearDateRange();
+      }
+    });
   }
 
   Future<void> _toggleOrder(int orderId) async {
@@ -153,30 +224,20 @@ class _ReimbursementScreenState extends ConsumerState<ReimbursementScreen> {
   }
 
   void _showCascadeMessage(String? message) {
-    if (message == null || !mounted) return;
-
-    _removeCascadeNotice();
-    final overlay = Overlay.of(context, rootOverlay: true);
-    late final OverlayEntry entry;
-    entry = OverlayEntry(
-      builder: (context) => _CascadeNotice(
-        message: message,
-        onDismissed: () {
-          if (_cascadeNoticeEntry == entry) {
-            _cascadeNoticeEntry = null;
-          }
-          if (entry.mounted) entry.remove();
-        },
-      ),
+    if (!mounted) return;
+    if (message == null) {
+      _cascadeNoticeHandle?.dismiss();
+      _cascadeNoticeHandle = null;
+      return;
+    }
+    _cascadeNoticeHandle?.dismiss();
+    _cascadeNoticeHandle = AppNotice.show(
+      context,
+      message,
+      tone: AppNoticeTone.linkage,
+      duration: AppNotice.linkageDuration,
+      noticeKey: const ValueKey('reimbursement-cascade-notice'),
     );
-    _cascadeNoticeEntry = entry;
-    overlay.insert(entry);
-  }
-
-  void _removeCascadeNotice() {
-    final entry = _cascadeNoticeEntry;
-    _cascadeNoticeEntry = null;
-    if (entry?.mounted ?? false) entry!.remove();
   }
 
   void _continueToOptions() {
@@ -289,132 +350,6 @@ class _ReimbursementScreenState extends ConsumerState<ReimbursementScreen> {
         ? minimumBottomInset - safeBottomInset
         : 0.0;
     return dockHeight + GlassNavigationBar.contentFadeGap + missingMinimumInset;
-  }
-}
-
-class _CascadeNotice extends StatefulWidget {
-  const _CascadeNotice({required this.message, required this.onDismissed});
-
-  final String message;
-  final VoidCallback onDismissed;
-
-  @override
-  State<_CascadeNotice> createState() => _CascadeNoticeState();
-}
-
-class _CascadeNoticeState extends State<_CascadeNotice>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(vsync: this);
-  late final Animation<double> _opacity = CurvedAnimation(
-    parent: _controller,
-    curve: AppMotion.curve,
-    reverseCurve: Curves.easeInCubic,
-  );
-  late final Animation<Offset> _offset = Tween<Offset>(
-    begin: const Offset(0, -0.22),
-    end: Offset.zero,
-  ).animate(_opacity);
-  Timer? _holdTimer;
-  bool _started = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_started) return;
-    _started = true;
-
-    final duration = AppMotion.adaptive(context, AppMotion.standard);
-    _controller
-      ..duration = duration
-      ..reverseDuration = duration
-      ..forward();
-    _holdTimer = Timer(
-      const Duration(milliseconds: 1800),
-      () => unawaited(_dismiss()),
-    );
-  }
-
-  Future<void> _dismiss() async {
-    if (!mounted) return;
-    await _controller.reverse();
-    if (mounted) widget.onDismissed();
-  }
-
-  @override
-  void dispose() {
-    _holdTimer?.cancel();
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final paperColor = Color.alphaBlend(
-      AppPalette.textSecondaryFor(context).withValues(alpha: 0.035),
-      AppEntityTokens.fillFor(context),
-    );
-
-    return Positioned(
-      top: MediaQuery.paddingOf(context).top + 6,
-      left: AppSpacing.page,
-      right: AppSpacing.page,
-      child: IgnorePointer(
-        child: FadeTransition(
-          opacity: _opacity,
-          child: SlideTransition(
-            position: _offset,
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 360),
-                child: Semantics(
-                  liveRegion: true,
-                  child: Material(
-                    key: const ValueKey('reimbursement-cascade-notice'),
-                    color: paperColor,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadii.control),
-                      side: BorderSide(
-                        color: AppEntityTokens.strongBorderFor(context),
-                      ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.link_rounded,
-                            size: 18,
-                            color: AppPalette.textSecondaryFor(context),
-                          ),
-                          const SizedBox(width: 9),
-                          Flexible(
-                            child: Text(
-                              widget.message,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(
-                                    color: AppPalette.textPrimaryFor(context),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }
 
@@ -708,6 +643,9 @@ class _SelectionControls extends StatelessWidget {
     final hasDate = isOrderBasis
         ? orderState.hasDateRange
         : invoiceState.hasDateRange;
+    final isLoading = isOrderBasis
+        ? orderState.isLoading
+        : invoiceState.isLoading;
     final allSelected =
         selectableCount > 0 &&
         (isOrderBasis
@@ -724,89 +662,99 @@ class _SelectionControls extends StatelessWidget {
                     invoiceState.isSelected(id);
               }));
 
-    return AppCard(
-      margin: EdgeInsets.zero,
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 9),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
+    return IgnorePointer(
+      ignoring: isLoading,
+      child: Opacity(
+        opacity: isLoading ? 0.62 : 1,
+        child: AppCard(
+          margin: EdgeInsets.zero,
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 9),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: LedgerFilterStrip(
-                  children: [
-                    LedgerFilterChip(
-                      label: '全选 $selectableCount',
-                      icon: Icons.done_all_rounded,
-                      selected: allSelected,
-                      onPressed: isOrderBasis
-                          ? onSelectAllOrders
-                          : onSelectAllInvoices,
+              Row(
+                children: [
+                  Expanded(
+                    child: LedgerFilterStrip(
+                      children: [
+                        LedgerFilterChip(
+                          label: '全选 $selectableCount',
+                          icon: Icons.done_all_rounded,
+                          selected: allSelected,
+                          onPressed: isOrderBasis
+                              ? onSelectAllOrders
+                              : onSelectAllInvoices,
+                        ),
+                        LedgerFilterChip(
+                          label: '反选',
+                          icon: Icons.swap_horiz_rounded,
+                          onPressed: isOrderBasis
+                              ? onInvertOrders
+                              : onInvertInvoices,
+                        ),
+                        LedgerFilterChip(
+                          label: hasDate ? '修改日期' : '日期',
+                          icon: Icons.calendar_month_outlined,
+                          selected: hasDate,
+                          onPressed: onChooseDate,
+                        ),
+                        if (hasDate)
+                          LedgerFilterChip(
+                            key: const ValueKey(
+                              'clear-reimbursement-date-filter',
+                            ),
+                            label: '清除日期',
+                            icon: Icons.close_rounded,
+                            onPressed: onClearDate,
+                          ),
+                      ],
                     ),
-                    LedgerFilterChip(
-                      label: '反选',
-                      icon: Icons.swap_horiz_rounded,
-                      onPressed: isOrderBasis
-                          ? onInvertOrders
-                          : onInvertInvoices,
-                    ),
-                    LedgerFilterChip(
-                      label: hasDate ? '修改日期' : '日期',
-                      icon: Icons.calendar_month_outlined,
-                      selected: hasDate,
-                      onPressed: onChooseDate,
-                    ),
-                    if (hasDate)
-                      LedgerFilterChip(
-                        key: const ValueKey('clear-reimbursement-date-filter'),
-                        label: '清除日期',
-                        icon: Icons.close_rounded,
-                        onPressed: onClearDate,
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 6),
-              TextButton(
-                onPressed: onOpenHistory,
-                style: TextButton.styleFrom(
-                  minimumSize: const Size(48, 48),
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  foregroundColor: AppPalette.actionPrimaryFor(context),
-                ),
-                child: const Text('导出记录'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  isOrderBasis
-                      ? '$totalCount 笔订单 · $selectableCount 笔可选'
-                      : '$totalCount 张发票 · $selectableCount 张可选',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppPalette.textSecondaryFor(context),
-                    fontFeatures: AppTypography.tabularFigures,
                   ),
-                ),
+                  const SizedBox(width: 6),
+                  TextButton(
+                    onPressed: onOpenHistory,
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(48, 48),
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      foregroundColor: AppPalette.actionPrimaryFor(context),
+                    ),
+                    child: const Text('导出记录'),
+                  ),
+                ],
               ),
-              const SizedBox(width: 10),
-              Text(
-                isOrderBasis ? '已选 $selectedCount 笔' : '已选 $selectedCount 张',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: AppPalette.actionPrimaryFor(context),
-                  fontWeight: FontWeight.w700,
-                  fontFeatures: AppTypography.tabularFigures,
-                ),
+              const SizedBox(height: 2),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      isOrderBasis
+                          ? '$totalCount 笔订单 · $selectableCount 笔可选'
+                          : '$totalCount 张发票 · $selectableCount 张可选',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: AppPalette.textSecondaryFor(context),
+                        fontFeatures: AppTypography.tabularFigures,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    isOrderBasis
+                        ? '已选 $selectedCount 笔'
+                        : '已选 $selectedCount 张',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: AppPalette.actionPrimaryFor(context),
+                      fontWeight: FontWeight.w700,
+                      fontFeatures: AppTypography.tabularFigures,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -838,6 +786,9 @@ class _SelectionBar extends StatelessWidget {
     final total = isOrderBasis
         ? orderState.selectedTotal
         : invoiceState.selectedTotal;
+    final isLoading = isOrderBasis
+        ? orderState.isLoading
+        : invoiceState.isLoading;
 
     return AppCard(
       margin: EdgeInsets.zero,
@@ -878,7 +829,10 @@ class _SelectionBar extends StatelessWidget {
             width: 110,
             isDense: true,
             trailing: const Icon(Icons.arrow_forward_rounded, size: 18),
-            onPressed: selectedPrimaryCount > 0 && selectedRelatedCount > 0
+            onPressed:
+                !isLoading &&
+                    selectedPrimaryCount > 0 &&
+                    selectedRelatedCount > 0
                 ? onContinue
                 : null,
           ),
@@ -974,18 +928,23 @@ class _OrderSelectionLedger extends StatelessWidget {
       DateFormatter.mealTimeFromString(order.mealTime),
     );
     final selectable = state.isSelectable(id);
+    final enabled = selectable && !state.isLoading;
     final selected = state.isSelected(id);
     final cascade = state.isCascadeSelected(id);
     final orderNumber = order.orderNumber.trim();
 
     return Opacity(
-      opacity: selectable ? 1 : 0.52,
+      opacity: !selectable
+          ? 0.52
+          : state.isLoading
+          ? 0.72
+          : 1,
       child: LedgerEntryRow(
         key: ValueKey('reimbursement-order-$id'),
         leading: _SelectionIndicator(
           selected: selected,
           cascade: cascade,
-          enabled: selectable,
+          enabled: enabled,
         ),
         day: date?.day.toString().padLeft(2, '0') ?? '--',
         dateCaption: mealTime == '-' ? '—' : mealTime,
@@ -1003,7 +962,7 @@ class _OrderSelectionLedger extends StatelessWidget {
             ? LedgerRelationTone.linked
             : LedgerRelationTone.neutral,
         selected: selected,
-        onTap: selectable ? () => onToggle(id) : null,
+        onTap: enabled ? () => onToggle(id) : null,
       ),
     );
   }
@@ -1093,14 +1052,19 @@ class _InvoiceSelectionLedger extends StatelessWidget {
     );
     final orderCount = state.orderCountFor(id);
     final selectable = state.isSelectable(id);
+    final enabled = selectable && !state.isLoading;
     final selected = state.isSelected(id);
     final invoiceNumber = invoice.invoiceNumber.trim();
 
     return Opacity(
-      opacity: selectable ? 1 : 0.52,
+      opacity: !selectable
+          ? 0.52
+          : state.isLoading
+          ? 0.72
+          : 1,
       child: LedgerEntryRow(
         key: ValueKey('reimbursement-invoice-$id'),
-        leading: _SelectionIndicator(selected: selected, enabled: selectable),
+        leading: _SelectionIndicator(selected: selected, enabled: enabled),
         day: date?.day.toString().padLeft(2, '0') ?? '--',
         dateCaption: '日',
         title: invoice.sellerName.trim().isEmpty
@@ -1113,7 +1077,7 @@ class _InvoiceSelectionLedger extends StatelessWidget {
             ? LedgerRelationTone.linked
             : LedgerRelationTone.neutral,
         selected: selected,
-        onTap: selectable ? () => onToggle(id) : null,
+        onTap: enabled ? () => onToggle(id) : null,
       ),
     );
   }

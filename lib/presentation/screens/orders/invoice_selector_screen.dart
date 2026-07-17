@@ -6,6 +6,7 @@ import 'package:receipt_tamer/core/services/log_config.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_notice.dart';
 import 'package:receipt_tamer/presentation/widgets/common/empty_state.dart';
 import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart';
 import 'package:receipt_tamer/presentation/widgets/common/floating_overlay_layout.dart';
@@ -108,9 +109,7 @@ class _InvoiceSelectorScreenState extends ConsumerState<InvoiceSelectorScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
         logService.e(LogConfig.moduleUi, '加载发票失败', e, stackTrace);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('加载发票失败: $e')));
+        AppNotice.error(context, '加载发票失败: $e');
       }
     }
   }

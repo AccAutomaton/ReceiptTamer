@@ -29,14 +29,26 @@ class OrderTable {
   static const String _hasInvoiceColumn =
       'CASE WHEN r.${AppConstants.colOrderId} IS NOT NULL THEN 1 ELSE 0 END as has_invoice';
 
+  /// The ledger shows the business date when it is valid, otherwise it falls
+  /// back to the collection time. Every date filter must use the same rule so
+  /// that a row visible in a month can also be found by that month filter.
+  static const String _ledgerDateExpression =
+      "COALESCE(date(NULLIF(trim(o.${AppConstants.colOrderDate}), '')), "
+      "date(NULLIF(trim(o.${AppConstants.colCreatedAt}), '')))";
+  static const String _unqualifiedLedgerDateExpression =
+      "COALESCE(date(NULLIF(trim(${AppConstants.colOrderDate}), '')), "
+      "date(NULLIF(trim(${AppConstants.colCreatedAt}), '')))";
+
   /// SQL fragment for ordering orders by date (newest first) then meal time (dinner > lunch > breakfast)
   static const String _orderByClause =
-      "ORDER BY o.${AppConstants.colOrderDate} DESC, "
+      'ORDER BY $_ledgerDateExpression DESC, '
       "CASE o.${AppConstants.colMealTime} "
       "WHEN 'dinner' THEN 1 "
       "WHEN 'lunch' THEN 2 "
       "WHEN 'breakfast' THEN 3 "
-      'ELSE 4 END ASC';
+      'ELSE 4 END ASC, '
+      'o.${AppConstants.colCreatedAt} DESC, '
+      'o.${AppConstants.colId} DESC';
 
   static const String _normalizedShopKeyExpression =
       "trim(coalesce(o.${AppConstants.colShopName}, ''))";
@@ -303,8 +315,7 @@ class OrderTable {
     }
   }
 
-  /// Get orders by order date range
-  /// Uses order_date field (stored as 'yyyy-MM-dd' format)
+  /// Get orders by ledger date range (business date, then collection time).
   Future<List<Order>> getByDateRange(DateTime start, DateTime end) async {
     try {
       final startDate = _formatDate(start);
@@ -314,7 +325,7 @@ class OrderTable {
         'SELECT o.*, $_hasInvoiceColumn '
         'FROM ${AppConstants.ordersTable} o '
         '$_invoiceJoinClause '
-        'WHERE o.${AppConstants.colOrderDate} >= ? AND o.${AppConstants.colOrderDate} <= ? '
+        'WHERE $_ledgerDateExpression >= ? AND $_ledgerDateExpression <= ? '
         '$_orderByClause',
         [startDate, endDate],
       );
@@ -331,7 +342,7 @@ class OrderTable {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
-  /// Get orders with order date today
+  /// Get orders whose resolved ledger date is today.
   Future<List<Order>> getTodayOrders() async {
     try {
       final todayStr = _formatDate(DateTime.now());
@@ -340,7 +351,7 @@ class OrderTable {
         'SELECT o.*, $_hasInvoiceColumn '
         'FROM ${AppConstants.ordersTable} o '
         '$_invoiceJoinClause '
-        'WHERE o.${AppConstants.colOrderDate} = ? '
+        'WHERE $_ledgerDateExpression = ? '
         '$_orderByClause',
         [todayStr],
       );
@@ -352,7 +363,7 @@ class OrderTable {
     }
   }
 
-  /// Get orders with order date in this month
+  /// Get orders whose resolved ledger date is in this month.
   Future<List<Order>> getThisMonthOrders() async {
     final now = DateTime.now();
     final startOfMonth = DateTime(now.year, now.month, 1);
@@ -382,7 +393,7 @@ class OrderTable {
     }
   }
 
-  /// Get the total amount for a date range (based on order_date)
+  /// Get the total amount for a resolved ledger date range.
   Future<double> getTotalAmountByDateRange(DateTime start, DateTime end) async {
     try {
       final startDate = _formatDate(start);
@@ -390,7 +401,8 @@ class OrderTable {
 
       final result = await database.rawQuery(
         'SELECT SUM(${AppConstants.colAmount}) as total FROM ${AppConstants.ordersTable} '
-        'WHERE ${AppConstants.colOrderDate} >= ? AND ${AppConstants.colOrderDate} <= ?',
+        'WHERE $_unqualifiedLedgerDateExpression >= ? '
+        'AND $_unqualifiedLedgerDateExpression <= ?',
         [startDate, endDate],
       );
 
@@ -429,7 +441,7 @@ class OrderTable {
         'WHERE o.${AppConstants.colId} NOT IN ('
         '  $_validInvoiceOrderIdSubquery'
         ') '
-        'ORDER BY o.${AppConstants.colOrderDate} DESC, '
+        'ORDER BY $_ledgerDateExpression DESC, '
         'CASE o.${AppConstants.colMealTime} '
         "WHEN 'dinner' THEN 1 "
         "WHEN 'lunch' THEN 2 "
@@ -454,11 +466,11 @@ class OrderTable {
       final args = <dynamic>[];
 
       if (startDate != null) {
-        conditions.add('substr(o.${AppConstants.colOrderDate}, 1, 10) >= ?');
+        conditions.add('$_ledgerDateExpression >= ?');
         args.add(_formatDate(startDate));
       }
       if (endDate != null) {
-        conditions.add('substr(o.${AppConstants.colOrderDate}, 1, 10) <= ?');
+        conditions.add('$_ledgerDateExpression <= ?');
         args.add(_formatDate(endDate));
       }
 
@@ -508,11 +520,11 @@ class OrderTable {
       final args = <dynamic>[shopKey.trim()];
 
       if (startDate != null) {
-        conditions.add('substr(o.${AppConstants.colOrderDate}, 1, 10) >= ?');
+        conditions.add('$_ledgerDateExpression >= ?');
         args.add(_formatDate(startDate));
       }
       if (endDate != null) {
-        conditions.add('substr(o.${AppConstants.colOrderDate}, 1, 10) <= ?');
+        conditions.add('$_ledgerDateExpression <= ?');
         args.add(_formatDate(endDate));
       }
 
@@ -592,12 +604,12 @@ class OrderTable {
       }
 
       if (startDate != null) {
-        conditions.add('o.${AppConstants.colOrderDate} >= ?');
+        conditions.add('$_ledgerDateExpression >= ?');
         args.add(_formatDate(startDate));
       }
 
       if (endDate != null) {
-        conditions.add('o.${AppConstants.colOrderDate} <= ?');
+        conditions.add('$_ledgerDateExpression <= ?');
         args.add(_formatDate(endDate));
       }
 
@@ -671,12 +683,12 @@ class OrderTable {
       }
 
       if (startDate != null) {
-        conditions.add('o.${AppConstants.colOrderDate} >= ?');
+        conditions.add('$_ledgerDateExpression >= ?');
         args.add(_formatDate(startDate));
       }
 
       if (endDate != null) {
-        conditions.add('o.${AppConstants.colOrderDate} <= ?');
+        conditions.add('$_ledgerDateExpression <= ?');
         args.add(_formatDate(endDate));
       }
 
@@ -712,7 +724,7 @@ class OrderTable {
         orderByClause =
             '''
           CASE WHEN o.${AppConstants.colId} IN (SELECT ${AppConstants.colOrderId} FROM ${AppConstants.invoiceOrderRelationsTable} WHERE ${AppConstants.colInvoiceId} = ?) THEN 0 ELSE 1 END,
-          o.${AppConstants.colOrderDate} DESC,
+          $_ledgerDateExpression DESC,
           CASE o.${AppConstants.colMealTime}
           WHEN 'dinner' THEN 1
           WHEN 'lunch' THEN 2
@@ -723,7 +735,7 @@ class OrderTable {
       } else {
         orderByClause =
             '''
-          o.${AppConstants.colOrderDate} DESC,
+          $_ledgerDateExpression DESC,
           CASE o.${AppConstants.colMealTime}
           WHEN 'dinner' THEN 1
           WHEN 'lunch' THEN 2

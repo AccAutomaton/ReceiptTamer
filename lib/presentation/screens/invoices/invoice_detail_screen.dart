@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_alert_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +11,8 @@ import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/data/models/order.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_notice.dart';
+import 'package:receipt_tamer/presentation/widgets/common/empty_state.dart';
 import 'package:receipt_tamer/presentation/widgets/common/scroll_edge_fog.dart';
 import 'package:receipt_tamer/presentation/widgets/invoice/invoice_image_preview.dart';
 
@@ -30,6 +30,8 @@ class InvoiceDetailScreen extends ConsumerStatefulWidget {
 class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
   Invoice? _invoice;
   List<Order> _relatedOrders = [];
+  bool _isLoading = true;
+  String? _loadError;
 
   @override
   void initState() {
@@ -38,32 +40,53 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
   }
 
   Future<void> _loadInvoice() async {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _loadError = null;
+      });
+    }
     try {
-      final invoice = await ref
-          .read(invoiceProvider.notifier)
-          .getInvoiceById(widget.invoiceId);
-      if (mounted && invoice != null) {
-        // Load related orders
-        final orderIds = await ref
-            .read(invoiceProvider.notifier)
-            .getOrderIdsForInvoice(widget.invoiceId);
-        final orders = <Order>[];
-        for (final orderId in orderIds) {
-          final order = await ref
-              .read(orderProvider.notifier)
-              .getOrderById(orderId);
-          if (order != null) {
-            orders.add(order);
-          }
+      final invoiceRepository = ref.read(invoiceRepositoryProvider);
+      final orderRepository = ref.read(orderRepositoryProvider);
+      final invoice = await invoiceRepository.getById(widget.invoiceId);
+      if (invoice == null) {
+        if (mounted) {
+          setState(() {
+            _invoice = null;
+            _relatedOrders = [];
+            _isLoading = false;
+            _loadError = '发票不存在或已被删除';
+          });
         }
+        return;
+      }
 
+      final orderIds = await invoiceRepository.getOrderIdsForInvoice(
+        widget.invoiceId,
+      );
+      final orders = orderIds.isEmpty
+          ? const <Order>[]
+          : await orderRepository.getByIds(orderIds);
+
+      if (mounted) {
         setState(() {
           _invoice = invoice;
           _relatedOrders = orders;
+          _isLoading = false;
+          _loadError = null;
         });
       }
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleUi, '加载发票失败', e, stackTrace);
+      if (mounted) {
+        setState(() {
+          _invoice = null;
+          _relatedOrders = [];
+          _isLoading = false;
+          _loadError = '加载发票失败，请重试';
+        });
+      }
     }
   }
 
@@ -103,14 +126,10 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
       if (mounted) {
         if (success) {
           logService.i(LogConfig.moduleUi, '发票已删除: id=${widget.invoiceId}');
+          AppNotice.success(context, AppConstants.successDeleted);
           context.pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text(AppConstants.successDeleted)),
-          );
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text(AppConstants.errorDeletingData)),
-          );
+          AppNotice.error(context, AppConstants.errorDeletingData);
         }
       }
     }
@@ -121,10 +140,24 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    if (_invoice == null) {
+    if (_isLoading) {
       return Scaffold(
         appBar: AppBar(title: const Text(AppConstants.titleInvoiceDetail)),
         body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_invoice == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text(AppConstants.titleInvoiceDetail)),
+        body: EmptyState(
+          icon: Icons.description_outlined,
+          title: _loadError ?? '发票不存在或已被删除',
+          subtitle: '你可以重新加载，或返回发票列表刷新数据。',
+          actionLabel: '重新加载',
+          actionIcon: Icons.refresh,
+          onAction: _loadInvoice,
+        ),
       );
     }
 
@@ -159,9 +192,7 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Image preview
-              if (invoice.imagePath.isNotEmpty &&
-                  File(invoice.imagePath).existsSync())
-                InvoiceImagePreview(imagePath: invoice.imagePath, height: 250),
+              InvoiceImagePreview(imagePath: invoice.imagePath, height: 250),
 
               // Invoice details
               Padding(
@@ -300,9 +331,12 @@ class _InvoiceDetailScreenState extends ConsumerState<InvoiceDetailScreen> {
 
     return Card(
       child: InkWell(
-        onTap: () {
+        onTap: () async {
           if (order.id != null && order.id! > 0) {
-            context.push('/orders/${order.id}');
+            await context.push('/orders/${order.id}');
+            if (mounted) {
+              await _loadInvoice();
+            }
           }
         },
         child: Padding(

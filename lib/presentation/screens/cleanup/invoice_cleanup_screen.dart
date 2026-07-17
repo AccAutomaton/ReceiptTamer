@@ -6,6 +6,7 @@ import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/data/services/cleanup_service.dart';
 import 'package:receipt_tamer/presentation/providers/cleanup_provider.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_notice.dart';
 import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart';
 import 'package:receipt_tamer/presentation/widgets/common/floating_overlay_layout.dart';
 
@@ -38,7 +39,7 @@ class _InvoiceCleanupScreenState extends ConsumerState<InvoiceCleanupScreen> {
     );
 
     if (result != null) {
-      ref
+      await ref
           .read(cleanupProvider.notifier)
           .setDateRange(result.startDate, result.endDate);
     }
@@ -49,9 +50,11 @@ class _InvoiceCleanupScreenState extends ConsumerState<InvoiceCleanupScreen> {
         .read(cleanupProvider.notifier)
         .toggleSelection(invoiceId);
     if (message != null && mounted) {
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
+      AppNotice.show(
+        context,
+        message,
+        tone: AppNoticeTone.linkage,
+        duration: const Duration(seconds: 2),
       );
     }
   }
@@ -59,9 +62,11 @@ class _InvoiceCleanupScreenState extends ConsumerState<InvoiceCleanupScreen> {
   Future<void> _selectAll() async {
     final message = await ref.read(cleanupProvider.notifier).selectAll();
     if (message != null && mounted) {
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
+      AppNotice.show(
+        context,
+        message,
+        tone: AppNoticeTone.linkage,
+        duration: const Duration(seconds: 2),
       );
     }
   }
@@ -69,18 +74,23 @@ class _InvoiceCleanupScreenState extends ConsumerState<InvoiceCleanupScreen> {
   Future<void> _invertSelection() async {
     final message = await ref.read(cleanupProvider.notifier).invertSelection();
     if (message != null && mounted) {
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
+      AppNotice.show(
+        context,
+        message,
+        tone: AppNoticeTone.linkage,
+        duration: const Duration(seconds: 2),
       );
     }
   }
 
   Future<void> _confirmDelete() async {
-    final state = ref.read(cleanupProvider);
-
-    // Build confirmation message
-    final invoicesCount = state.totalSelectedCount;
+    var state = ref.read(cleanupProvider);
+    if (state.isLoading ||
+        state.isDeleting ||
+        state.errorMessage != null ||
+        state.visibleSelectedIds.isEmpty) {
+      return;
+    }
 
     // Get actual order count from provider
     final ordersCount = await ref
@@ -88,10 +98,28 @@ class _InvoiceCleanupScreenState extends ConsumerState<InvoiceCleanupScreen> {
         .getRelatedOrderCount();
 
     if (!mounted) return;
+    state = ref.read(cleanupProvider);
+    if (state.isLoading ||
+        state.isDeleting ||
+        state.errorMessage != null ||
+        state.visibleSelectedIds.isEmpty) {
+      return;
+    }
+    final invoicesCount = state.totalSelectedCount;
 
     final colorScheme = Theme.of(context).colorScheme;
 
     String message = '确定要删除 $invoicesCount 张发票吗？';
+    if (state.cascadeIds.isNotEmpty) {
+      message +=
+          '\n\n其中 ${state.visibleSelectedIds.length} 张为当前范围内明确选择，'
+          '${state.cascadeIds.length} 张为关联级联。';
+    }
+    if (state.hiddenCascadeCount > 0) {
+      message += '\n${state.hiddenCascadeCount} 张级联发票不在当前筛选范围内。';
+    }
+    message +=
+        '\n删除发票金额合计：${DateFormatter.formatAmount(state.selectedTotalAmount)}。';
     if (state.deleteRelatedItems && ordersCount > 0) {
       message += '\n\n将同时删除 $ordersCount 条关联订单。';
     }
@@ -124,39 +152,56 @@ class _InvoiceCleanupScreenState extends ConsumerState<InvoiceCleanupScreen> {
     if (!mounted) return;
 
     if (result != null) {
-      // Show result
-      _showResultDialog(result);
-
-      // Pop back to settings if no items left
-      if (ref.read(cleanupProvider).availableInvoices.isEmpty) {
+      final cleanupState = ref.read(cleanupProvider);
+      final shouldLeave =
+          cleanupState.availableInvoices.isEmpty &&
+          cleanupState.refreshWarningMessage == null;
+      await _showResultDialog(result);
+      if (mounted && shouldLeave) {
         context.pop();
+      }
+    } else {
+      final error = ref.read(cleanupProvider).errorMessage;
+      if (error != null) {
+        AppNotice.error(context, '删除失败：$error');
       }
     }
   }
 
-  void _showResultDialog(CleanupResult result) {
-    showDialog(
+  Future<void> _showResultDialog(CleanupResult result) async {
+    await showDialog<void>(
       context: context,
-      builder: (context) => GlassAlertDialog(
-        title: const Text('清理完成'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('已删除 ${result.invoicesDeleted} 张发票'),
-            if (result.ordersDeleted > 0)
-              Text('已删除 ${result.ordersDeleted} 条订单'),
-            Text('已删除 ${result.filesDeleted} 个文件'),
-            if (result.spaceFreedBytes > 0)
-              Text('释放空间: ${_formatBytes(result.spaceFreedBytes)}'),
+      barrierDismissible: false,
+      builder: (context) => PopScope(
+        canPop: false,
+        child: GlassAlertDialog(
+          title: const Text('清理完成'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('已删除 ${result.invoicesDeleted} 张发票'),
+              if (result.ordersDeleted > 0)
+                Text('已删除 ${result.ordersDeleted} 条订单'),
+              Text('已删除 ${result.filesDeleted} 个文件'),
+              if (result.spaceFreedBytes > 0)
+                Text('释放空间: ${_formatBytes(result.spaceFreedBytes)}'),
+              if (result.filesFailedToDelete > 0) ...[
+                const SizedBox(height: 8),
+                Text(
+                  '${result.filesFailedToDelete} 个附件未能删除，'
+                  '数据已安全清理，可稍后清理孤儿文件。',
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('确定'),
+            ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('确定'),
-          ),
-        ],
       ),
     );
   }
@@ -183,6 +228,13 @@ class _InvoiceCleanupScreenState extends ConsumerState<InvoiceCleanupScreen> {
           children: [
             _buildOptionsSection(state, colorScheme),
             _buildStatisticsCard(state, colorScheme),
+            if (state.errorMessage != null)
+              _buildErrorBanner(state.errorMessage!, colorScheme),
+            if (state.refreshWarningMessage != null)
+              _buildRefreshWarningBanner(
+                state.refreshWarningMessage!,
+                colorScheme,
+              ),
           ],
         ),
         bodyBuilder: (context, contentPadding) {
@@ -206,6 +258,7 @@ class _InvoiceCleanupScreenState extends ConsumerState<InvoiceCleanupScreen> {
   }
 
   Widget _buildOptionsSection(CleanupState state, ColorScheme colorScheme) {
+    final isBusy = state.isLoading || state.isDeleting;
     return Column(
       children: [
         // Delete related orders toggle
@@ -213,15 +266,23 @@ class _InvoiceCleanupScreenState extends ConsumerState<InvoiceCleanupScreen> {
           children: [
             Checkbox(
               value: state.deleteRelatedItems,
-              onChanged: (_) {
-                ref.read(cleanupProvider.notifier).toggleDeleteRelatedItems();
-              },
+              onChanged: isBusy
+                  ? null
+                  : (_) {
+                      ref
+                          .read(cleanupProvider.notifier)
+                          .toggleDeleteRelatedItems();
+                    },
             ),
             Expanded(
               child: InkWell(
-                onTap: () {
-                  ref.read(cleanupProvider.notifier).toggleDeleteRelatedItems();
-                },
+                onTap: isBusy
+                    ? null
+                    : () {
+                        ref
+                            .read(cleanupProvider.notifier)
+                            .toggleDeleteRelatedItems();
+                      },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -245,13 +306,15 @@ class _InvoiceCleanupScreenState extends ConsumerState<InvoiceCleanupScreen> {
         Row(
           children: [
             TextButton.icon(
-              onPressed: state.availableInvoices.isEmpty ? null : _selectAll,
+              onPressed: state.availableInvoices.isEmpty || isBusy
+                  ? null
+                  : _selectAll,
               icon: const Icon(Icons.select_all, size: 18),
               label: const Text('全选'),
             ),
             const SizedBox(width: 8),
             TextButton.icon(
-              onPressed: state.availableInvoices.isEmpty
+              onPressed: state.availableInvoices.isEmpty || isBusy
                   ? null
                   : _invertSelection,
               icon: const Icon(Icons.flip, size: 18),
@@ -259,7 +322,7 @@ class _InvoiceCleanupScreenState extends ConsumerState<InvoiceCleanupScreen> {
             ),
             const SizedBox(width: 8),
             TextButton.icon(
-              onPressed: _showDateRangePicker,
+              onPressed: isBusy ? null : _showDateRangePicker,
               icon: const Icon(Icons.calendar_month, size: 18),
               label: Text(state.startDate != null ? '修改日期' : '日期筛选'),
             ),
@@ -278,9 +341,11 @@ class _InvoiceCleanupScreenState extends ConsumerState<InvoiceCleanupScreen> {
                   style: const TextStyle(fontSize: 12),
                 ),
                 deleteIcon: const Icon(Icons.close, size: 16),
-                onDeleted: () {
-                  ref.read(cleanupProvider.notifier).clearDateRange();
-                },
+                onDeleted: isBusy
+                    ? null
+                    : () {
+                        ref.read(cleanupProvider.notifier).clearDateRange();
+                      },
               ),
             ),
           ),
@@ -291,9 +356,6 @@ class _InvoiceCleanupScreenState extends ConsumerState<InvoiceCleanupScreen> {
   Widget _buildStatisticsCard(CleanupState state, ColorScheme colorScheme) {
     final selectedCount = state.totalSelectedCount;
     final totalCount = state.availableInvoices.length;
-    final orderCount = state.selectedIds.fold<int>(0, (sum, id) {
-      return sum + (state.invoiceOrderCount[id] ?? 0);
-    });
 
     return Container(
       margin: const EdgeInsets.only(top: 12),
@@ -316,18 +378,77 @@ class _InvoiceCleanupScreenState extends ConsumerState<InvoiceCleanupScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '共 $totalCount 张发票，已选 $selectedCount 张',
+                  '当前范围共 $totalCount 张发票，明确选择 ${state.visibleSelectedIds.length} 张',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
-                if (orderCount > 0)
+                if (state.cascadeIds.isNotEmpty)
                   Text(
-                    '涉及关联订单 $orderCount 条',
+                    '关联级联 ${state.cascadeIds.length} 张'
+                    '${state.hiddenCascadeCount > 0 ? '，其中 ${state.hiddenCascadeCount} 张在筛选范围外' : ''}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
                   ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorBanner(String message, ColorScheme colorScheme) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline, color: colorScheme.onErrorContainer),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '操作失败：$message',
+              style: TextStyle(color: colorScheme.onErrorContainer),
+            ),
+          ),
+          TextButton(
+            onPressed: () =>
+                ref.read(cleanupProvider.notifier).loadAvailableItems(),
+            child: const Text('重试'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRefreshWarningBanner(String message, ColorScheme colorScheme) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: colorScheme.tertiaryContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.sync_problem, color: colorScheme.onTertiaryContainer),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(color: colorScheme.onTertiaryContainer),
+            ),
+          ),
+          TextButton(
+            onPressed: () =>
+                ref.read(cleanupProvider.notifier).retryRefreshAfterCleanup(),
+            child: const Text('重试刷新'),
           ),
         ],
       ),
@@ -388,9 +509,7 @@ class _InvoiceCleanupScreenState extends ConsumerState<InvoiceCleanupScreen> {
 
   Widget _buildBottomBar(CleanupState state, ColorScheme colorScheme) {
     final selectedCount = state.totalSelectedCount;
-    final totalAmount = state.availableInvoices
-        .where((i) => i.id != null && state.isSelected(i.id!))
-        .fold<double>(0, (sum, i) => sum + i.totalAmount);
+    final hiddenCount = state.hiddenCascadeCount;
 
     return Row(
       children: [
@@ -399,11 +518,12 @@ class _InvoiceCleanupScreenState extends ConsumerState<InvoiceCleanupScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '已选择 $selectedCount 张发票',
+              '将删除 $selectedCount 张发票'
+              '${hiddenCount > 0 ? '（含范围外 $hiddenCount 张）' : ''}',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             Text(
-              '合计: ${DateFormatter.formatAmount(totalAmount)}',
+              '合计: ${DateFormatter.formatAmount(state.selectedTotalAmount)}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -412,7 +532,11 @@ class _InvoiceCleanupScreenState extends ConsumerState<InvoiceCleanupScreen> {
         ),
         const Spacer(),
         FilledButton.icon(
-          onPressed: selectedCount > 0 && !state.isDeleting
+          onPressed:
+              state.visibleSelectedIds.isNotEmpty &&
+                  !state.isDeleting &&
+                  !state.isLoading &&
+                  state.errorMessage == null
               ? _confirmDelete
               : null,
           icon: state.isDeleting

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_notice.dart';
 import 'package:share_plus/share_plus.dart';
 
 /// Order image preview widget with zoom and pan support
@@ -87,11 +88,7 @@ class _OrderImagePreviewState extends State<OrderImagePreview> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 48,
-                  color: colorScheme.error,
-                ),
+                Icon(Icons.error_outline, size: 48, color: colorScheme.error),
                 const SizedBox(height: 8),
                 Text(
                   '加载失败',
@@ -108,13 +105,13 @@ class _OrderImagePreviewState extends State<OrderImagePreview> {
 
     if (!widget.interactive) {
       return GestureDetector(
-        onTap: widget.onTap ??
+        onTap:
+            widget.onTap ??
             () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => FullScreenImagePreview(
-                    imagePath: widget.imagePath,
-                  ),
+                  builder: (context) =>
+                      FullScreenImagePreview(imagePath: widget.imagePath),
                 ),
               );
             },
@@ -134,13 +131,13 @@ class _OrderImagePreviewState extends State<OrderImagePreview> {
     }
 
     return GestureDetector(
-      onTap: widget.onTap ??
+      onTap:
+          widget.onTap ??
           () {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (context) => FullScreenImagePreview(
-                  imagePath: widget.imagePath,
-                ),
+                builder: (context) =>
+                    FullScreenImagePreview(imagePath: widget.imagePath),
               ),
             );
           },
@@ -178,11 +175,7 @@ class _OrderImagePreviewState extends State<OrderImagePreview> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
-                        Icons.zoom_in,
-                        color: Colors.white,
-                        size: 16,
-                      ),
+                      const Icon(Icons.zoom_in, color: Colors.white, size: 16),
                       const SizedBox(width: 4),
                       Text(
                         '双指缩放',
@@ -206,10 +199,7 @@ class _OrderImagePreviewState extends State<OrderImagePreview> {
 class FullScreenImagePreview extends StatelessWidget {
   final String imagePath;
 
-  const FullScreenImagePreview({
-    super.key,
-    required this.imagePath,
-  });
+  const FullScreenImagePreview({super.key, required this.imagePath});
 
   @override
   Widget build(BuildContext context) {
@@ -223,10 +213,7 @@ class FullScreenImagePreview extends StatelessWidget {
           iconTheme: const IconThemeData(color: Colors.white),
         ),
         body: const Center(
-          child: Text(
-            '图片不存在',
-            style: TextStyle(color: Colors.white),
-          ),
+          child: Text('图片不存在', style: TextStyle(color: Colors.white)),
         ),
       );
     }
@@ -243,15 +230,12 @@ class FullScreenImagePreview extends StatelessWidget {
             icon: const Icon(Icons.share),
             onPressed: () async {
               try {
-                await SharePlus.instance.share(ShareParams(
-                  files: [XFile(imagePath)],
-                  subject: '分享订单图片',
-                ));
+                await SharePlus.instance.share(
+                  ShareParams(files: [XFile(imagePath)], subject: '分享订单图片'),
+                );
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('分享失败: $e')),
-                  );
+                  AppNotice.error(context, '分享失败: $e');
                 }
               }
             },
@@ -266,10 +250,7 @@ class FullScreenImagePreview extends StatelessWidget {
           child: InteractiveViewer(
             minScale: 0.5,
             maxScale: 5.0,
-            child: Image.file(
-              file,
-              fit: BoxFit.contain,
-            ),
+            child: Image.file(file, fit: BoxFit.contain),
           ),
         ),
       ),

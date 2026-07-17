@@ -11,6 +11,17 @@ import 'package:receipt_tamer/data/models/order.dart';
 import 'package:receipt_tamer/data/services/invoice_proration_util.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 
+/// Raised when one or more selected order screenshots are unavailable.
+class MealProofAttachmentUnavailableException implements Exception {
+  const MealProofAttachmentUnavailableException(this.orders, {this.cause});
+
+  final List<Order> orders;
+  final Object? cause;
+
+  @override
+  String toString() => '有${orders.length}笔订单的截图缺失或损坏，请在订单详情中重新添加截图';
+}
+
 /// Meal proof export service
 /// Generates meal proof PDF documents from selected invoices and orders
 class MealProofExportService {
@@ -181,6 +192,33 @@ class MealProofExportService {
     if (items.isEmpty) {
       throw ArgumentError('Items list cannot be empty');
     }
+    if (outputPath.isEmpty) {
+      throw ArgumentError('Output path cannot be empty');
+    }
+
+    final unavailableOrders = <Order>[];
+    final checkedOrderIds = <int>{};
+    for (final item in items) {
+      final order = item.order;
+      final identity = order.id ?? identityHashCode(order);
+      if (!checkedOrderIds.add(identity)) continue;
+      try {
+        final sourcePath = order.imagePath.trim();
+        if (sourcePath.isEmpty) {
+          unavailableOrders.add(order);
+          continue;
+        }
+        final file = File(getImagePath(sourcePath));
+        if (!await file.exists() || await file.length() == 0) {
+          unavailableOrders.add(order);
+        }
+      } catch (_) {
+        unavailableOrders.add(order);
+      }
+    }
+    if (unavailableOrders.isNotEmpty) {
+      throw MealProofAttachmentUnavailableException(unavailableOrders);
+    }
 
     logService.i(LogConfig.moduleFile, '开始生成用餐证明PDF，共 ${items.length} 项');
 
@@ -265,26 +303,27 @@ class MealProofExportService {
           );
 
           // Draw image cell
-          await _drawImageCell(
-            graphics: graphics,
-            imagePath: item.order.imagePath,
-            getImagePath: getImagePath,
-            x: x,
-            y: imageY,
-            width: cellWidth,
-            height: imageRowHeight,
-          );
+          try {
+            await _drawImageCell(
+              graphics: graphics,
+              imagePath: item.order.imagePath,
+              getImagePath: getImagePath,
+              x: x,
+              y: imageY,
+              width: cellWidth,
+              height: imageRowHeight,
+            );
+          } catch (error) {
+            throw MealProofAttachmentUnavailableException([
+              item.order,
+            ], cause: error);
+          }
         }
       }
 
       // Save document
       final bytes = document.saveSync();
       document.dispose();
-
-      // Validate output path
-      if (outputPath.isEmpty) {
-        throw ArgumentError('Output path cannot be empty');
-      }
 
       final file = File(outputPath);
       await file.writeAsBytes(bytes);
@@ -358,20 +397,18 @@ class MealProofExportService {
     required double width,
     required double height,
   }) async {
-    if (imagePath.isEmpty) return;
-
     try {
       final resolvedPath = getImagePath(imagePath);
       final file = File(resolvedPath);
-      if (!await file.exists()) return;
 
       final bytes = await file.readAsBytes();
-      if (bytes.isEmpty) return;
 
       final image = PdfBitmap(bytes);
 
       // Validate image dimensions
-      if (image.width <= 0 || image.height <= 0) return;
+      if (image.width <= 0 || image.height <= 0) {
+        throw const FormatException('订单截图尺寸无效');
+      }
 
       // Calculate aspect ratio
       final imgWidth = image.width.toDouble();
@@ -391,7 +428,9 @@ class MealProofExportService {
       }
 
       // Ensure dimensions are valid
-      if (drawWidth <= 0 || drawHeight <= 0) return;
+      if (drawWidth <= 0 || drawHeight <= 0) {
+        throw const FormatException('订单截图绘制尺寸无效');
+      }
 
       // Center image in cell
       final drawX = x + (width - drawWidth) / 2;
@@ -403,6 +442,7 @@ class MealProofExportService {
       );
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleFile, '加载用餐证明图片失败', e, stackTrace);
+      rethrow;
     }
   }
 

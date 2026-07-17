@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../data/services/file_service.dart';
 import '../../../core/services/log_service.dart';
 import '../../../core/services/log_config.dart';
+import '../../widgets/common/app_notice.dart';
 import '../../widgets/common/scroll_edge_fog.dart';
 
 /// Saved file item model
@@ -143,9 +144,7 @@ class _SavedFilesScreenState extends State<SavedFilesScreen> {
     final mimeType = _fileService.getMimeType(file.name);
     final success = await _fileService.shareFile(file.uri, file.name, mimeType);
     if (!success && mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('分享失败')));
+      AppNotice.error(context, '分享失败', duration: const Duration(seconds: 4));
     }
   }
 

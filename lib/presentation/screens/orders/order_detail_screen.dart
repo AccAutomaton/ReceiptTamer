@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_alert_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +10,8 @@ import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/order.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_notice.dart';
+import 'package:receipt_tamer/presentation/widgets/common/empty_state.dart';
 import 'package:receipt_tamer/presentation/widgets/common/scroll_edge_fog.dart';
 import 'package:receipt_tamer/presentation/widgets/order/order_image_preview.dart';
 import 'package:receipt_tamer/presentation/screens/orders/invoice_selector_screen.dart';
@@ -28,6 +28,8 @@ class OrderDetailScreen extends ConsumerStatefulWidget {
 
 class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   Order? _order;
+  bool _isLoading = true;
+  String? _loadError;
 
   @override
   void initState() {
@@ -36,17 +38,32 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   }
 
   Future<void> _loadOrder() async {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _loadError = null;
+      });
+    }
     try {
       final order = await ref
-          .read(orderProvider.notifier)
-          .getOrderById(widget.orderId);
+          .read(orderRepositoryProvider)
+          .getById(widget.orderId);
       if (mounted) {
         setState(() {
           _order = order;
+          _isLoading = false;
+          _loadError = order == null ? '订单不存在或已被删除' : null;
         });
       }
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleUi, '加载订单失败', e, stackTrace);
+      if (mounted) {
+        setState(() {
+          _order = null;
+          _isLoading = false;
+          _loadError = '加载订单失败，请重试';
+        });
+      }
     }
   }
 
@@ -86,14 +103,10 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       if (mounted) {
         if (success) {
           logService.i(LogConfig.moduleUi, '订单已删除: id=${widget.orderId}');
+          AppNotice.success(context, AppConstants.successDeleted);
           context.pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text(AppConstants.successDeleted)),
-          );
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text(AppConstants.errorDeletingData)),
-          );
+          AppNotice.error(context, AppConstants.errorDeletingData);
         }
       }
     }
@@ -105,7 +118,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (context) => SafeArea(
+      builder: (sheetContext) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -114,10 +127,11 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
               title: const Text('新增发票'),
               subtitle: const Text('创建一张新发票并关联'),
               onTap: () async {
-                Navigator.pop(context);
+                Navigator.pop(sheetContext);
                 final result = await context.push<bool>(
                   '/invoices/new?orderId=${widget.orderId}',
                 );
+                if (!mounted) return;
                 if (result == true) {
                   _loadOrder();
                   // Invalidate the provider to refresh invoices list
@@ -130,20 +144,16 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
               title: const Text('选择已有发票'),
               subtitle: const Text('从已有发票中选择一张关联'),
               onTap: () async {
-                Navigator.pop(context);
+                Navigator.pop(sheetContext);
                 final result = await context.push<InvoiceSelectorResult>(
                   '/invoices/select?orderId=${widget.orderId}',
                 );
-                if (!context.mounted) return;
+                if (!mounted) return;
                 if (result?.selectedInvoiceId != null) {
                   _loadOrder();
                   // Invalidate the provider to refresh invoices list
                   ref.invalidate(invoicesByOrderIdProvider(widget.orderId));
-                  if (mounted) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(const SnackBar(content: Text('发票关联成功')));
-                  }
+                  AppNotice.success(context, '发票关联成功');
                 }
               },
             ),
@@ -158,10 +168,24 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    if (_order == null) {
+    if (_isLoading) {
       return Scaffold(
         appBar: AppBar(title: const Text(AppConstants.titleOrderDetail)),
         body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_order == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text(AppConstants.titleOrderDetail)),
+        body: EmptyState(
+          icon: Icons.receipt_long_outlined,
+          title: _loadError ?? '订单不存在或已被删除',
+          subtitle: '你可以重新加载，或返回订单列表刷新数据。',
+          actionLabel: '重新加载',
+          actionIcon: Icons.refresh,
+          onAction: _loadOrder,
+        ),
       );
     }
 
@@ -197,9 +221,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Image preview
-              if (order.imagePath.isNotEmpty &&
-                  File(order.imagePath).existsSync())
-                OrderImagePreview(imagePath: order.imagePath, height: 250),
+              OrderImagePreview(imagePath: order.imagePath, height: 250),
 
               // Order details
               Padding(

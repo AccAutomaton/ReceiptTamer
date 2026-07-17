@@ -14,12 +14,14 @@ import 'package:receipt_tamer/data/services/invoice_export_service.dart';
 import 'package:receipt_tamer/data/services/file_service.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_notice.dart';
 import 'package:receipt_tamer/presentation/widgets/common/empty_state.dart';
 import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/floating_overlay_layout.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_page_scaffold.dart';
 import 'package:receipt_tamer/presentation/screens/export/saved_files_screen.dart';
+import 'package:receipt_tamer/presentation/utils/persistent_selection.dart';
 
 /// Order relation filter enum for invoice export
 /// 用于发票导出的订单关联筛选
@@ -41,12 +43,15 @@ class InvoiceQuickSelectScreen extends ConsumerStatefulWidget {
 
 class _InvoiceQuickSelectScreenState
     extends ConsumerState<InvoiceQuickSelectScreen> {
-  Set<int> _selectedInvoiceIds = {};
+  final PersistentSelection<Invoice> _selection = PersistentSelection<Invoice>(
+    (invoice) => invoice.id,
+  );
   List<Invoice> _invoices = [];
   int _totalInvoiceCount = 0; // 全部筛选下的发票数量（用于已选计数分母）
   Map<int, int> _invoiceOrderCounts = {}; // invoiceId -> order count
   bool _isLoading = true;
   bool _isExporting = false;
+  int _loadRequestId = 0;
 
   // Filter state
   OrderRelationFilter _orderRelationFilter = OrderRelationFilter.all;
@@ -74,6 +79,7 @@ class _InvoiceQuickSelectScreenState
   }
 
   Future<void> _loadInvoices() async {
+    final requestId = ++_loadRequestId;
     setState(() => _isLoading = true);
 
     try {
@@ -125,58 +131,62 @@ class _InvoiceQuickSelectScreenState
         invoiceIds,
       );
 
-      if (mounted) {
+      if (mounted && requestId == _loadRequestId) {
         setState(() {
           _invoices = filteredInvoices;
+          _selection.refreshVisible(filteredInvoices);
           _invoiceOrderCounts = invoiceOrderCounts;
           _totalInvoiceCount = totalCount;
           _isLoading = false;
         });
       }
     } catch (e, stackTrace) {
-      if (mounted) {
+      if (mounted && requestId == _loadRequestId) {
         setState(() => _isLoading = false);
         logService.e(LogConfig.moduleUi, '加载发票失败', e, stackTrace);
-        ScaffoldMessenger.of(
+        AppNotice.error(
           context,
-        ).showSnackBar(SnackBar(content: Text('加载发票失败: $e')));
+          '加载发票失败: $e',
+          duration: const Duration(seconds: 4),
+        );
       }
     }
   }
 
-  void _toggleSelection(int invoiceId) {
+  void _toggleSelection(Invoice invoice) {
+    final invoiceId = invoice.id;
+    if (invoiceId == null) return;
     setState(() {
-      if (_selectedInvoiceIds.contains(invoiceId)) {
-        _selectedInvoiceIds.remove(invoiceId);
-      } else {
-        _selectedInvoiceIds.add(invoiceId);
-      }
+      _selection.toggle(invoice);
     });
   }
 
   void _selectAll() {
     setState(() {
-      _selectedInvoiceIds = _invoices
-          .where((i) => i.id != null)
-          .map((i) => i.id!)
-          .toSet();
+      _selection.selectVisible(_invoices);
     });
   }
 
   void _clearSelection() {
     setState(() {
-      _selectedInvoiceIds.clear();
+      _selection.clear();
     });
   }
 
   void _invertSelection() {
     setState(() {
-      final allIds = _invoices
-          .where((i) => i.id != null)
-          .map((i) => i.id!)
-          .toSet();
-      _selectedInvoiceIds = allIds.difference(_selectedInvoiceIds);
+      _selection.invertVisible(_invoices);
     });
+  }
+
+  Future<List<Invoice>> _resolveSelectedInvoices() async {
+    final repository = ref.read(invoiceRepositoryProvider);
+    final resolved = <Invoice>[];
+    for (final id in _selection.ids) {
+      final invoice = await repository.getById(id);
+      if (invoice != null) resolved.add(invoice);
+    }
+    return resolved;
   }
 
   void _showDateRangePicker() async {
@@ -254,10 +264,12 @@ class _InvoiceQuickSelectScreenState
   }
 
   Future<void> _confirmAndExport() async {
-    if (_selectedInvoiceIds.isEmpty) {
-      ScaffoldMessenger.of(
+    if (_selection.isEmpty) {
+      AppNotice.warning(
         context,
-      ).showSnackBar(const SnackBar(content: Text('请先选择发票')));
+        '请先选择发票',
+        duration: const Duration(seconds: 4),
+      );
       return;
     }
 
@@ -265,10 +277,12 @@ class _InvoiceQuickSelectScreenState
     String? tempPath;
 
     try {
-      // Get selected invoices
-      final selectedInvoices = _invoices
-          .where((i) => _selectedInvoiceIds.contains(i.id))
-          .toList();
+      // Resolve by ID instead of intersecting with the currently visible
+      // filter. Hidden selections remain part of the export.
+      final selectedInvoices = await _resolveSelectedInvoices();
+      if (selectedInvoices.length != _selection.length) {
+        throw StateError('部分已选发票已不存在，请返回后重新选择');
+      }
 
       // Prepare invoice export items
       final items = await InvoiceExportService.prepareInvoiceExportItems(
@@ -280,12 +294,24 @@ class _InvoiceQuickSelectScreenState
         remark: _addRemark ? _remarkContent : null,
       );
 
+      final validation = await InvoiceExportService.validateAttachments(
+        items: items,
+        getFilePath: (path) => path,
+      );
+      if (validation.hasUnavailableItems) {
+        throw InvoiceAttachmentUnavailableException(
+          validation.unavailableItems.map((item) => item.invoice).toList(),
+        );
+      }
+
       if (!mounted) return;
 
       if (items.isEmpty) {
-        ScaffoldMessenger.of(
+        AppNotice.warning(
           context,
-        ).showSnackBar(const SnackBar(content: Text('没有可导出的发票')));
+          '没有可导出的发票',
+          duration: const Duration(seconds: 4),
+        );
         setState(() => _isExporting = false);
         return;
       }
@@ -321,24 +347,31 @@ class _InvoiceQuickSelectScreenState
 
         // Navigate to saved files screen to show exported file
         if (savedPath != null) {
-          Navigator.pop(context);
+          final navigator = Navigator.of(context);
+          final navigationContext = navigator.overlay!.context;
+          navigator.pop();
+          if (!navigationContext.mounted) return;
           await showSavedFilesScreen(
-            context,
+            navigationContext,
             initialSubDir: 'materials/$dateDir',
           );
         } else {
-          ScaffoldMessenger.of(
+          AppNotice.error(
             context,
-          ).showSnackBar(const SnackBar(content: Text('保存文件失败')));
+            '保存文件失败',
+            duration: const Duration(seconds: 4),
+          );
         }
       }
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleFile, '发票PDF导出失败', e, stackTrace);
       if (mounted) {
         setState(() => _isExporting = false);
-        ScaffoldMessenger.of(
+        AppNotice.error(
           context,
-        ).showSnackBar(SnackBar(content: Text('导出失败: $e')));
+          '导出失败: $e',
+          duration: const Duration(seconds: 4),
+        );
       }
     } finally {
       final workingPath = tempPath;
@@ -484,7 +517,7 @@ class _InvoiceQuickSelectScreenState
 
   Widget _buildSelectButtonsRow(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final hasSelection = _selectedInvoiceIds.isNotEmpty;
+    final hasSelection = _selection.isNotEmpty;
 
     return Padding(
       padding: const EdgeInsets.only(top: 8),
@@ -505,8 +538,8 @@ class _InvoiceQuickSelectScreenState
             onTap: hasSelection ? _clearSelection : null,
             child: Text(
               hasSelection
-                  ? '已选 ${_selectedInvoiceIds.length}/$_totalInvoiceCount ✕'
-                  : '已选 ${_selectedInvoiceIds.length}/$_totalInvoiceCount',
+                  ? '已选 ${_selection.length}/$_totalInvoiceCount ✕'
+                  : '已选 ${_selection.length}/$_totalInvoiceCount',
               style: TextStyle(
                 color: hasSelection
                     ? AppPalette.amountFor(context)
@@ -548,40 +581,48 @@ class _InvoiceQuickSelectScreenState
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return InkWell(
+    return Semantics(
+      button: true,
+      checked: _showTimeLabel,
+      label: '标注订单时间',
       onTap: () => setState(() => _showTimeLabel = !_showTimeLabel),
-      borderRadius: BorderRadius.circular(20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _showTimeLabel
-                  ? AppPalette.amountFor(context)
-                  : Colors.transparent,
-              border: Border.all(
-                color: _showTimeLabel
-                    ? AppPalette.amountFor(context)
-                    : colorScheme.outline,
-                width: 2,
+      child: ExcludeSemantics(
+        child: InkWell(
+          onTap: () => setState(() => _showTimeLabel = !_showTimeLabel),
+          borderRadius: BorderRadius.circular(20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _showTimeLabel
+                      ? AppPalette.amountFor(context)
+                      : Colors.transparent,
+                  border: Border.all(
+                    color: _showTimeLabel
+                        ? AppPalette.amountFor(context)
+                        : colorScheme.outline,
+                    width: 2,
+                  ),
+                ),
+                child: _showTimeLabel
+                    ? Icon(Icons.check, size: 14, color: colorScheme.onPrimary)
+                    : null,
               ),
-            ),
-            child: _showTimeLabel
-                ? Icon(Icons.check, size: 14, color: colorScheme.onPrimary)
-                : null,
+              const SizedBox(width: 8),
+              Text(
+                '标注订单时间',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          Text(
-            '标注订单时间',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurface,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -591,59 +632,70 @@ class _InvoiceQuickSelectScreenState
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return InkWell(
+    return Semantics(
+      button: true,
+      checked: _addRemark,
+      label: '添加发票备注',
       onTap: _showRemarkDialog,
-      borderRadius: BorderRadius.circular(20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _addRemark
-                  ? AppPalette.actionPrimaryFor(context)
-                  : Colors.transparent,
-              border: Border.all(
-                color: _addRemark
-                    ? AppPalette.actionPrimaryFor(context)
-                    : colorScheme.outline,
-                width: 2,
-              ),
-            ),
-            child: _addRemark
-                ? Icon(Icons.check, size: 14, color: colorScheme.onPrimary)
-                : null,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '添加备注',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurface,
-            ),
-          ),
-          if (_addRemark && _remarkContent != null) ...[
-            const SizedBox(width: 8),
-            Flexible(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: ExcludeSemantics(
+        child: InkWell(
+          onTap: _showRemarkDialog,
+          borderRadius: BorderRadius.circular(20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 20,
+                height: 20,
                 decoration: BoxDecoration(
-                  color: AppPalette.selectedFillFor(context),
-                  borderRadius: BorderRadius.circular(AppRadii.control),
-                ),
-                child: Text(
-                  _remarkContent!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onPrimaryContainer,
+                  shape: BoxShape.circle,
+                  color: _addRemark
+                      ? AppPalette.actionPrimaryFor(context)
+                      : Colors.transparent,
+                  border: Border.all(
+                    color: _addRemark
+                        ? AppPalette.actionPrimaryFor(context)
+                        : colorScheme.outline,
+                    width: 2,
                   ),
-                  overflow: TextOverflow.ellipsis,
+                ),
+                child: _addRemark
+                    ? Icon(Icons.check, size: 14, color: colorScheme.onPrimary)
+                    : null,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '添加备注',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface,
                 ),
               ),
-            ),
-          ],
-        ],
+              if (_addRemark && _remarkContent != null) ...[
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppPalette.selectedFillFor(context),
+                      borderRadius: BorderRadius.circular(AppRadii.control),
+                    ),
+                    child: Text(
+                      _remarkContent!,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onPrimaryContainer,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -683,7 +735,7 @@ class _InvoiceQuickSelectScreenState
         final invoice = _invoices[index];
         final invoiceId = invoice.id;
         final isSelected =
-            invoiceId != null && _selectedInvoiceIds.contains(invoiceId);
+            invoiceId != null && _selection.containsId(invoiceId);
         final orderCount = invoiceId != null
             ? _invoiceOrderCounts[invoiceId]
             : null;
@@ -692,7 +744,7 @@ class _InvoiceQuickSelectScreenState
           invoice: invoice,
           isSelected: isSelected,
           orderCount: orderCount,
-          onTap: invoiceId != null ? () => _toggleSelection(invoiceId) : null,
+          onTap: invoiceId != null ? () => _toggleSelection(invoice) : null,
           onDoubleTap: () => _showInvoiceDetail(invoice),
         );
       },
@@ -704,11 +756,9 @@ class _InvoiceQuickSelectScreenState
     final colorScheme = theme.colorScheme;
 
     // Calculate total amount of selected invoices
-    final totalAmount = _invoices
-        .where((i) => _selectedInvoiceIds.contains(i.id))
-        .fold<double>(0.0, (sum, i) => sum + i.totalAmount);
+    final totalAmount = _selection.sum((invoice) => invoice.totalAmount);
 
-    final hasSelection = _selectedInvoiceIds.isNotEmpty;
+    final hasSelection = _selection.isNotEmpty;
 
     return Row(
       children: [
@@ -718,9 +768,7 @@ class _InvoiceQuickSelectScreenState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                hasSelection
-                    ? '已选择 ${_selectedInvoiceIds.length} 张发票'
-                    : '未选择发票',
+                hasSelection ? '已选择 ${_selection.length} 张发票' : '未选择发票',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),

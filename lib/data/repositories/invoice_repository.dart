@@ -1,3 +1,5 @@
+import 'package:sqflite/sqflite.dart';
+
 import '../datasources/database/database_helper.dart';
 import '../datasources/database/invoice_table.dart';
 import '../datasources/database/invoice_order_relation_table.dart';
@@ -8,19 +10,25 @@ import '../../core/models/ledger_month_summary.dart';
 /// Provides data access methods for invoices using the invoice table
 /// Order relationships are managed through InvoiceOrderRelationTable
 class InvoiceRepository {
-  InvoiceRepository() : _dbHelper = DatabaseHelper();
+  InvoiceRepository({Database? database})
+    : _databaseOverride = database,
+      _dbHelper = DatabaseHelper();
 
   final DatabaseHelper _dbHelper;
+  final Database? _databaseOverride;
+
+  Future<Database> get _database async =>
+      _databaseOverride ?? await _dbHelper.database;
 
   /// Get the invoice table instance
   Future<InvoiceTable> get _invoiceTable async {
-    final db = await _dbHelper.database;
+    final db = await _database;
     return InvoiceTable(database: db);
   }
 
   /// Get the invoice-order relation table instance
   Future<InvoiceOrderRelationTable> get _relationTable async {
-    final db = await _dbHelper.database;
+    final db = await _database;
     return InvoiceOrderRelationTable(database: db);
   }
 
@@ -29,16 +37,18 @@ class InvoiceRepository {
   /// between these orders and other invoices will be removed first.
   /// This ensures one order can only be associated with one invoice at a time.
   Future<int> create(Invoice invoice, {List<int>? orderIds}) async {
-    final table = await _invoiceTable;
-    final id = await table.insert(invoice);
+    final db = await _database;
+    return db.transaction((transaction) async {
+      final id = await InvoiceTable(database: transaction).insert(invoice);
 
-    // Create order relations if provided
-    if (orderIds != null && orderIds.isNotEmpty) {
-      final relationTable = await _relationTable;
-      await relationTable.replaceRelationsForInvoice(id, orderIds);
-    }
+      if (orderIds != null) {
+        await InvoiceOrderRelationTable(
+          database: transaction,
+        ).replaceRelationsForInvoice(id, orderIds);
+      }
 
-    return id;
+      return id;
+    });
   }
 
   /// Update an existing invoice and its order relations
@@ -46,30 +56,36 @@ class InvoiceRepository {
   /// between these orders and other invoices will be removed first.
   /// This ensures one order can only be associated with one invoice at a time.
   Future<int> update(Invoice invoice, {List<int>? orderIds}) async {
-    final table = await _invoiceTable;
+    final db = await _database;
+    return db.transaction((transaction) async {
+      final count = await InvoiceTable(
+        database: transaction,
+      ).update(invoice.copyWith(updatedAt: DateTime.now().toIso8601String()));
 
-    // Update order relations if provided
-    if (orderIds != null && invoice.id != null) {
-      final relationTable = await _relationTable;
-      await relationTable.replaceRelationsForInvoice(invoice.id!, orderIds);
-    }
+      if (orderIds != null && invoice.id != null) {
+        await InvoiceOrderRelationTable(
+          database: transaction,
+        ).replaceRelationsForInvoice(invoice.id!, orderIds);
+      }
 
-    return await table.update(
-      invoice.copyWith(updatedAt: DateTime.now().toIso8601String()),
-    );
+      return count;
+    });
   }
 
   /// Delete an invoice by ID
   /// Note: Relations will be deleted automatically by CASCADE,
   /// but linked orders will NOT be deleted - they remain independent.
   Future<int> delete(int id) async {
-    final table = await _invoiceTable;
-    final count = await table.delete(id);
-    if (count > 0) {
-      final relationTable = await _relationTable;
-      await relationTable.deleteByInvoiceId(id);
-    }
-    return count;
+    final db = await _database;
+    return db.transaction((transaction) async {
+      final count = await InvoiceTable(database: transaction).delete(id);
+      if (count > 0) {
+        await InvoiceOrderRelationTable(
+          database: transaction,
+        ).deleteByInvoiceId(id);
+      }
+      return count;
+    });
   }
 
   /// Delete all invoices
@@ -174,6 +190,7 @@ class InvoiceRepository {
 
   /// Search invoices by multiple criteria
   Future<List<Invoice>> search({
+    String? keyword,
     String? invoiceNumber,
     String? sellerName,
     int? orderId,
@@ -187,6 +204,7 @@ class InvoiceRepository {
   }) async {
     final table = await _invoiceTable;
     return await table.search(
+      keyword: keyword,
       invoiceNumber: invoiceNumber,
       sellerName: sellerName,
       orderId: orderId,

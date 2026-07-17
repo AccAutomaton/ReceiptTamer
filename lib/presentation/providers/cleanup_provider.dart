@@ -6,6 +6,7 @@ import '../../data/services/cleanup_service.dart';
 import '../../data/repositories/order_repository.dart';
 import '../../data/repositories/invoice_repository.dart';
 import 'invoice_provider.dart' as invoice_providers;
+import 'ledger_data_revision_provider.dart';
 import 'order_provider.dart' as order_providers;
 
 /// Cleanup mode selection
@@ -22,10 +23,13 @@ class CleanupState {
   final bool isLoading;
   final bool isDeleting;
   final String? errorMessage;
+  final String? refreshWarningMessage;
   final List<Order> availableOrders;
   final List<Invoice> availableInvoices;
   final Map<int, int> orderInvoiceCount; // orderId -> invoice count
   final Map<int, int> invoiceOrderCount; // invoiceId -> order count
+  final Map<int, Order> cascadeOrders; // Includes hidden cascade orders
+  final Map<int, Invoice> cascadeInvoices; // Includes hidden cascade invoices
 
   const CleanupState({
     this.mode = CleanupMode.orders,
@@ -37,14 +41,19 @@ class CleanupState {
     this.isLoading = false,
     this.isDeleting = false,
     this.errorMessage,
+    this.refreshWarningMessage,
     this.availableOrders = const [],
     this.availableInvoices = const [],
     Map<int, int>? orderInvoiceCount,
     Map<int, int>? invoiceOrderCount,
+    Map<int, Order>? cascadeOrders,
+    Map<int, Invoice>? cascadeInvoices,
   }) : selectedIds = selectedIds ?? const {},
        cascadeIds = cascadeIds ?? const {},
        orderInvoiceCount = orderInvoiceCount ?? const {},
-       invoiceOrderCount = invoiceOrderCount ?? const {};
+       invoiceOrderCount = invoiceOrderCount ?? const {},
+       cascadeOrders = cascadeOrders ?? const {},
+       cascadeInvoices = cascadeInvoices ?? const {};
 
   CleanupState copyWith({
     CleanupMode? mode,
@@ -56,12 +65,16 @@ class CleanupState {
     bool? isLoading,
     bool? isDeleting,
     String? errorMessage,
+    String? refreshWarningMessage,
     List<Order>? availableOrders,
     List<Invoice>? availableInvoices,
     Map<int, int>? orderInvoiceCount,
     Map<int, int>? invoiceOrderCount,
+    Map<int, Order>? cascadeOrders,
+    Map<int, Invoice>? cascadeInvoices,
     bool clearDateRange = false,
     bool clearError = false,
+    bool clearRefreshWarning = false,
   }) {
     return CleanupState(
       mode: mode ?? this.mode,
@@ -73,15 +86,20 @@ class CleanupState {
       isLoading: isLoading ?? this.isLoading,
       isDeleting: isDeleting ?? this.isDeleting,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      refreshWarningMessage: clearRefreshWarning
+          ? null
+          : (refreshWarningMessage ?? this.refreshWarningMessage),
       availableOrders: availableOrders ?? this.availableOrders,
       availableInvoices: availableInvoices ?? this.availableInvoices,
       orderInvoiceCount: orderInvoiceCount ?? this.orderInvoiceCount,
       invoiceOrderCount: invoiceOrderCount ?? this.invoiceOrderCount,
+      cascadeOrders: cascadeOrders ?? this.cascadeOrders,
+      cascadeInvoices: cascadeInvoices ?? this.cascadeInvoices,
     );
   }
 
   /// Get total selected count (including cascade)
-  int get totalSelectedCount => selectedIds.length + cascadeIds.length;
+  int get totalSelectedCount => allSelectedIds.length;
 
   /// Check if an ID is selected (directly or cascade)
   bool isSelected(int id) =>
@@ -92,10 +110,50 @@ class CleanupState {
 
   /// Get all selected IDs (including cascade)
   Set<int> get allSelectedIds => {...selectedIds, ...cascadeIds};
+
+  Set<int> get visibleIds {
+    if (mode == CleanupMode.orders) {
+      return availableOrders.map((item) => item.id).whereType<int>().toSet();
+    }
+    return availableInvoices.map((item) => item.id).whereType<int>().toSet();
+  }
+
+  /// IDs explicitly selected from the currently visible filter result.
+  Set<int> get visibleSelectedIds => selectedIds.intersection(visibleIds);
+
+  int get hiddenCascadeCount => cascadeIds.difference(visibleIds).length;
+
+  /// Full amount of every item that will be deleted, including hidden cascades.
+  double get selectedTotalAmount {
+    if (mode == CleanupMode.orders) {
+      final items = <int, Order>{
+        for (final item in availableOrders)
+          if (item.id != null) item.id!: item,
+        ...cascadeOrders,
+      };
+      return allSelectedIds.fold<double>(
+        0,
+        (sum, id) => sum + (items[id]?.amount ?? 0),
+      );
+    }
+
+    final items = <int, Invoice>{
+      for (final item in availableInvoices)
+        if (item.id != null) item.id!: item,
+      ...cascadeInvoices,
+    };
+    return allSelectedIds.fold<double>(
+      0,
+      (sum, id) => sum + (items[id]?.totalAmount ?? 0),
+    );
+  }
 }
 
 /// Cleanup state notifier
 class CleanupNotifier extends Notifier<CleanupState> {
+  int _loadRequest = 0;
+  int _cascadeRequest = 0;
+
   @override
   CleanupState build() {
     return const CleanupState();
@@ -108,36 +166,66 @@ class CleanupNotifier extends Notifier<CleanupState> {
 
   /// Set cleanup mode
   void setMode(CleanupMode mode) {
+    _loadRequest++;
+    _cascadeRequest++;
     state = state.copyWith(
       mode: mode,
       selectedIds: {},
       cascadeIds: {},
+      cascadeOrders: {},
+      cascadeInvoices: {},
+      deleteRelatedItems: false,
+      isLoading: false,
       clearDateRange: true,
       clearError: true,
+      clearRefreshWarning: true,
     );
   }
 
   /// Set date range
-  void setDateRange(DateTime? startDate, DateTime? endDate) {
+  Future<void> setDateRange(DateTime? startDate, DateTime? endDate) async {
     state = state.copyWith(
       startDate: startDate,
       endDate: endDate,
+      selectedIds: {},
+      cascadeIds: {},
+      cascadeOrders: {},
+      cascadeInvoices: {},
       clearError: true,
+      clearRefreshWarning: true,
     );
-    _loadAvailableItems();
+    await _loadAvailableItems();
   }
 
   /// Clear date range
-  void clearDateRange() {
-    state = state.copyWith(clearDateRange: true);
-    _loadAvailableItems();
+  Future<void> clearDateRange() async {
+    state = state.copyWith(
+      clearDateRange: true,
+      selectedIds: {},
+      cascadeIds: {},
+      cascadeOrders: {},
+      cascadeInvoices: {},
+      clearError: true,
+      clearRefreshWarning: true,
+    );
+    await _loadAvailableItems();
   }
 
   /// Toggle delete related items option
   Future<void> toggleDeleteRelatedItems() async {
+    if (state.isLoading || state.isDeleting) return;
     final newValue = !state.deleteRelatedItems;
-    state = state.copyWith(deleteRelatedItems: newValue);
-    await _recalculateCascade();
+    state = state.copyWith(deleteRelatedItems: newValue, clearError: true);
+    try {
+      await _recalculateCascade();
+    } catch (e) {
+      state = state.copyWith(
+        cascadeIds: {},
+        cascadeOrders: {},
+        cascadeInvoices: {},
+        errorMessage: e.toString(),
+      );
+    }
   }
 
   /// Load available items based on mode and date range
@@ -146,16 +234,26 @@ class CleanupNotifier extends Notifier<CleanupState> {
   }
 
   Future<void> _loadAvailableItems() async {
-    state = state.copyWith(isLoading: true, clearError: true);
+    final request = ++_loadRequest;
+    _cascadeRequest++;
+    final mode = state.mode;
+    final startDate = state.startDate;
+    final endDate = state.endDate;
+    state = state.copyWith(
+      isLoading: true,
+      selectedIds: {},
+      cascadeIds: {},
+      cascadeOrders: {},
+      cascadeInvoices: {},
+      clearError: true,
+      clearRefreshWarning: true,
+    );
 
     try {
-      if (state.mode == CleanupMode.orders) {
+      if (mode == CleanupMode.orders) {
         List<Order> orders;
-        if (state.startDate != null && state.endDate != null) {
-          orders = await _orderRepository.getByDateRange(
-            state.startDate!,
-            state.endDate!,
-          );
+        if (startDate != null && endDate != null) {
+          orders = await _orderRepository.getByDateRange(startDate, endDate);
         } else {
           orders = await _orderRepository.getAll();
         }
@@ -171,19 +269,23 @@ class CleanupNotifier extends Notifier<CleanupState> {
           }
         }
 
+        if (request != _loadRequest || state.mode != mode) return;
+
         state = state.copyWith(
           availableOrders: orders,
           orderInvoiceCount: orderInvoiceCount,
           isLoading: false,
           selectedIds: {},
           cascadeIds: {},
+          cascadeOrders: {},
+          cascadeInvoices: {},
         );
       } else {
         List<Invoice> invoices;
-        if (state.startDate != null && state.endDate != null) {
+        if (startDate != null && endDate != null) {
           invoices = await _invoiceRepository.getByDateRange(
-            state.startDate!,
-            state.endDate!,
+            startDate,
+            endDate,
           );
         } else {
           invoices = await _invoiceRepository.getAll();
@@ -200,15 +302,20 @@ class CleanupNotifier extends Notifier<CleanupState> {
           }
         }
 
+        if (request != _loadRequest || state.mode != mode) return;
+
         state = state.copyWith(
           availableInvoices: invoices,
           invoiceOrderCount: invoiceOrderCount,
           isLoading: false,
           selectedIds: {},
           cascadeIds: {},
+          cascadeOrders: {},
+          cascadeInvoices: {},
         );
       }
     } catch (e) {
+      if (request != _loadRequest || state.mode != mode) return;
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
@@ -216,22 +323,32 @@ class CleanupNotifier extends Notifier<CleanupState> {
   /// Toggle selection for an item
   /// Returns cascade message if any items were cascade selected/unselected
   Future<String?> toggleSelection(int id) async {
-    if (state.cascadeIds.contains(id)) {
-      // Cascade selected item: unselect entire cascade chain
-      return await _unselectCascadeChain(id);
-    } else if (state.selectedIds.contains(id)) {
-      // Directly selected item: check if cascade chain exists
-      if (state.deleteRelatedItems) {
+    if (state.isLoading || state.isDeleting || !state.visibleIds.contains(id)) {
+      return null;
+    }
+
+    try {
+      state = state.copyWith(clearError: true);
+      if (state.cascadeIds.contains(id)) {
+        // Cascade selected item: unselect entire cascade chain
         return await _unselectCascadeChain(id);
+      } else if (state.selectedIds.contains(id)) {
+        // Directly selected item: check if cascade chain exists
+        if (state.deleteRelatedItems) {
+          return await _unselectCascadeChain(id);
+        } else {
+          state = state.copyWith(
+            selectedIds: {...state.selectedIds.where((i) => i != id)},
+          );
+          return null;
+        }
       } else {
-        state = state.copyWith(
-          selectedIds: {...state.selectedIds.where((i) => i != id)},
-        );
-        return null;
+        // Not selected: select it and cascade
+        return await _selectWithCascade(id);
       }
-    } else {
-      // Not selected: select it and cascade
-      return await _selectWithCascade(id);
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      return null;
     }
   }
 
@@ -241,99 +358,8 @@ class CleanupNotifier extends Notifier<CleanupState> {
 
     if (!state.deleteRelatedItems) return null;
 
-    // Calculate cascade IDs
-    Set<int> cascadeIds = {};
-    if (state.mode == CleanupMode.orders) {
-      cascadeIds = await _cleanupService.calculateCascadeOrders(
-        selectedOrderIds: state.selectedIds,
-        deleteInvoices: true,
-      );
-    } else {
-      cascadeIds = await _cleanupService.calculateCascadeInvoices(
-        selectedInvoiceIds: state.selectedIds,
-        deleteOrders: true,
-      );
-    }
-
-    // Filter out already selected IDs
-    final newCascadeIds = cascadeIds
-        .where((i) => !state.selectedIds.contains(i))
-        .toSet();
-
-    // Add cascade items to available list if not already there
-    await _addCascadeItemsToList(newCascadeIds);
-
-    state = state.copyWith(cascadeIds: newCascadeIds);
-
-    if (newCascadeIds.isNotEmpty) {
-      return '有${newCascadeIds.length}条数据被一并勾选（关联了同一张发票）';
-    }
-    return null;
-  }
-
-  /// Add cascade items to the available list
-  Future<void> _addCascadeItemsToList(Set<int> cascadeIds) async {
-    if (cascadeIds.isEmpty) return;
-
-    if (state.mode == CleanupMode.orders) {
-      // Find cascade orders not in available list
-      final availableIds = state.availableOrders
-          .where((o) => o.id != null)
-          .map((o) => o.id!)
-          .toSet();
-      final missingIds = cascadeIds.where((id) => !availableIds.contains(id));
-
-      if (missingIds.isEmpty) return;
-
-      // Fetch missing orders and add to list
-      final List<Order> newOrders = [];
-      final Map<int, int> newInvoiceCounts = {};
-
-      for (final orderId in missingIds) {
-        final order = await _cleanupService.getOrderById(orderId);
-        if (order != null) {
-          newOrders.add(order);
-          final invoiceIds = await _cleanupService.getInvoiceIdsForOrder(
-            orderId,
-          );
-          newInvoiceCounts[orderId] = invoiceIds.length;
-        }
-      }
-
-      state = state.copyWith(
-        availableOrders: [...state.availableOrders, ...newOrders],
-        orderInvoiceCount: {...state.orderInvoiceCount, ...newInvoiceCounts},
-      );
-    } else {
-      // Find cascade invoices not in available list
-      final availableIds = state.availableInvoices
-          .where((i) => i.id != null)
-          .map((i) => i.id!)
-          .toSet();
-      final missingIds = cascadeIds.where((id) => !availableIds.contains(id));
-
-      if (missingIds.isEmpty) return;
-
-      // Fetch missing invoices and add to list
-      final List<Invoice> newInvoices = [];
-      final Map<int, int> newOrderCounts = {};
-
-      for (final invoiceId in missingIds) {
-        final invoice = await _cleanupService.getInvoiceById(invoiceId);
-        if (invoice != null) {
-          newInvoices.add(invoice);
-          final orderIds = await _cleanupService.getOrderIdsForInvoice(
-            invoiceId,
-          );
-          newOrderCounts[invoiceId] = orderIds.length;
-        }
-      }
-
-      state = state.copyWith(
-        availableInvoices: [...state.availableInvoices, ...newInvoices],
-        invoiceOrderCount: {...state.invoiceOrderCount, ...newOrderCounts},
-      );
-    }
+    await _recalculateCascade();
+    return _cascadeMessage();
   }
 
   /// Unselect cascade chain
@@ -371,6 +397,16 @@ class CleanupNotifier extends Notifier<CleanupState> {
       cascadeIds: state.cascadeIds
           .where((i) => !idsToUnselect.contains(i))
           .toSet(),
+      cascadeOrders: Map.fromEntries(
+        state.cascadeOrders.entries.where(
+          (entry) => !idsToUnselect.contains(entry.key),
+        ),
+      ),
+      cascadeInvoices: Map.fromEntries(
+        state.cascadeInvoices.entries.where(
+          (entry) => !idsToUnselect.contains(entry.key),
+        ),
+      ),
     );
 
     if (cascadeCount > 0) {
@@ -382,44 +418,113 @@ class CleanupNotifier extends Notifier<CleanupState> {
   /// Recalculate cascade selection when deleteRelatedItems changes
   Future<void> _recalculateCascade() async {
     if (!state.deleteRelatedItems) {
-      state = state.copyWith(cascadeIds: {});
+      _cascadeRequest++;
+      state = state.copyWith(
+        cascadeIds: {},
+        cascadeOrders: {},
+        cascadeInvoices: {},
+      );
       return;
     }
 
+    final request = ++_cascadeRequest;
+    final mode = state.mode;
+    final selectedIds = Set<int>.of(state.visibleSelectedIds);
+    final availableOrders = List<Order>.of(state.availableOrders);
+    final availableInvoices = List<Invoice>.of(state.availableInvoices);
+
     Set<int> cascadeIds = {};
-    if (state.mode == CleanupMode.orders && state.selectedIds.isNotEmpty) {
+    if (mode == CleanupMode.orders && selectedIds.isNotEmpty) {
       cascadeIds = await _cleanupService.calculateCascadeOrders(
-        selectedOrderIds: state.selectedIds,
+        selectedOrderIds: selectedIds,
         deleteInvoices: true,
       );
-    } else if (state.mode == CleanupMode.invoices &&
-        state.selectedIds.isNotEmpty) {
+    } else if (mode == CleanupMode.invoices && selectedIds.isNotEmpty) {
       cascadeIds = await _cleanupService.calculateCascadeInvoices(
-        selectedInvoiceIds: state.selectedIds,
+        selectedInvoiceIds: selectedIds,
         deleteOrders: true,
       );
     }
 
     final newCascadeIds = cascadeIds
-        .where((i) => !state.selectedIds.contains(i))
+        .where((i) => !selectedIds.contains(i))
         .toSet();
-    state = state.copyWith(cascadeIds: newCascadeIds);
+    final cascadeOrders = <int, Order>{};
+    final cascadeInvoices = <int, Invoice>{};
+
+    if (mode == CleanupMode.orders) {
+      final visibleItems = <int, Order>{
+        for (final item in availableOrders)
+          if (item.id != null) item.id!: item,
+      };
+      for (final id in newCascadeIds) {
+        final item = visibleItems[id] ?? await _cleanupService.getOrderById(id);
+        if (item != null) cascadeOrders[id] = item;
+      }
+    } else {
+      final visibleItems = <int, Invoice>{
+        for (final item in availableInvoices)
+          if (item.id != null) item.id!: item,
+      };
+      for (final id in newCascadeIds) {
+        final item =
+            visibleItems[id] ?? await _cleanupService.getInvoiceById(id);
+        if (item != null) cascadeInvoices[id] = item;
+      }
+    }
+
+    if (request != _cascadeRequest ||
+        state.mode != mode ||
+        !state.deleteRelatedItems ||
+        !_sameIds(state.visibleSelectedIds, selectedIds)) {
+      return;
+    }
+
+    state = state.copyWith(
+      selectedIds: selectedIds,
+      cascadeIds: newCascadeIds,
+      cascadeOrders: cascadeOrders,
+      cascadeInvoices: cascadeInvoices,
+    );
+  }
+
+  bool _sameIds(Set<int> left, Set<int> right) =>
+      left.length == right.length && left.containsAll(right);
+
+  String? _cascadeMessage() {
+    if (state.cascadeIds.isEmpty) return null;
+    final hidden = state.hiddenCascadeCount;
+    final hiddenMessage = hidden > 0 ? '，其中 $hidden 条在当前筛选范围外' : '';
+    return '有 ${state.cascadeIds.length} 条数据被一并勾选$hiddenMessage';
   }
 
   /// Select all items
   Future<String?> selectAll() async {
+    if (state.isLoading || state.isDeleting) return null;
     if (state.mode == CleanupMode.orders) {
       final allIds = state.availableOrders
           .where((o) => o.id != null)
           .map((o) => o.id!)
           .toSet();
-      state = state.copyWith(selectedIds: allIds, cascadeIds: {});
+      state = state.copyWith(
+        selectedIds: allIds,
+        cascadeIds: {},
+        cascadeOrders: {},
+        cascadeInvoices: {},
+        clearError: true,
+      );
     } else {
       final allIds = state.availableInvoices
           .where((i) => i.id != null)
           .map((i) => i.id!)
           .toSet();
-      state = state.copyWith(selectedIds: allIds, cascadeIds: {});
+      state = state.copyWith(
+        selectedIds: allIds,
+        cascadeIds: {},
+        cascadeOrders: {},
+        cascadeInvoices: {},
+        clearError: true,
+      );
     }
 
     // Apply cascade if enabled
@@ -431,6 +536,7 @@ class CleanupNotifier extends Notifier<CleanupState> {
 
   /// Invert selection
   Future<String?> invertSelection() async {
+    if (state.isLoading || state.isDeleting) return null;
     if (state.mode == CleanupMode.orders) {
       final allIds = state.availableOrders
           .where((o) => o.id != null)
@@ -439,7 +545,13 @@ class CleanupNotifier extends Notifier<CleanupState> {
       final newSelectedIds = allIds
           .where((id) => !state.isSelected(id))
           .toSet();
-      state = state.copyWith(selectedIds: newSelectedIds, cascadeIds: {});
+      state = state.copyWith(
+        selectedIds: newSelectedIds,
+        cascadeIds: {},
+        cascadeOrders: {},
+        cascadeInvoices: {},
+        clearError: true,
+      );
     } else {
       final allIds = state.availableInvoices
           .where((i) => i.id != null)
@@ -448,7 +560,13 @@ class CleanupNotifier extends Notifier<CleanupState> {
       final newSelectedIds = allIds
           .where((id) => !state.isSelected(id))
           .toSet();
-      state = state.copyWith(selectedIds: newSelectedIds, cascadeIds: {});
+      state = state.copyWith(
+        selectedIds: newSelectedIds,
+        cascadeIds: {},
+        cascadeOrders: {},
+        cascadeInvoices: {},
+        clearError: true,
+      );
     }
 
     // Apply cascade if enabled
@@ -460,52 +578,111 @@ class CleanupNotifier extends Notifier<CleanupState> {
 
   /// Recalculate cascade and return message
   Future<String?> _recalculateCascadeAndGetMessage() async {
-    await _recalculateCascade();
-    if (state.cascadeIds.isNotEmpty) {
-      return '有${state.cascadeIds.length}条数据被一并勾选（关联了同一张发票）';
+    try {
+      await _recalculateCascade();
+      return _cascadeMessage();
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      return null;
     }
-    return null;
   }
 
   /// Execute cleanup
   Future<CleanupResult?> executeCleanup() async {
-    if (state.totalSelectedCount == 0) return null;
+    if (state.isLoading ||
+        state.isDeleting ||
+        state.errorMessage != null ||
+        state.visibleSelectedIds.isEmpty) {
+      return null;
+    }
 
-    state = state.copyWith(isDeleting: true, clearError: true);
+    // CleanupService calculates the disclosed one-hop cascade itself. Passing
+    // the already-expanded IDs back as roots would calculate a second cascade
+    // and could delete records that were never shown in the confirmation UI.
+    final selectedIds = Set<int>.of(state.visibleSelectedIds);
 
+    state = state.copyWith(
+      isDeleting: true,
+      clearError: true,
+      clearRefreshWarning: true,
+    );
+
+    late final CleanupResult result;
     try {
-      CleanupResult result;
       if (state.mode == CleanupMode.orders) {
         result = await _cleanupService.deleteOrders(
-          orderIds: state.allSelectedIds,
+          orderIds: selectedIds,
           deleteInvoices: state.deleteRelatedItems,
         );
       } else {
         result = await _cleanupService.deleteInvoices(
-          invoiceIds: state.allSelectedIds,
+          invoiceIds: selectedIds,
           deleteOrders: state.deleteRelatedItems,
         );
       }
-
-      // Refresh data
-      await _loadAvailableItems();
-      await _refreshMainDataProviders();
-
-      // Invalidate other providers
-      ref.invalidate(orderCountProvider);
-      ref.invalidate(invoiceCountProvider);
-
-      state = state.copyWith(
-        isDeleting: false,
-        selectedIds: {},
-        cascadeIds: {},
-      );
-
-      return result;
     } catch (e) {
       state = state.copyWith(isDeleting: false, errorMessage: e.toString());
       return null;
     }
+
+    // The destructive transaction already succeeded. From this point onward,
+    // refresh failures must not turn the real deletion result into a failure.
+    if (result.ordersDeleted > 0 || result.invoicesDeleted > 0) {
+      ref.read(ledgerDataRevisionProvider.notifier).markChanged();
+    }
+    state = state.copyWith(
+      selectedIds: {},
+      cascadeIds: {},
+      cascadeOrders: {},
+      cascadeInvoices: {},
+      clearError: true,
+    );
+    final refreshWarning = await _refreshAfterSuccessfulCleanup();
+    state = state.copyWith(
+      isDeleting: false,
+      refreshWarningMessage: refreshWarning,
+      clearRefreshWarning: refreshWarning == null,
+      clearError: true,
+    );
+    return result;
+  }
+
+  /// Retry only the post-delete UI refresh. It never repeats deletion.
+  Future<void> retryRefreshAfterCleanup() async {
+    if (state.isLoading || state.isDeleting) return;
+    state = state.copyWith(clearError: true, clearRefreshWarning: true);
+    final refreshWarning = await _refreshAfterSuccessfulCleanup();
+    state = state.copyWith(
+      refreshWarningMessage: refreshWarning,
+      clearRefreshWarning: refreshWarning == null,
+      clearError: true,
+    );
+  }
+
+  Future<String?> _refreshAfterSuccessfulCleanup() async {
+    final issues = <String>[];
+
+    // _loadAvailableItems reports its own error in state so ordinary loading
+    // screens still work. Convert that error to a non-destructive warning here.
+    await _loadAvailableItems();
+    final cleanupListError = state.errorMessage;
+    if (cleanupListError != null) {
+      issues.add('清理列表刷新失败：$cleanupListError');
+      state = state.copyWith(clearError: true);
+    }
+
+    try {
+      await _refreshMainDataProviders();
+    } catch (e) {
+      issues.add('主列表刷新失败：$e');
+    }
+
+    // Counts should always be invalidated even when one list refresh failed.
+    ref.invalidate(orderCountProvider);
+    ref.invalidate(invoiceCountProvider);
+
+    if (issues.isEmpty) return null;
+    return '清理已完成，但数据刷新失败。请重试刷新。\n${issues.join('\n')}';
   }
 
   Future<void> _refreshMainDataProviders() async {

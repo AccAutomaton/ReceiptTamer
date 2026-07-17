@@ -6,6 +6,7 @@ import 'package:markdown/markdown.dart' as md;
 import '../../../data/models/app_version.dart';
 import '../../../data/services/release_history_cache.dart';
 import '../../../data/services/update_service.dart';
+import '../../widgets/common/app_notice.dart';
 import '../../widgets/common/empty_state.dart';
 import '../../widgets/common/scroll_edge_fog.dart';
 
@@ -120,12 +121,12 @@ class _ReleaseHistoryScreenState extends State<ReleaseHistoryScreen> {
       if (cachedReleases != null &&
           cachedReleases.isNotEmpty &&
           !forceRefresh) {
-        // Have cache, show toast
+        // Keep showing cached releases and surface the refresh failure above.
         setState(() {
           _isLoading = false;
           _isRefreshing = false;
         });
-        _showErrorToast(result.errorMessage, result.rateLimited);
+        _showErrorNotice(result.errorMessage, result.rateLimited);
       } else {
         // No cache, show error state
         setState(() {
@@ -167,7 +168,7 @@ class _ReleaseHistoryScreenState extends State<ReleaseHistoryScreen> {
       setState(() {
         _isLoadingMore = false;
       });
-      _showErrorToast(result.errorMessage, result.rateLimited);
+      _showErrorNotice(result.errorMessage, result.rateLimited);
     }
   }
 
@@ -175,7 +176,7 @@ class _ReleaseHistoryScreenState extends State<ReleaseHistoryScreen> {
     await _loadReleases(forceRefresh: true);
   }
 
-  void _showErrorToast(String? errorMessage, bool rateLimited) {
+  void _showErrorNotice(String? errorMessage, bool rateLimited) {
     String message;
     if (rateLimited) {
       message = '检查更新请求因 GitHub 限流被拒绝，请前往 GitHub 仓库查看最新版本。';
@@ -183,9 +184,11 @@ class _ReleaseHistoryScreenState extends State<ReleaseHistoryScreen> {
       message = '刷新失败: ${errorMessage ?? "未知错误"}';
     }
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    if (rateLimited) {
+      AppNotice.warning(context, message, duration: const Duration(seconds: 4));
+    } else {
+      AppNotice.error(context, message, duration: const Duration(seconds: 4));
+    }
   }
 
   String _formatDate(DateTime? date) {

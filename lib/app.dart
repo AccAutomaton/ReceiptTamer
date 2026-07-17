@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -33,6 +34,14 @@ class _AppState extends ConsumerState<App> {
     '/orders/new',
     '/invoices/new',
   };
+
+  bool _handleNavigationNotification(NavigationNotification _) {
+    // The root shell implements a two-step BACK exit. At the shell root the
+    // Navigator itself cannot pop, so Android predictive back would otherwise
+    // finish the activity before MainShell's PopScope sees the first press.
+    unawaited(SystemNavigator.setFrameworkHandlesBack(true));
+    return true;
+  }
 
   @override
   void initState() {
@@ -155,6 +164,7 @@ class _AppState extends ConsumerState<App> {
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
       routerConfig: router,
+      onNavigationNotification: _handleNavigationNotification,
       // 本地化配置 - 支持中文
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,

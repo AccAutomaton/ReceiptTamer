@@ -14,12 +14,34 @@ import 'package:receipt_tamer/presentation/providers/reimbursement_provider.dart
 import 'package:receipt_tamer/presentation/screens/export/saved_files_screen.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_notice.dart';
 import 'package:receipt_tamer/presentation/widgets/common/floating_overlay_layout.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_page_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_alert_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
+
+@visibleForTesting
+Future<void> showSavedFilesAndReportExportErrors({
+  required OverlayState overlay,
+  required Future<void> Function() showSavedFiles,
+  required List<String> errors,
+}) async {
+  // Navigator.push happens synchronously when showSavedFiles is invoked. Show
+  // any partial-failure notice before awaiting that route so users see it on
+  // the saved-files screen instead of only after they leave the screen.
+  final savedFilesFuture = showSavedFiles();
+  if (errors.isNotEmpty && overlay.mounted) {
+    AppNotice.showOnOverlay(
+      overlay,
+      errors.join('\n'),
+      tone: AppNoticeTone.error,
+      duration: const Duration(seconds: 3),
+    );
+  }
+  await savedFilesFuture;
+}
 
 /// Export options screen - choose what to export
 class ExportOptionsScreen extends ConsumerStatefulWidget {
@@ -422,62 +444,75 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return InkWell(
-      onTap: () {
-        // 点击时弹出对话框，由对话框决定最终勾选状态
-        _showMealProofRemarkDialog();
-      },
-      borderRadius: BorderRadius.circular(20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _addMealProofRemark
-                  ? colorScheme.primary
-                  : Colors.transparent,
-              border: Border.all(
-                color: _addMealProofRemark
-                    ? colorScheme.primary
-                    : colorScheme.outline,
-                width: 2,
-              ),
-            ),
-            child: _addMealProofRemark
-                ? Icon(Icons.check, size: 14, color: colorScheme.onPrimary)
-                : null,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '添加备注',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurface,
-            ),
-          ),
-          if (_addMealProofRemark && _mealProofRemarkContent != null) ...[
-            const SizedBox(width: 8),
-            Flexible(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    return Semantics(
+      button: true,
+      checked: _addMealProofRemark,
+      label: '添加用餐证明备注',
+      onTap: _showMealProofRemarkDialog,
+      child: ExcludeSemantics(
+        child: InkWell(
+          onTap: () {
+            // 点击时弹出对话框，由对话框决定最终勾选状态
+            _showMealProofRemarkDialog();
+          },
+          borderRadius: BorderRadius.circular(20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 20,
+                height: 20,
                 decoration: BoxDecoration(
-                  color: colorScheme.primaryContainer.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  _mealProofRemarkContent!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onPrimaryContainer,
+                  shape: BoxShape.circle,
+                  color: _addMealProofRemark
+                      ? colorScheme.primary
+                      : Colors.transparent,
+                  border: Border.all(
+                    color: _addMealProofRemark
+                        ? colorScheme.primary
+                        : colorScheme.outline,
+                    width: 2,
                   ),
-                  overflow: TextOverflow.ellipsis,
+                ),
+                child: _addMealProofRemark
+                    ? Icon(Icons.check, size: 14, color: colorScheme.onPrimary)
+                    : null,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '添加备注',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface,
                 ),
               ),
-            ),
-          ],
-        ],
+              if (_addMealProofRemark && _mealProofRemarkContent != null) ...[
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer.withValues(
+                        alpha: 0.5,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _mealProofRemarkContent!,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onPrimaryContainer,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -560,36 +595,44 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return InkWell(
+    return Semantics(
+      button: true,
+      checked: value,
+      label: label,
       onTap: () => onToggle(!value),
-      borderRadius: BorderRadius.circular(20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: value ? colorScheme.primary : Colors.transparent,
-              border: Border.all(
-                color: value ? colorScheme.primary : colorScheme.outline,
-                width: 2,
+      child: ExcludeSemantics(
+        child: InkWell(
+          onTap: () => onToggle(!value),
+          borderRadius: BorderRadius.circular(20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: value ? colorScheme.primary : Colors.transparent,
+                  border: Border.all(
+                    color: value ? colorScheme.primary : colorScheme.outline,
+                    width: 2,
+                  ),
+                ),
+                child: value
+                    ? Icon(Icons.check, size: 14, color: colorScheme.onPrimary)
+                    : null,
               ),
-            ),
-            child: value
-                ? Icon(Icons.check, size: 14, color: colorScheme.onPrimary)
-                : null,
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurface,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -599,62 +642,75 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return InkWell(
-      onTap: () {
-        // 点击时弹出对话框，由对话框决定最终勾选状态
-        _showInvoiceRemarkDialog();
-      },
-      borderRadius: BorderRadius.circular(20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _addInvoiceRemark
-                  ? colorScheme.primary
-                  : Colors.transparent,
-              border: Border.all(
-                color: _addInvoiceRemark
-                    ? colorScheme.primary
-                    : colorScheme.outline,
-                width: 2,
-              ),
-            ),
-            child: _addInvoiceRemark
-                ? Icon(Icons.check, size: 14, color: colorScheme.onPrimary)
-                : null,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '添加备注',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurface,
-            ),
-          ),
-          if (_addInvoiceRemark && _invoiceRemarkContent != null) ...[
-            const SizedBox(width: 8),
-            Flexible(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    return Semantics(
+      button: true,
+      checked: _addInvoiceRemark,
+      label: '添加发票备注',
+      onTap: _showInvoiceRemarkDialog,
+      child: ExcludeSemantics(
+        child: InkWell(
+          onTap: () {
+            // 点击时弹出对话框，由对话框决定最终勾选状态
+            _showInvoiceRemarkDialog();
+          },
+          borderRadius: BorderRadius.circular(20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 20,
+                height: 20,
                 decoration: BoxDecoration(
-                  color: colorScheme.primaryContainer.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  _invoiceRemarkContent!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onPrimaryContainer,
+                  shape: BoxShape.circle,
+                  color: _addInvoiceRemark
+                      ? colorScheme.primary
+                      : Colors.transparent,
+                  border: Border.all(
+                    color: _addInvoiceRemark
+                        ? colorScheme.primary
+                        : colorScheme.outline,
+                    width: 2,
                   ),
-                  overflow: TextOverflow.ellipsis,
+                ),
+                child: _addInvoiceRemark
+                    ? Icon(Icons.check, size: 14, color: colorScheme.onPrimary)
+                    : null,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '添加备注',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface,
                 ),
               ),
-            ),
-          ],
-        ],
+              if (_addInvoiceRemark && _invoiceRemarkContent != null) ...[
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer.withValues(
+                        alpha: 0.5,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _invoiceRemarkContent!,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onPrimaryContainer,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -725,8 +781,13 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
               errors.add('用餐证明：保存到下载目录失败');
             }
           }
-        } catch (_) {
-          errors.add('用餐证明：导出失败');
+        } catch (error, stackTrace) {
+          logService.e(LogConfig.moduleFile, '用餐证明导出失败', error, stackTrace);
+          errors.add(
+            error is MealProofAttachmentUnavailableException
+                ? '用餐证明：$error'
+                : '用餐证明：导出失败',
+          );
         } finally {
           // Clean up temp file
           if (tempPath != null) {
@@ -782,8 +843,13 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
               errors.add('发票：保存到下载目录失败');
             }
           }
-        } catch (_) {
-          errors.add('发票：导出失败');
+        } catch (error, stackTrace) {
+          logService.e(LogConfig.moduleFile, '发票导出失败', error, stackTrace);
+          errors.add(
+            error is InvoiceAttachmentUnavailableException
+                ? '发票：$error'
+                : '发票：导出失败',
+          );
         } finally {
           // Clean up temp file
           if (tempPath != null) {
@@ -837,7 +903,8 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
               errors.add('用餐明细：保存到下载目录失败');
             }
           }
-        } catch (_) {
+        } catch (error, stackTrace) {
+          logService.e(LogConfig.moduleFile, '用餐明细导出失败', error, stackTrace);
           errors.add('用餐明细：导出失败');
         } finally {
           // Clean up temp file
@@ -854,24 +921,33 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
         if (successCount > 0) {
           logService.i(LogConfig.moduleUi, '报销材料导出成功');
           // Navigate to saved files screen to show exported files
-          Navigator.pop(context);
-          await showSavedFilesScreen(context, initialSubDir: subDir);
-        }
-        if (errors.isNotEmpty && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(errors.join('\n')),
-              duration: const Duration(seconds: 3),
-            ),
+          final navigator = Navigator.of(context);
+          final noticeOverlay = navigator.overlay!;
+          final navigationContext = noticeOverlay.context;
+          navigator.pop();
+          if (!navigationContext.mounted) return;
+          await showSavedFilesAndReportExportErrors(
+            overlay: noticeOverlay,
+            showSavedFiles: () =>
+                showSavedFilesScreen(navigationContext, initialSubDir: subDir),
+            errors: errors,
+          );
+        } else if (errors.isNotEmpty) {
+          AppNotice.error(
+            context,
+            errors.join('\n'),
+            duration: const Duration(seconds: 3),
           );
         }
       }
     } catch (e, stackTrace) {
       if (mounted) {
         logService.e(LogConfig.moduleUi, '导出失败', e, stackTrace);
-        ScaffoldMessenger.of(
+        AppNotice.error(
           context,
-        ).showSnackBar(const SnackBar(content: Text('导出失败，请重试')));
+          '导出失败，请重试',
+          duration: const Duration(seconds: 4),
+        );
       }
     } finally {
       if (mounted) {

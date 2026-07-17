@@ -8,6 +8,7 @@ import '../../../data/services/llm_config_service.dart';
 import '../../../data/services/model_asset_service.dart';
 import '../../../data/services/openai_compatible_backend.dart';
 import '../../providers/ocr_provider.dart';
+import '../../widgets/common/app_notice.dart';
 import '../../widgets/common/app_text_field.dart';
 import '../../widgets/common/scroll_edge_fog.dart';
 
@@ -190,9 +191,11 @@ class _ModelManagementScreenState extends ConsumerState<ModelManagementScreen> {
         _providerConfigs = _providerConfigsFromConfig(config);
       });
       if (showMessage) {
-        ScaffoldMessenger.of(
+        AppNotice.success(
           context,
-        ).showSnackBar(const SnackBar(content: Text('模型设置已保存')));
+          '模型设置已保存',
+          duration: const Duration(seconds: 4),
+        );
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -316,9 +319,11 @@ class _ModelManagementScreenState extends ConsumerState<ModelManagementScreen> {
   bool _canEnableLocalModel() {
     final status = _modelStatus;
     if (status?.installed != true) {
-      ScaffoldMessenger.of(
+      AppNotice.warning(
         context,
-      ).showSnackBar(const SnackBar(content: Text('请先安装本地模型')));
+        '请先安装本地模型',
+        duration: const Duration(seconds: 4),
+      );
       return false;
     }
     return true;
@@ -326,9 +331,11 @@ class _ModelManagementScreenState extends ConsumerState<ModelManagementScreen> {
 
   bool _canEnableExternalModel() {
     if (!_currentCloudConfig.isConfigured) {
-      ScaffoldMessenger.of(
+      AppNotice.warning(
         context,
-      ).showSnackBar(const SnackBar(content: Text('请先填写模型端点和模型名称')));
+        '请先填写模型端点和模型名称',
+        duration: const Duration(seconds: 4),
+      );
       return false;
     }
     return true;
@@ -397,9 +404,11 @@ class _ModelManagementScreenState extends ConsumerState<ModelManagementScreen> {
         }
       });
       if (showMessage) {
-        ScaffoldMessenger.of(
+        AppNotice.success(
           context,
-        ).showSnackBar(const SnackBar(content: Text('模型列表已更新')));
+          '模型列表已更新',
+          duration: const Duration(seconds: 4),
+        );
       }
     } catch (e) {
       if (!mounted) return;
@@ -410,9 +419,11 @@ class _ModelManagementScreenState extends ConsumerState<ModelManagementScreen> {
         _presetModelLoadError = message;
       });
       if (showMessage) {
-        ScaffoldMessenger.of(
+        AppNotice.error(
           context,
-        ).showSnackBar(SnackBar(content: Text(_presetModelLoadError!)));
+          _presetModelLoadError!,
+          duration: const Duration(seconds: 4),
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoadingPresetModels = false);
@@ -605,15 +616,19 @@ class _ModelManagementScreenState extends ConsumerState<ModelManagementScreen> {
       if (dialogShown) Navigator.of(context, rootNavigator: true).pop();
       await _loadState();
       if (!mounted) return;
-      ScaffoldMessenger.of(
+      AppNotice.success(
         context,
-      ).showSnackBar(const SnackBar(content: Text('本地模型已安装')));
+        '本地模型已安装',
+        duration: const Duration(seconds: 4),
+      );
     } on ModelDownloadCancelledException {
       if (!mounted) return;
       if (dialogShown) Navigator.of(context, rootNavigator: true).pop();
-      ScaffoldMessenger.of(
+      AppNotice.warning(
         context,
-      ).showSnackBar(const SnackBar(content: Text('下载已取消，已下载部分会保留')));
+        '下载已取消，已下载部分会保留',
+        duration: const Duration(seconds: 4),
+      );
     } catch (e) {
       if (!mounted) return;
       if (dialogShown) Navigator.of(context, rootNavigator: true).pop();
@@ -651,14 +666,18 @@ class _ModelManagementScreenState extends ConsumerState<ModelManagementScreen> {
       await _modelAssetService.importZip();
       await _loadState();
       if (!mounted) return;
-      ScaffoldMessenger.of(
+      AppNotice.success(
         context,
-      ).showSnackBar(const SnackBar(content: Text('本地模型已安装')));
+        '本地模型已安装',
+        duration: const Duration(seconds: 4),
+      );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
+      AppNotice.error(
         context,
-      ).showSnackBar(SnackBar(content: Text('模型安装失败: $e')));
+        '模型安装失败: $e',
+        duration: const Duration(seconds: 4),
+      );
     } finally {
       if (mounted) setState(() => _isModelActionRunning = false);
     }
@@ -695,9 +714,11 @@ class _ModelManagementScreenState extends ConsumerState<ModelManagementScreen> {
       }
       await _loadState();
       if (!mounted) return;
-      ScaffoldMessenger.of(
+      AppNotice.success(
         context,
-      ).showSnackBar(const SnackBar(content: Text('本地模型已删除')));
+        '本地模型已删除',
+        duration: const Duration(seconds: 4),
+      );
     } finally {
       if (mounted) setState(() => _isModelActionRunning = false);
     }

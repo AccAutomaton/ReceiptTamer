@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_notice.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_alert_dialog.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -147,9 +148,7 @@ class UpdateDialog {
     final shouldDisposeService = updateService == null; // 只 dispose 自己创建的实例
 
     if (version.downloadUrl == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('下载地址不可用')));
+      AppNotice.error(context, '下载地址不可用', duration: const Duration(seconds: 4));
       if (shouldDisposeService) service.dispose();
       return;
     }
@@ -341,9 +340,11 @@ class UpdateDialog {
         );
         if (!installed && context.mounted) {
           onApkDownloaded?.call(null);
-          ScaffoldMessenger.of(
+          AppNotice.error(
             context,
-          ).showSnackBar(const SnackBar(content: Text('安装失败，请重试')));
+            '安装失败，请重试',
+            duration: const Duration(seconds: 4),
+          );
         }
       } else if (!downloadCancelled && context.mounted) {
         // Show error dialog with retry option
@@ -403,10 +404,13 @@ class UpdateDialog {
   static Future<void> _showInstallPermissionDialog(BuildContext context) async {
     await showDialog(
       context: context,
-      builder: (context) => GlassAlertDialog(
+      builder: (dialogContext) => GlassAlertDialog(
         title: Row(
           children: [
-            Icon(Icons.settings, color: Theme.of(context).colorScheme.primary),
+            Icon(
+              Icons.settings,
+              color: Theme.of(dialogContext).colorScheme.primary,
+            ),
             const SizedBox(width: 8),
             const Text('需要安装权限'),
           ],
@@ -415,16 +419,18 @@ class UpdateDialog {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(
+              AppNotice.error(
                 context,
-              ).showSnackBar(const SnackBar(content: Text('安装失败，请手动打开下载的文件')));
+                '安装失败，请手动打开下载的文件',
+                duration: const Duration(seconds: 4),
+              );
+              Navigator.pop(dialogContext);
             },
             child: const Text('取消'),
           ),
           FilledButton(
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               await openAppSettings();
             },
             child: const Text('去设置'),

@@ -7,6 +7,7 @@ import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_notice.dart';
 import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart';
 import 'package:receipt_tamer/presentation/widgets/common/floating_overlay_layout.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_page_scaffold.dart';
@@ -338,9 +339,11 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
   void _loadInvoicesIfReady() {
     if (_startDate != null && _endDate != null) {
       if (_startDate!.isAfter(_endDate!)) {
-        ScaffoldMessenger.of(
+        AppNotice.warning(
           context,
-        ).showSnackBar(const SnackBar(content: Text('开始日期不能晚于结束日期')));
+          '开始日期不能晚于结束日期',
+          duration: const Duration(seconds: 4),
+        );
         return;
       }
     }
@@ -402,9 +405,11 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       });
       if (mounted) {
         logService.e(LogConfig.moduleUi, '加载发票失败', e, stackTrace);
-        ScaffoldMessenger.of(
+        AppNotice.error(
           context,
-        ).showSnackBar(SnackBar(content: Text('加载发票失败: $e')));
+          '加载发票失败: $e',
+          duration: const Duration(seconds: 4),
+        );
       }
     }
   }
@@ -440,9 +445,11 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         .toList();
 
     if (selectableInvoices.isEmpty) {
-      ScaffoldMessenger.of(
+      AppNotice.warning(
         context,
-      ).showSnackBar(const SnackBar(content: Text('没有可选的发票')));
+        '没有可选的发票',
+        duration: const Duration(seconds: 4),
+      );
       return;
     }
 
@@ -450,18 +457,21 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => GlassAlertDialog(
+      builder: (dialogContext) => GlassAlertDialog(
         title: const Text('快速筛选'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('选择金额最高的前N张发票', style: Theme.of(context).textTheme.bodyMedium),
+            Text(
+              '选择金额最高的前N张发票',
+              style: Theme.of(dialogContext).textTheme.bodyMedium,
+            ),
             const SizedBox(height: 8),
             Text(
               '可选发票数量: ${selectableInvoices.length}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(
+                color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 16),
@@ -479,34 +489,38 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('取消'),
           ),
           FilledButton(
             onPressed: () {
               final input = controller.text.trim();
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
 
               if (input.isEmpty) {
-                ScaffoldMessenger.of(
+                AppNotice.warning(
                   context,
-                ).showSnackBar(const SnackBar(content: Text('请输入数量')));
+                  '请输入数量',
+                  duration: const Duration(seconds: 4),
+                );
                 return;
               }
 
               final n = int.tryParse(input);
               if (n == null || n <= 0) {
-                ScaffoldMessenger.of(
+                AppNotice.warning(
                   context,
-                ).showSnackBar(const SnackBar(content: Text('请输入有效的正整数')));
+                  '请输入有效的正整数',
+                  duration: const Duration(seconds: 4),
+                );
                 return;
               }
 
               if (n > selectableInvoices.length) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('数量不能超过 ${selectableInvoices.length}'),
-                  ),
+                AppNotice.warning(
+                  context,
+                  '数量不能超过 ${selectableInvoices.length}',
+                  duration: const Duration(seconds: 4),
                 );
                 return;
               }
@@ -532,9 +546,11 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
 
   void _navigateToExportOptions() {
     if (_selectedInvoiceIds.isEmpty) {
-      ScaffoldMessenger.of(
+      AppNotice.warning(
         context,
-      ).showSnackBar(const SnackBar(content: Text('请选择要导出的发票')));
+        '请选择要导出的发票',
+        duration: const Duration(seconds: 4),
+      );
       return;
     }
 

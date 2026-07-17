@@ -8,6 +8,7 @@ import 'package:receipt_tamer/data/models/order.dart';
 import 'package:receipt_tamer/data/models/uninvoiced_shop_summary.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_assistant_provider.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_notice.dart';
 import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart';
 import 'package:receipt_tamer/presentation/widgets/common/empty_state.dart';
 import 'package:receipt_tamer/presentation/widgets/common/floating_overlay_layout.dart';
@@ -51,9 +52,7 @@ class _InvoiceAssistantScreenState
   Future<void> _openInvoiceEditor() async {
     final state = ref.read(invoiceAssistantProvider);
     if (state.selectedOrderIds.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请选择订单')));
+      AppNotice.warning(context, '请选择订单', duration: const Duration(seconds: 4));
       return;
     }
 

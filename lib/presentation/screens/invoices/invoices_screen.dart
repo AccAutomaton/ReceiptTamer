@@ -529,7 +529,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
       case _InvoiceLedgerFilter.custom:
         final query = _activeSearchQuery;
         if (query != null) {
-          await notifier.searchInvoices(sellerName: query);
+          await notifier.searchInvoices(keyword: query);
         } else if (_isTodayFilter) {
           await notifier.loadTodayInvoices();
         } else {
@@ -639,7 +639,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
     final query = await showGlassSearchDialog(
       context: context,
       title: '搜索发票',
-      hint: '输入销售方名称',
+      hint: '输入销售方名称或发票号码',
     );
 
     if (query == null) return;
@@ -651,7 +651,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
         _activeSearchQuery = query;
         _isTodayFilter = false;
       });
-      ref.read(invoiceProvider.notifier).searchInvoices(sellerName: query);
+      ref.read(invoiceProvider.notifier).searchInvoices(keyword: query);
     } else {
       _applyRelationFilter(_InvoiceLedgerFilter.all);
     }

@@ -10,7 +10,7 @@ import '../../../core/models/ledger_month_summary.dart';
 /// Handles all CRUD operations for the invoices table
 /// Note: Order relationships are managed through invoice_order_relations table
 class InvoiceTable {
-  final Database database;
+  final DatabaseExecutor database;
 
   InvoiceTable({required this.database});
 
@@ -19,6 +19,12 @@ class InvoiceTable {
       'FROM ${AppConstants.invoiceOrderRelationsTable} r '
       'INNER JOIN ${AppConstants.ordersTable} o '
       'ON r.${AppConstants.colOrderId} = o.${AppConstants.colId}';
+
+  /// Keep list grouping and date filtering on one definition: a valid invoice
+  /// date wins, otherwise the record's collection time is its ledger date.
+  static const String _ledgerDateExpression =
+      "COALESCE(date(NULLIF(trim(${AppConstants.colInvoiceDate}), '')), "
+      "date(NULLIF(trim(${AppConstants.colCreatedAt}), '')))";
 
   static String _paginationClause({int? limit, int? offset}) {
     if (limit == null && offset == null) return '';
@@ -253,23 +259,19 @@ class InvoiceTable {
     }
   }
 
-  /// Get invoices by invoice date range
-  /// Uses invoice_date field (stored as ISO8601 format, e.g., '2024-01-15T00:00:00.000')
-  /// Compares only the date portion (YYYY-MM-DD)
+  /// Get invoices by resolved ledger date range.
   Future<List<Invoice>> getByDateRange(DateTime start, DateTime end) async {
     try {
       // Format dates as 'yyyy-MM-dd' for comparison
       final startDate = _formatDate(start);
       final endDate = _formatDate(end);
 
-      // Use SQLite's date() function to extract date portion from ISO8601 string
-      // Or use substr() to get first 10 characters (YYYY-MM-DD)
       final List<Map<String, dynamic>> maps = await database.query(
         AppConstants.invoicesTable,
-        where:
-            'substr(${AppConstants.colInvoiceDate}, 1, 10) >= ? AND substr(${AppConstants.colInvoiceDate}, 1, 10) <= ?',
+        where: '$_ledgerDateExpression >= ? AND $_ledgerDateExpression <= ?',
         whereArgs: [startDate, endDate],
-        orderBy: '${AppConstants.colInvoiceDate} ASC',
+        orderBy:
+            '$_ledgerDateExpression ASC, ${AppConstants.colCreatedAt} ASC, ${AppConstants.colId} ASC',
       );
 
       return maps.map((map) => Invoice.fromJson(map)).toList();
@@ -284,8 +286,7 @@ class InvoiceTable {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
-  /// Get invoices with invoice date today
-  /// invoice_date is stored as ISO8601, so we extract the date portion for comparison
+  /// Get invoices whose resolved ledger date is today.
   Future<List<Invoice>> getTodayInvoices() async {
     try {
       final now = DateTime.now();
@@ -293,9 +294,10 @@ class InvoiceTable {
 
       final List<Map<String, dynamic>> maps = await database.query(
         AppConstants.invoicesTable,
-        where: 'substr(${AppConstants.colInvoiceDate}, 1, 10) = ?',
+        where: '$_ledgerDateExpression = ?',
         whereArgs: [todayStr],
-        orderBy: '${AppConstants.colInvoiceDate} DESC',
+        orderBy:
+            '$_ledgerDateExpression DESC, ${AppConstants.colCreatedAt} DESC, ${AppConstants.colId} DESC',
       );
 
       return maps.map((map) => Invoice.fromJson(map)).toList();
@@ -305,7 +307,7 @@ class InvoiceTable {
     }
   }
 
-  /// Get invoices with invoice date in this month
+  /// Get invoices whose resolved ledger date is in this month.
   Future<List<Invoice>> getThisMonthInvoices() async {
     final now = DateTime.now();
     final startOfMonth = DateTime(now.year, now.month, 1);
@@ -353,8 +355,7 @@ class InvoiceTable {
     }
   }
 
-  /// Get the total amount for a date range (based on invoice_date)
-  /// invoice_date is stored as ISO8601, so we extract the date portion for comparison
+  /// Get the total amount for a resolved ledger date range.
   Future<double> getTotalAmountByDateRange(DateTime start, DateTime end) async {
     try {
       final startDate = _formatDate(start);
@@ -362,7 +363,7 @@ class InvoiceTable {
 
       final result = await database.rawQuery(
         'SELECT SUM(${AppConstants.colTotalAmount}) as total FROM ${AppConstants.invoicesTable} '
-        'WHERE substr(${AppConstants.colInvoiceDate}, 1, 10) >= ? AND substr(${AppConstants.colInvoiceDate}, 1, 10) <= ?',
+        'WHERE $_ledgerDateExpression >= ? AND $_ledgerDateExpression <= ?',
         [startDate, endDate],
       );
 
@@ -425,6 +426,7 @@ class InvoiceTable {
   /// Search invoices by multiple criteria
   /// Note: orderId filter uses the invoice_order_relations table
   Future<List<Invoice>> search({
+    String? keyword,
     String? invoiceNumber,
     String? sellerName,
     int? orderId,
@@ -439,6 +441,16 @@ class InvoiceTable {
     try {
       final conditions = <String>[];
       final args = <dynamic>[];
+
+      if (keyword != null && keyword.isNotEmpty) {
+        conditions.add(
+          '(${AppConstants.colInvoiceNumber} LIKE ? OR '
+          '${AppConstants.colSellerName} LIKE ?)',
+        );
+        args
+          ..add('%$keyword%')
+          ..add('%$keyword%');
+      }
 
       if (invoiceNumber != null && invoiceNumber.isNotEmpty) {
         conditions.add('${AppConstants.colInvoiceNumber} LIKE ?');
@@ -461,12 +473,12 @@ class InvoiceTable {
       }
 
       if (startDate != null) {
-        conditions.add('substr(${AppConstants.colInvoiceDate}, 1, 10) >= ?');
+        conditions.add('$_ledgerDateExpression >= ?');
         args.add(_formatDate(startDate));
       }
 
       if (endDate != null) {
-        conditions.add('substr(${AppConstants.colInvoiceDate}, 1, 10) <= ?');
+        conditions.add('$_ledgerDateExpression <= ?');
         args.add(_formatDate(endDate));
       }
 

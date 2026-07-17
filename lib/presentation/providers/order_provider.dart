@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/order.dart';
 import '../../data/repositories/order_repository.dart';
 import 'invoice_provider.dart' as invoice_providers;
+import 'ledger_data_revision_provider.dart';
 
 const _unset = Object();
 
@@ -104,6 +105,9 @@ class OrderNotifier extends Notifier<OrderState> {
 
     try {
       final id = await _repository.create(order);
+      if (id > 0) {
+        ref.read(ledgerDataRevisionProvider.notifier).markChanged();
+      }
       await loadOrders();
       // Invalidate count provider to refresh statistics
       ref.invalidate(orderCountProvider);
@@ -119,11 +123,30 @@ class OrderNotifier extends Notifier<OrderState> {
     state = state.copyWith(isLoading: true);
 
     try {
-      final rowsAffected = await _repository.update(order);
+      Order? currentOrder;
+      for (final candidate in state.orders) {
+        if (candidate.id == order.id) {
+          currentOrder = candidate;
+          break;
+        }
+      }
+      currentOrder ??= order.id == null
+          ? null
+          : await _repository.getById(order.id!);
+      final effectiveOrder = order.copyWith(
+        createdAt: order.createdAt.isNotEmpty
+            ? order.createdAt
+            : currentOrder?.createdAt ?? order.createdAt,
+        hasInvoice: currentOrder?.hasInvoice ?? order.hasInvoice,
+      );
+      final rowsAffected = await _repository.update(effectiveOrder);
       if (rowsAffected > 0) {
+        ref.read(ledgerDataRevisionProvider.notifier).markChanged();
         // Update the order in the list
         final updatedOrders = state.orders.map((o) {
-          return o.id == order.id ? order : o;
+          return o.id == effectiveOrder.id
+              ? effectiveOrder.copyWith(hasInvoice: o.hasInvoice)
+              : o;
         }).toList();
         state = state.copyWith(orders: updatedOrders, isLoading: false);
         return true;
@@ -144,6 +167,7 @@ class OrderNotifier extends Notifier<OrderState> {
       final linkedInvoiceIds = await _repository.getInvoiceIdsForOrder(id);
       final rowsAffected = await _repository.delete(id);
       if (rowsAffected > 0) {
+        ref.read(ledgerDataRevisionProvider.notifier).markChanged();
         final updatedOrders = state.orders.where((o) => o.id != id).toList();
         state = state.copyWith(orders: updatedOrders, isLoading: false);
         // Invalidate count provider to refresh statistics

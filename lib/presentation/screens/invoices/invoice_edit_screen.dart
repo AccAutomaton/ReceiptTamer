@@ -21,6 +21,7 @@ import 'package:receipt_tamer/data/services/share_handler_service.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
 import 'package:receipt_tamer/presentation/providers/ocr_provider.dart';
 import 'package:receipt_tamer/presentation/screens/invoices/order_selector_screen.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_notice.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_text_field.dart';
 import 'package:receipt_tamer/presentation/widgets/common/scroll_edge_fog.dart';
@@ -71,7 +72,9 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
   final ImageService _imageService = ImageService();
   final FileService _fileService = FileService();
 
+  Invoice? _loadedInvoice;
   bool _isLoading = false;
+  bool _saveInProgress = false;
   bool _hasOcrResult = false; // 是否有 OCR 识别结果
   List<Map<String, dynamic>> _sellerNameOptions = []; // 销售方名称选项列表（含次数）
 
@@ -111,6 +114,7 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
 
     // 重置状态
     setState(() {
+      _loadedInvoice = null;
       _invoiceDate = null;
       _selectedOrderIds = widget.effectiveInitialOrderIds;
       _filePath = widget.initialFilePath;
@@ -154,6 +158,7 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
             .read(invoiceProvider.notifier)
             .getOrderIdsForInvoice(widget.invoiceId!);
         setState(() {
+          _loadedInvoice = invoice;
           _invoiceNumberController.text = invoice.invoiceNumber;
           _amountController.text = invoice.totalAmount.toStringAsFixed(2);
           _sellerNameController.text = invoice.sellerName;
@@ -171,72 +176,95 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
   }
 
   Future<void> _pickFile() async {
-    final result = await showGlassContentBottomSheet<_FilePickResult>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text(AppConstants.btnTakePhoto),
-              onTap: () => Navigator.pop(
-                context,
-                _FilePickResult(ImageSource.camera, false),
+    _FilePickResult? result;
+    try {
+      result = await showGlassContentBottomSheet<_FilePickResult>(
+        context: context,
+        builder: (context) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text(AppConstants.btnTakePhoto),
+                onTap: () => Navigator.pop(
+                  context,
+                  _FilePickResult(ImageSource.camera, false),
+                ),
               ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text(AppConstants.btnSelectFromGallery),
-              onTap: () => Navigator.pop(
-                context,
-                _FilePickResult(ImageSource.gallery, false),
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text(AppConstants.btnSelectFromGallery),
+                onTap: () => Navigator.pop(
+                  context,
+                  _FilePickResult(ImageSource.gallery, false),
+                ),
               ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.picture_as_pdf),
-              title: const Text(AppConstants.btnSelectPDF),
-              onTap: () => Navigator.pop(context, _FilePickResult(null, true)),
-            ),
-          ],
+              ListTile(
+                leading: const Icon(Icons.picture_as_pdf),
+                title: const Text(AppConstants.btnSelectPDF),
+                onTap: () =>
+                    Navigator.pop(context, _FilePickResult(null, true)),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
 
-    if (result != null) {
+      if (!mounted || result == null) return;
       if (result.isPdf) {
-        // Pick PDF file
         final pickResult = await FilePicker.platform.pickFiles(
           type: FileType.custom,
           allowedExtensions: ['pdf'],
         );
-        if (pickResult != null && pickResult.files.single.path != null) {
+        if (pickResult != null &&
+            pickResult.files.single.path != null &&
+            mounted) {
           setState(() {
             _filePath = pickResult.files.single.path;
             _isPdf = true;
           });
         }
       } else if (result.imageSource != null) {
-        // Pick image
         final imageFile = result.imageSource == ImageSource.camera
             ? await _imageService.pickImageFromCamera()
             : await _imageService.pickImageFromGallery();
 
-        if (imageFile != null) {
+        if (imageFile != null && mounted) {
           setState(() {
             _filePath = imageFile.path;
             _isPdf = false;
           });
         }
       }
+    } on PlatformException catch (e, stackTrace) {
+      logService.e(LogConfig.moduleUi, '选择发票附件失败', e, stackTrace);
+      if (mounted) {
+        final source = result?.imageSource;
+        final isPermissionError =
+            e.code.contains('denied') ||
+            e.code.contains('restricted') ||
+            e.code.contains('permission');
+        AppNotice.error(
+          context,
+          isPermissionError && source == ImageSource.camera
+              ? '无法访问相机，请在系统设置中允许相机权限'
+              : isPermissionError && source == ImageSource.gallery
+              ? '无法访问相册，请在系统设置中允许照片权限'
+              : '选择附件失败，请重试',
+        );
+      }
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleUi, '选择发票附件失败', e, stackTrace);
+      if (mounted) {
+        AppNotice.error(context, '选择附件失败，请重试');
+      }
     }
   }
 
   Future<void> _handleOCR() async {
     if (_filePath == null || _filePath!.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请先选择图片或PDF')));
+      AppNotice.warning(context, '请先选择图片或PDF');
       return;
     }
 
@@ -251,7 +279,7 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => _InvoiceOcrProgressDialog(
+        builder: (_) => _InvoiceOcrProgressDialog(
           filePath: _filePath!,
           isPdf: _isPdf,
           onResult: (ocrResult) {
@@ -277,13 +305,9 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
                 }
               });
               logService.i(LogConfig.moduleUi, '发票 OCR 识别成功');
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('OCR 识别成功')));
+              AppNotice.success(context, 'OCR 识别成功');
             } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(ocrResult?.errorMessage ?? 'OCR 识别失败')),
-              );
+              AppNotice.error(context, ocrResult?.errorMessage ?? 'OCR 识别失败');
             }
           },
         ),
@@ -341,66 +365,75 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
   }
 
   Future<void> _handleSave() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    if (_filePath == null || _filePath!.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请选择发票图片或PDF')));
-      return;
-    }
-
-    // Validate required fields that are not TextFormField
-    final amount = double.tryParse(_amountController.text) ?? 0.0;
-    if (amount <= 0) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请输入有效的价税合计金额')));
-      return;
-    }
-
-    if (_invoiceDate == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请选择开票日期')));
-      return;
-    }
-
-    // Check if invoice number already exists
-    final invoiceNumber = _invoiceNumberController.text.trim();
-    if (invoiceNumber.isNotEmpty) {
-      final existingInvoice = await ref
-          .read(invoiceProvider.notifier)
-          .checkInvoiceNumberExists(invoiceNumber, excludeId: widget.invoiceId);
-      if (existingInvoice != null && mounted) {
-        final shouldContinue = await showDialog<bool>(
-          context: context,
-          builder: (context) => GlassAlertDialog(
-            title: const Text('发票号码已存在'),
-            content: Text('发票号码 "$invoiceNumber" 已存在，是否继续保存？'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('取消'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('继续保存'),
-              ),
-            ],
-          ),
-        );
-        if (shouldContinue != true) return;
-      }
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
+    if (_saveInProgress) return;
+    _saveInProgress = true;
     try {
+      if (!_formKey.currentState!.validate()) return;
+
+      if (_filePath == null || _filePath!.isEmpty) {
+        AppNotice.warning(context, '请选择发票图片或PDF');
+        return;
+      }
+
+      final amount = double.tryParse(_amountController.text) ?? 0.0;
+      if (amount <= 0) {
+        AppNotice.warning(context, '请输入有效的价税合计金额');
+        return;
+      }
+
+      if (_invoiceDate == null) {
+        AppNotice.warning(context, '请选择开票日期');
+        return;
+      }
+
+      setState(() {
+        _isLoading = true;
+      });
+
+      final invoiceNumber = _invoiceNumberController.text.trim();
+      if (invoiceNumber.isNotEmpty) {
+        final duplicateInvoice = await ref
+            .read(invoiceProvider.notifier)
+            .checkInvoiceNumberExists(
+              invoiceNumber,
+              excludeId: widget.invoiceId,
+            );
+        if (!mounted) return;
+        if (duplicateInvoice != null) {
+          final shouldContinue = await showDialog<bool>(
+            context: context,
+            builder: (context) => GlassAlertDialog(
+              title: const Text('发票号码已存在'),
+              content: Text('发票号码 "$invoiceNumber" 已存在，是否继续保存？'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('取消'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('继续保存'),
+                ),
+              ],
+            ),
+          );
+          if (shouldContinue != true) return;
+        }
+      }
+
+      final existingInvoice = widget.invoiceId == null
+          ? null
+          : _loadedInvoice ??
+                await ref
+                    .read(invoiceProvider.notifier)
+                    .getInvoiceById(widget.invoiceId!);
+      if (widget.invoiceId != null && existingInvoice == null) {
+        if (mounted) {
+          AppNotice.error(context, '发票已不存在，请返回后刷新');
+        }
+        return;
+      }
+
       // Save file to app directory if not already saved
       String savedPath;
       if (_isPdf) {
@@ -408,8 +441,6 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
       } else {
         savedPath = await _imageService.saveImage(File(_filePath!));
       }
-
-      final amount = double.tryParse(_amountController.text) ?? 0.0;
 
       final invoice = widget.invoiceId != null
           ? Invoice(
@@ -419,7 +450,7 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
               invoiceDate: _invoiceDate?.toIso8601String(),
               totalAmount: amount,
               sellerName: _sellerNameController.text.trim(),
-              createdAt: '', // Will be preserved by repository
+              createdAt: existingInvoice!.createdAt,
               updatedAt: DateTime.now().toIso8601String(),
             )
           : Invoice.create(
@@ -449,9 +480,7 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
             _fileService.deleteTempFile(_filePath!);
           }
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text(AppConstants.successSaved)),
-          );
+          AppNotice.success(context, AppConstants.successSaved);
 
           // 判断是否从分享进入
           final isFromShare = widget.initialFilePath != null;
@@ -471,15 +500,21 @@ class _InvoiceEditScreenState extends ConsumerState<InvoiceEditScreen> {
             context.pop(true);
           }
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text(AppConstants.errorSavingData)),
-          );
+          AppNotice.error(context, AppConstants.errorSavingData);
         }
       }
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleUi, '保存发票失败', e, stackTrace);
+      if (mounted) {
+        AppNotice.error(context, AppConstants.errorSavingData);
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      _saveInProgress = false;
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 

@@ -5,10 +5,37 @@ import 'package:go_router/go_router.dart';
 import 'package:receipt_tamer/data/services/update_preferences.dart';
 import 'package:receipt_tamer/data/services/update_service.dart';
 import 'package:receipt_tamer/data/services/share_handler_service.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_notice.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_bottom_sheet.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_navigation_bar.dart';
 import 'package:receipt_tamer/presentation/widgets/common/liquid_glass_background.dart';
 import 'package:receipt_tamer/presentation/widgets/common/update_dialog.dart';
+
+enum MainShellBackDecision { showPrompt, exit }
+
+/// Keeps Android BACK handling deterministic and independently testable.
+@visibleForTesting
+class MainShellBackExitGuard {
+  MainShellBackExitGuard({this.window = const Duration(seconds: 2)});
+
+  final Duration window;
+  DateTime? _lastPressedAt;
+
+  MainShellBackDecision register(DateTime now) {
+    final lastPressedAt = _lastPressedAt;
+    if (lastPressedAt == null ||
+        now.isBefore(lastPressedAt) ||
+        now.difference(lastPressedAt) > window) {
+      _lastPressedAt = now;
+      return MainShellBackDecision.showPrompt;
+    }
+
+    _lastPressedAt = null;
+    return MainShellBackDecision.exit;
+  }
+
+  void reset() => _lastPressedAt = null;
+}
 
 /// Shell widget that provides bottom navigation bar
 class MainShell extends ConsumerStatefulWidget {
@@ -22,7 +49,7 @@ class MainShell extends ConsumerStatefulWidget {
 
 class _MainShellState extends ConsumerState<MainShell>
     with WidgetsBindingObserver {
-  DateTime? _lastPressedTime;
+  final MainShellBackExitGuard _backExitGuard = MainShellBackExitGuard();
   bool _updateChecked = false;
 
   final UpdateService _updateService = UpdateService();
@@ -59,6 +86,7 @@ class _MainShellState extends ConsumerState<MainShell>
   ];
 
   void _onDestinationSelected(int index) {
+    _backExitGuard.reset();
     widget.navigationShell.goBranch(
       index,
       initialLocation: index == widget.navigationShell.currentIndex,
@@ -144,36 +172,21 @@ class _MainShellState extends ConsumerState<MainShell>
     );
   }
 
-  /// 处理返回键：在主页面时将应用移到后台
-  Future<bool> _handleBackPress() async {
-    final now = DateTime.now();
-    // 检查是否在主 Tab 页面（首页、订单、发票、报销）
-    final state = GoRouterState.of(context);
-    final location = state.matchedLocation;
-    final isMainTab = _destinations.any((d) => d.path == location);
-
-    if (!isMainTab) {
-      // 不在主Tab页面，允许正常返回
-      return true;
+  /// The shell owns only the four root tabs. Routes above it pop normally;
+  /// every BACK attempt that reaches the shell therefore follows this guard.
+  void _handleBackPress() {
+    switch (_backExitGuard.register(DateTime.now())) {
+      case MainShellBackDecision.showPrompt:
+        AppNotice.info(
+          context,
+          '再次返回回到桌面',
+          duration: const Duration(seconds: 2),
+        );
+        return;
+      case MainShellBackDecision.exit:
+        SystemNavigator.pop();
+        return;
     }
-
-    // 双击返回键退出提示
-    if (_lastPressedTime == null ||
-        now.difference(_lastPressedTime!) > const Duration(seconds: 2)) {
-      _lastPressedTime = now;
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('再次返回回到桌面'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-      return false;
-    }
-
-    // 将应用移到后台
-    SystemNavigator.pop();
-    return false;
   }
 
   @override
@@ -186,6 +199,9 @@ class _MainShellState extends ConsumerState<MainShell>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) {
+      _backExitGuard.reset();
+    }
     if (state == AppLifecycleState.resumed) {
       // Clean up APK file after returning from installation
       _cleanupApkAfterInstall();
@@ -263,16 +279,9 @@ class _MainShellState extends ConsumerState<MainShell>
 
     return PopScope(
       canPop: false,
-      onPopInvokedWithResult: (didPop, result) async {
+      onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        final shouldPop = await _handleBackPress();
-        if (shouldPop && mounted) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              Navigator.of(context).pop();
-            }
-          });
-        }
+        _handleBackPress();
       },
       child: Scaffold(
         extendBody: true,

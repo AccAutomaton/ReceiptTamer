@@ -7,6 +7,7 @@ import 'package:receipt_tamer/data/models/order.dart';
 import 'package:receipt_tamer/presentation/providers/export_provider.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
+import 'package:receipt_tamer/presentation/widgets/common/app_notice.dart';
 import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart';
 import 'package:receipt_tamer/presentation/widgets/common/floating_overlay_layout.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_page_scaffold.dart';
@@ -49,9 +50,11 @@ class _OrderExportScreenState extends ConsumerState<OrderExportScreen> {
         .read(exportProvider.notifier)
         .toggleSelection(orderId);
     if (message != null && mounted) {
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
+      AppNotice.show(
+        context,
+        message,
+        tone: AppNoticeTone.linkage,
+        duration: const Duration(seconds: 2),
       );
     }
   }
@@ -59,9 +62,11 @@ class _OrderExportScreenState extends ConsumerState<OrderExportScreen> {
   Future<void> _selectAll() async {
     final message = await ref.read(exportProvider.notifier).selectAll();
     if (message != null && mounted) {
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
+      AppNotice.show(
+        context,
+        message,
+        tone: AppNoticeTone.linkage,
+        duration: const Duration(seconds: 2),
       );
     }
   }
@@ -69,9 +74,11 @@ class _OrderExportScreenState extends ConsumerState<OrderExportScreen> {
   Future<void> _invertSelection() async {
     final message = await ref.read(exportProvider.notifier).invertSelection();
     if (message != null && mounted) {
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
+      AppNotice.show(
+        context,
+        message,
+        tone: AppNoticeTone.linkage,
+        duration: const Duration(seconds: 2),
       );
     }
   }
@@ -80,9 +87,11 @@ class _OrderExportScreenState extends ConsumerState<OrderExportScreen> {
     final state = ref.read(exportProvider);
 
     if (state.totalSelectedCount == 0) {
-      ScaffoldMessenger.of(
+      AppNotice.warning(
         context,
-      ).showSnackBar(const SnackBar(content: Text('请选择要导出的订单')));
+        '请选择要导出的订单',
+        duration: const Duration(seconds: 4),
+      );
       return;
     }
 

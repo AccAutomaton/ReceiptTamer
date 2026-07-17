@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../data/services/file_service.dart';
 import '../../widgets/common/app_button.dart';
+import '../../widgets/common/app_notice.dart';
 import '../../widgets/common/scroll_edge_fog.dart';
 import '../../widgets/common/storage_ring_chart.dart';
 
@@ -66,9 +67,11 @@ class _StorageManagementScreenState extends State<StorageManagementScreen> {
       final deletedCount = await _fileService.cleanTempFiles();
       await _loadStorageUsage();
       if (!mounted) return;
-      ScaffoldMessenger.of(
+      AppNotice.success(
         context,
-      ).showSnackBar(SnackBar(content: Text('已清理 $deletedCount 个临时文件')));
+        '已清理 $deletedCount 个临时文件',
+        duration: const Duration(seconds: 4),
+      );
     } finally {
       if (mounted) setState(() => _isClearingCache = false);
     }

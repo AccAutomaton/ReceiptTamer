@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,7 +12,9 @@ import 'package:receipt_tamer/data/models/order.dart';
 import 'package:receipt_tamer/data/models/uninvoiced_shop_summary.dart';
 import 'package:receipt_tamer/data/repositories/invoice_repository.dart';
 import 'package:receipt_tamer/data/repositories/order_repository.dart';
+import 'package:receipt_tamer/presentation/providers/invoice_export_provider.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
+import 'package:receipt_tamer/presentation/providers/ledger_data_revision_provider.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/providers/export_provider.dart';
 import 'package:receipt_tamer/presentation/providers/reimbursement_provider.dart';
@@ -327,6 +331,153 @@ void main() {
     expect(find.text('1 张发票 · 2 笔订单'), findsOneWidget);
   });
 
+  testWidgets('仅数据写入修订会自动重载已初始化的报销依据', (tester) async {
+    _usePhoneViewport(tester);
+    final sourceOrders = <Order>[_order(1, '2026-07-12')];
+    final sourceInvoices = <Invoice>[_invoice(101, '2026-07-13')];
+    final invoiceIdsByOrder = <int, Set<int>>{
+      1: <int>{101},
+    };
+    final orderIdsByInvoice = <int, Set<int>>{
+      101: <int>{1},
+    };
+    final fixture = _Fixture(
+      orders: sourceOrders,
+      invoices: sourceInvoices,
+      invoiceIdsByOrder: invoiceIdsByOrder,
+      orderIdsByInvoice: orderIdsByInvoice,
+    );
+    addTearDown(fixture.dispose);
+
+    await tester.pumpWidget(
+      _screenApp(fixture.container, const ReimbursementScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    final rangeStart = DateTime(2026, 7, 1);
+    final rangeEnd = DateTime(2026, 7, 31);
+    final orderExportNotifier = fixture.container.read(exportProvider.notifier);
+    await orderExportNotifier.setDateRange(rangeStart, rangeEnd);
+    await orderExportNotifier.toggleSelection(1);
+    expect(fixture.container.read(exportProvider).totalSelectedCount, 1);
+    expect(
+      fixture.container.read(invoiceExportProvider).isInitialized,
+      isFalse,
+    );
+
+    sourceOrders.add(_order(2, '2026-07-11'));
+    invoiceIdsByOrder[2] = <int>{101};
+    orderIdsByInvoice[101]!.add(2);
+    await fixture.container
+        .read(orderProvider.notifier)
+        .loadOrders(refresh: true);
+    await tester.pumpAndSettle();
+
+    var orderExportState = fixture.container.read(exportProvider);
+    expect(
+      orderExportState.availableOrders.map((order) => order.id),
+      isNot(contains(2)),
+      reason: '普通读取、筛选或搜索不应清空并重载报销选择',
+    );
+    expect(orderExportState.totalSelectedCount, 1);
+    final automaticReloadGate = Completer<void>();
+    fixture.orders.nextLoadGate = automaticReloadGate;
+    fixture.container.read(ledgerDataRevisionProvider.notifier).markChanged();
+    await tester.pump();
+    expect(fixture.container.read(exportProvider).isLoading, isTrue);
+
+    await tester.tap(
+      find.byKey(const ValueKey('reimbursement-order-1')),
+      warnIfMissed: false,
+    );
+    await tester.pump();
+    expect(
+      fixture.container.read(exportProvider).totalSelectedCount,
+      1,
+      reason: '自动重载期间旧账页不得接受新的选择操作',
+    );
+
+    automaticReloadGate.complete();
+    await tester.pumpAndSettle();
+
+    orderExportState = fixture.container.read(exportProvider);
+    expect(
+      orderExportState.availableOrders.map((order) => order.id),
+      containsAll(<int>[1, 2]),
+    );
+    expect(orderExportState.startDate, rangeStart);
+    expect(orderExportState.endDate, rangeEnd);
+    expect(orderExportState.totalSelectedCount, 0);
+    expect(
+      fixture.container.read(invoiceExportProvider).isInitialized,
+      isFalse,
+      reason: '尚未打开的导出依据不应被主数据刷新提前初始化',
+    );
+
+    await tester.tap(find.byKey(const ValueKey('reimbursement-export-basis')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('reimbursement-basis-invoices')),
+    );
+    await tester.pumpAndSettle();
+
+    final invoiceExportNotifier = fixture.container.read(
+      invoiceExportProvider.notifier,
+    );
+    await invoiceExportNotifier.setDateRange(rangeStart, rangeEnd);
+    invoiceExportNotifier.toggleSelection(101);
+    await orderExportNotifier.toggleSelection(1);
+    expect(fixture.container.read(exportProvider).totalSelectedCount, 2);
+    expect(
+      fixture.container.read(invoiceExportProvider).selectedInvoiceIds,
+      <int>{101},
+    );
+
+    sourceOrders.add(_order(3, '2026-07-10'));
+    sourceInvoices.add(_invoice(102, '2026-07-10'));
+    invoiceIdsByOrder[3] = <int>{102};
+    orderIdsByInvoice[102] = <int>{3};
+    await fixture.container
+        .read(invoiceProvider.notifier)
+        .loadInvoices(refresh: true);
+    await tester.pumpAndSettle();
+
+    orderExportState = fixture.container.read(exportProvider);
+    var invoiceExportState = fixture.container.read(invoiceExportProvider);
+    expect(
+      orderExportState.availableOrders.map((order) => order.id),
+      isNot(contains(3)),
+    );
+    expect(
+      invoiceExportState.availableInvoices.map((invoice) => invoice.id),
+      isNot(contains(102)),
+    );
+    expect(orderExportState.totalSelectedCount, 2);
+    expect(invoiceExportState.selectedInvoiceIds, <int>{101});
+
+    fixture.container.read(ledgerDataRevisionProvider.notifier).markChanged();
+    await tester.pumpAndSettle();
+
+    orderExportState = fixture.container.read(exportProvider);
+    invoiceExportState = fixture.container.read(invoiceExportProvider);
+    expect(
+      orderExportState.availableOrders.map((order) => order.id),
+      containsAll(<int>[1, 2, 3]),
+      reason: '任一主数据刷新都应重载所有已经初始化的报销依据',
+    );
+    expect(
+      invoiceExportState.availableInvoices.map((invoice) => invoice.id),
+      containsAll(<int>[101, 102]),
+    );
+    expect(orderExportState.startDate, rangeStart);
+    expect(orderExportState.endDate, rangeEnd);
+    expect(invoiceExportState.startDate, rangeStart);
+    expect(invoiceExportState.endDate, rangeEnd);
+    expect(orderExportState.totalSelectedCount, 0);
+    expect(invoiceExportState.selectedInvoiceIds, isEmpty);
+    expect(invoiceExportState.selectedOrderIds, isEmpty);
+  });
+
   testWidgets('未关联订单会在关联检查页阻断继续', (tester) async {
     _usePhoneViewport(tester);
     final fixture = _Fixture(orders: <Order>[_order(1, '2026-04-08')]);
@@ -572,9 +723,13 @@ class _FakeOrderRepository extends OrderRepository {
 
   final List<Order> orders;
   final Map<int, Set<int>> invoiceIdsByOrder;
+  Completer<void>? nextLoadGate;
 
   @override
-  Future<List<Order>> getAll({int? limit, int? offset}) async => orders;
+  Future<List<Order>> getAll({int? limit, int? offset}) async {
+    await _waitForNextLoad();
+    return orders;
+  }
 
   @override
   Future<int> getCount() async => orders.length;
@@ -585,12 +740,19 @@ class _FakeOrderRepository extends OrderRepository {
 
   @override
   Future<List<Order>> getByDateRange(DateTime start, DateTime end) async {
+    await _waitForNextLoad();
     return orders
         .where((order) {
           final date = DateTime.tryParse(order.orderDate ?? '');
           return date != null && !date.isBefore(start) && !date.isAfter(end);
         })
         .toList(growable: false);
+  }
+
+  Future<void> _waitForNextLoad() async {
+    final gate = nextLoadGate;
+    nextLoadGate = null;
+    if (gate != null) await gate.future;
   }
 
   @override

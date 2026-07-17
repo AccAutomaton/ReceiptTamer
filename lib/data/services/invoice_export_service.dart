@@ -99,17 +99,24 @@ class InvoiceExportItem {
   /// Generate full label combining remark and time label
   /// Format: "备注内容|时间标签" or "备注内容" or "时间标签"
   String get fullLabel {
+    return buildLabel();
+  }
+
+  /// Build the label exactly as it will be stamped on the exported invoice.
+  String buildLabel({bool showTimeLabel = true, bool showRemark = true}) {
     final parts = <String>[];
 
     // Add remark if present
-    if (remark != null && remark!.isNotEmpty) {
+    if (showRemark && remark != null && remark!.isNotEmpty) {
       parts.add(remark!);
     }
 
     // Add truncated time label
-    final timeLabel = truncatedTimeLabel;
-    if (timeLabel.isNotEmpty) {
-      parts.add(timeLabel);
+    if (showTimeLabel) {
+      final timeLabel = truncatedTimeLabel;
+      if (timeLabel.isNotEmpty) {
+        parts.add(timeLabel);
+      }
     }
 
     return parts.join('|');
@@ -160,6 +167,33 @@ class InvoiceExportItem {
   }
 }
 
+/// Result of checking whether selected invoice attachments can be exported.
+class InvoiceAttachmentValidationResult {
+  const InvoiceAttachmentValidationResult({
+    required this.exportableItems,
+    required this.unavailableItems,
+  });
+
+  final List<InvoiceExportItem> exportableItems;
+  final List<InvoiceExportItem> unavailableItems;
+
+  bool get hasUnavailableItems => unavailableItems.isNotEmpty;
+}
+
+/// Raised when an invoice attachment is missing, empty, or cannot be rendered.
+class InvoiceAttachmentUnavailableException implements Exception {
+  const InvoiceAttachmentUnavailableException(this.invoices, {this.cause});
+
+  final List<Invoice> invoices;
+  final Object? cause;
+
+  @override
+  String toString() {
+    final count = invoices.length;
+    return '有$count张发票的附件缺失或损坏，请在发票详情中重新添加附件';
+  }
+}
+
 /// Invoice export service
 /// Generates PDF documents from selected invoices
 class InvoiceExportService {
@@ -206,6 +240,39 @@ class InvoiceExportService {
     return items;
   }
 
+  /// Partition items before export so callers can report partial selection
+  /// problems instead of creating an empty PDF and claiming success.
+  static Future<InvoiceAttachmentValidationResult> validateAttachments({
+    required List<InvoiceExportItem> items,
+    required String Function(String) getFilePath,
+  }) async {
+    final exportableItems = <InvoiceExportItem>[];
+    final unavailableItems = <InvoiceExportItem>[];
+
+    for (final item in items) {
+      try {
+        final sourcePath = item.invoice.imagePath.trim();
+        if (sourcePath.isEmpty) {
+          unavailableItems.add(item);
+          continue;
+        }
+        final file = File(getFilePath(sourcePath));
+        if (!await file.exists() || await file.length() == 0) {
+          unavailableItems.add(item);
+          continue;
+        }
+        exportableItems.add(item);
+      } catch (_) {
+        unavailableItems.add(item);
+      }
+    }
+
+    return InvoiceAttachmentValidationResult(
+      exportableItems: List.unmodifiable(exportableItems),
+      unavailableItems: List.unmodifiable(unavailableItems),
+    );
+  }
+
   /// Generate invoice PDF document
   static Future<void> generateInvoicePdf({
     required List<InvoiceExportItem> items,
@@ -216,6 +283,19 @@ class InvoiceExportService {
   }) async {
     if (items.isEmpty) {
       throw ArgumentError('Items list cannot be empty');
+    }
+    if (outputPath.isEmpty) {
+      throw ArgumentError('Output path cannot be empty');
+    }
+
+    final validation = await validateAttachments(
+      items: items,
+      getFilePath: getFilePath,
+    );
+    if (validation.hasUnavailableItems) {
+      throw InvoiceAttachmentUnavailableException(
+        validation.unavailableItems.map((item) => item.invoice).toList(),
+      );
     }
 
     final document = PdfDocument();
@@ -323,19 +403,15 @@ class InvoiceExportService {
     bool showTimeLabel = true,
     bool showRemark = true,
   }) async {
-    final imagePath = item.invoice.imagePath;
-    if (imagePath.isEmpty) return;
-
     try {
       final drawStopwatch = Stopwatch()..start();
+      final imagePath = item.invoice.imagePath.trim();
       final resolvedPath = getFilePath(imagePath);
       final file = File(resolvedPath);
-      if (!await file.exists()) return;
 
       // Check if it's a PDF or image
       final isPdf = imagePath.toLowerCase().endsWith('.pdf');
       final bytes = await file.readAsBytes();
-      if (bytes.isEmpty) return;
 
       if (isPdf) {
         await _drawPdfInvoice(
@@ -358,38 +434,22 @@ class InvoiceExportService {
         );
       }
 
-      // Draw label if either remark or time label is enabled
-      if (showRemark || showTimeLabel) {
-        final parts = <String>[];
-
-        // Add remark only if showRemark is enabled
-        if (showRemark && item.remark != null && item.remark!.isNotEmpty) {
-          parts.add(item.remark!);
-        }
-
-        // Add time label only if showTimeLabel is enabled
-        if (showTimeLabel) {
-          final timeLabel = item.truncatedTimeLabel;
-          if (timeLabel.isNotEmpty) {
-            parts.add(timeLabel);
-          }
-        }
-
-        final label = parts.join('|');
-
-        if (label.isNotEmpty) {
-          _drawTimeLabel(
-            graphics: graphics,
-            label: label,
-            font: labelFont,
-            x: x,
-            y: y,
-            width: width,
-            height: height,
-            position: labelPosition,
-            margin: labelMargin,
-          );
-        }
+      final label = item.buildLabel(
+        showTimeLabel: showTimeLabel,
+        showRemark: showRemark,
+      );
+      if (label.isNotEmpty) {
+        _drawTimeLabel(
+          graphics: graphics,
+          label: label,
+          font: labelFont,
+          x: x,
+          y: y,
+          width: width,
+          height: height,
+          position: labelPosition,
+          margin: labelMargin,
+        );
       }
 
       drawStopwatch.stop();
@@ -401,8 +461,8 @@ class InvoiceExportService {
         );
       }
     } catch (e, stackTrace) {
-      // Ignore errors for individual invoices
       logService.e(LogConfig.moduleFile, '绘制发票失败', e, stackTrace);
+      throw InvoiceAttachmentUnavailableException([item.invoice], cause: e);
     }
   }
 
@@ -431,7 +491,9 @@ class InvoiceExportService {
     // Decode image to check dimensions and potentially rotate
     final uint8Bytes = Uint8List.fromList(imageBytes);
     final decodedImage = img.decodeImage(uint8Bytes);
-    if (decodedImage == null) return;
+    if (decodedImage == null) {
+      throw const FormatException('无法解码发票图片');
+    }
 
     // Get image dimensions
     double imgWidth = decodedImage.width.toDouble();
@@ -495,7 +557,9 @@ class InvoiceExportService {
     required double height,
   }) {
     final image = PdfBitmap(imageBytes);
-    if (image.width <= 0 || image.height <= 0) return;
+    if (image.width <= 0 || image.height <= 0) {
+      throw const FormatException('发票图片尺寸无效');
+    }
 
     final bitmapWidth = imageWidth > 0 ? imageWidth : image.width.toDouble();
     final bitmapHeight = imageHeight > 0
@@ -516,7 +580,9 @@ class InvoiceExportService {
     final drawHeight = bitmapHeight * scale;
 
     // Ensure valid dimensions
-    if (drawWidth <= 0 || drawHeight <= 0) return;
+    if (drawWidth <= 0 || drawHeight <= 0) {
+      throw const FormatException('发票图片绘制尺寸无效');
+    }
 
     // Center the image
     final drawX = x + (width - drawWidth) / 2;
@@ -542,7 +608,9 @@ class InvoiceExportService {
       final renderStopwatch = Stopwatch()..start();
       final renderedPage = await _renderFirstPdfPageToPng(pdfBytes);
       renderStopwatch.stop();
-      if (renderedPage == null) return;
+      if (renderedPage == null) {
+        throw const FormatException('无法渲染发票 PDF 首页');
+      }
 
       if (renderStopwatch.elapsed >= _slowInvoiceStepThreshold) {
         logService.diag(
@@ -576,6 +644,7 @@ class InvoiceExportService {
       );
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleFile, '处理 PDF 发票失败', e, stackTrace);
+      rethrow;
     }
   }
 
@@ -713,7 +782,7 @@ class InvoiceExportService {
     if (label.isEmpty) return;
 
     // Create string format with word wrap
-    final format = PdfStringFormat(wordWrap: PdfWordWrapType.word);
+    final format = PdfStringFormat(wordWrap: PdfWordWrapType.character);
 
     // Measure the text size (single line for width estimate)
     final singleLineSize = font.measureString(label);
@@ -735,6 +804,17 @@ class InvoiceExportService {
         labelX = x + margin;
         break;
     }
+
+    // Keep the stamp legible over dark or busy invoice content.
+    graphics.drawRectangle(
+      bounds: Rect.fromLTWH(
+        labelX - 3,
+        labelY - 2,
+        maxWidth + 6,
+        labelHeight + 4,
+      ),
+      brush: PdfSolidBrush(PdfColor(255, 255, 255)),
+    );
 
     // Draw label text with wrapping
     graphics.drawString(

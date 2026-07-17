@@ -69,6 +69,77 @@ void main() {
     await _unmountApp(tester);
   });
 
+  testWidgets('nested BACK pops normally and root BACK requires confirmation', (
+    WidgetTester tester,
+  ) async {
+    final platformCalls = <MethodCall>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          platformCalls.add(call);
+          return null;
+        });
+    addTearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+
+    await tester.pumpWidget(_testApp(enableBackgroundInitialization: false));
+    await tester.pump();
+
+    void expectFrameworkAlwaysHandlesBack() {
+      final frameworkBackCalls = platformCalls
+          .where(
+            (call) => call.method == 'SystemNavigator.setFrameworkHandlesBack',
+          )
+          .toList(growable: false);
+      expect(frameworkBackCalls, isNotEmpty);
+      expect(
+        frameworkBackCalls.every((call) => call.arguments == true),
+        isTrue,
+      );
+    }
+
+    expectFrameworkAlwaysHandlesBack();
+
+    await tester.tap(find.byKey(const ValueKey('home-settings-action')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.text('设置'), findsOneWidget);
+
+    platformCalls.clear();
+
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+
+    expect(find.text('首页'), findsNWidgets(2));
+    expect(find.text('再次返回回到桌面'), findsNothing);
+    expect(
+      platformCalls.where((call) => call.method == 'SystemNavigator.pop'),
+      isEmpty,
+    );
+    expectFrameworkAlwaysHandlesBack();
+
+    platformCalls.clear();
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+
+    expect(find.text('再次返回回到桌面'), findsOneWidget);
+    expect(
+      platformCalls.where((call) => call.method == 'SystemNavigator.pop'),
+      isEmpty,
+    );
+
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+
+    expect(
+      platformCalls.where((call) => call.method == 'SystemNavigator.pop'),
+      hasLength(1),
+    );
+
+    await _unmountApp(tester);
+  });
+
   testWidgets('Intake action opens the receipt intake desk', (
     WidgetTester tester,
   ) async {

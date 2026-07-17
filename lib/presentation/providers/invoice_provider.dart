@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/invoice.dart';
 import '../../data/repositories/invoice_repository.dart';
+import 'ledger_data_revision_provider.dart';
 import 'order_provider.dart';
 
 const _unset = Object();
@@ -133,6 +134,9 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
 
     try {
       final id = await _repository.create(invoice, orderIds: orderIds);
+      if (id > 0) {
+        ref.read(ledgerDataRevisionProvider.notifier).markChanged();
+      }
       if (state.filterOrderId != null) {
         await loadInvoices(filterOrderId: state.filterOrderId);
       } else {
@@ -155,17 +159,33 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
     state = state.copyWith(isLoading: true);
 
     try {
+      Invoice? currentInvoice;
+      for (final candidate in state.invoices) {
+        if (candidate.id == invoice.id) {
+          currentInvoice = candidate;
+          break;
+        }
+      }
+      currentInvoice ??= invoice.id == null
+          ? null
+          : await _repository.getById(invoice.id!);
+      final effectiveInvoice = invoice.copyWith(
+        createdAt: invoice.createdAt.isNotEmpty
+            ? invoice.createdAt
+            : currentInvoice?.createdAt ?? invoice.createdAt,
+      );
       final previousOrderIds = invoice.id != null && orderIds != null
           ? await _repository.getOrderIdsForInvoice(invoice.id!)
           : const <int>[];
       final rowsAffected = await _repository.update(
-        invoice,
+        effectiveInvoice,
         orderIds: orderIds,
       );
       if (rowsAffected > 0) {
+        ref.read(ledgerDataRevisionProvider.notifier).markChanged();
         // Update the invoice in the list
         final updatedInvoices = state.invoices.map((i) {
-          return i.id == invoice.id ? invoice : i;
+          return i.id == effectiveInvoice.id ? effectiveInvoice : i;
         }).toList();
         state = state.copyWith(invoices: updatedInvoices, isLoading: false);
         if (orderIds != null) {
@@ -192,6 +212,7 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
       final linkedOrderIds = await _repository.getOrderIdsForInvoice(id);
       final rowsAffected = await _repository.delete(id);
       if (rowsAffected > 0) {
+        ref.read(ledgerDataRevisionProvider.notifier).markChanged();
         final updatedInvoices = state.invoices
             .where((i) => i.id != id)
             .toList();
@@ -211,6 +232,7 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
 
   /// Search invoices
   Future<void> searchInvoices({
+    String? keyword,
     String? invoiceNumber,
     String? sellerName,
     int? orderId,
@@ -224,6 +246,7 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
 
     try {
       final invoices = await _repository.search(
+        keyword: keyword,
         invoiceNumber: invoiceNumber,
         sellerName: sellerName,
         orderId: orderId,
@@ -350,6 +373,7 @@ class InvoiceNotifier extends Notifier<InvoiceState> {
   Future<void> updateOrderRelations(int invoiceId, List<int> orderIds) async {
     final previousOrderIds = await _repository.getOrderIdsForInvoice(invoiceId);
     await _repository.updateOrderRelations(invoiceId, orderIds);
+    ref.read(ledgerDataRevisionProvider.notifier).markChanged();
     await _refreshOrdersAfterRelationChange([...previousOrderIds, ...orderIds]);
     await loadInvoices(filterOrderId: state.filterOrderId);
   }

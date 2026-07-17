@@ -280,6 +280,7 @@ class _ProfileInvoiceRepository extends InvoiceRepository {
 
   @override
   Future<List<Invoice>> search({
+    String? keyword,
     String? invoiceNumber,
     String? sellerName,
     int? orderId,

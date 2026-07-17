@@ -11,20 +11,24 @@ import '../../../data/models/backup_metadata.dart';
 import '../../../data/services/backup_service.dart';
 import '../../../data/services/file_service.dart';
 import '../../providers/invoice_provider.dart';
+import '../../providers/ledger_data_revision_provider.dart';
 import '../../providers/order_provider.dart';
 import '../../screens/export/saved_files_screen.dart';
 import '../common/app_button.dart';
+import '../common/app_notice.dart';
 
 /// Backup dialog for creating and restoring backups
 class BackupDialog extends ConsumerStatefulWidget {
-  const BackupDialog({super.key});
+  const BackupDialog({super.key, this.backupService});
+
+  final BackupService? backupService;
 
   @override
   ConsumerState<BackupDialog> createState() => _BackupDialogState();
 }
 
 class _BackupDialogState extends ConsumerState<BackupDialog> {
-  final BackupService _backupService = BackupService();
+  late final BackupService _backupService;
   bool _isLoading = false;
   double _progress = 0.0;
   String _statusMessage = '';
@@ -33,6 +37,7 @@ class _BackupDialogState extends ConsumerState<BackupDialog> {
   @override
   void initState() {
     super.initState();
+    _backupService = widget.backupService ?? BackupService();
     _loadAppVersion();
   }
 
@@ -228,10 +233,16 @@ class _BackupDialogState extends ConsumerState<BackupDialog> {
         });
 
         if (restoreResult.success) {
+          ref.read(ledgerDataRevisionProvider.notifier).markChanged();
           // Refresh all providers to reflect restored data
           _refreshProviders();
 
-          _showSnackBar('数据还原成功');
+          final warningMessage = restoreResult.warningMessage;
+          if (warningMessage != null && warningMessage.isNotEmpty) {
+            _showWarningNotice(warningMessage);
+          } else {
+            _showSuccessNotice('数据还原成功');
+          }
           Navigator.pop(context);
         } else {
           _showErrorDialog('还原失败', restoreResult.errorMessage ?? '未知错误');
@@ -355,10 +366,12 @@ class _BackupDialogState extends ConsumerState<BackupDialog> {
         false;
   }
 
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+  void _showSuccessNotice(String message) {
+    AppNotice.success(context, message, duration: const Duration(seconds: 4));
+  }
+
+  void _showWarningNotice(String message) {
+    AppNotice.warning(context, message, duration: const Duration(seconds: 5));
   }
 
   /// Refresh all providers after restore
@@ -402,71 +415,78 @@ class _BackupDialogState extends ConsumerState<BackupDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return GlassAlertDialog(
-      title: const Text('备份与还原'),
-      content: _isLoading
-          ? Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 16),
-                CircularProgressIndicator(),
-                const SizedBox(height: 16),
-                Text(_statusMessage),
-                const SizedBox(height: 8),
-                LinearProgressIndicator(value: _progress),
-                const SizedBox(height: 8),
-                Text('${(_progress * 100).toStringAsFixed(0)}%'),
-              ],
-            )
-          : Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  '当前版本: $_currentAppVersion',
-                  style: theme.textTheme.bodySmall,
-                ),
-                const SizedBox(height: 24),
-                AppButton(
-                  text: '创建备份',
-                  icon: const Icon(Icons.backup),
-                  onPressed: _createBackup,
-                  isFullWidth: true,
-                ),
-                const SizedBox(height: 12),
-                AppButton(
-                  text: '还原备份',
-                  icon: const Icon(Icons.restore),
-                  onPressed: _restoreBackup,
-                  type: AppButtonType.outlined,
-                  isFullWidth: true,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  '备份包含：订单数据、发票数据、图片、PDF文件',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+    return PopScope(
+      canPop: !_isLoading,
+      child: GlassAlertDialog(
+        title: const Text('备份与还原'),
+        content: _isLoading
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 16),
+                  CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(_statusMessage),
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(value: _progress),
+                  const SizedBox(height: 8),
+                  Text('${(_progress * 100).toStringAsFixed(0)}%'),
+                ],
+              )
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    '当前版本: $_currentAppVersion',
+                    style: theme.textTheme.bodySmall,
                   ),
-                  textAlign: TextAlign.center,
+                  const SizedBox(height: 24),
+                  AppButton(
+                    text: '创建备份',
+                    icon: const Icon(Icons.backup),
+                    onPressed: _createBackup,
+                    isFullWidth: true,
+                  ),
+                  const SizedBox(height: 12),
+                  AppButton(
+                    text: '还原备份',
+                    icon: const Icon(Icons.restore),
+                    onPressed: _restoreBackup,
+                    type: AppButtonType.outlined,
+                    isFullWidth: true,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '备份包含：订单数据、发票数据、图片、PDF文件',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+        actions: _isLoading
+            ? null
+            : [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('关闭'),
                 ),
               ],
-            ),
-      actions: _isLoading
-          ? null
-          : [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('关闭'),
-              ),
-            ],
+      ),
     );
   }
 }
 
 /// Show backup dialog
-Future<void> showBackupDialog(BuildContext context) {
+Future<void> showBackupDialog(
+  BuildContext context, {
+  BackupService? backupService,
+}) {
   return showDialog(
     context: context,
-    builder: (context) => const BackupDialog(),
+    barrierDismissible: false,
+    builder: (context) => BackupDialog(backupService: backupService),
   );
 }
