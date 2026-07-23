@@ -89,12 +89,15 @@ class OcrNotifier extends Notifier<OcrState> {
   static const double _ocrEndProgress = 0.21;
 
   Timer? _progressTimer;
+  int? _progressOperationId;
+  int _recognitionOperationId = 0;
 
   @override
   OcrState build() {
     // 不在build()中自动初始化，避免阻塞UI
     // OCR会在用户需要识别时按需初始化
     ref.onDispose(() {
+      _recognitionOperationId++;
       _progressTimer?.cancel();
     });
     return const OcrState();
@@ -120,29 +123,52 @@ class OcrNotifier extends Notifier<OcrState> {
   Future<OcrResult> _recognizeImageWithCloudVision(
     String imagePath,
     OcrType type,
+    int operationId,
   ) async {
     final file = File(imagePath);
     if (!await file.exists()) {
       return OcrResult.failure(errorMessage: '图片文件不存在', type: type);
     }
+    if (!_isCurrentRecognition(operationId)) {
+      return OcrResult.failure(errorMessage: '识别已取消', type: type);
+    }
 
     _startProgressAnimation(
       OcrStage.imageRecognizing,
       const Duration(milliseconds: _llmDurationMs),
+      operationId,
     );
+    final imageBytes = await file.readAsBytes();
+    if (!_isCurrentRecognition(operationId)) {
+      return OcrResult.failure(errorMessage: '识别已取消', type: type);
+    }
     final result = await (_service.llmService ?? LlmService())
         .extractStructuredDataFromImage(
-          imageBytes: await file.readAsBytes(),
+          imageBytes: imageBytes,
           mimeType: _mimeTypeForPath(imagePath),
           type: type,
         );
-    _stopProgressAnimation();
+    _stopProgressAnimation(operationId);
     return result;
   }
 
+  int _beginRecognition() {
+    _stopProgressAnimation();
+    return ++_recognitionOperationId;
+  }
+
+  bool _isCurrentRecognition(int operationId) =>
+      operationId == _recognitionOperationId;
+
   /// Start progress animation for a given stage
-  void _startProgressAnimation(OcrStage stage, Duration totalDuration) {
+  void _startProgressAnimation(
+    OcrStage stage,
+    Duration totalDuration,
+    int operationId,
+  ) {
+    if (!_isCurrentRecognition(operationId)) return;
     _progressTimer?.cancel();
+    _progressOperationId = operationId;
 
     final startTime = DateTime.now();
     final startProgress = switch (stage) {
@@ -161,6 +187,11 @@ class OcrNotifier extends Notifier<OcrState> {
     _progressTimer = Timer.periodic(
       const Duration(milliseconds: _progressUpdateIntervalMs),
       (timer) {
+        if (!_isCurrentRecognition(operationId) ||
+            _progressOperationId != operationId) {
+          timer.cancel();
+          return;
+        }
         final elapsed = DateTime.now().difference(startTime);
         final progress = elapsed.inMilliseconds / totalDuration.inMilliseconds;
 
@@ -178,14 +209,17 @@ class OcrNotifier extends Notifier<OcrState> {
   }
 
   /// Stop progress animation
-  void _stopProgressAnimation() {
+  void _stopProgressAnimation([int? operationId]) {
+    if (operationId != null && _progressOperationId != operationId) return;
     _progressTimer?.cancel();
     _progressTimer = null;
+    _progressOperationId = null;
   }
 
   /// Cancel ongoing recognition
   void cancelRecognition() {
     logService.i(LogConfig.moduleOcr, '取消识别');
+    _recognitionOperationId++;
     _stopProgressAnimation();
     state = state.copyWith(
       isLoading: false,
@@ -193,6 +227,7 @@ class OcrNotifier extends Notifier<OcrState> {
       stage: OcrStage.idle,
       progress: 0.0,
       clearResult: true,
+      clearError: true,
     );
   }
 
@@ -318,10 +353,11 @@ class OcrNotifier extends Notifier<OcrState> {
   }
 
   /// 轮询等待模型加载完成（不阻塞主线程）
-  Future<bool> _pollWaitForModel() async {
+  Future<bool> _pollWaitForModel(int operationId) async {
     // 等待 OCR 服务初始化
     while (_service.isModelLoading) {
       await Future.delayed(const Duration(milliseconds: 200));
+      if (!_isCurrentRecognition(operationId)) return false;
     }
 
     // 等待 LLM 初始化
@@ -329,9 +365,11 @@ class OcrNotifier extends Notifier<OcrState> {
     if (llmService != null) {
       while (llmService.isModelLoading) {
         await Future.delayed(const Duration(milliseconds: 200));
+        if (!_isCurrentRecognition(operationId)) return false;
       }
     }
 
+    if (!_isCurrentRecognition(operationId)) return false;
     state = state.copyWith(
       isInitialized: _service.isModelAvailable,
       isModelAvailable: _service.isModelAvailable,
@@ -346,6 +384,7 @@ class OcrNotifier extends Notifier<OcrState> {
 
   /// Recognize text from an order image path with progress
   Future<OcrResult?> recognizeOrderWithProgress(String imagePath) async {
+    final operationId = _beginRecognition();
     final totalStopwatch = Stopwatch()..start();
     logService.i(
       LogConfig.moduleOcr,
@@ -363,6 +402,7 @@ class OcrNotifier extends Notifier<OcrState> {
 
     try {
       final backendConfig = await _loadBackendConfig();
+      if (!_isCurrentRecognition(operationId)) return null;
       if (backendConfig.backendType == LlmBackendType.unset) {
         final failure = _backendUnsetFailure(OcrType.order);
         state = state.copyWith(
@@ -379,7 +419,9 @@ class OcrNotifier extends Notifier<OcrState> {
         final result = await _recognizeImageWithCloudVision(
           imagePath,
           OcrType.order,
+          operationId,
         );
+        if (!_isCurrentRecognition(operationId)) return null;
         state = state.copyWith(
           result: result,
           isLoading: false,
@@ -395,6 +437,7 @@ class OcrNotifier extends Notifier<OcrState> {
       if (!_service.isModelAvailable) {
         logService.i(LogConfig.moduleOcr, 'OCR模型未初始化，开始初始化...');
         await _service.initialize();
+        if (!_isCurrentRecognition(operationId)) return null;
         // 更新状态
         state = state.copyWith(
           isInitialized: _service.isModelAvailable,
@@ -406,7 +449,7 @@ class OcrNotifier extends Notifier<OcrState> {
       }
 
       // Wait for model if loading (使用轮询，不阻塞主线程)
-      await _pollWaitForModel();
+      if (!await _pollWaitForModel(operationId)) return null;
 
       final llmService = _service.llmService;
 
@@ -438,6 +481,7 @@ class OcrNotifier extends Notifier<OcrState> {
       // Read image bytes
       final file = File(imagePath);
       if (!await file.exists()) {
+        if (!_isCurrentRecognition(operationId)) return null;
         logService.w(LogConfig.moduleOcr, '图片文件不存在: $imagePath');
         state = state.copyWith(
           isLoading: false,
@@ -448,6 +492,7 @@ class OcrNotifier extends Notifier<OcrState> {
         return OcrResult.failure(errorMessage: '图片文件不存在', type: OcrType.order);
       }
       final bytes = await file.readAsBytes();
+      if (!_isCurrentRecognition(operationId)) return null;
       logService.diag(
         LogConfig.moduleOcr,
         'Image size',
@@ -459,10 +504,12 @@ class OcrNotifier extends Notifier<OcrState> {
       _startProgressAnimation(
         OcrStage.ocrRecognizing,
         const Duration(milliseconds: _ocrDurationMs),
+        operationId,
       );
 
       final ocrStopwatch = Stopwatch()..start();
       final rawResult = await _service.recognizeRaw(bytes);
+      if (!_isCurrentRecognition(operationId)) return null;
       ocrStopwatch.stop();
       logService.diag(
         LogConfig.moduleOcr,
@@ -475,7 +522,7 @@ class OcrNotifier extends Notifier<OcrState> {
         rawResult.textBlocks.length,
       );
 
-      _stopProgressAnimation();
+      _stopProgressAnimation(operationId);
 
       if (!rawResult.success) {
         logService.w(
@@ -500,6 +547,7 @@ class OcrNotifier extends Notifier<OcrState> {
         _startProgressAnimation(
           OcrStage.llmParsing,
           const Duration(milliseconds: _llmDurationMs),
+          operationId,
         );
 
         final llmStopwatch = Stopwatch()..start();
@@ -507,6 +555,7 @@ class OcrNotifier extends Notifier<OcrState> {
           rawResult,
           OcrType.order,
         );
+        if (!_isCurrentRecognition(operationId)) return null;
         llmStopwatch.stop();
         logService.diag(
           LogConfig.moduleOcr,
@@ -514,7 +563,7 @@ class OcrNotifier extends Notifier<OcrState> {
           '${llmStopwatch.elapsedMilliseconds}ms',
         );
 
-        _stopProgressAnimation();
+        _stopProgressAnimation(operationId);
 
         totalStopwatch.stop();
         logService.diag(
@@ -550,7 +599,8 @@ class OcrNotifier extends Notifier<OcrState> {
         );
       }
     } catch (e, stackTrace) {
-      _stopProgressAnimation();
+      _stopProgressAnimation(operationId);
+      if (!_isCurrentRecognition(operationId)) return null;
       logService.e(LogConfig.moduleOcr, 'OCR Pipeline 异常', e, stackTrace);
       state = state.copyWith(
         isLoading: false,
@@ -572,6 +622,7 @@ class OcrNotifier extends Notifier<OcrState> {
 
   /// Recognize text from an invoice image path with progress
   Future<OcrResult?> recognizeInvoiceWithProgress(String imagePath) async {
+    final operationId = _beginRecognition();
     final totalStopwatch = Stopwatch()..start();
     logService.i(
       LogConfig.moduleOcr,
@@ -589,6 +640,7 @@ class OcrNotifier extends Notifier<OcrState> {
 
     try {
       final backendConfig = await _loadBackendConfig();
+      if (!_isCurrentRecognition(operationId)) return null;
       if (backendConfig.backendType == LlmBackendType.unset) {
         final failure = _backendUnsetFailure(OcrType.invoice);
         state = state.copyWith(
@@ -605,7 +657,9 @@ class OcrNotifier extends Notifier<OcrState> {
         final result = await _recognizeImageWithCloudVision(
           imagePath,
           OcrType.invoice,
+          operationId,
         );
+        if (!_isCurrentRecognition(operationId)) return null;
         state = state.copyWith(
           result: result,
           isLoading: false,
@@ -621,6 +675,7 @@ class OcrNotifier extends Notifier<OcrState> {
       if (!_service.isModelAvailable) {
         logService.i(LogConfig.moduleOcr, 'OCR模型未初始化，开始初始化...');
         await _service.initialize();
+        if (!_isCurrentRecognition(operationId)) return null;
         // 更新状态
         state = state.copyWith(
           isInitialized: _service.isModelAvailable,
@@ -632,7 +687,7 @@ class OcrNotifier extends Notifier<OcrState> {
       }
 
       // Wait for model if loading (使用轮询，不阻塞主线程)
-      await _pollWaitForModel();
+      if (!await _pollWaitForModel(operationId)) return null;
 
       final llmService = _service.llmService;
 
@@ -667,6 +722,7 @@ class OcrNotifier extends Notifier<OcrState> {
       // Read image bytes
       final file = File(imagePath);
       if (!await file.exists()) {
+        if (!_isCurrentRecognition(operationId)) return null;
         logService.w(LogConfig.moduleOcr, '图片文件不存在: $imagePath');
         state = state.copyWith(
           isLoading: false,
@@ -680,6 +736,7 @@ class OcrNotifier extends Notifier<OcrState> {
         );
       }
       final bytes = await file.readAsBytes();
+      if (!_isCurrentRecognition(operationId)) return null;
       logService.diag(
         LogConfig.moduleOcr,
         'Image size',
@@ -691,10 +748,12 @@ class OcrNotifier extends Notifier<OcrState> {
       _startProgressAnimation(
         OcrStage.ocrRecognizing,
         const Duration(milliseconds: _ocrDurationMs),
+        operationId,
       );
 
       final ocrStopwatch = Stopwatch()..start();
       final rawResult = await _service.recognizeRaw(bytes);
+      if (!_isCurrentRecognition(operationId)) return null;
       ocrStopwatch.stop();
       logService.diag(
         LogConfig.moduleOcr,
@@ -707,7 +766,7 @@ class OcrNotifier extends Notifier<OcrState> {
         rawResult.textBlocks.length,
       );
 
-      _stopProgressAnimation();
+      _stopProgressAnimation(operationId);
 
       if (!rawResult.success) {
         logService.w(
@@ -732,6 +791,7 @@ class OcrNotifier extends Notifier<OcrState> {
         _startProgressAnimation(
           OcrStage.llmParsing,
           const Duration(milliseconds: _llmDurationMs),
+          operationId,
         );
 
         final llmStopwatch = Stopwatch()..start();
@@ -739,6 +799,7 @@ class OcrNotifier extends Notifier<OcrState> {
           rawResult,
           OcrType.invoice,
         );
+        if (!_isCurrentRecognition(operationId)) return null;
         llmStopwatch.stop();
         logService.diag(
           LogConfig.moduleOcr,
@@ -746,7 +807,7 @@ class OcrNotifier extends Notifier<OcrState> {
           '${llmStopwatch.elapsedMilliseconds}ms',
         );
 
-        _stopProgressAnimation();
+        _stopProgressAnimation(operationId);
 
         totalStopwatch.stop();
         logService.diag(
@@ -782,7 +843,8 @@ class OcrNotifier extends Notifier<OcrState> {
         );
       }
     } catch (e, stackTrace) {
-      _stopProgressAnimation();
+      _stopProgressAnimation(operationId);
+      if (!_isCurrentRecognition(operationId)) return null;
       logService.e(LogConfig.moduleOcr, 'OCR Pipeline 异常', e, stackTrace);
       state = state.copyWith(
         isLoading: false,
@@ -806,6 +868,7 @@ class OcrNotifier extends Notifier<OcrState> {
   /// For text-based PDF: extract text and call LLM directly
   /// For image-based PDF: not supported (syncfusion_flutter_pdf doesn't support image extraction)
   Future<OcrResult?> recognizeInvoiceFromPdf(String pdfPath) async {
+    final operationId = _beginRecognition();
     state = state.copyWith(
       isLoading: true,
       errorMessage: null,
@@ -816,6 +879,7 @@ class OcrNotifier extends Notifier<OcrState> {
 
     try {
       final backendConfig = await _loadBackendConfig();
+      if (!_isCurrentRecognition(operationId)) return null;
       if (backendConfig.backendType == LlmBackendType.unset) {
         final failure = _backendUnsetFailure(OcrType.invoice);
         state = state.copyWith(
@@ -831,6 +895,7 @@ class OcrNotifier extends Notifier<OcrState> {
       if (!_service.isModelAvailable) {
         logService.i(LogConfig.moduleOcr, 'OCR模型未初始化，开始初始化...');
         await _service.initialize();
+        if (!_isCurrentRecognition(operationId)) return null;
         // 更新状态
         state = state.copyWith(
           isInitialized: _service.isModelAvailable,
@@ -842,7 +907,7 @@ class OcrNotifier extends Notifier<OcrState> {
       }
 
       // Wait for model if loading (使用轮询，不阻塞主线程)
-      await _pollWaitForModel();
+      if (!await _pollWaitForModel(operationId)) return null;
 
       final llmService = _service.llmService;
 
@@ -877,6 +942,7 @@ class OcrNotifier extends Notifier<OcrState> {
       // Check if file exists
       final file = File(pdfPath);
       if (!await file.exists()) {
+        if (!_isCurrentRecognition(operationId)) return null;
         state = state.copyWith(
           isLoading: false,
           isModelLoading: false,
@@ -893,6 +959,7 @@ class OcrNotifier extends Notifier<OcrState> {
       _startProgressAnimation(
         OcrStage.ocrRecognizing,
         const Duration(milliseconds: _ocrDurationMs),
+        operationId,
       );
 
       final pdfService = PdfService();
@@ -900,6 +967,7 @@ class OcrNotifier extends Notifier<OcrState> {
         pdfPath,
         minTextLength: 20,
       );
+      if (!_isCurrentRecognition(operationId)) return null;
 
       OcrRawResult rawResult;
 
@@ -907,6 +975,7 @@ class OcrNotifier extends Notifier<OcrState> {
         // Text-based PDF: extract text directly
         logService.d(LogConfig.moduleOcr, '检测到文本型 PDF，直接提取文本');
         final text = await pdfService.extractTextFromPdf(pdfPath);
+        if (!_isCurrentRecognition(operationId)) return null;
         // Create a simple text block from the extracted text
         // Use dummy bounding box and confidence since we don't have position info
         rawResult = OcrRawResult(
@@ -926,7 +995,7 @@ class OcrNotifier extends Notifier<OcrState> {
         );
       } else {
         // Image-based PDF: not supported
-        _stopProgressAnimation();
+        _stopProgressAnimation(operationId);
         state = state.copyWith(
           isLoading: false,
           isModelLoading: false,
@@ -939,7 +1008,7 @@ class OcrNotifier extends Notifier<OcrState> {
         );
       }
 
-      _stopProgressAnimation();
+      _stopProgressAnimation(operationId);
 
       if (!rawResult.success || rawResult.fullText.isEmpty) {
         state = state.copyWith(
@@ -963,14 +1032,16 @@ class OcrNotifier extends Notifier<OcrState> {
       _startProgressAnimation(
         OcrStage.llmParsing,
         const Duration(milliseconds: _llmDurationMs),
+        operationId,
       );
 
       final llmResult = await llmService.extractStructuredData(
         rawResult,
         OcrType.invoice,
       );
+      if (!_isCurrentRecognition(operationId)) return null;
 
-      _stopProgressAnimation();
+      _stopProgressAnimation(operationId);
 
       state = state.copyWith(
         result: llmResult,
@@ -981,7 +1052,8 @@ class OcrNotifier extends Notifier<OcrState> {
       );
       return llmResult;
     } catch (e) {
-      _stopProgressAnimation();
+      _stopProgressAnimation(operationId);
+      if (!_isCurrentRecognition(operationId)) return null;
       logService.e(LogConfig.moduleOcr, 'PDF 识别错误', e);
       state = state.copyWith(
         isLoading: false,
@@ -998,16 +1070,19 @@ class OcrNotifier extends Notifier<OcrState> {
 
   /// Recognize text from image bytes
   Future<void> recognizeFromBytes(Uint8List imageBytes, OcrType type) async {
+    final operationId = _beginRecognition();
     state = state.copyWith(isLoading: true, errorMessage: null);
 
     try {
       final result = await _service.recognizeFromBytes(imageBytes, type);
+      if (!_isCurrentRecognition(operationId)) return;
       state = state.copyWith(
         result: result,
         isLoading: false,
         isModelLoading: false,
       );
     } catch (e) {
+      if (!_isCurrentRecognition(operationId)) return;
       state = state.copyWith(
         isLoading: false,
         isModelLoading: false,
@@ -1018,7 +1093,9 @@ class OcrNotifier extends Notifier<OcrState> {
 
   /// Recognize text from an image file
   Future<void> recognizeFromFile(File imageFile, OcrType type) async {
+    final operationId = _beginRecognition();
     if (!await imageFile.exists()) {
+      if (!_isCurrentRecognition(operationId)) return;
       state = state.copyWith(
         isLoading: false,
         isModelLoading: false,
@@ -1031,8 +1108,16 @@ class OcrNotifier extends Notifier<OcrState> {
 
     try {
       final bytes = await imageFile.readAsBytes();
-      await recognizeFromBytes(bytes, type);
+      if (!_isCurrentRecognition(operationId)) return;
+      final result = await _service.recognizeFromBytes(bytes, type);
+      if (!_isCurrentRecognition(operationId)) return;
+      state = state.copyWith(
+        result: result,
+        isLoading: false,
+        isModelLoading: false,
+      );
     } catch (e) {
+      if (!_isCurrentRecognition(operationId)) return;
       state = state.copyWith(
         isLoading: false,
         isModelLoading: false,

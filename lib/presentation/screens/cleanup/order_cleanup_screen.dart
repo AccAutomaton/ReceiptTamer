@@ -218,7 +218,7 @@ class _OrderCleanupScreenState extends ConsumerState<OrderCleanupScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final state = ref.watch(cleanupProvider);
 
-    return Scaffold(
+    final page = Scaffold(
       appBar: AppBar(title: const Text('选择要删除的订单')),
       body: FloatingOverlayLayout(
         top: Column(
@@ -252,6 +252,16 @@ class _OrderCleanupScreenState extends ConsumerState<OrderCleanupScreen> {
         },
         bottom: _buildBottomBar(state, colorScheme),
       ),
+    );
+
+    return PopScope(
+      canPop: !state.isDeleting,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && state.isDeleting) {
+          AppNotice.warning(context, '正在删除数据，完成后即可返回');
+        }
+      },
+      child: page,
     );
   }
 

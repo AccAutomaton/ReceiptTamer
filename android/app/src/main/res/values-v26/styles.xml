@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 8+ can render dark navigation controls on a transparent bar. -->
+    <style name="ReceiptTamerLaunchThemeV26" parent="@style/ReceiptTamerLaunchThemeBase">
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <style name="ReceiptTamerNormalThemeV26" parent="@style/ReceiptTamerNormalThemeBase">
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <style name="LaunchTheme" parent="@style/ReceiptTamerLaunchThemeV26" />
+    <style name="NormalTheme" parent="@style/ReceiptTamerNormalThemeV26" />
+</resources>

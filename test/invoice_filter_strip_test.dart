@@ -155,15 +155,57 @@ void main() {
     expect(find.text('无匹配发票'), findsOneWidget);
     expect(find.byType(LedgerFilterStrip), findsOneWidget);
     expect(
+      find.byKey(const ValueKey('invoice-active-search-filter')),
+      findsOneWidget,
+    );
+    expect(find.bySemanticsLabel('清除筛选：搜索 不存在的发票'), findsOneWidget);
+    expect(find.widgetWithText(LedgerFilterChip, '搜索：不存在的发票'), findsOneWidget);
+    expect(
       tester.getTopLeft(find.byType(LedgerFilterStrip)).dy,
       closeTo(initialTop, 0.01),
     );
     expect(find.text('清除筛选'), findsNothing);
     await tester.tap(
-      find.widgetWithText(LedgerFilterChip, '全部 ${_manyInvoices.length}'),
+      find.byKey(const ValueKey('invoice-active-search-filter')),
     );
     await tester.pumpAndSettle();
     expect(find.text('无匹配发票'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('invoice-active-search-filter')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('今日发票持续显示为可清除筛选标签', (tester) async {
+    _setViewport(tester);
+    final repository = _InvoiceListRepository(_manyInvoices);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [invoiceRepositoryProvider.overrideWithValue(repository)],
+        child: const MaterialApp(home: InvoicesScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('筛选'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('今日发票'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('invoice-active-today-filter')),
+      findsOneWidget,
+    );
+    expect(find.bySemanticsLabel('清除筛选：今日'), findsOneWidget);
+    expect(find.widgetWithText(LedgerFilterChip, '今日'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('invoice-active-today-filter')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('invoice-active-today-filter')),
+      findsNothing,
+    );
   });
 }
 
@@ -251,6 +293,9 @@ class _InvoiceListRepository extends InvoiceRepository {
 
   @override
   Future<List<Invoice>> getAll({int? limit, int? offset}) async => invoices;
+
+  @override
+  Future<List<Invoice>> getTodayInvoices() async => invoices;
 
   @override
   Future<Map<int, int>> getOrderCountsForInvoices(List<int> invoiceIds) async {

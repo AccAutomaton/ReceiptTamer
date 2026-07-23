@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'app_design_tokens.dart';
+import 'app_system_ui.dart';
 
 /// Material 3 configuration for the flat "morning-mist ledger" direction.
 ///
@@ -118,25 +119,13 @@ class AppTheme {
   /// Light theme.
   static ThemeData get lightTheme => _build(
     scheme: _lightScheme,
-    overlayStyle: const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-      statusBarBrightness: Brightness.light,
-      systemNavigationBarColor: Colors.transparent,
-      systemNavigationBarIconBrightness: Brightness.dark,
-    ),
+    overlayStyle: AppSystemUi.overlayStyleFor(Brightness.light),
   );
 
   /// Dark theme.
   static ThemeData get darkTheme => _build(
     scheme: _darkScheme,
-    overlayStyle: const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      statusBarBrightness: Brightness.dark,
-      systemNavigationBarColor: Colors.transparent,
-      systemNavigationBarIconBrightness: Brightness.light,
-    ),
+    overlayStyle: AppSystemUi.overlayStyleFor(Brightness.dark),
   );
 
   static ThemeData _build({

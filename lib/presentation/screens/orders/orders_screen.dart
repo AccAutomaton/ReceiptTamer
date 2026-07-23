@@ -300,8 +300,29 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
           selected: _activeFilter == _OrderLedgerFilter.all,
           onPressed: () => _applyRelationFilter(_OrderLedgerFilter.all),
         ),
+        if (_isTodayFilter)
+          LedgerFilterChip(
+            key: const ValueKey('order-active-today-filter'),
+            label: '今日',
+            semanticLabel: '清除筛选：今日',
+            icon: Icons.close,
+            selected: true,
+            onPressed: _clearFilter,
+          ),
+        if (_activeSearchQuery != null)
+          LedgerFilterChip(
+            key: const ValueKey('order-active-search-filter'),
+            label: '搜索：${_activeSearchQuery!}',
+            semanticLabel: '清除筛选：搜索 ${_activeSearchQuery!}',
+            icon: Icons.close,
+            selected: true,
+            onPressed: _clearFilter,
+          ),
         LedgerFilterChip(
           label: '未关联 $unlinkedCount',
+          semanticLabel: _activeFilter == _OrderLedgerFilter.unlinked
+              ? '清除筛选：未关联'
+              : null,
           icon: Icons.link_off,
           selected: _activeFilter == _OrderLedgerFilter.unlinked,
           onPressed: () => _activeFilter == _OrderLedgerFilter.unlinked
@@ -310,6 +331,9 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
         ),
         LedgerFilterChip(
           label: '已关联 $_knownLinkedCount',
+          semanticLabel: _activeFilter == _OrderLedgerFilter.linked
+              ? '清除筛选：已关联'
+              : null,
           selected: _activeFilter == _OrderLedgerFilter.linked,
           onPressed: () => _activeFilter == _OrderLedgerFilter.linked
               ? _clearFilter()
@@ -317,7 +341,12 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
         ),
         LedgerFilterChip(
           label: _monthFilterLabel(),
-          icon: Icons.calendar_month,
+          semanticLabel: _activeFilter == _OrderLedgerFilter.month
+              ? '清除筛选：${_monthFilterLabel()}'
+              : null,
+          icon: _activeFilter == _OrderLedgerFilter.month
+              ? Icons.close
+              : Icons.calendar_month,
           selected: _activeFilter == _OrderLedgerFilter.month,
           onPressed: () => _activeFilter == _OrderLedgerFilter.month
               ? _clearFilter()

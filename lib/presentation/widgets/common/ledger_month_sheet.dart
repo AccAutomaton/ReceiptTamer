@@ -99,6 +99,7 @@ class LedgerFilterStrip extends StatelessWidget {
 
 class LedgerFilterChip extends StatelessWidget {
   final String label;
+  final String? semanticLabel;
   final IconData? icon;
   final bool selected;
   final VoidCallback onPressed;
@@ -107,6 +108,7 @@ class LedgerFilterChip extends StatelessWidget {
     super.key,
     required this.label,
     required this.onPressed,
+    this.semanticLabel,
     this.icon,
     this.selected = false,
   });
@@ -120,7 +122,7 @@ class LedgerFilterChip extends StatelessWidget {
     return Semantics(
       button: true,
       selected: selected,
-      label: label,
+      label: semanticLabel ?? label,
       excludeSemantics: true,
       child: Material(
         color: Colors.transparent,

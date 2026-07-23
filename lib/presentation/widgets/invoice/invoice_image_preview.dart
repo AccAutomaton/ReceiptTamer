@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:pdfrx/pdfrx.dart' as pdfrx;
 import 'package:receipt_tamer/core/services/pdfrx_font_service.dart';
+import 'package:receipt_tamer/core/theme/app_system_ui.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_notice.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -249,56 +250,66 @@ class FullScreenImagePreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final file = File(imagePath);
+    final systemUiStyle = AppSystemUi.overlayStyleFor(Brightness.dark);
+    final Widget content;
     if (!file.existsSync()) {
-      return Scaffold(
+      content = Scaffold(
         backgroundColor: Colors.black,
         appBar: AppBar(
           backgroundColor: Colors.black,
           foregroundColor: Colors.white,
           iconTheme: const IconThemeData(color: Colors.white),
+          systemOverlayStyle: systemUiStyle,
         ),
         body: const Center(
           child: Text('图片不存在', style: TextStyle(color: Colors.white)),
         ),
       );
-    }
-
-    return Scaffold(
-      backgroundColor: Colors.black,
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: () async {
-              try {
-                await SharePlus.instance.share(
-                  ShareParams(files: [XFile(imagePath)], subject: '分享图片'),
-                );
-              } catch (e) {
-                if (context.mounted) {
-                  AppNotice.error(context, '分享失败: $e');
+    } else {
+      content = Scaffold(
+        backgroundColor: Colors.black,
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          iconTheme: const IconThemeData(color: Colors.white),
+          systemOverlayStyle: systemUiStyle,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.share),
+              onPressed: () async {
+                try {
+                  await SharePlus.instance.share(
+                    ShareParams(files: [XFile(imagePath)], subject: '分享图片'),
+                  );
+                } catch (e) {
+                  if (context.mounted) {
+                    AppNotice.error(context, '分享失败: $e');
+                  }
                 }
-              }
-            },
-          ),
-        ],
-      ),
-      body: GestureDetector(
-        onTap: () {
-          Navigator.of(context).pop();
-        },
-        child: Center(
-          child: InteractiveViewer(
-            minScale: 0.5,
-            maxScale: 5.0,
-            child: Image.file(file, fit: BoxFit.contain),
+              },
+            ),
+          ],
+        ),
+        body: GestureDetector(
+          onTap: () {
+            Navigator.of(context).pop();
+          },
+          child: Center(
+            child: InteractiveViewer(
+              minScale: 0.5,
+              maxScale: 5.0,
+              child: Image.file(file, fit: BoxFit.contain),
+            ),
           ),
         ),
-      ),
+      );
+    }
+
+    return AnnotatedRegion(
+      key: const ValueKey('full_screen_image_system_ui'),
+      value: systemUiStyle,
+      child: content,
     );
   }
 }

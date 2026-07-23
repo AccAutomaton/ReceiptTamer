@@ -564,7 +564,7 @@ class _MealProofOrderSelectScreenState
           order: order,
           isSelected: isSelected,
           onTap: orderId != null ? () => _toggleSelection(order) : null,
-          onDoubleTap: () => _showOrderDetail(order),
+          onOpenDetails: () => _showOrderDetail(order),
         );
       },
     );
@@ -718,18 +718,18 @@ class _MealProofOrderSelectScreenState
 }
 
 /// Meal proof order card widget for displaying order info with selection support
-/// 单击选择，双击查看详情
+/// 单击选择，并通过显式按钮查看详情。
 class _MealProofOrderCard extends StatelessWidget {
   final Order order;
   final bool isSelected;
   final VoidCallback? onTap;
-  final VoidCallback? onDoubleTap;
+  final VoidCallback? onOpenDetails;
 
   const _MealProofOrderCard({
     required this.order,
     required this.isSelected,
     this.onTap,
-    this.onDoubleTap,
+    this.onOpenDetails,
   });
 
   @override
@@ -746,8 +746,9 @@ class _MealProofOrderCard extends StatelessWidget {
         : order.orderDate ?? '-';
     final formattedMealTime = DateFormatter.mealTimeToDisplayName(mealTime);
 
-    return GestureDetector(
-      onDoubleTap: onDoubleTap,
+    return Semantics(
+      label:
+          '订单 ${order.shopName.isEmpty ? '未命名店铺' : order.shopName}，点按选择，使用详情按钮查看详情',
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadii.card),
@@ -853,6 +854,11 @@ class _MealProofOrderCard extends StatelessWidget {
                       color: AppPalette.amountFor(context),
                       fontWeight: FontWeight.bold,
                     ),
+                  ),
+                  IconButton(
+                    onPressed: onOpenDetails,
+                    tooltip: '查看订单详情',
+                    icon: const Icon(Icons.chevron_right),
                   ),
                 ],
               ),

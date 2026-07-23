@@ -735,11 +735,59 @@ class _ModelManagementScreenState extends ConsumerState<ModelManagementScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              _buildModeGuide(),
+              const SizedBox(height: 16),
               _buildLocalModelCard(),
               const SizedBox(height: 16),
               _buildExternalModelCard(),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModeGuide() {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '选择适合你的录入方式',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '识别是可选项；纯手工无需配置，直接返回录入页填写即可。',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 14),
+            const _ModeGuideRow(
+              icon: Icons.edit_note,
+              title: '纯手工',
+              description: '立即开始 · 数据不离开设备 · 无模型调用费用',
+            ),
+            const SizedBox(height: 12),
+            const _ModeGuideRow(
+              icon: Icons.phone_android,
+              title: '本地模型',
+              description: '首次下载和加载较慢 · 全程本机处理 · 无云端调用费用',
+            ),
+            const SizedBox(height: 12),
+            const _ModeGuideRow(
+              icon: Icons.cloud_outlined,
+              title: '云端模型',
+              description: '通常更快 · 内容发送至指定模型供应商 · 可能产生服务商费用',
+            ),
+          ],
         ),
       ),
     );
@@ -1110,5 +1158,53 @@ class _ModelManagementScreenState extends ConsumerState<ModelManagementScreen> {
       ModelAssetState.downloading => '模型正在下载中。',
       ModelAssetState.missing => '尚未安装本地模型，可在线下载或导入本地 ZIP。',
     };
+  }
+}
+
+class _ModeGuideRow extends StatelessWidget {
+  const _ModeGuideRow({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Semantics(
+      label: '$title：$description',
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: colorScheme.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  description,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

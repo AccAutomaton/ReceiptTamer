@@ -12,6 +12,7 @@ import 'package:receipt_tamer/presentation/screens/invoices/invoice_detail_scree
 import 'package:receipt_tamer/presentation/screens/invoices/invoices_screen.dart';
 import 'package:receipt_tamer/presentation/screens/invoices/order_selector_screen.dart';
 import 'package:receipt_tamer/presentation/screens/orders/order_detail_screen.dart';
+import 'package:receipt_tamer/presentation/screens/orders/invoice_selector_screen.dart';
 
 void main() {
   testWidgets(
@@ -42,6 +43,135 @@ void main() {
       expect(find.text('Shop 2'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'linked order requires explicit transfer confirmation before selection',
+    (tester) async {
+      _useLargeTestSurface(tester);
+      final linkedOrder = _order(id: 1, amount: 42);
+      final sourceInvoice = _invoice(id: 7, invoiceNumber: 'SOURCE-7');
+      final orderRepository = _FakeOrderRepository(
+        records: {1: linkedOrder},
+        visibleOrders: [linkedOrder],
+        invoiceIdsByOrder: {
+          1: {7},
+        },
+      );
+      final invoiceRepository = _FakeInvoiceRepository(invoice: sourceInvoice);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            orderRepositoryProvider.overrideWithValue(orderRepository),
+            invoiceRepositoryProvider.overrideWithValue(invoiceRepository),
+          ],
+          child: const MaterialApp(home: OrderSelectorScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<Checkbox>(find.byType(Checkbox)).onChanged, isNull);
+      expect(find.text('当前关联：发票 SOURCE-7'), findsOneWidget);
+      expect(find.text('转移关联'), findsOneWidget);
+      expect(find.text('未选择订单'), findsOneWidget);
+
+      await tester.tap(find.text('转移关联'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('确认转移关联'), findsOneWidget);
+      expect(find.text('这会把 1 笔订单从原发票移到 本次新发票，合计 ¥42.00。'), findsOneWidget);
+      expect(find.text('发票 SOURCE-7  →  本次新发票'), findsOneWidget);
+
+      await tester.tap(find.text('确认转移'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('已选择 1 个订单'), findsOneWidget);
+      expect(find.text('转移关联'), findsNothing);
+    },
+  );
+
+  testWidgets('current invoice relation is not treated as a transfer', (
+    tester,
+  ) async {
+    final linkedOrder = _order(id: 1, amount: 42);
+    final currentInvoice = _invoice(id: 7);
+    final orderRepository = _FakeOrderRepository(
+      records: {1: linkedOrder},
+      visibleOrders: [linkedOrder],
+      invoiceIdsByOrder: {
+        1: {7},
+      },
+    );
+    final invoiceRepository = _FakeInvoiceRepository(invoice: currentInvoice);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          orderRepositoryProvider.overrideWithValue(orderRepository),
+          invoiceRepositoryProvider.overrideWithValue(invoiceRepository),
+        ],
+        child: const MaterialApp(
+          home: OrderSelectorScreen(selectedOrderIds: [1], excludeInvoiceId: 7),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('已选择 1 个订单'), findsOneWidget);
+    expect(find.text('转移关联'), findsNothing);
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).onChanged, isNotNull);
+  });
+
+  testWidgets('order-side invoice selection also confirms relation transfer', (
+    tester,
+  ) async {
+    _useLargeTestSurface(tester);
+    final sourceInvoice = _invoice(
+      id: 7,
+      invoiceNumber: 'SOURCE-7',
+      sellerName: '原销售方',
+    );
+    final targetInvoice = _invoice(
+      id: 8,
+      invoiceNumber: 'TARGET-8',
+      sellerName: '目标销售方',
+    );
+    final orderRepository = _FakeOrderRepository(
+      records: {1: _order(id: 1, amount: 36)},
+      invoiceIdsByOrder: {
+        1: {7},
+      },
+    );
+    final invoiceRepository = _FakeInvoiceRepository(
+      invoice: sourceInvoice,
+      searchResults: [targetInvoice],
+      orderIdsByInvoice: const {8: []},
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          orderRepositoryProvider.overrideWithValue(orderRepository),
+          invoiceRepositoryProvider.overrideWithValue(invoiceRepository),
+        ],
+        child: const MaterialApp(home: InvoiceSelectorScreen(orderId: 1)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('目标销售方'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('确认转移关联'), findsOneWidget);
+    expect(find.text('发票 SOURCE-7  →  发票 TARGET-8'), findsOneWidget);
+    expect(invoiceRepository.updatedInvoiceId, isNull);
+
+    await tester.tap(find.text('确认转移'));
+    await tester.pumpAndSettle();
+
+    expect(invoiceRepository.updatedInvoiceId, 8);
+    expect(invoiceRepository.updatedOrderIds, [1]);
+  });
 
   testWidgets('missing records show retryable detail states', (tester) async {
     final orderRepository = _FakeOrderRepository(records: {});
@@ -227,6 +357,7 @@ Invoice _invoice({
   required int id,
   String imagePath = 'missing-invoice.jpg',
   String invoiceNumber = 'INVOICE-7',
+  String sellerName = 'Seller',
 }) {
   return Invoice(
     id: id,
@@ -234,17 +365,22 @@ Invoice _invoice({
     invoiceNumber: invoiceNumber,
     invoiceDate: '2026-07-17',
     totalAmount: 10,
-    sellerName: 'Seller',
+    sellerName: sellerName,
     createdAt: '2026-07-17T12:00:00',
     updatedAt: '2026-07-17T12:00:00',
   );
 }
 
 class _FakeOrderRepository extends OrderRepository {
-  _FakeOrderRepository({required this.records, this.visibleOrders = const []});
+  _FakeOrderRepository({
+    required this.records,
+    this.visibleOrders = const [],
+    this.invoiceIdsByOrder = const {},
+  });
 
   final Map<int, Order> records;
   final List<Order> visibleOrders;
+  final Map<int, Set<int>> invoiceIdsByOrder;
 
   @override
   Future<Order?> getById(int id) async => records[id];
@@ -254,6 +390,21 @@ class _FakeOrderRepository extends OrderRepository {
     for (final id in ids)
       if (records[id] != null) records[id]!,
   ];
+
+  @override
+  Future<List<Order>> getAll({int? limit, int? offset}) async =>
+      records.values.toList(growable: false);
+
+  @override
+  Future<List<int>> getInvoiceIdsForOrder(int orderId) async =>
+      invoiceIdsByOrder[orderId]?.toList(growable: false) ?? const [];
+
+  @override
+  Future<Map<int, Set<int>>> getInvoiceIdsForOrders(List<int> orderIds) async {
+    return {
+      for (final orderId in orderIds) orderId: {...?invoiceIdsByOrder[orderId]},
+    };
+  }
 
   @override
   Future<List<Order>> searchWithInvoiceRelation({
@@ -272,18 +423,33 @@ class _FakeInvoiceRepository extends InvoiceRepository {
     required this.invoice,
     this.orderIds = const [],
     this.searchResults = const [],
+    this.orderIdsByInvoice = const {},
   });
 
   final Invoice? invoice;
   final List<int> orderIds;
   final List<Invoice> searchResults;
+  final Map<int, List<int>> orderIdsByInvoice;
   String? lastKeywordSearch;
+  int? updatedInvoiceId;
+  List<int>? updatedOrderIds;
 
   @override
   Future<Invoice?> getById(int id) async => invoice?.id == id ? invoice : null;
 
   @override
-  Future<List<int>> getOrderIdsForInvoice(int invoiceId) async => orderIds;
+  Future<List<int>> getOrderIdsForInvoice(int invoiceId) async =>
+      List.of(orderIdsByInvoice[invoiceId] ?? orderIds);
+
+  @override
+  Future<int> getOrderCountForInvoice(int invoiceId) async =>
+      (orderIdsByInvoice[invoiceId] ?? orderIds).length;
+
+  @override
+  Future<void> updateOrderRelations(int invoiceId, List<int> orderIds) async {
+    updatedInvoiceId = invoiceId;
+    updatedOrderIds = List.of(orderIds);
+  }
 
   @override
   Future<List<Invoice>> getByOrderId(

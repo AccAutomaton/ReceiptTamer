@@ -14,15 +14,20 @@ import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/order.dart';
 import 'package:receipt_tamer/data/models/llm_backend.dart';
 import 'package:receipt_tamer/data/models/ocr_result.dart';
+import 'package:receipt_tamer/data/services/duplicate_detection_service.dart';
 import 'package:receipt_tamer/data/services/llm_config_service.dart';
 import 'package:receipt_tamer/data/services/file_service.dart';
 import 'package:receipt_tamer/data/services/image_service.dart';
 import 'package:receipt_tamer/data/services/share_handler_service.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/providers/ocr_provider.dart';
+import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
+import 'package:receipt_tamer/presentation/utils/ai_use_disclosure.dart';
+import 'package:receipt_tamer/presentation/utils/share_import_actions.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_notice.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_text_field.dart';
+import 'package:receipt_tamer/presentation/widgets/common/duplicate_warning_dialog.dart';
 import 'package:receipt_tamer/presentation/widgets/common/scroll_edge_fog.dart';
 import 'package:receipt_tamer/presentation/widgets/order/order_image_preview.dart';
 
@@ -54,6 +59,8 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
   String? _imagePath;
   final ImageService _imageService = ImageService();
   final FileService _fileService = FileService();
+  final DuplicateDetectionService _duplicateDetectionService =
+      DuplicateDetectionService();
 
   Order? _loadedOrder;
   bool _isLoading = false;
@@ -211,84 +218,91 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
 
     logService.i(LogConfig.moduleUi, '开始订单 OCR 识别');
 
-    if (!await _ensureAiBackendConfigured()) {
-      return;
-    }
+    final backendConfig = await _ensureAiBackendConfigured();
+    if (backendConfig == null || !mounted) return;
+
+    final uploadAllowed = await confirmCloudUploadIfNeeded(
+      context,
+      config: backendConfig,
+      content: backendConfig.cloud.isMultimodal
+          ? CloudUploadContent.orderImage
+          : CloudUploadContent.orderText,
+    );
+    if (!uploadAllowed || !mounted) return;
 
     // Show progress dialog
     if (mounted) {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (_) => _OcrProgressDialog(
-          imagePath: _imagePath!,
-          onResult: (ocrResult) {
-            if (ocrResult?.success == true) {
-              setState(() {
-                _hasOcrResult = true;
-                if (ocrResult?.shopName != null &&
-                    ocrResult!.shopName!.isNotEmpty) {
-                  _shopNameController.text = ocrResult.shopName!;
-                }
-                if (ocrResult?.amount != null && ocrResult!.amount! > 0) {
-                  _amountController.text = ocrResult.amount!.toStringAsFixed(2);
-                }
-                if (ocrResult?.orderNumber != null &&
-                    ocrResult!.orderNumber!.isNotEmpty) {
-                  _orderNumberController.text = ocrResult.orderNumber!;
-                }
-                // Parse orderTime from OCR result into orderDate and mealTime
-                if (ocrResult?.orderTime != null &&
-                    ocrResult!.orderTime!.isNotEmpty) {
-                  final (
-                    dateStr,
-                    mealTime,
-                  ) = DateFormatter.parseDateTimeToOrderDateAndMealTime(
-                    ocrResult.orderTime,
-                  );
-                  if (dateStr != null) {
-                    _orderDate = DateTime.tryParse(dateStr);
+        builder: (_) => PopScope(
+          canPop: false,
+          child: _OcrProgressDialog(
+            imagePath: _imagePath!,
+            onResult: (ocrResult) {
+              if (ocrResult?.success == true) {
+                setState(() {
+                  _hasOcrResult = true;
+                  if (ocrResult?.shopName != null &&
+                      ocrResult!.shopName!.isNotEmpty) {
+                    _shopNameController.text = ocrResult.shopName!;
                   }
-                  _mealTime = mealTime;
-                }
-              });
-              logService.i(LogConfig.moduleUi, '订单 OCR 识别成功');
-              AppNotice.success(context, 'OCR 识别成功');
-            } else {
-              AppNotice.error(context, ocrResult?.errorMessage ?? 'OCR 识别失败');
-            }
-          },
+                  if (ocrResult?.amount != null && ocrResult!.amount! > 0) {
+                    _amountController.text = ocrResult.amount!.toStringAsFixed(
+                      2,
+                    );
+                  }
+                  if (ocrResult?.orderNumber != null &&
+                      ocrResult!.orderNumber!.isNotEmpty) {
+                    _orderNumberController.text = ocrResult.orderNumber!;
+                  }
+                  // Parse orderTime from OCR result into orderDate and mealTime
+                  if (ocrResult?.orderTime != null &&
+                      ocrResult!.orderTime!.isNotEmpty) {
+                    final (
+                      dateStr,
+                      mealTime,
+                    ) = DateFormatter.parseDateTimeToOrderDateAndMealTime(
+                      ocrResult.orderTime,
+                    );
+                    if (dateStr != null) {
+                      _orderDate = DateTime.tryParse(dateStr);
+                    }
+                    _mealTime = mealTime;
+                  }
+                });
+                logService.i(LogConfig.moduleUi, '订单 OCR 识别成功');
+                AppNotice.success(context, 'OCR 识别成功');
+              } else {
+                AppNotice.error(context, ocrResult?.errorMessage ?? 'OCR 识别失败');
+              }
+            },
+          ),
         ),
       );
     }
   }
 
-  Future<bool> _ensureAiBackendConfigured() async {
+  Future<LlmBackendConfig?> _ensureAiBackendConfigured() async {
     final config = await LlmConfigService().load();
-    if (config.backendType != LlmBackendType.unset) return true;
-    if (!mounted) return false;
+    if (config.backendType != LlmBackendType.unset) return config;
+    if (!mounted) return null;
 
-    final goToSettings = await showDialog<bool>(
-      context: context,
-      builder: (context) => GlassAlertDialog(
-        title: const Text('选择 AI 分析方式'),
-        content: const Text('请先在设置中选择本地模型或云端模型，然后再进行 OCR 识别。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('去设置'),
-          ),
-        ],
-      ),
-    );
-    if (goToSettings == true && mounted) {
-      context.push('/settings/model-management');
+    final choice = await showAiAnalysisChoiceDialog(context);
+    if (!mounted || choice == null) return null;
+    if (choice == AiAnalysisChoice.manual) {
+      if (mounted) {
+        AppNotice.info(context, '已选择手工录入，可直接填写并保存');
+      }
+      return null;
     }
-    return false;
+
+    await context.push('/settings/model-management');
+    if (!mounted) return null;
+    final updatedConfig = await LlmConfigService().load();
+    return updatedConfig.backendType == LlmBackendType.unset
+        ? null
+        : updatedConfig;
   }
 
   void _showShopNamePicker() {
@@ -369,12 +383,12 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
 
   void _showContinueDialog() {
     final service = ShareHandlerService();
-    final items = service.pendingSharedMedia;
+    final items = service.pendingSharedMedia
+        ?.where((item) => item.isImage)
+        .toList(growable: false);
 
     if (items == null || items.isEmpty) {
-      // 没有待处理的图片，移到后台
-      service.clearPendingSharedMedia();
-      SystemNavigator.pop();
+      context.go(service.hasPendingSharedMedia ? '/share' : '/');
       return;
     }
 
@@ -386,11 +400,23 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
         content: Text('还有 ${items.length} 个待处理的图片。\n\n是否继续添加下一个订单？'),
         actions: [
           TextButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              final abandon = await confirmAbandonSharedImport(
+                context,
+                pendingCount:
+                    service.pendingSharedMedia?.length ?? items.length,
+              );
+              if (!abandon || !mounted) return;
+              service.clearPendingSharedMedia();
+              context.go('/');
+            },
+            child: const Text('放弃全部'),
+          ),
+          TextButton(
             onPressed: () {
               Navigator.pop(dialogContext);
-              service.clearPendingSharedMedia();
-              // 移到后台，让用户返回相册
-              SystemNavigator.pop();
+              context.go('/');
             },
             child: const Text('稍后处理'),
           ),
@@ -400,11 +426,6 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
               // 获取下一个待处理的图片
               final nextItem = items.first;
               final remainingItems = items.skip(1).toList();
-
-              // 更新剩余列表
-              service.sharedMediaNotifier.value = remainingItems.isNotEmpty
-                  ? remainingItems
-                  : null;
 
               // 导航到下一个订单编辑页面
               context.go(
@@ -448,6 +469,26 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
       setState(() {
         _isLoading = true;
       });
+
+      final duplicateReport = await _duplicateDetectionService.checkOrder(
+        attachmentPath: _imagePath!,
+        merchant: _shopNameController.text,
+        orderNumber: _orderNumberController.text,
+        orderDate: DateFormatter.formatStorage(_orderDate!),
+        amount: amount,
+        existingOrders: await ref.read(orderProvider.notifier).getAll(),
+        existingInvoices: await ref.read(invoiceProvider.notifier).getAll(),
+        excludeOrderId: widget.orderId,
+      );
+      if (!mounted) return;
+      if (duplicateReport.hasMatches) {
+        final shouldSave = await showDuplicateWarningDialog(
+          context,
+          report: duplicateReport,
+          onOpenRecord: _openDuplicateRecord,
+        );
+        if (!shouldSave || !mounted) return;
+      }
 
       final existingOrder = widget.orderId == null
           ? null
@@ -511,14 +552,20 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
           final isFromShare = widget.initialImagePath != null;
 
           if (isFromShare) {
-            // 从分享进入
-            if (widget.remainingSharedCount > 0) {
+            final shareService = ShareHandlerService();
+            shareService.completePendingSharedMedia(widget.initialImagePath!);
+            final hasMoreImages =
+                shareService.pendingSharedMedia?.any((item) => item.isImage) ==
+                true;
+            if (hasMoreImages) {
               // 还有待处理的图片，显示继续对话框
               _showContinueDialog();
+            } else if (shareService.hasPendingSharedMedia) {
+              // 仍有 PDF 等非订单附件，回到类型选择页继续处理。
+              context.go('/share');
             } else {
-              // 没有待处理的图片，清除分享数据并移到后台
-              ShareHandlerService().clearPendingSharedMedia();
-              SystemNavigator.pop();
+              // 已完成全部分享导入。
+              context.go('/');
             }
           } else {
             // 不是从分享进入，正常返回上一级
@@ -541,6 +588,15 @@ class _OrderEditScreenState extends ConsumerState<OrderEditScreen> {
         });
       }
     }
+  }
+
+  void _openDuplicateRecord(DuplicateRecordSnapshot record) {
+    final id = record.id;
+    if (id == null) return;
+    final route = record.type == DuplicateRecordType.order
+        ? '/orders/$id'
+        : '/invoices/$id';
+    context.push(route);
   }
 
   @override
@@ -810,7 +866,12 @@ class _OcrProgressDialogState extends ConsumerState<_OcrProgressDialog> {
         .read(ocrProvider.notifier)
         .recognizeOrderWithProgress(widget.imagePath);
 
-    if (_cancelled) return;
+    if (_cancelled) {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+      return;
+    }
 
     if (mounted) {
       Navigator.of(context).pop();
@@ -819,31 +880,25 @@ class _OcrProgressDialogState extends ConsumerState<_OcrProgressDialog> {
   }
 
   void _handleCancel() {
-    _cancelled = true;
+    if (_cancelled) return;
+    setState(() {
+      _cancelled = true;
+    });
     ref.read(ocrProvider.notifier).cancelRecognition();
-    Navigator.of(context).pop();
-    widget.onResult(null);
   }
 
   @override
   Widget build(BuildContext context) {
     final ocrState = ref.watch(ocrProvider);
 
-    // Get stage text
-    String stageText;
-    switch (ocrState.stage) {
-      case OcrStage.ocrRecognizing:
-        stageText = '正在识别文本...';
-        break;
-      case OcrStage.imageRecognizing:
-        stageText = '正在理解图片...';
-        break;
-      case OcrStage.llmParsing:
-        stageText = '正在解析文本...';
-        break;
-      default:
-        stageText = '准备中...';
-    }
+    final stageText = _cancelled
+        ? '正在安全结束识别...'
+        : switch (ocrState.stage) {
+            OcrStage.ocrRecognizing => '正在识别文本...',
+            OcrStage.imageRecognizing => '正在理解图片...',
+            OcrStage.llmParsing => '正在解析文本...',
+            _ => '准备中...',
+          };
 
     final isDirectVisionStage = ocrState.stage == OcrStage.imageRecognizing;
 
@@ -865,19 +920,22 @@ class _OcrProgressDialogState extends ConsumerState<_OcrProgressDialog> {
                     width: 72,
                     height: 72,
                     child: CircularProgressIndicator(
-                      value: ocrState.progress,
+                      value: _cancelled ? null : ocrState.progress,
                       strokeWidth: 6,
                       backgroundColor: Theme.of(
                         context,
                       ).colorScheme.surfaceContainerHighest,
                     ),
                   ),
-                  Text(
-                    '${(ocrState.progress * 100).toInt()}%',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+                  if (_cancelled)
+                    const Icon(Icons.hourglass_bottom)
+                  else
+                    Text(
+                      '${(ocrState.progress * 100).toInt()}%',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -888,6 +946,15 @@ class _OcrProgressDialogState extends ConsumerState<_OcrProgressDialog> {
               style: Theme.of(context).textTheme.titleMedium,
               textAlign: TextAlign.center,
             ),
+            if (_cancelled) ...[
+              const SizedBox(height: 8),
+              Text(
+                '结果不会写入表单；底层任务结束前将保持此窗口。'
+                '已发出的云端请求仍可能产生费用。',
+                style: Theme.of(context).textTheme.bodySmall,
+                textAlign: TextAlign.center,
+              ),
+            ],
             const SizedBox(height: 24),
             // Stage indicator
             if (isDirectVisionStage)
@@ -921,7 +988,12 @@ class _OcrProgressDialogState extends ConsumerState<_OcrProgressDialog> {
           ],
         ),
       ),
-      actions: [TextButton(onPressed: _handleCancel, child: const Text('取消'))],
+      actions: [
+        TextButton(
+          onPressed: _cancelled ? null : _handleCancel,
+          child: Text(_cancelled ? '正在结束' : '取消识别'),
+        ),
+      ],
     );
   }
 

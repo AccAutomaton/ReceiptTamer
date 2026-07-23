@@ -137,7 +137,7 @@ void main() {
       expect(find.byKey(ScrollEdgeFog.topFogKey), findsOneWidget);
       expect(find.byKey(ScrollEdgeFog.bottomFogKey), findsOneWidget);
       expect(find.text('用餐证明导出'), findsOneWidget);
-      expect(find.text('开票助手'), findsOneWidget);
+      expect(find.text('待关联订单'), findsOneWidget);
       expect(find.text('发票导出'), findsOneWidget);
       expect(find.text('报销材料导出'), findsNothing);
       expect(find.text('最近订单'), findsOneWidget);
@@ -299,6 +299,37 @@ void main() {
       router.go('/');
       await tester.pumpAndSettle();
     }
+  });
+
+  testWidgets('empty home presents the lightweight first-use checklist', (
+    tester,
+  ) async {
+    final router = _router();
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          homeOverviewProvider.overrideWithValue(
+            const AsyncData(HomeOverview.empty()),
+          ),
+        ],
+        child: MaterialApp.router(
+          theme: AppTheme.lightTheme,
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('home-first-use-checklist')),
+      findsOneWidget,
+    );
+    expect(find.text('第一次使用，从这三步开始'), findsOneWidget);
+    expect(find.text('导入一笔订单'), findsOneWidget);
+    expect(find.text('选择识别方式'), findsOneWidget);
+    expect(find.text('关联发票并导出'), findsOneWidget);
   });
 
   testWidgets('home reflows at 360px with 2.0 text scaling', (tester) async {

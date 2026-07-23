@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:receipt_tamer/data/models/invoice.dart';
+import 'package:receipt_tamer/data/models/order.dart';
 import 'package:receipt_tamer/data/services/file_service.dart';
 import 'package:receipt_tamer/data/services/invoice_export_service.dart';
 import 'package:receipt_tamer/data/services/meal_details_export_service.dart';
@@ -11,7 +12,7 @@ import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/providers/reimbursement_provider.dart';
-import 'package:receipt_tamer/presentation/screens/export/saved_files_screen.dart';
+import 'package:receipt_tamer/presentation/screens/export/export_completion_screen.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_card.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_notice.dart';
@@ -21,27 +22,6 @@ import 'package:flutter/material.dart';
 import 'package:receipt_tamer/presentation/widgets/common/glass_alert_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
-
-@visibleForTesting
-Future<void> showSavedFilesAndReportExportErrors({
-  required OverlayState overlay,
-  required Future<void> Function() showSavedFiles,
-  required List<String> errors,
-}) async {
-  // Navigator.push happens synchronously when showSavedFiles is invoked. Show
-  // any partial-failure notice before awaiting that route so users see it on
-  // the saved-files screen instead of only after they leave the screen.
-  final savedFilesFuture = showSavedFiles();
-  if (errors.isNotEmpty && overlay.mounted) {
-    AppNotice.showOnOverlay(
-      overlay,
-      errors.join('\n'),
-      tone: AppNoticeTone.error,
-      duration: const Duration(seconds: 3),
-    );
-  }
-  await savedFilesFuture;
-}
 
 /// Export options screen - choose what to export
 class ExportOptionsScreen extends ConsumerStatefulWidget {
@@ -91,119 +71,135 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
         ? widget.orderIds
         : reimbursement.closureOrderIds.toList(growable: false);
 
-    return GlassPageScaffold(
-      appBar: AppBar(title: const Text('导出选项'), elevation: 0),
-      body: FloatingOverlayLayout(
-        bodyBuilder: (context, contentPadding) => ListView(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, contentPadding.bottom + 16),
-          children: [
-            // Summary card
-            AppCard(
-              margin: EdgeInsets.zero,
-              padding: const EdgeInsets.all(16),
-              child: Padding(
-                padding: EdgeInsets.zero,
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.description_outlined,
-                      color: colorScheme.primary,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '报销材料',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+    return PopScope(
+      canPop: !_isExporting,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _isExporting) {
+          AppNotice.info(context, '正在生成报销材料，完成后即可返回');
+        }
+      },
+      child: GlassPageScaffold(
+        appBar: AppBar(title: const Text('导出选项'), elevation: 0),
+        body: AbsorbPointer(
+          absorbing: _isExporting,
+          child: FloatingOverlayLayout(
+            bodyBuilder: (context, contentPadding) => ListView(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                16,
+                16,
+                contentPadding.bottom + 16,
+              ),
+              children: [
+                // Summary card
+                AppCard(
+                  margin: EdgeInsets.zero,
+                  padding: const EdgeInsets.all(16),
+                  child: Padding(
+                    padding: EdgeInsets.zero,
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.description_outlined,
+                          color: colorScheme.primary,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '报销材料',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${effectiveInvoiceIds.length} 张发票 · ${effectiveOrderIds.length} 笔订单',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${effectiveInvoiceIds.length} 张发票 · ${effectiveOrderIds.length} 笔订单',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
+
+                const SizedBox(height: 24),
+
+                // Export options
+                Text(
+                  '选择导出内容',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Meal proof option
+                _buildExportOptionCard(
+                  title: '用餐证明',
+                  subtitle: '订单截图汇总文档',
+                  icon: Icons.restaurant_menu,
+                  value: _exportMealProof,
+                  formatLabel: 'PDF',
+                  onToggle: (v) => setState(() => _exportMealProof = v),
+                ),
+
+                const SizedBox(height: 12),
+
+                // Invoice option
+                _buildExportOptionCard(
+                  title: '发票',
+                  subtitle: '发票信息汇总文档',
+                  icon: Icons.receipt_long,
+                  value: _exportInvoice,
+                  formatLabel: 'PDF',
+                  onToggle: (v) => setState(() => _exportInvoice = v),
+                ),
+
+                const SizedBox(height: 12),
+
+                // Meal details option
+                _buildExportOptionCard(
+                  title: '用餐明细',
+                  subtitle: '订单和发票明细表格',
+                  icon: Icons.table_chart,
+                  value: _exportMealDetails,
+                  formatLabel: 'XLSX',
+                  onToggle: (v) => setState(() => _exportMealDetails = v),
+                ),
+              ],
             ),
+            bottom: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Meal proof export options group (新增)
+                _buildMealProofExportOptions(context),
 
-            const SizedBox(height: 24),
+                // Invoice export options group (only visible when invoice export is enabled)
+                _buildInvoiceExportOptions(context),
 
-            // Export options
-            Text(
-              '选择导出内容',
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
-              ),
+                // Meal details export options group
+                _buildMealDetailsExportOptions(context),
+
+                // Export button
+                AppButton(
+                  text: _isExporting ? '正在生成报销材料' : '开始导出',
+                  onPressed: _canExport() ? _handleExport : null,
+                  isLoading: _isExporting,
+                  isFullWidth: true,
+                  type: AppButtonType.primary,
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-
-            // Meal proof option
-            _buildExportOptionCard(
-              title: '用餐证明',
-              subtitle: '订单截图汇总文档',
-              icon: Icons.restaurant_menu,
-              value: _exportMealProof,
-              formatLabel: 'PDF',
-              onToggle: (v) => setState(() => _exportMealProof = v),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Invoice option
-            _buildExportOptionCard(
-              title: '发票',
-              subtitle: '发票信息汇总文档',
-              icon: Icons.receipt_long,
-              value: _exportInvoice,
-              formatLabel: 'PDF',
-              onToggle: (v) => setState(() => _exportInvoice = v),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Meal details option
-            _buildExportOptionCard(
-              title: '用餐明细',
-              subtitle: '订单和发票明细表格',
-              icon: Icons.table_chart,
-              value: _exportMealDetails,
-              formatLabel: 'XLSX',
-              onToggle: (v) => setState(() => _exportMealDetails = v),
-            ),
-          ],
-        ),
-        bottom: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Meal proof export options group (新增)
-            _buildMealProofExportOptions(context),
-
-            // Invoice export options group (only visible when invoice export is enabled)
-            _buildInvoiceExportOptions(context),
-
-            // Meal details export options group
-            _buildMealDetailsExportOptions(context),
-
-            // Export button
-            AppButton(
-              text: '开始导出',
-              onPressed: _canExport() ? _handleExport : null,
-              isLoading: _isExporting,
-              isFullWidth: true,
-              type: AppButtonType.primary,
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -716,6 +712,27 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
   }
 
   Future<void> _handleExport() async {
+    if (_isExporting) return;
+    final reimbursement = ref.read(reimbursementProvider);
+    final snapshot = _ExportRequestSnapshot(
+      invoiceIds: List<int>.unmodifiable(
+        widget.invoiceIds.isNotEmpty
+            ? widget.invoiceIds
+            : reimbursement.invoiceIds,
+      ),
+      orderIds: List<int>.unmodifiable(
+        widget.orderIds.isNotEmpty
+            ? widget.orderIds
+            : reimbursement.closureOrderIds,
+      ),
+      exportMealProof: _exportMealProof,
+      exportInvoice: _exportInvoice,
+      exportMealDetails: _exportMealDetails,
+      showInvoiceTimeLabel: _showInvoiceTimeLabel,
+      invoiceRemark: _addInvoiceRemark ? _invoiceRemarkContent : null,
+      mealProofRemark: _addMealProofRemark ? _mealProofRemarkContent : null,
+      skipEmptyDays: _skipEmptyDays,
+    );
     setState(() {
       _isExporting = true;
     });
@@ -723,6 +740,7 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
     logService.i(LogConfig.moduleUi, '开始导出报销材料');
 
     final fileService = FileService();
+    Directory? sessionDirectory;
 
     try {
       final now = DateTime.now();
@@ -730,217 +748,61 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
       final dateDir =
           '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
       final subDir = 'materials/$dateDir';
-
-      int successCount = 0;
-      List<String> errors = [];
-
-      // Get selected invoices
-      final invoices = await _getSelectedInvoices();
-
-      // Export meal proof
-      if (_exportMealProof && invoices.isNotEmpty) {
-        String? tempPath;
-        try {
-          final fileName = '用餐证明_$timestamp.pdf';
-
-          // Prepare meal proof items
-          final items = await MealProofExportService.prepareMealProofItems(
+      final tempRoot = await getTemporaryDirectory();
+      sessionDirectory = await Directory(
+        '${tempRoot.path}${Platform.pathSeparator}'
+        'receipt_tamer_export_${now.microsecondsSinceEpoch}',
+      ).create(recursive: true);
+      final invoices = await _getSelectedInvoices(snapshot.invoiceIds);
+      final results = <ExportMaterialResult>[];
+      for (final type in ExportMaterialType.values) {
+        if (!snapshot.isSelected(type)) {
+          results.add(
+            ExportMaterialResult(
+              type: type,
+              status: ExportMaterialStatus.notSelected,
+              message: '本次没有选择生成',
+            ),
+          );
+          continue;
+        }
+        results.add(
+          await _exportMaterial(
+            type: type,
+            snapshot: snapshot,
             invoices: invoices,
-            getOrderIdsForInvoice: (id) =>
-                ref.read(invoiceProvider.notifier).getOrderIdsForInvoice(id),
-            getOrderById: (id) =>
-                ref.read(orderProvider.notifier).getOrderById(id),
-          );
-
-          if (items.isEmpty) {
-            errors.add('用餐证明：没有可导出的订单');
-          } else {
-            // Generate to temp directory first
-            final tempDir = await getTemporaryDirectory();
-            tempPath = '${tempDir.path}/$fileName';
-
-            await MealProofExportService.generatePdf(
-              items: items,
-              outputPath: tempPath,
-              getImagePath: (p) => p, // Image path is already absolute
-              remark: _addMealProofRemark
-                  ? _mealProofRemarkContent
-                  : null, // 新增参数
-            );
-
-            // Copy to Download/ReceiptTamer/materials/YYYYMMDD
-            final savedPath = await fileService.copyToDownloadDirectory(
-              tempPath,
-              customFileName: fileName,
-              subDir: subDir,
-            );
-
-            if (savedPath != null) {
-              successCount++;
-            } else {
-              errors.add('用餐证明：保存到下载目录失败');
-            }
-          }
-        } catch (error, stackTrace) {
-          logService.e(LogConfig.moduleFile, '用餐证明导出失败', error, stackTrace);
-          errors.add(
-            error is MealProofAttachmentUnavailableException
-                ? '用餐证明：$error'
-                : '用餐证明：导出失败',
-          );
-        } finally {
-          // Clean up temp file
-          if (tempPath != null) {
-            final tempFile = File(tempPath);
-            if (await tempFile.exists()) {
-              await tempFile.delete();
-            }
-          }
-        }
+            fileService: fileService,
+            sessionDirectory: sessionDirectory,
+            subDir: subDir,
+            timestamp: timestamp,
+          ),
+        );
       }
 
-      // Export invoice
-      if (_exportInvoice && invoices.isNotEmpty) {
-        String? tempPath;
-        try {
-          final fileName = '发票_$timestamp.pdf';
-
-          // Prepare invoice export items
-          final items = await InvoiceExportService.prepareInvoiceExportItems(
-            invoices: invoices,
-            getOrderIdsForInvoice: (id) =>
-                ref.read(invoiceProvider.notifier).getOrderIdsForInvoice(id),
-            getOrderById: (id) =>
-                ref.read(orderProvider.notifier).getOrderById(id),
-            remark: _addInvoiceRemark ? _invoiceRemarkContent : null,
-          );
-
-          if (items.isEmpty) {
-            errors.add('发票：没有可导出的发票');
-          } else {
-            // Generate to temp directory first
-            final tempDir = await getTemporaryDirectory();
-            tempPath = '${tempDir.path}/$fileName';
-
-            await InvoiceExportService.generateInvoicePdf(
-              items: items,
-              outputPath: tempPath,
-              getFilePath: (p) => p, // File path is already absolute
-              showTimeLabel: _showInvoiceTimeLabel,
-              showRemark: _addInvoiceRemark,
-            );
-
-            // Copy to Download/ReceiptTamer/materials/YYYYMMDD
-            final savedPath = await fileService.copyToDownloadDirectory(
-              tempPath,
-              customFileName: fileName,
-              subDir: subDir,
-            );
-
-            if (savedPath != null) {
-              successCount++;
-            } else {
-              errors.add('发票：保存到下载目录失败');
-            }
-          }
-        } catch (error, stackTrace) {
-          logService.e(LogConfig.moduleFile, '发票导出失败', error, stackTrace);
-          errors.add(
-            error is InvoiceAttachmentUnavailableException
-                ? '发票：$error'
-                : '发票：导出失败',
-          );
-        } finally {
-          // Clean up temp file
-          if (tempPath != null) {
-            final tempFile = File(tempPath);
-            if (await tempFile.exists()) {
-              await tempFile.delete();
-            }
-          }
-        }
+      if (!mounted) {
+        await sessionDirectory.delete(recursive: true);
+        return;
       }
-
-      // Export meal details
-      if (_exportMealDetails && invoices.isNotEmpty) {
-        String? tempPath;
-        try {
-          final fileName = '用餐明细_$timestamp.xlsx';
-
-          // Prepare daily meal details
-          final items = await MealDetailsExportService.prepareDailyMealDetails(
-            invoices: invoices,
-            getOrderIdsForInvoice: (id) =>
-                ref.read(invoiceProvider.notifier).getOrderIdsForInvoice(id),
-            getOrderById: (id) =>
-                ref.read(orderProvider.notifier).getOrderById(id),
-            fillMissingDates: !_skipEmptyDays,
-          );
-
-          if (items.isEmpty) {
-            errors.add('用餐明细：没有可导出的订单');
-          } else {
-            // Generate to temp directory first
-            final tempDir = await getTemporaryDirectory();
-            tempPath = '${tempDir.path}/$fileName';
-
-            await MealDetailsExportService.generateExcel(
-              items: items,
-              outputPath: tempPath,
-              skipEmptyDays: _skipEmptyDays,
-            );
-
-            // Copy to Download/ReceiptTamer/materials/YYYYMMDD
-            final savedPath = await fileService.copyToDownloadDirectory(
-              tempPath,
-              customFileName: fileName,
-              subDir: subDir,
-            );
-
-            if (savedPath != null) {
-              successCount++;
-            } else {
-              errors.add('用餐明细：保存到下载目录失败');
-            }
-          }
-        } catch (error, stackTrace) {
-          logService.e(LogConfig.moduleFile, '用餐明细导出失败', error, stackTrace);
-          errors.add('用餐明细：导出失败');
-        } finally {
-          // Clean up temp file
-          if (tempPath != null) {
-            final tempFile = File(tempPath);
-            if (await tempFile.exists()) {
-              await tempFile.delete();
-            }
-          }
-        }
-      }
-
-      if (mounted) {
-        if (successCount > 0) {
-          logService.i(LogConfig.moduleUi, '报销材料导出成功');
-          // Navigate to saved files screen to show exported files
-          final navigator = Navigator.of(context);
-          final noticeOverlay = navigator.overlay!;
-          final navigationContext = noticeOverlay.context;
-          navigator.pop();
-          if (!navigationContext.mounted) return;
-          await showSavedFilesAndReportExportErrors(
-            overlay: noticeOverlay,
-            showSavedFiles: () =>
-                showSavedFilesScreen(navigationContext, initialSubDir: subDir),
-            errors: errors,
-          );
-        } else if (errors.isNotEmpty) {
-          AppNotice.error(
-            context,
-            errors.join('\n'),
-            duration: const Duration(seconds: 3),
-          );
-        }
-      }
+      setState(() => _isExporting = false);
+      logService.i(
+        LogConfig.moduleUi,
+        '报销材料导出完成: '
+        '${results.where((item) => item.isSuccess).length}/3 项成功',
+      );
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ExportCompletionScreen(
+            results: results,
+            subDir: subDir,
+            sessionDirectory: sessionDirectory!,
+            fileService: fileService,
+          ),
+        ),
+      );
     } catch (e, stackTrace) {
+      if (sessionDirectory != null && await sessionDirectory.exists()) {
+        await sessionDirectory.delete(recursive: true);
+      }
       if (mounted) {
         logService.e(LogConfig.moduleUi, '导出失败', e, stackTrace);
         AppNotice.error(
@@ -958,14 +820,125 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
     }
   }
 
+  Future<ExportMaterialResult> _exportMaterial({
+    required ExportMaterialType type,
+    required _ExportRequestSnapshot snapshot,
+    required List<Invoice> invoices,
+    required FileService fileService,
+    required Directory sessionDirectory,
+    required String subDir,
+    required String timestamp,
+  }) async {
+    final fileName = switch (type) {
+      ExportMaterialType.mealProof => '用餐证明_$timestamp.pdf',
+      ExportMaterialType.invoice => '发票_$timestamp.pdf',
+      ExportMaterialType.mealDetails => '用餐明细_$timestamp.xlsx',
+    };
+    final tempPath =
+        '${sessionDirectory.path}${Platform.pathSeparator}$fileName';
+    ExportMaterialResult failure(String message) => ExportMaterialResult(
+      type: type,
+      status: ExportMaterialStatus.failure,
+      message: message,
+      retry: () => _exportMaterial(
+        type: type,
+        snapshot: snapshot,
+        invoices: invoices,
+        fileService: fileService,
+        sessionDirectory: sessionDirectory,
+        subDir: subDir,
+        timestamp: timestamp,
+      ),
+    );
+    Future<List<int>> getOrderIdsForInvoice(int invoiceId) =>
+        ref.read(invoiceProvider.notifier).getOrderIdsForInvoice(invoiceId);
+    Future<Order?> getOrderById(int orderId) =>
+        ref.read(orderProvider.notifier).getOrderById(orderId);
+
+    try {
+      if (invoices.isEmpty) {
+        return failure('没有可导出的发票');
+      }
+      switch (type) {
+        case ExportMaterialType.mealProof:
+          final items = await MealProofExportService.prepareMealProofItems(
+            invoices: invoices,
+            getOrderIdsForInvoice: getOrderIdsForInvoice,
+            getOrderById: getOrderById,
+          );
+          if (items.isEmpty) return failure('没有可导出的订单');
+          await MealProofExportService.generatePdf(
+            items: items,
+            outputPath: tempPath,
+            getImagePath: (value) => value,
+            remark: snapshot.mealProofRemark,
+          );
+        case ExportMaterialType.invoice:
+          final items = await InvoiceExportService.prepareInvoiceExportItems(
+            invoices: invoices,
+            getOrderIdsForInvoice: getOrderIdsForInvoice,
+            getOrderById: getOrderById,
+            remark: snapshot.invoiceRemark,
+          );
+          if (items.isEmpty) return failure('没有可导出的发票');
+          await InvoiceExportService.generateInvoicePdf(
+            items: items,
+            outputPath: tempPath,
+            getFilePath: (value) => value,
+            showTimeLabel: snapshot.showInvoiceTimeLabel,
+            showRemark: snapshot.invoiceRemark != null,
+          );
+        case ExportMaterialType.mealDetails:
+          final items = await MealDetailsExportService.prepareDailyMealDetails(
+            invoices: invoices,
+            getOrderIdsForInvoice: getOrderIdsForInvoice,
+            getOrderById: getOrderById,
+            fillMissingDates: !snapshot.skipEmptyDays,
+          );
+          if (items.isEmpty) return failure('没有可导出的订单');
+          await MealDetailsExportService.generateExcel(
+            items: items,
+            outputPath: tempPath,
+            skipEmptyDays: snapshot.skipEmptyDays,
+          );
+      }
+      final tempFile = File(tempPath);
+      if (!await tempFile.exists() || await tempFile.length() == 0) {
+        return failure('生成的文件为空，请重试');
+      }
+      final saved = await fileService.copyToDownloadDirectoryReference(
+        tempPath,
+        customFileName: fileName,
+        subDir: subDir,
+      );
+      if (saved == null) return failure('保存到下载目录失败');
+      return ExportMaterialResult(
+        type: type,
+        status: ExportMaterialStatus.success,
+        file: saved,
+        previewPath: tempPath,
+        message: '已保存为 ${saved.name}',
+      );
+    } catch (error, stackTrace) {
+      logService.e(
+        LogConfig.moduleFile,
+        '${type.name} 导出失败',
+        error,
+        stackTrace,
+      );
+      final message = switch (error) {
+        MealProofAttachmentUnavailableException() => '$error',
+        InvoiceAttachmentUnavailableException() => '$error',
+        _ => '导出失败，请重试',
+      };
+      return failure(message);
+    }
+  }
+
   /// Get selected invoices from invoice IDs
-  Future<List<Invoice>> _getSelectedInvoices() async {
+  Future<List<Invoice>> _getSelectedInvoices(List<int> invoiceIds) async {
     final invoices = <Invoice>[];
-    final reimbursement = ref.read(reimbursementProvider);
-    final effectiveInvoiceIds = widget.invoiceIds.isNotEmpty
-        ? widget.invoiceIds
-        : reimbursement.invoiceIds;
-    for (final id in effectiveInvoiceIds) {
+    for (final id in invoiceIds) {
       final invoice = await ref
           .read(invoiceProvider.notifier)
           .getInvoiceById(id);
@@ -979,4 +952,34 @@ class _ExportOptionsScreenState extends ConsumerState<ExportOptionsScreen> {
   String _formatTimestamp(DateTime dt) {
     return '${dt.year}${dt.month.toString().padLeft(2, '0')}${dt.day.toString().padLeft(2, '0')}_${dt.hour.toString().padLeft(2, '0')}${dt.minute.toString().padLeft(2, '0')}';
   }
+}
+
+class _ExportRequestSnapshot {
+  final List<int> invoiceIds;
+  final List<int> orderIds;
+  final bool exportMealProof;
+  final bool exportInvoice;
+  final bool exportMealDetails;
+  final bool showInvoiceTimeLabel;
+  final String? invoiceRemark;
+  final String? mealProofRemark;
+  final bool skipEmptyDays;
+
+  const _ExportRequestSnapshot({
+    required this.invoiceIds,
+    required this.orderIds,
+    required this.exportMealProof,
+    required this.exportInvoice,
+    required this.exportMealDetails,
+    required this.showInvoiceTimeLabel,
+    required this.invoiceRemark,
+    required this.mealProofRemark,
+    required this.skipEmptyDays,
+  });
+
+  bool isSelected(ExportMaterialType type) => switch (type) {
+    ExportMaterialType.mealProof => exportMealProof,
+    ExportMaterialType.invoice => exportInvoice,
+    ExportMaterialType.mealDetails => exportMealDetails,
+  };
 }

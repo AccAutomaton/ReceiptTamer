@@ -29,7 +29,7 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('开票助手'), findsOneWidget);
+    expect(find.text('待关联发票订单'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 1));

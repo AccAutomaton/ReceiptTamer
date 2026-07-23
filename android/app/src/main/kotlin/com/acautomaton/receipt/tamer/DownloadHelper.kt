@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.DocumentsContract
 import android.provider.MediaStore
+import androidx.core.content.FileProvider
 import java.io.File
 import java.io.OutputStream
 
@@ -255,7 +256,9 @@ object DownloadHelper {
 
             return mapOf(
                 "success" to true,
-                "path" to savedPath
+                "path" to savedPath,
+                "uri" to uri.toString(),
+                "fileName" to fileName
             )
         } catch (e: Exception) {
             LogHelper.e("FILE", "写入文件失败: ${e.message}", e)
@@ -323,7 +326,13 @@ object DownloadHelper {
 
             return mapOf(
                 "success" to true,
-                "path" to targetFile.absolutePath
+                "path" to targetFile.absolutePath,
+                "uri" to FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    targetFile
+                ).toString(),
+                "fileName" to targetFile.name
             )
         } catch (e: Exception) {
             LogHelper.e("FILE", "写入文件失败: ${e.message}", e)
@@ -594,7 +603,7 @@ object DownloadHelper {
      */
     fun shareFile(context: Context, fileUri: String, fileName: String, mimeType: String): Boolean {
         return try {
-            val uri = Uri.parse(fileUri)
+            val uri = resolveShareUri(context, fileUri)
             val intent = Intent(Intent.ACTION_SEND).apply {
                 setType(mimeType)
                 putExtra(Intent.EXTRA_STREAM, uri)
@@ -622,5 +631,89 @@ object DownloadHelper {
             LogHelper.e("FILE", "分享文件失败: ${e.message}", e)
             false
         }
+    }
+
+    /**
+     * 使用系统默认应用打开已保存的文件。
+     */
+    fun openFile(context: Context, fileUri: String, fileName: String, mimeType: String): Boolean {
+        return try {
+            val uri = resolveShareUri(context, fileUri)
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, mimeType)
+                clipData = android.content.ClipData.newRawUri(fileName, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            if (intent.resolveActivity(context.packageManager) != null) {
+                context.startActivity(intent)
+                LogHelper.i("FILE", "打开已保存文件成功: $fileUri")
+                true
+            } else {
+                LogHelper.w("FILE", "没有可打开该文件的应用: $fileUri")
+                false
+            }
+        } catch (e: Exception) {
+            LogHelper.e("FILE", "打开已保存文件失败: ${e.message}", e)
+            false
+        }
+    }
+
+    /**
+     * 在一个系统分享面板中分享多个文件。
+     */
+    fun shareFiles(
+        context: Context,
+        fileUris: List<String>,
+        fileNames: List<String>
+    ): Boolean {
+        if (fileUris.isEmpty()) return false
+        return try {
+            val uris = ArrayList(fileUris.map { resolveShareUri(context, it) })
+            val clipData = android.content.ClipData.newRawUri(
+                fileNames.firstOrNull() ?: "报销材料",
+                uris.first()
+            )
+            for (index in 1 until uris.size) {
+                clipData.addItem(android.content.ClipData.Item(uris[index]))
+            }
+            val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                type = "*/*"
+                putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+                putExtra(Intent.EXTRA_SUBJECT, "报销材料")
+                setClipData(clipData)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            val chooser = Intent.createChooser(intent, "分享报销材料").apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            if (chooser.resolveActivity(context.packageManager) != null) {
+                context.startActivity(chooser)
+                LogHelper.i("FILE", "批量分享文件成功: ${uris.size} 个")
+                true
+            } else {
+                LogHelper.w("FILE", "无法批量分享文件")
+                false
+            }
+        } catch (e: Exception) {
+            LogHelper.e("FILE", "批量分享文件失败: ${e.message}", e)
+            false
+        }
+    }
+
+    private fun resolveShareUri(context: Context, value: String): Uri {
+        val parsed = Uri.parse(value)
+        if (parsed.scheme == "content") return parsed
+        val file = if (parsed.scheme == "file") {
+            File(requireNotNull(parsed.path))
+        } else {
+            File(value)
+        }
+        return FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
     }
 }

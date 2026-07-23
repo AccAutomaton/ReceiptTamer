@@ -15,6 +15,7 @@ class InvoiceExportState {
     this.selectedInvoiceIds = const <int>{},
     this.selectedOrderIds = const <int>{},
     this.availableInvoices = const <Invoice>[],
+    this.knownInvoicesById = const <int, Invoice>{},
     this.orderIdsByInvoice = const <int, Set<int>>{},
     this.isLoading = false,
     this.isInitialized = false,
@@ -26,6 +27,7 @@ class InvoiceExportState {
   final Set<int> selectedInvoiceIds;
   final Set<int> selectedOrderIds;
   final List<Invoice> availableInvoices;
+  final Map<int, Invoice> knownInvoicesById;
   final Map<int, Set<int>> orderIdsByInvoice;
   final bool isLoading;
   final bool isInitialized;
@@ -38,7 +40,15 @@ class InvoiceExportState {
     return id != null && isSelectable(id);
   }).length;
 
-  double get selectedTotal => availableInvoices
+  Set<int> get visibleInvoiceIds => {
+    for (final invoice in availableInvoices)
+      if (invoice.id case final int id) id,
+  };
+
+  int get hiddenSelectedCount =>
+      selectedInvoiceIds.difference(visibleInvoiceIds).length;
+
+  double get selectedTotal => knownInvoicesById.values
       .where((invoice) => selectedInvoiceIds.contains(invoice.id))
       .fold(0, (sum, invoice) => sum + invoice.totalAmount);
 
@@ -55,6 +65,7 @@ class InvoiceExportState {
     Set<int>? selectedInvoiceIds,
     Set<int>? selectedOrderIds,
     List<Invoice>? availableInvoices,
+    Map<int, Invoice>? knownInvoicesById,
     Map<int, Set<int>>? orderIdsByInvoice,
     bool? isLoading,
     bool? isInitialized,
@@ -68,6 +79,7 @@ class InvoiceExportState {
       selectedInvoiceIds: selectedInvoiceIds ?? this.selectedInvoiceIds,
       selectedOrderIds: selectedOrderIds ?? this.selectedOrderIds,
       availableInvoices: availableInvoices ?? this.availableInvoices,
+      knownInvoicesById: knownInvoicesById ?? this.knownInvoicesById,
       orderIdsByInvoice: orderIdsByInvoice ?? this.orderIdsByInvoice,
       isLoading: isLoading ?? this.isLoading,
       isInitialized: isInitialized ?? this.isInitialized,
@@ -77,13 +89,19 @@ class InvoiceExportState {
 }
 
 class InvoiceExportNotifier extends Notifier<InvoiceExportState> {
+  int _loadGeneration = 0;
+
   @override
   InvoiceExportState build() => const InvoiceExportState();
 
   InvoiceRepository get _repository =>
       ref.read(invoice_providers.invoiceRepositoryProvider);
 
-  Future<void> loadAvailableInvoices() async {
+  Future<void> loadAvailableInvoices({bool clearSelection = false}) async {
+    final generation = ++_loadGeneration;
+    final selectionSnapshot = clearSelection
+        ? const <int>{}
+        : state.selectedInvoiceIds;
     state = state.copyWith(isLoading: true, clearError: true);
 
     try {
@@ -105,24 +123,42 @@ class InvoiceExportNotifier extends Notifier<InvoiceExportState> {
           if (rightDate == null) return -1;
           return rightDate.compareTo(leftDate);
         });
-      final invoiceIds = sortedInvoices
-          .map((invoice) => invoice.id)
-          .whereType<int>()
-          .toList(growable: false);
+      final selectedInvoices = selectionSnapshot.isEmpty
+          ? const <Invoice>[]
+          : (await Future.wait(
+              selectionSnapshot.map(_repository.getById),
+            )).whereType<Invoice>().toList(growable: false);
+      final knownInvoicesById = <int, Invoice>{
+        for (final invoice in sortedInvoices)
+          if (invoice.id case final int id) id: invoice,
+        for (final invoice in selectedInvoices)
+          if (invoice.id case final int id) id: invoice,
+      };
+      final knownInvoiceIds = knownInvoicesById.keys.toList(growable: false);
       final orderIdsByInvoice = await _repository.getOrderIdsForInvoices(
-        invoiceIds,
+        knownInvoiceIds,
       );
 
+      if (generation != _loadGeneration) return;
+      final retainedSelection = selectionSnapshot.intersection(
+        knownInvoicesById.keys.toSet(),
+      );
+      final selectedOrderIds = <int>{
+        for (final invoiceId in retainedSelection)
+          ...(orderIdsByInvoice[invoiceId] ?? const <int>{}),
+      };
       state = state.copyWith(
         availableInvoices: sortedInvoices,
+        knownInvoicesById: knownInvoicesById,
         orderIdsByInvoice: orderIdsByInvoice,
-        selectedInvoiceIds: <int>{},
-        selectedOrderIds: <int>{},
+        selectedInvoiceIds: retainedSelection,
+        selectedOrderIds: selectedOrderIds,
         isLoading: false,
         isInitialized: true,
         clearError: true,
       );
     } catch (error, stackTrace) {
+      if (generation != _loadGeneration) return;
       logService.e(LogConfig.moduleUi, '加载报销发票选择列表失败', error, stackTrace);
       state = state.copyWith(
         isLoading: false,
@@ -156,13 +192,17 @@ class InvoiceExportNotifier extends Notifier<InvoiceExportState> {
 
   void selectAll() {
     _setSelection({
+      ...state.selectedInvoiceIds,
       for (final invoice in state.availableInvoices)
         if (invoice.id case final int id when state.isSelectable(id)) id,
     });
   }
 
   void invertSelection() {
+    final visibleIds = state.visibleInvoiceIds;
     _setSelection({
+      for (final invoiceId in state.selectedInvoiceIds)
+        if (!visibleIds.contains(invoiceId)) invoiceId,
       for (final invoice in state.availableInvoices)
         if (invoice.id case final int id
             when state.isSelectable(id) && !state.isSelected(id))
@@ -181,13 +221,13 @@ class InvoiceExportNotifier extends Notifier<InvoiceExportState> {
     _setSelection({for (final invoice in selectable.take(count)) invoice.id!});
   }
 
+  void clearSelection() => _setSelection(const <int>{});
+
   void _setSelection(Set<int> selectedInvoiceIds) {
-    final selectedOrderIds = <int>{};
-    for (final invoiceId in selectedInvoiceIds) {
-      selectedOrderIds.addAll(
-        state.orderIdsByInvoice[invoiceId] ?? const <int>{},
-      );
-    }
+    final selectedOrderIds = <int>{
+      for (final invoiceId in selectedInvoiceIds)
+        ...(state.orderIdsByInvoice[invoiceId] ?? const <int>{}),
+    };
     state = state.copyWith(
       selectedInvoiceIds: selectedInvoiceIds,
       selectedOrderIds: selectedOrderIds,

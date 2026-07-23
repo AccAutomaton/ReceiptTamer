@@ -20,7 +20,7 @@
 ## 当前基线
 
 - `ledger_representative_golden_test.dart`：12 张真实首页，覆盖双视口、浅暗色和
-  1.0/1.3/2.0 字号；约束三栏开票助手、最近订单纸页与雾边重排。
+  1.0/1.3/2.0 字号；约束三栏待关联订单入口、最近订单纸页与雾边重排。
 - `relief_shell_component_golden_test.dart`：4 张主壳组件，覆盖连续月账页、四个连续
   目的地和右侧独立 72/68dp 新增键。
 - `reimbursement_check_golden_test.dart`：3 张关系检查页，覆盖常规、紧凑及暗色

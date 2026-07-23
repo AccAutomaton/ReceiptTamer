@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="ReceiptTamerLaunchThemeV27" parent="@style/ReceiptTamerLaunchThemeV26">
+        <item name="android:windowLightNavigationBar">@bool/window_light_navigation_bar</item>
+        <item name="android:navigationBarDividerColor">@android:color/transparent</item>
+    </style>
+
+    <style name="ReceiptTamerNormalThemeV27" parent="@style/ReceiptTamerNormalThemeV26">
+        <item name="android:windowLightNavigationBar">@bool/window_light_navigation_bar</item>
+        <item name="android:navigationBarDividerColor">@android:color/transparent</item>
+    </style>
+
+    <style name="LaunchTheme" parent="@style/ReceiptTamerLaunchThemeV27" />
+    <style name="NormalTheme" parent="@style/ReceiptTamerNormalThemeV27" />
+</resources>

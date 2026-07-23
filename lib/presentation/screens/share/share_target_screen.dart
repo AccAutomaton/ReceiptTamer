@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
@@ -9,6 +8,7 @@ import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:receipt_tamer/core/services/log_service.dart';
 import 'package:receipt_tamer/core/services/log_config.dart';
 import 'package:receipt_tamer/data/services/share_handler_service.dart';
+import 'package:receipt_tamer/presentation/utils/share_import_actions.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_button.dart';
 import 'package:receipt_tamer/presentation/widgets/common/scroll_edge_fog.dart';
 
@@ -116,14 +116,28 @@ class ShareTargetScreen extends ConsumerWidget {
 
                   const SizedBox(height: 12),
 
-                  // Cancel button
-                  OutlinedButton(
-                    onPressed: () {
-                      service.clearPendingSharedMedia();
-                      // 移到后台，让用户返回相册
-                      SystemNavigator.pop();
-                    },
-                    child: const Text('取消'),
+                  Row(
+                    children: [
+                      TextButton(
+                        onPressed: () async {
+                          final abandon = await confirmAbandonSharedImport(
+                            context,
+                            pendingCount: sharedItems.length,
+                          );
+                          if (!abandon || !context.mounted) return;
+                          service.clearPendingSharedMedia();
+                          context.go('/');
+                        },
+                        child: const Text('放弃全部'),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => context.go('/'),
+                          child: const Text('稍后处理'),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -136,19 +150,10 @@ class ShareTargetScreen extends ConsumerWidget {
 
   void _navigateToOrderEdit(BuildContext context, List<SharedMediaItem> items) {
     logService.i(LogConfig.moduleUi, '导航到订单编辑页面: ${items.length} 个图片');
-    // Navigate to order edit with the first image
-    // Pass remaining items as pending
+    // 当前文件在保存成功前继续留在待办队列，返回编辑页不会丢失。
     final firstItem = items.first;
     final remainingItems = items.skip(1).toList();
 
-    // 保存剩余图片到 ShareHandlerService（用于后续处理）
-    // 但设置一个临时标志防止 app.dart 自动导航
-    final service = ShareHandlerService();
-    service.sharedMediaNotifier.value = remainingItems.isNotEmpty
-        ? remainingItems
-        : null;
-
-    // 使用 push 而不是 go，这样可以在编辑页面处理完后正确返回
     context.go(
       '/orders/new?sharedPath=${Uri.encodeComponent(firstItem.path)}&remainingCount=${remainingItems.length}',
     );
@@ -159,16 +164,9 @@ class ShareTargetScreen extends ConsumerWidget {
     List<SharedMediaItem> items,
   ) {
     logService.i(LogConfig.moduleUi, '导航到发票编辑页面: ${items.length} 个文件');
-    // Navigate to invoice edit with the first file
-    // Pass remaining items as pending
+    // 当前文件在保存成功前继续留在待办队列，返回编辑页不会丢失。
     final firstItem = items.first;
     final remainingItems = items.skip(1).toList();
-
-    // 保存剩余文件到 ShareHandlerService（用于后续处理）
-    final service = ShareHandlerService();
-    service.sharedMediaNotifier.value = remainingItems.isNotEmpty
-        ? remainingItems
-        : null;
 
     context.go(
       '/invoices/new?sharedPath=${Uri.encodeComponent(firstItem.path)}&remainingCount=${remainingItems.length}',

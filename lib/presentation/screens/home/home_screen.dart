@@ -117,6 +117,10 @@ class _HomeScroll extends StatelessWidget {
             ),
             sliver: SliverList.list(
               children: [
+                if (overview.orderCount == 0 && overview.invoiceCount == 0) ...[
+                  const _FirstUseChecklist(),
+                  const SizedBox(height: 14),
+                ],
                 _FilingDirectory(overview: overview),
                 const SizedBox(height: 14),
                 _RecentOrders(items: overview.recentOrders),
@@ -124,6 +128,153 @@ class _HomeScroll extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FirstUseChecklist extends StatelessWidget {
+  const _FirstUseChecklist();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final divider = AppEntityTokens.borderFor(context);
+    final fill = AppEntityTokens.fillFor(context);
+
+    return _PaperSurface(
+      key: const ValueKey('home-first-use-checklist'),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+            decoration: BoxDecoration(
+              color: Color.alphaBlend(
+                theme.colorScheme.primary.withValues(alpha: 0.07),
+                fill,
+              ),
+              border: Border(bottom: BorderSide(color: divider)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '第一次使用，从这三步开始',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '识别功能是可选项，手工录入也能完成全部流程。',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _FirstUseStep(
+            index: 1,
+            title: '导入一笔订单',
+            description: '选择订单截图，识别后核对或直接手工填写',
+            onTap: () => context.push('/orders/new'),
+          ),
+          Divider(height: 1, color: divider),
+          _FirstUseStep(
+            index: 2,
+            title: '选择识别方式',
+            description: '比较手工、本地和云端的速度、隐私与成本',
+            onTap: () => context.push('/settings/model-management'),
+          ),
+          Divider(height: 1, color: divider),
+          _FirstUseStep(
+            index: 3,
+            title: '关联发票并导出',
+            description: '把订单关联到发票，再生成报销材料',
+            onTap: () => context.push('/invoice-assistant'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FirstUseStep extends StatelessWidget {
+  const _FirstUseStep({
+    required this.index,
+    required this.title,
+    required this.description,
+    required this.onTap,
+  });
+
+  final int index;
+  final String title;
+  final String description;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Semantics(
+      button: true,
+      label: '第 $index 步，$title，$description',
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 72),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    '$index',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: theme.colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        description,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(Icons.chevron_right, color: theme.colorScheme.primary),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -334,7 +485,7 @@ class _DirectoryTask extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label: '开票助手，$shopCount 家店铺，$orderCount 笔订单，查看未关联订单',
+      label: '待关联订单，$shopCount 家店铺，$orderCount 笔订单',
       child: InkWell(
         onTap: onTap,
         child: DecoratedBox(
@@ -381,7 +532,7 @@ class _DirectoryTask extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            '开票助手',
+                            '待关联订单',
                             textAlign: TextAlign.center,
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.w600,

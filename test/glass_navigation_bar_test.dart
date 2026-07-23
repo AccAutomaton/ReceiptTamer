@@ -172,6 +172,51 @@ void main() {
     );
   });
 
+  testWidgets('GlassNavigationBar clears the gesture navigation inset', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(412, 915);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(
+            size: Size(412, 915),
+            padding: EdgeInsets.only(bottom: 34),
+            viewPadding: EdgeInsets.only(bottom: 34),
+          ),
+          child: Scaffold(
+            body: Align(
+              alignment: Alignment.bottomCenter,
+              child: GlassNavigationBar(
+                selectedIndex: 0,
+                items: items,
+                onDestinationSelected: (_) {},
+                onIntakePressed: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final islandRect = tester.getRect(
+      find.byKey(const ValueKey('glass_nav_island')),
+    );
+    expect(915 - islandRect.bottom, 34);
+    expect(
+      GlassNavigationBar.contentFadeInset(
+        tester.element(find.byType(GlassNavigationBar)),
+      ),
+      114,
+    );
+  });
+
   testWidgets('GlassNavigationBar reports destination and intake taps', (
     tester,
   ) async {

@@ -10,11 +10,25 @@ import '../../core/constants/app_constants.dart';
 import '../../core/services/log_service.dart';
 import '../../core/services/log_config.dart';
 
+class DownloadedFileReference {
+  final String path;
+  final String uri;
+  final String name;
+
+  const DownloadedFileReference({
+    required this.path,
+    required this.uri,
+    required this.name,
+  });
+}
+
 /// File service for file management operations
 /// Handles directory creation, file deletion, and file info retrieval
 class FileService {
   /// MethodChannel for getting Android filesDir path
-  static const MethodChannel _channel = MethodChannel('com.acautomaton.receipt.tamer/storage');
+  static const MethodChannel _channel = MethodChannel(
+    'com.acautomaton.receipt.tamer/storage',
+  );
 
   /// Save bytes to Download/ReceiptTamer/[subDir] directory
   /// [subDir] example: "materials/20260331" or "backup/20260331"
@@ -54,6 +68,20 @@ class FileService {
     String? customFileName,
     String subDir = '',
   }) async {
+    final result = await copyToDownloadDirectoryReference(
+      sourcePath,
+      customFileName: customFileName,
+      subDir: subDir,
+    );
+    return result?.path;
+  }
+
+  /// Copy a file and return both its display path and a shareable URI.
+  Future<DownloadedFileReference?> copyToDownloadDirectoryReference(
+    String sourcePath, {
+    String? customFileName,
+    String subDir = '',
+  }) async {
     try {
       final result = await _channel.invokeMethod<Map<dynamic, dynamic>>(
         'copyToDownloadDirectory',
@@ -65,7 +93,23 @@ class FileService {
       );
 
       if (result != null && result['success'] == true) {
-        return result['path'] as String?;
+        final savedPath = result['path'] as String?;
+        final savedUri = result['uri'] as String?;
+        final savedName = result['fileName'] as String?;
+        if (savedPath == null ||
+            savedPath.isEmpty ||
+            savedUri == null ||
+            savedUri.isEmpty ||
+            savedName == null ||
+            savedName.isEmpty) {
+          logService.e(LogConfig.moduleFile, '复制文件成功响应缺少路径或 URI');
+          return null;
+        }
+        return DownloadedFileReference(
+          path: savedPath,
+          uri: savedUri,
+          name: savedName,
+        );
       } else {
         logService.e(LogConfig.moduleFile, '复制文件失败: ${result?['error']}');
         return null;
@@ -103,15 +147,29 @@ class FileService {
     }
   }
 
+  /// Open a file from its durable Download/MediaStore reference.
+  Future<bool> openDownloadedFile(DownloadedFileReference file) async {
+    try {
+      final success = await _channel.invokeMethod<bool>('openDownloadedFile', {
+        'fileUri': file.uri,
+        'fileName': file.name,
+        'mimeType': getMimeType(file.name),
+      });
+      return success ?? false;
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleFile, '打开已保存文件失败', e, stackTrace);
+      return false;
+    }
+  }
+
   /// Open file manager and navigate to the specified directory
   /// [subDir] example: "materials/20260331" or "backup/20260331"
   /// Returns true if successful, false otherwise
   Future<bool> openFileManager({String subDir = ''}) async {
     try {
-      final success = await _channel.invokeMethod<bool>(
-        'openFileManager',
-        {'subDir': subDir},
-      );
+      final success = await _channel.invokeMethod<bool>('openFileManager', {
+        'subDir': subDir,
+      });
       return success ?? false;
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleFile, '打开文件管理器失败', e, stackTrace);
@@ -122,14 +180,18 @@ class FileService {
   /// List files in Download/ReceiptTamer/[subDir] directory
   /// [subDir] example: "materials/20260331" or "backup/20260331"
   /// Returns list of files with name, path, size, date, uri fields
-  Future<List<Map<String, dynamic>>> listFilesInDirectory({String subDir = ''}) async {
+  Future<List<Map<String, dynamic>>> listFilesInDirectory({
+    String subDir = '',
+  }) async {
     try {
       final result = await _channel.invokeMethod<List<dynamic>>(
         'listFilesInDirectory',
         {'subDir': subDir},
       );
       if (result == null) return [];
-      return result.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+      return result
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleFile, '列出文件失败', e, stackTrace);
       return [];
@@ -139,14 +201,18 @@ class FileService {
   /// List sub-directories under Download/ReceiptTamer/[parentDir]
   /// [parentDir] example: "materials" or "backup"
   /// Returns list of directories with name, path fields
-  Future<List<Map<String, dynamic>>> listSubDirectories({String parentDir = ''}) async {
+  Future<List<Map<String, dynamic>>> listSubDirectories({
+    String parentDir = '',
+  }) async {
     try {
       final result = await _channel.invokeMethod<List<dynamic>>(
         'listSubDirectories',
         {'parentDir': parentDir},
       );
       if (result == null) return [];
-      return result.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+      return result
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleFile, '列出子目录失败', e, stackTrace);
       return [];
@@ -158,15 +224,35 @@ class FileService {
   /// [fileName] the file name to display
   /// [mimeType] the MIME type of the file
   /// Returns true if successful, false otherwise
-  Future<bool> shareFile(String fileUri, String fileName, String mimeType) async {
+  Future<bool> shareFile(
+    String fileUri,
+    String fileName,
+    String mimeType,
+  ) async {
     try {
-      final success = await _channel.invokeMethod<bool>(
-        'shareFile',
-        {'fileUri': fileUri, 'fileName': fileName, 'mimeType': mimeType},
-      );
+      final success = await _channel.invokeMethod<bool>('shareFile', {
+        'fileUri': fileUri,
+        'fileName': fileName,
+        'mimeType': mimeType,
+      });
       return success ?? false;
     } catch (e, stackTrace) {
       logService.e(LogConfig.moduleFile, '分享文件失败', e, stackTrace);
+      return false;
+    }
+  }
+
+  /// Share several files in one system share sheet.
+  Future<bool> shareFiles(List<DownloadedFileReference> files) async {
+    if (files.isEmpty) return false;
+    try {
+      final success = await _channel.invokeMethod<bool>('shareFiles', {
+        'fileUris': files.map((file) => file.uri).toList(growable: false),
+        'fileNames': files.map((file) => file.name).toList(growable: false),
+      });
+      return success ?? false;
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleFile, '批量分享文件失败', e, stackTrace);
       return false;
     }
   }
@@ -208,7 +294,9 @@ class FileService {
   /// test environments.
   Future<String> getFilesDirPath() async {
     try {
-      final filesDirPath = await _channel.invokeMethod<String>('getFilesDirPath');
+      final filesDirPath = await _channel.invokeMethod<String>(
+        'getFilesDirPath',
+      );
       if (filesDirPath != null && filesDirPath.isNotEmpty) {
         return filesDirPath;
       }
@@ -221,7 +309,9 @@ class FileService {
   /// Get or create the images directory
   Future<Directory> getImagesDirectory() async {
     final appDir = await getAppDirectory();
-    final imagesDir = Directory(path.join(appDir.path, AppConstants.imagesFolder));
+    final imagesDir = Directory(
+      path.join(appDir.path, AppConstants.imagesFolder),
+    );
 
     if (!await imagesDir.exists()) {
       await imagesDir.create(recursive: true);
@@ -398,7 +488,10 @@ class FileService {
   }
 
   /// List all files with a specific extension
-  Future<List<File>> listFilesByExtension(String dirPath, String extension) async {
+  Future<List<File>> listFilesByExtension(
+    String dirPath,
+    String extension,
+  ) async {
     try {
       final files = await listFiles(dirPath);
       return files.where((file) {
@@ -597,7 +690,8 @@ class FileService {
   Future<String> savePdf(File pdfFile) async {
     try {
       final pdfsDir = await getPdfsDirectory();
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}${path.extension(pdfFile.path)}';
+      final fileName =
+          '${DateTime.now().millisecondsSinceEpoch}${path.extension(pdfFile.path)}';
       final savedPath = path.join(pdfsDir.path, fileName);
 
       // Copy the file to the app's PDFs directory

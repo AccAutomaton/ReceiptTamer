@@ -606,8 +606,10 @@ class _InvoiceSelectorCard extends StatelessWidget {
 
     return Opacity(
       opacity: isSelectable ? 1.0 : 0.5,
-      child: GestureDetector(
-        onDoubleTap: () => _navigateToDetail(context),
+      child: Semantics(
+        label: isSelectable
+            ? '发票 ${invoice.sellerName.isEmpty ? '未知商家' : invoice.sellerName}，点按选择，使用详情按钮查看详情'
+            : '发票 ${invoice.sellerName.isEmpty ? '未知商家' : invoice.sellerName}，未关联订单，当前不可选择，可使用详情按钮查看详情',
         child: InkWell(
           onTap: isSelectable ? () => onChanged?.call(!isSelected) : null,
           borderRadius: BorderRadius.circular(AppRadii.card),
@@ -728,6 +730,11 @@ class _InvoiceSelectorCard extends StatelessWidget {
                       ),
                     ],
                   ),
+                ),
+                IconButton(
+                  onPressed: () => _navigateToDetail(context),
+                  tooltip: '查看发票详情',
+                  icon: const Icon(Icons.chevron_right),
                 ),
               ],
             ),

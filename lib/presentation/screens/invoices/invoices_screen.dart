@@ -442,8 +442,29 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
           selected: _activeFilter == _InvoiceLedgerFilter.all,
           onPressed: () => _applyRelationFilter(_InvoiceLedgerFilter.all),
         ),
+        if (_isTodayFilter)
+          LedgerFilterChip(
+            key: const ValueKey('invoice-active-today-filter'),
+            label: '今日',
+            semanticLabel: '清除筛选：今日',
+            icon: Icons.close,
+            selected: true,
+            onPressed: _clearFilter,
+          ),
+        if (_activeSearchQuery != null)
+          LedgerFilterChip(
+            key: const ValueKey('invoice-active-search-filter'),
+            label: '搜索：${_activeSearchQuery!}',
+            semanticLabel: '清除筛选：搜索 ${_activeSearchQuery!}',
+            icon: Icons.close,
+            selected: true,
+            onPressed: _clearFilter,
+          ),
         LedgerFilterChip(
           label: '未关联 $unlinkedCount',
+          semanticLabel: _activeFilter == _InvoiceLedgerFilter.unlinked
+              ? '清除筛选：未关联'
+              : null,
           selected: _activeFilter == _InvoiceLedgerFilter.unlinked,
           onPressed: () => _activeFilter == _InvoiceLedgerFilter.unlinked
               ? _clearFilter()
@@ -451,6 +472,9 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
         ),
         LedgerFilterChip(
           label: '已关联 $_knownLinkedCount',
+          semanticLabel: _activeFilter == _InvoiceLedgerFilter.linked
+              ? '清除筛选：已关联'
+              : null,
           selected: _activeFilter == _InvoiceLedgerFilter.linked,
           onPressed: () => _activeFilter == _InvoiceLedgerFilter.linked
               ? _clearFilter()
@@ -458,7 +482,12 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
         ),
         LedgerFilterChip(
           label: _monthFilterLabel(),
-          icon: Icons.calendar_month,
+          semanticLabel: _activeFilter == _InvoiceLedgerFilter.month
+              ? '清除筛选：${_monthFilterLabel()}'
+              : null,
+          icon: _activeFilter == _InvoiceLedgerFilter.month
+              ? Icons.close
+              : Icons.calendar_month,
           selected: _activeFilter == _InvoiceLedgerFilter.month,
           onPressed: () => _activeFilter == _InvoiceLedgerFilter.month
               ? _clearFilter()

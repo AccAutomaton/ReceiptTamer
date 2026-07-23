@@ -745,7 +745,7 @@ class _InvoiceQuickSelectScreenState
           isSelected: isSelected,
           orderCount: orderCount,
           onTap: invoiceId != null ? () => _toggleSelection(invoice) : null,
-          onDoubleTap: () => _showInvoiceDetail(invoice),
+          onOpenDetails: () => _showInvoiceDetail(invoice),
         );
       },
     );
@@ -805,20 +805,20 @@ class _InvoiceQuickSelectScreenState
 }
 
 /// Invoice select card widget for displaying invoice info with selection support
-/// 单击选择，双击查看详情
+/// 单击选择，并通过显式按钮查看详情。
 class _InvoiceSelectCard extends StatelessWidget {
   final Invoice invoice;
   final bool isSelected;
   final int? orderCount;
   final VoidCallback? onTap;
-  final VoidCallback? onDoubleTap;
+  final VoidCallback? onOpenDetails;
 
   const _InvoiceSelectCard({
     required this.invoice,
     required this.isSelected,
     this.orderCount,
     this.onTap,
-    this.onDoubleTap,
+    this.onOpenDetails,
   });
 
   @override
@@ -836,8 +836,9 @@ class _InvoiceSelectCard extends StatelessWidget {
 
     final hasLinkedOrders = orderCount != null && orderCount! > 0;
 
-    return GestureDetector(
-      onDoubleTap: onDoubleTap,
+    return Semantics(
+      label:
+          '发票 ${invoice.sellerName.isEmpty ? '未命名店铺' : invoice.sellerName}，点按选择，使用详情按钮查看详情',
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadii.card),
@@ -981,6 +982,11 @@ class _InvoiceSelectCard extends StatelessWidget {
                       color: AppPalette.amountFor(context),
                       fontWeight: FontWeight.bold,
                     ),
+                  ),
+                  IconButton(
+                    onPressed: onOpenDetails,
+                    tooltip: '查看发票详情',
+                    icon: const Icon(Icons.chevron_right),
                   ),
                 ],
               ),

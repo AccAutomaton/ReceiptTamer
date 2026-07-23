@@ -73,7 +73,7 @@ class _InvoiceAssistantScreenState
     final state = ref.watch(invoiceAssistantProvider);
 
     return GlassPageScaffold(
-      appBar: AppBar(title: const Text('开票助手'), elevation: 0),
+      appBar: AppBar(title: const Text('待关联发票订单'), elevation: 0),
       body: FloatingOverlayLayout(
         top: Column(
           mainAxisSize: MainAxisSize.min,
@@ -215,7 +215,7 @@ class _InvoiceAssistantScreenState
     if (state.summaries.isEmpty) {
       return Padding(
         padding: contentPadding,
-        child: EmptyState(icon: Icons.receipt_long, title: '暂无未开票订单'),
+        child: EmptyState(icon: Icons.receipt_long, title: '暂无待关联发票订单'),
       );
     }
 
@@ -366,7 +366,7 @@ class _ShopSummaryCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${summary.orderCount} 笔未开票订单',
+                          '${summary.orderCount} 笔待关联发票订单',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: colorScheme.onSurfaceVariant,
                           ),
@@ -469,7 +469,6 @@ class _AssistantOrderCard extends StatelessWidget {
 
     return InkWell(
       onTap: onToggle,
-      onLongPress: onOpen,
       child: Container(
         margin: const EdgeInsets.fromLTRB(12, 4, 12, 4),
         padding: const EdgeInsets.all(10),
@@ -522,6 +521,11 @@ class _AssistantOrderCard extends StatelessWidget {
                 color: AppPalette.amountFor(context),
                 fontWeight: FontWeight.w800,
               ),
+            ),
+            IconButton(
+              onPressed: onOpen,
+              tooltip: '查看订单详情',
+              icon: const Icon(Icons.chevron_right),
             ),
           ],
         ),

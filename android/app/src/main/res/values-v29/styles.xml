@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="ReceiptTamerLaunchThemeV29" parent="@style/ReceiptTamerLaunchThemeV27">
+        <item name="android:enforceStatusBarContrast">false</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
+    </style>
+
+    <style name="ReceiptTamerNormalThemeV29" parent="@style/ReceiptTamerNormalThemeV27">
+        <item name="android:enforceStatusBarContrast">false</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
+    </style>
+
+    <style name="LaunchTheme" parent="@style/ReceiptTamerLaunchThemeV29" />
+    <style name="NormalTheme" parent="@style/ReceiptTamerNormalThemeV29" />
+</resources>

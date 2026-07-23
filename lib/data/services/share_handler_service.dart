@@ -78,16 +78,49 @@ class ShareHandlerService {
 
     if (items.isNotEmpty) {
       logService.i(LogConfig.moduleShare, '处理了 ${items.length} 个分享项');
-      sharedMediaNotifier.value = items;
+      enqueueSharedMedia(items);
     } else {
       logService.w(LogConfig.moduleShare, '分享内容中没有有效项');
     }
   }
 
+  /// Append newly shared files without overwriting an existing deferred queue.
+  ///
+  /// Exact path/type duplicates are ignored while the original queue order is
+  /// preserved.
+  void enqueueSharedMedia(Iterable<SharedMediaItem> items) {
+    final merged = <SharedMediaItem>[];
+    final seen = <(SharedMediaType, String)>{};
+
+    for (final item in [...?sharedMediaNotifier.value, ...items]) {
+      if (seen.add((item.type, item.path))) {
+        merged.add(item);
+      }
+    }
+
+    sharedMediaNotifier.value = merged.isEmpty ? null : merged;
+  }
+
+  /// Remove a shared file only after its order or invoice has been saved.
+  void completePendingSharedMedia(String path) {
+    final current = sharedMediaNotifier.value;
+    if (current == null || current.isEmpty) return;
+
+    var removed = false;
+    final remaining = <SharedMediaItem>[];
+    for (final item in current) {
+      if (!removed && item.path == path) {
+        removed = true;
+      } else {
+        remaining.add(item);
+      }
+    }
+    sharedMediaNotifier.value = remaining.isEmpty ? null : remaining;
+  }
+
   /// Check if there are pending shared files
   bool get hasPendingSharedMedia =>
-      sharedMediaNotifier.value != null &&
-      sharedMediaNotifier.value!.isNotEmpty;
+      sharedMediaNotifier.value?.isNotEmpty ?? false;
 
   /// Get pending shared media items
   List<SharedMediaItem>? get pendingSharedMedia => sharedMediaNotifier.value;

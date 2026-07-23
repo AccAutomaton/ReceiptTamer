@@ -5,11 +5,13 @@ import 'package:receipt_tamer/core/services/log_service.dart';
 import 'package:receipt_tamer/core/services/log_config.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
+import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_notice.dart';
 import 'package:receipt_tamer/presentation/widgets/common/empty_state.dart';
 import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart';
 import 'package:receipt_tamer/presentation/widgets/common/floating_overlay_layout.dart';
+import 'package:receipt_tamer/presentation/widgets/invoice/relation_transfer_dialog.dart';
 import 'package:receipt_tamer/presentation/widgets/order/invoice_selector_card.dart';
 
 enum OrderRelationFilter {
@@ -48,6 +50,7 @@ class InvoiceSelectorScreen extends ConsumerStatefulWidget {
 class _InvoiceSelectorScreenState extends ConsumerState<InvoiceSelectorScreen> {
   List<InvoiceWithCount> _invoicesWithCount = [];
   bool _isLoading = true;
+  bool _isUpdating = false;
 
   // Filter state
   OrderRelationFilter _relationFilter = OrderRelationFilter.withoutOrder;
@@ -144,25 +147,73 @@ class _InvoiceSelectorScreenState extends ConsumerState<InvoiceSelectorScreen> {
   }
 
   Future<void> _selectInvoice(Invoice invoice) async {
-    // Get current order IDs for this invoice
-    final currentOrderIds = await ref
-        .read(invoiceProvider.notifier)
-        .getOrderIdsForInvoice(invoice.id!);
+    final targetInvoiceId = invoice.id;
+    if (_isUpdating || targetInvoiceId == null) return;
+    setState(() => _isUpdating = true);
+    try {
+      final orderRepository = ref.read(orderRepositoryProvider);
+      final currentInvoiceIds = await orderRepository.getInvoiceIdsForOrder(
+        widget.orderId,
+      );
+      final sourceInvoiceIds = currentInvoiceIds
+          .where((invoiceId) => invoiceId != targetInvoiceId)
+          .toList(growable: false);
+      if (sourceInvoiceIds.isNotEmpty) {
+        final order = await orderRepository.getById(widget.orderId);
+        if (order == null) {
+          if (mounted) {
+            AppNotice.error(context, '订单已不存在，请返回后刷新');
+          }
+          return;
+        }
+        final invoiceRepository = ref.read(invoiceRepositoryProvider);
+        final sourceInvoices = (await Future.wait(
+          sourceInvoiceIds.map(invoiceRepository.getById),
+        )).whereType<Invoice>().toList(growable: false);
+        if (!mounted) return;
 
-    // Add the new order ID if not already present
-    if (!currentOrderIds.contains(widget.orderId)) {
-      currentOrderIds.add(widget.orderId);
-    }
+        final confirmed = await showInvoiceRelationTransferDialog(
+          context: context,
+          items: [
+            InvoiceRelationTransferItem(
+              order: order,
+              sourceInvoices: sourceInvoices,
+            ),
+          ],
+          targetLabel: invoiceRelationLabel(invoice),
+        );
+        if (!confirmed || !mounted) return;
+      }
 
-    // Update the invoice's order relations
-    await ref
-        .read(invoiceProvider.notifier)
-        .updateOrderRelations(invoice.id!, currentOrderIds);
+      // Get current order IDs for this invoice
+      final currentOrderIds = await ref
+          .read(invoiceProvider.notifier)
+          .getOrderIdsForInvoice(targetInvoiceId);
 
-    if (mounted) {
-      Navigator.of(
-        context,
-      ).pop(InvoiceSelectorResult(selectedInvoiceId: invoice.id));
+      // Add the new order ID if not already present
+      if (!currentOrderIds.contains(widget.orderId)) {
+        currentOrderIds.add(widget.orderId);
+      }
+
+      // Update the invoice's order relations
+      await ref
+          .read(invoiceProvider.notifier)
+          .updateOrderRelations(targetInvoiceId, currentOrderIds);
+
+      if (mounted) {
+        Navigator.of(
+          context,
+        ).pop(InvoiceSelectorResult(selectedInvoiceId: targetInvoiceId));
+      }
+    } catch (e, stackTrace) {
+      logService.e(LogConfig.moduleUi, '更新订单发票关联失败', e, stackTrace);
+      if (mounted) {
+        AppNotice.error(context, '更新关联失败，请重试');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUpdating = false);
+      }
     }
   }
 
@@ -324,7 +375,7 @@ class _InvoiceSelectorScreenState extends ConsumerState<InvoiceSelectorScreen> {
         return InvoiceSelectorCard(
           invoice: item.invoice,
           orderCount: item.orderCount,
-          onTap: () => _selectInvoice(item.invoice),
+          onTap: _isUpdating ? null : () => _selectInvoice(item.invoice),
         );
       },
     );

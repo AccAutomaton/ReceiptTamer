@@ -166,7 +166,7 @@ void main() {
     expect(await notifier.selectAll(), '另有 2 笔同票订单一并选中');
     expect(fixture.container.read(exportProvider).totalSelectedCount, 5);
 
-    expect(await notifier.invertSelection(), isNull);
+    expect(await notifier.invertSelection(), '另有 3 笔同票订单一并取消');
     expect(fixture.container.read(exportProvider).totalSelectedCount, 0);
   });
 
@@ -329,6 +329,76 @@ void main() {
     await tester.tap(firstInvoice);
     await tester.pumpAndSettle();
     expect(find.text('1 张发票 · 2 笔订单'), findsOneWidget);
+  });
+
+  testWidgets('订单和发票筛选后持续披露隐藏选择，并提供清空选择入口', (tester) async {
+    _usePhoneViewport(tester);
+    final fixture = _Fixture(
+      orders: <Order>[_order(1, '2026-07-12'), _order(2, '2026-06-11')],
+      invoices: <Invoice>[
+        _invoice(101, '2026-07-13'),
+        _invoice(102, '2026-06-11'),
+      ],
+      invoiceIdsByOrder: const <int, Set<int>>{
+        1: <int>{101},
+        2: <int>{102},
+      },
+      orderIdsByInvoice: const <int, Set<int>>{
+        101: <int>{1},
+        102: <int>{2},
+      },
+    );
+    addTearDown(fixture.dispose);
+
+    await tester.pumpWidget(
+      _screenApp(fixture.container, const ReimbursementScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('reimbursement-order-1')));
+    await tester.pumpAndSettle();
+    await fixture.container
+        .read(exportProvider.notifier)
+        .setDateRange(DateTime(2026, 6, 1), DateTime(2026, 6, 30));
+    await tester.pumpAndSettle();
+
+    expect(find.text('2026/6/1—6/30'), findsOneWidget);
+    expect(find.text('已选 1 笔，其中 1 笔不在当前筛选范围内'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('clear-reimbursement-date-filter')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('clear-reimbursement-selection')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('reimbursement-order-1')), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('reimbursement-export-basis')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('reimbursement-basis-invoices')),
+    );
+    await tester.pumpAndSettle();
+    fixture.container.read(invoiceExportProvider.notifier).toggleSelection(101);
+    await fixture.container
+        .read(invoiceExportProvider.notifier)
+        .setDateRange(DateTime(2026, 6, 1), DateTime(2026, 6, 30));
+    await tester.pumpAndSettle();
+
+    expect(find.text('已选 1 笔，其中 1 笔不在当前筛选范围内'), findsOneWidget);
+    final clearSelection = find.byKey(
+      const ValueKey('clear-reimbursement-selection'),
+    );
+    await tester.ensureVisible(clearSelection);
+    await tester.pumpAndSettle();
+    await tester.tap(clearSelection);
+    await tester.pumpAndSettle();
+    expect(find.text('已选 0 笔'), findsOneWidget);
+    expect(
+      fixture.container.read(invoiceExportProvider).selectedInvoiceIds,
+      isEmpty,
+    );
   });
 
   testWidgets('仅数据写入修订会自动重载已初始化的报销依据', (tester) async {
@@ -797,6 +867,14 @@ class _FakeInvoiceRepository extends InvoiceRepository {
 
   @override
   Future<List<Invoice>> getAll({int? limit, int? offset}) async => invoices;
+
+  @override
+  Future<Invoice?> getById(int id) async {
+    for (final invoice in invoices) {
+      if (invoice.id == id) return invoice;
+    }
+    return null;
+  }
 
   @override
   Future<int> getCount() async => invoices.length;

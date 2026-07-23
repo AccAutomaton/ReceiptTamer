@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:receipt_tamer/app.dart';
 import 'package:receipt_tamer/core/theme/app_design_tokens.dart';
+import 'package:receipt_tamer/core/theme/app_system_ui.dart';
 import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/data/models/llm_backend.dart';
 import 'package:receipt_tamer/data/models/order.dart';
@@ -65,6 +66,17 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('报销'), findsOneWidget);
+
+    final systemUiFinder = find.byKey(const ValueKey('app_system_ui'));
+    final systemUiRegion = tester.widget<AnnotatedRegion<SystemUiOverlayStyle>>(
+      systemUiFinder,
+    );
+    expect(
+      systemUiRegion.value,
+      AppSystemUi.overlayStyleFor(
+        Theme.of(tester.element(systemUiFinder)).brightness,
+      ),
+    );
 
     await _unmountApp(tester);
   });

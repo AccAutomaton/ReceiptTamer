@@ -1,10 +1,7 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:receipt_tamer/presentation/screens/export/export_options_screen.dart';
-import 'package:receipt_tamer/presentation/widgets/common/app_notice.dart';
 
 void main() {
   testWidgets('custom export toggles expose checked semantics', (tester) async {
@@ -65,39 +62,5 @@ void main() {
       ),
     );
     semantics.dispose();
-  });
-
-  testWidgets('partial export error appears before saved-files route returns', (
-    tester,
-  ) async {
-    late OverlayState overlay;
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Builder(
-          builder: (context) {
-            overlay = Overlay.of(context, rootOverlay: true);
-            return const Scaffold(body: Text('export host'));
-          },
-        ),
-      ),
-    );
-
-    final routeCompleter = Completer<void>();
-    var helperCompleted = false;
-    final helperFuture = showSavedFilesAndReportExportErrors(
-      overlay: overlay,
-      showSavedFiles: () => routeCompleter.future,
-      errors: const ['发票：缺少附件，无法导出'],
-    )..then((_) => helperCompleted = true);
-
-    await tester.pump();
-
-    expect(find.text('发票：缺少附件，无法导出'), findsOneWidget);
-    expect(helperCompleted, isFalse);
-
-    routeCompleter.complete();
-    await helperFuture;
-    AppNotice.dismiss();
-    await tester.pump();
   });
 }

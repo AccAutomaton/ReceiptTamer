@@ -231,7 +231,7 @@ class _CheckContent extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.all(10),
                     child: AppButton(
-                      text: '开票助手',
+                      text: '待关联发票订单',
                       type: AppButtonType.secondary,
                       isFullWidth: true,
                       onPressed: () => context.push('/invoice-assistant'),

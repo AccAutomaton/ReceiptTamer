@@ -23,6 +23,14 @@ import 'saved_files_screen.dart';
 
 enum _ReimbursementExportBasis { orders, invoices }
 
+String _dateRangeFilterLabel(DateTime startDate, DateTime endDate) {
+  final start = '${startDate.year}/${startDate.month}/${startDate.day}';
+  final end = startDate.year == endDate.year
+      ? '${endDate.month}/${endDate.day}'
+      : '${endDate.year}/${endDate.month}/${endDate.day}';
+  return '$start—$end';
+}
+
 extension on _ReimbursementExportBasis {
   String get label => switch (this) {
     _ReimbursementExportBasis.orders => '按订单导出',
@@ -88,14 +96,21 @@ class _ReimbursementScreenState extends ConsumerState<ReimbursementScreen> {
     await _enqueueBasisOperation(basis, () => _loadBasis(basis));
   }
 
-  Future<void> _loadBasis(_ReimbursementExportBasis basis) async {
+  Future<void> _loadBasis(
+    _ReimbursementExportBasis basis, {
+    bool clearSelection = false,
+  }) async {
     if (_isDisposed) return;
 
     switch (basis) {
       case _ReimbursementExportBasis.orders:
-        await ref.read(exportProvider.notifier).loadAvailableOrders();
+        await ref
+            .read(exportProvider.notifier)
+            .loadAvailableOrders(clearSelection: clearSelection);
       case _ReimbursementExportBasis.invoices:
-        await ref.read(invoiceExportProvider.notifier).loadAvailableInvoices();
+        await ref
+            .read(invoiceExportProvider.notifier)
+            .loadAvailableInvoices(clearSelection: clearSelection);
     }
   }
 
@@ -113,7 +128,7 @@ class _ReimbursementScreenState extends ConsumerState<ReimbursementScreen> {
     final reload = _enqueueBasisOperation(basis, () async {
       _queuedAutomaticReloads.remove(basis);
       if (_isDisposed || !_loadedBases.contains(basis)) return;
-      await _loadBasis(basis);
+      await _loadBasis(basis, clearSelection: true);
     });
     unawaited(reload.catchError((Object _, StackTrace _) {}));
   }
@@ -125,13 +140,13 @@ class _ReimbursementScreenState extends ConsumerState<ReimbursementScreen> {
     if (_isDisposed) return Future<void>.value();
 
     final previous = _basisOperationTails[basis] ?? Future<void>.value();
+    Future<void> runOperation() async {
+      if (!_isDisposed) await operation();
+    }
+
     final current = previous.then<void>(
-      (_) async {
-        if (!_isDisposed) await operation();
-      },
-      onError: (Object _, StackTrace _) async {
-        if (!_isDisposed) await operation();
-      },
+      (_) => runOperation(),
+      onError: (Object _, StackTrace _) => runOperation(),
     );
     _basisOperationTails[basis] = current;
 
@@ -206,21 +221,42 @@ class _ReimbursementScreenState extends ConsumerState<ReimbursementScreen> {
     });
   }
 
-  Future<void> _toggleOrder(int orderId) async {
-    final message = await ref
-        .read(exportProvider.notifier)
-        .toggleSelection(orderId);
+  Future<void> _toggleOrder(int orderId) =>
+      _runOrderSelection((notifier) => notifier.toggleSelection(orderId));
+
+  Future<void> _selectAllOrders() =>
+      _runOrderSelection((notifier) => notifier.selectAll());
+
+  Future<void> _invertOrders() =>
+      _runOrderSelection((notifier) => notifier.invertSelection());
+
+  Future<void> _runOrderSelection(
+    Future<String?> Function(ExportNotifier notifier) operation,
+  ) async {
+    String? message;
+    await _enqueueBasisOperation(_ReimbursementExportBasis.orders, () async {
+      message = await operation(ref.read(exportProvider.notifier));
+    });
     _showCascadeMessage(message);
   }
 
-  Future<void> _selectAllOrders() async {
-    final message = await ref.read(exportProvider.notifier).selectAll();
-    _showCascadeMessage(message);
+  Future<void> _toggleInvoice(int invoiceId) {
+    return _enqueueBasisOperation(_ReimbursementExportBasis.invoices, () async {
+      ref.read(invoiceExportProvider.notifier).toggleSelection(invoiceId);
+    });
   }
 
-  Future<void> _invertOrders() async {
-    final message = await ref.read(exportProvider.notifier).invertSelection();
-    _showCascadeMessage(message);
+  Future<void> _clearSelection() async {
+    final basis = _basis;
+    await _enqueueBasisOperation(basis, () async {
+      switch (basis) {
+        case _ReimbursementExportBasis.orders:
+          await ref.read(exportProvider.notifier).clearSelection();
+        case _ReimbursementExportBasis.invoices:
+          ref.read(invoiceExportProvider.notifier).clearSelection();
+      }
+    });
+    _showCascadeMessage(null);
   }
 
   void _showCascadeMessage(String? message) {
@@ -300,6 +336,7 @@ class _ReimbursementScreenState extends ConsumerState<ReimbursementScreen> {
               ref.read(invoiceExportProvider.notifier).invertSelection(),
           onChooseDate: _chooseDateRange,
           onClearDate: _clearDateRange,
+          onClearSelection: _clearSelection,
           onOpenHistory: () =>
               showSavedFilesScreen(context, initialSubDir: 'materials'),
         ),
@@ -328,9 +365,7 @@ class _ReimbursementScreenState extends ConsumerState<ReimbursementScreen> {
                       key: const ValueKey('reimbursement-invoice-ledger'),
                       state: invoiceState,
                       onRefresh: _refresh,
-                      onToggle: (invoiceId) => ref
-                          .read(invoiceExportProvider.notifier)
-                          .toggleSelection(invoiceId),
+                      onToggle: _toggleInvoice,
                     ),
             ),
           );
@@ -614,6 +649,7 @@ class _SelectionControls extends StatelessWidget {
     required this.onInvertInvoices,
     required this.onChooseDate,
     required this.onClearDate,
+    required this.onClearSelection,
     required this.onOpenHistory,
   });
 
@@ -626,6 +662,7 @@ class _SelectionControls extends StatelessWidget {
   final VoidCallback onInvertInvoices;
   final VoidCallback onChooseDate;
   final VoidCallback onClearDate;
+  final VoidCallback onClearSelection;
   final VoidCallback onOpenHistory;
 
   @override
@@ -641,9 +678,16 @@ class _SelectionControls extends StatelessWidget {
     final selectedCount = isOrderBasis
         ? orderState.totalSelectedCount
         : invoiceState.selectedInvoiceIds.length;
+    final hiddenSelectedCount = isOrderBasis
+        ? orderState.hiddenSelectedCount
+        : invoiceState.hiddenSelectedCount;
     final hasDate = isOrderBasis
         ? orderState.hasDateRange
         : invoiceState.hasDateRange;
+    final startDate = isOrderBasis
+        ? orderState.startDate
+        : invoiceState.startDate;
+    final endDate = isOrderBasis ? orderState.endDate : invoiceState.endDate;
     final isLoading = isOrderBasis
         ? orderState.isLoading
         : invoiceState.isLoading;
@@ -695,7 +739,9 @@ class _SelectionControls extends StatelessWidget {
                               : onInvertInvoices,
                         ),
                         LedgerFilterChip(
-                          label: hasDate ? '修改日期' : '日期',
+                          label: hasDate
+                              ? _dateRangeFilterLabel(startDate!, endDate!)
+                              : '日期',
                           icon: Icons.calendar_month_outlined,
                           selected: hasDate,
                           onPressed: onChooseDate,
@@ -708,6 +754,15 @@ class _SelectionControls extends StatelessWidget {
                             label: '清除日期',
                             icon: Icons.close_rounded,
                             onPressed: onClearDate,
+                          ),
+                        if (selectedCount > 0)
+                          LedgerFilterChip(
+                            key: const ValueKey(
+                              'clear-reimbursement-selection',
+                            ),
+                            label: '清空选择',
+                            icon: Icons.deselect_rounded,
+                            onPressed: onClearSelection,
                           ),
                       ],
                     ),
@@ -740,19 +795,32 @@ class _SelectionControls extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Text(
-                    isOrderBasis
-                        ? '已选 $selectedCount 笔'
-                        : '已选 $selectedCount 张',
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: AppPalette.actionPrimaryFor(context),
-                      fontWeight: FontWeight.w700,
-                      fontFeatures: AppTypography.tabularFigures,
+                  if (hiddenSelectedCount == 0) ...[
+                    const SizedBox(width: 10),
+                    Text(
+                      '已选 $selectedCount 笔',
+                      key: const ValueKey('reimbursement-selection-summary'),
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: AppPalette.actionPrimaryFor(context),
+                        fontWeight: FontWeight.w700,
+                        fontFeatures: AppTypography.tabularFigures,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
+              if (hiddenSelectedCount > 0) ...[
+                const SizedBox(height: 4),
+                Text(
+                  '已选 $selectedCount 笔，其中 $hiddenSelectedCount 笔不在当前筛选范围内',
+                  key: const ValueKey('reimbursement-selection-summary'),
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: AppPalette.actionPrimaryFor(context),
+                    fontWeight: FontWeight.w700,
+                    fontFeatures: AppTypography.tabularFigures,
+                  ),
+                ),
+              ],
             ],
           ),
         ),

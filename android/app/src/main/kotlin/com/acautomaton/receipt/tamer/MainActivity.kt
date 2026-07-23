@@ -1,10 +1,12 @@
 package com.acautomaton.receipt.tamer
 
 import android.content.res.AssetFileDescriptor
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.annotation.NonNull
+import androidx.core.view.WindowCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -133,6 +135,17 @@ class MainActivity : FlutterActivity() {
     // 处理分享Intent的标志
     private var pendingShareIntent: android.content.Intent? = null
 
+    private fun applyLegacyGestureNavigationEdgeToEdge() {
+        if (Build.VERSION.SDK_INT in Build.VERSION_CODES.O..Build.VERSION_CODES.P) {
+            WindowCompat.setDecorFitsSystemWindows(window, false)
+            val isDarkMode =
+                resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+                    Configuration.UI_MODE_NIGHT_YES
+            WindowCompat.getInsetsController(window, window.decorView)
+                .isAppearanceLightNavigationBars = !isDarkMode
+        }
+    }
+
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         // 在后台线程预加载 MNN 库，不阻塞 UI 渲染
         // 库会在 Flutter 引擎启动期间加载完成
@@ -144,6 +157,10 @@ class MainActivity : FlutterActivity() {
             LogHelper.d("APP", "onCreate: 保存分享Intent: ${intent?.action}")
         }
         super.onCreate(savedInstanceState)
+        // Flutter 的 edgeToEdge 模式从 Android 10 才生效；FlutterActivity 又会在
+        // onCreate 中重设 decor flags，因此在 super 之后为 Android 8/9 的厂商
+        // 手势导航提供 best-effort 兜底。Android 10+ 交由 Flutter 标准路径处理。
+        applyLegacyGestureNavigationEdgeToEdge()
         LogHelper.d("APP", "onCreate: Activity创建")
     }
 
@@ -155,6 +172,13 @@ class MainActivity : FlutterActivity() {
     override fun onResume() {
         super.onResume()
         LogHelper.d("APP", "onResume: Activity恢复")
+    }
+
+    override fun onPostResume() {
+        super.onPostResume()
+        // FlutterActivity 会在 onPostResume 恢复自己的 systemUiVisibility；
+        // 之后重新应用旧版厂商手势导航兜底，避免从后台返回时失效。
+        applyLegacyGestureNavigationEdgeToEdge()
     }
 
     override fun onPause() {
@@ -430,6 +454,36 @@ class MainActivity : FlutterActivity() {
                         result.success(success)
                     } else {
                         result.error("INVALID_ARGUMENT", "fileUri or fileName is null", null)
+                    }
+                }
+                "openDownloadedFile" -> {
+                    val fileUri = call.argument<String>("fileUri")
+                    val fileName = call.argument<String>("fileName")
+                    val mimeType = call.argument<String>("mimeType") ?: "application/octet-stream"
+                    if (fileUri != null && fileName != null) {
+                        val success = DownloadHelper.openFile(
+                            applicationContext,
+                            fileUri,
+                            fileName,
+                            mimeType
+                        )
+                        result.success(success)
+                    } else {
+                        result.error("INVALID_ARGUMENT", "fileUri or fileName is null", null)
+                    }
+                }
+                "shareFiles" -> {
+                    val fileUris = call.argument<List<String>>("fileUris")
+                    val fileNames = call.argument<List<String>>("fileNames")
+                    if (fileUris != null && fileNames != null) {
+                        val success = DownloadHelper.shareFiles(
+                            applicationContext,
+                            fileUris,
+                            fileNames
+                        )
+                        result.success(success)
+                    } else {
+                        result.error("INVALID_ARGUMENT", "fileUris or fileNames is null", null)
                     }
                 }
                 else -> result.notImplemented()

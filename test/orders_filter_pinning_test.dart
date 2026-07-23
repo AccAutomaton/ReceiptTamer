@@ -116,17 +116,51 @@ void main() {
     expect(find.text('无匹配订单'), findsOneWidget);
     expect(strip, findsOneWidget);
     expect(
+      find.byKey(const ValueKey('order-active-search-filter')),
+      findsOneWidget,
+    );
+    expect(find.bySemanticsLabel('清除筛选：搜索 不存在的订单'), findsOneWidget);
+    expect(find.widgetWithText(LedgerFilterChip, '搜索：不存在的订单'), findsOneWidget);
+    expect(
       find.ancestor(of: strip, matching: find.byType(CustomScrollView)),
       findsNothing,
     );
 
     expect(find.text('清除筛选'), findsNothing);
-    await tester.tap(find.widgetWithText(LedgerFilterChip, '全部 2'));
+    await tester.tap(find.byKey(const ValueKey('order-active-search-filter')));
     await tester.pumpAndSettle();
 
     expect(find.text('无匹配订单'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('order-active-search-filter')),
+      findsNothing,
+    );
     expect(find.text('2026 年 7 月'), findsOneWidget);
     expect(find.widgetWithText(LedgerFilterChip, '全部 2'), findsOneWidget);
+  });
+
+  testWidgets('今日订单持续显示为可清除筛选标签', (tester) async {
+    _setViewport(tester);
+    await _pumpOrdersScreen(tester, _OrderRepository(_orders));
+
+    await tester.tap(find.byTooltip('筛选'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('今日订单'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('order-active-today-filter')),
+      findsOneWidget,
+    );
+    expect(find.bySemanticsLabel('清除筛选：今日'), findsOneWidget);
+    expect(find.widgetWithText(LedgerFilterChip, '今日'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('order-active-today-filter')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('order-active-today-filter')),
+      findsNothing,
+    );
   });
 
   testWidgets('订单筛选激活后下拉刷新仍执行当前筛选且筛选条固定', (tester) async {
@@ -270,6 +304,9 @@ class _OrderRepository extends OrderRepository {
 
   @override
   Future<List<Order>> getAll({int? limit, int? offset}) async => orders;
+
+  @override
+  Future<List<Order>> getTodayOrders() async => orders;
 }
 
 class _SearchOrderRepository extends _OrderRepository {

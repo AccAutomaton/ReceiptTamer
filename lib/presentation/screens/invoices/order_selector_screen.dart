@@ -5,13 +5,16 @@ import 'package:go_router/go_router.dart';
 import 'package:receipt_tamer/core/services/log_service.dart';
 import 'package:receipt_tamer/core/services/log_config.dart';
 import 'package:receipt_tamer/core/utils/date_formatter.dart';
+import 'package:receipt_tamer/data/models/invoice.dart';
 import 'package:receipt_tamer/data/models/order.dart';
+import 'package:receipt_tamer/presentation/providers/invoice_provider.dart';
 import 'package:receipt_tamer/presentation/providers/order_provider.dart';
 import 'package:receipt_tamer/presentation/widgets/common/app_notice.dart';
 import 'package:receipt_tamer/presentation/widgets/common/empty_state.dart';
 import 'package:receipt_tamer/presentation/widgets/common/date_range_picker.dart';
 import 'package:receipt_tamer/presentation/widgets/common/floating_overlay_layout.dart';
 import 'package:receipt_tamer/presentation/widgets/invoice/order_selector_card.dart';
+import 'package:receipt_tamer/presentation/widgets/invoice/relation_transfer_dialog.dart';
 
 /// Invoice relation filter enum
 enum InvoiceRelationFilter {
@@ -23,8 +26,12 @@ enum InvoiceRelationFilter {
 /// Result returned from order selector
 class OrderSelectorResult {
   final List<int> selectedOrderIds;
+  final Set<int> approvedTransferOrderIds;
 
-  OrderSelectorResult({required this.selectedOrderIds});
+  OrderSelectorResult({
+    required this.selectedOrderIds,
+    this.approvedTransferOrderIds = const {},
+  });
 }
 
 /// Order selector screen for selecting orders to link with an invoice
@@ -48,7 +55,11 @@ class OrderSelectorScreen extends ConsumerStatefulWidget {
 
 class _OrderSelectorScreenState extends ConsumerState<OrderSelectorScreen> {
   late List<int> _selectedOrderIds;
+  final Set<int> _approvedTransferOrderIds = {};
   Map<int, Order> _selectedOrdersById = {};
+  Map<int, Set<int>> _invoiceIdsByOrder = {};
+  Map<int, Invoice> _invoicesById = {};
+  Invoice? _targetInvoice;
   List<Order> _orders = [];
   bool _isLoading = true;
 
@@ -84,16 +95,37 @@ class _OrderSelectorScreenState extends ConsumerState<OrderSelectorScreen> {
             keyword: _searchKeyword.isNotEmpty ? _searchKeyword : null,
             startDate: _startDate,
             endDate: _endDate,
-            hasInvoice: _relationFilter == InvoiceRelationFilter.withInvoice
-                ? true
-                : _relationFilter == InvoiceRelationFilter.withoutInvoice
-                ? false
-                : null,
+            hasInvoice: switch (_relationFilter) {
+              InvoiceRelationFilter.all => null,
+              InvoiceRelationFilter.withoutInvoice => false,
+              InvoiceRelationFilter.withInvoice => true,
+            },
             excludeInvoiceId: widget.excludeInvoiceId,
           );
       final selectedOrders = _selectedOrderIds.isEmpty
           ? const <Order>[]
           : await orderRepository.getByIds(_selectedOrderIds);
+      final allKnownOrders = <int, Order>{
+        for (final order in orders)
+          if (order.id case final int id) id: order,
+        for (final order in selectedOrders)
+          if (order.id case final int id) id: order,
+      };
+      final invoiceIdsByOrder = await orderRepository.getInvoiceIdsForOrders(
+        allKnownOrders.keys.toList(growable: false),
+      );
+      final invoiceIds = invoiceIdsByOrder.values.expand((ids) => ids).toSet();
+      if (widget.excludeInvoiceId != null) {
+        invoiceIds.add(widget.excludeInvoiceId!);
+      }
+      final invoiceRepository = ref.read(invoiceRepositoryProvider);
+      final invoices = await Future.wait(
+        invoiceIds.map(invoiceRepository.getById),
+      );
+      final invoicesById = <int, Invoice>{
+        for (final invoice in invoices)
+          if (invoice?.id != null) invoice!.id!: invoice,
+      };
 
       if (mounted) {
         setState(() {
@@ -104,6 +136,16 @@ class _OrderSelectorScreenState extends ConsumerState<OrderSelectorScreen> {
           };
           _selectedOrderIds.removeWhere(
             (orderId) => !_selectedOrdersById.containsKey(orderId),
+          );
+          _invoiceIdsByOrder = invoiceIdsByOrder;
+          _invoicesById = invoicesById;
+          _targetInvoice = widget.excludeInvoiceId == null
+              ? null
+              : invoicesById[widget.excludeInvoiceId!];
+          _selectedOrderIds.removeWhere(
+            (orderId) =>
+                _hasForeignInvoice(orderId) &&
+                !_approvedTransferOrderIds.contains(orderId),
           );
           _isLoading = false;
         });
@@ -128,6 +170,50 @@ class _OrderSelectorScreenState extends ConsumerState<OrderSelectorScreen> {
         _selectedOrderIds.add(orderId);
         _selectedOrdersById[orderId] = order;
       }
+    });
+  }
+
+  bool _hasForeignInvoice(int orderId) {
+    return (_invoiceIdsByOrder[orderId] ?? const <int>{}).any(
+      (invoiceId) => invoiceId != widget.excludeInvoiceId,
+    );
+  }
+
+  List<Invoice> _sourceInvoicesFor(int orderId) {
+    return (_invoiceIdsByOrder[orderId] ?? const <int>{})
+        .where((invoiceId) => invoiceId != widget.excludeInvoiceId)
+        .map((invoiceId) => _invoicesById[invoiceId])
+        .whereType<Invoice>()
+        .toList(growable: false);
+  }
+
+  String get _targetInvoiceLabel {
+    final target = _targetInvoice;
+    return target == null ? '本次新发票' : invoiceRelationLabel(target);
+  }
+
+  Future<void> _requestTransfer(Order order) async {
+    final orderId = order.id;
+    if (orderId == null || !_hasForeignInvoice(orderId)) return;
+
+    final confirmed = await showInvoiceRelationTransferDialog(
+      context: context,
+      items: [
+        InvoiceRelationTransferItem(
+          order: order,
+          sourceInvoices: _sourceInvoicesFor(orderId),
+        ),
+      ],
+      targetLabel: _targetInvoiceLabel,
+    );
+    if (!confirmed || !mounted) return;
+
+    setState(() {
+      _approvedTransferOrderIds.add(orderId);
+      if (!_selectedOrderIds.contains(orderId)) {
+        _selectedOrderIds.add(orderId);
+      }
+      _selectedOrdersById[orderId] = order;
     });
   }
 
@@ -161,9 +247,14 @@ class _OrderSelectorScreenState extends ConsumerState<OrderSelectorScreen> {
   }
 
   void _confirmSelection() {
-    Navigator.of(
-      context,
-    ).pop(OrderSelectorResult(selectedOrderIds: _selectedOrderIds));
+    Navigator.of(context).pop(
+      OrderSelectorResult(
+        selectedOrderIds: _selectedOrderIds,
+        approvedTransferOrderIds: Set.unmodifiable(
+          _approvedTransferOrderIds.intersection(_selectedOrderIds.toSet()),
+        ),
+      ),
+    );
   }
 
   @override
@@ -342,14 +433,25 @@ class _OrderSelectorScreenState extends ConsumerState<OrderSelectorScreen> {
         final orderId = order.id;
         final isSelected =
             orderId != null && _selectedOrderIds.contains(orderId);
+        final transferRequired =
+            orderId != null &&
+            _hasForeignInvoice(orderId) &&
+            !_approvedTransferOrderIds.contains(orderId);
+        final sourceInvoiceLabel = orderId == null
+            ? ''
+            : _sourceInvoicesFor(orderId).map(invoiceRelationLabel).join('、');
 
         return OrderSelectorCard(
           order: order,
           isSelected: isSelected,
           onTap: () => _showOrderDetail(order),
-          onCheckChanged: orderId != null
+          onCheckChanged: orderId != null && !transferRequired
               ? (_) => _toggleSelection(order)
               : null,
+          linkedInvoiceLabel: transferRequired && sourceInvoiceLabel.isNotEmpty
+              ? sourceInvoiceLabel
+              : null,
+          onTransfer: transferRequired ? () => _requestTransfer(order) : null,
         );
       },
     );
